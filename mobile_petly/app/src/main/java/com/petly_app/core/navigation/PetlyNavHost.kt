@@ -14,6 +14,7 @@ import com.petly_app.core.AppContainer
 import com.petly_app.ui.auth.*
 import com.petly_app.ui.catalogo.*
 import com.petly_app.ui.perfil.*
+import com.petly_app.ui.screen.MainAppScreen
 
 private object Routes {
     const val LOGIN = "login"
@@ -66,19 +67,39 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                 }
             } else {
                 composable(Routes.CATALOG) {
-                    val factory = remember(container, isPreview) {
+                    val catalogFactory = remember(container, isPreview) {
                         viewModelFactory { initializer { CatalogoViewModel(container.catalogo(isPreview)) } }
                     }
-                    val vm: CatalogoViewModel = viewModel(factory = factory)
-                    val state by vm.state.collectAsStateWithLifecycle()
-                    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) { vm.retry() }
-                    CatalogoScreen(state, isPreview, vm::edit, vm::applyFilters, vm::clearFilters,
-                        vm::changePage, vm::retry,
-                        onDetail = { nav.navigate("mascota/$it") { launchSingleTop = true } },
-                        onProfile = { nav.navigate(Routes.PROFILE) { launchSingleTop = true } },
+                    val perfilFactory = remember(container, isPreview) {
+                        viewModelFactory { initializer { PerfilViewModel(container.perfil(isPreview), isPreview) } }
+                    }
+                    val catalogVm: CatalogoViewModel = viewModel(factory = catalogFactory)
+                    val perfilVm: PerfilViewModel = viewModel(factory = perfilFactory)
+                    val catalogState by catalogVm.state.collectAsStateWithLifecycle()
+                    val perfilState by perfilVm.state.collectAsStateWithLifecycle()
+
+                    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                        catalogVm.retry()
+                    }
+
+                    MainAppScreen(
+                        catalogoState = catalogState,
+                        perfilState = perfilState,
+                        isPreview = isPreview,
+                        onEditFilters = catalogVm::edit,
+                        onApplyFilters = catalogVm::applyFilters,
+                        onClearFilters = catalogVm::clearFilters,
+                        onChangePage = catalogVm::changePage,
+                        onRetryCatalog = catalogVm::retry,
+                        onDetailPet = { nav.navigate("mascota/$it") { launchSingleTop = true } },
+                        onEditPerfil = perfilVm::edit,
+                        onSavePerfil = perfilVm::save,
+                        onLoadPerfil = perfilVm::load,
+                        onShareAutorizaciones = if (isPreview) null else ({ nav.navigate("autorizaciones") }),
                         onExit = {
                             if (isPreview) { container.resetPreview(); preview = false } else container.session.clear()
-                        })
+                        }
+                    )
                 }
                 composable(Routes.PROFILE) {
                     val factory = remember(container, isPreview) {
