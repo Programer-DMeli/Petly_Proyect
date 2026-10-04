@@ -1,0 +1,59 @@
+# --- Secretos y entornos ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Python / Django ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+db.sqlite3
+staticfiles/
+media/
+!media/.gitkeep
+
+# --- Node / React ---
+node_modules/
+web/.env
+coverage/
+*.tsbuildinfo
+
+# --- Java / Maven ---
+target/
+*.class
+*.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+!**/mvnw/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.jar
+
+# --- Android / Gradle ---
+.gradle/
+.kotlin/
+build/
+local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# --- Medios y datos privados ---
+# Las fotografías de mascotas y volcados con datos personales nunca se suben.
+uploads/
+photos/
+*.sql
+*.dump
+
+# --- Logs ---
+*.log
+logs/
+
+# --- IDE y sistema ---
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

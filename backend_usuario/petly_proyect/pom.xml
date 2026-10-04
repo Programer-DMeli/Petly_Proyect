@@ -53,10 +53,23 @@
 			<scope>runtime</scope>
 			<optional>true</optional>
 		</dependency>
+		<!-- Motor comprobado en el entorno: MariaDB 10.4.32 (XAMPP).
+		     Se usa el driver MariaDB porque el de MySQL reporta una versión
+		     engañosa (5.5.5) y provoca advertencias de Hibernate. -->
 		<dependency>
-			<groupId>com.mysql</groupId>
-			<artifactId>mysql-connector-j</artifactId>
+			<groupId>org.mariadb.jdbc</groupId>
+			<artifactId>mariadb-java-client</artifactId>
 			<scope>runtime</scope>
+		</dependency>
+		<!-- Migraciones de Spring Boot (historial propio en db/migration/).
+		     Hibernate no crea tablas: ddl-auto queda en none. -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-mysql</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
