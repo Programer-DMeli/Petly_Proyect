@@ -18,6 +18,6 @@ interface AuthApi {
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
-    @GET("api/auth/me")
+    @GET("api/auth/me") //token para comprobar que el usuario está autenticado
     suspend fun me(@Header("Authorization") authorization: String): UserDto
 }

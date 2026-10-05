@@ -21,6 +21,5 @@ class UsuarioRepository(
         }
         return user
     }
-
     fun logout() = session.clear()
 }
