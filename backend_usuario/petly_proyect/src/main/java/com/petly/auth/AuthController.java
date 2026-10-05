@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.petly.auth.dto.AuthResponse;
+import com.petly.auth.dto.LoginRequest;
+import com.petly.auth.dto.LoginResponse;
 import com.petly.auth.dto.RegistroRequest;
 
 import jakarta.validation.Valid;
@@ -29,6 +31,16 @@ public class AuthController {
             return ResponseEntity.status(201).body(creado);
         } catch (RuntimeException e) {
             return ResponseEntity.status(409).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+        try {
+            LoginResponse respuesta = authService.login(request);
+            return ResponseEntity.ok(respuesta);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(401).body(e.getMessage());
         }
     }
 }
