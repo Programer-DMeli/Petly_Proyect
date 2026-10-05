@@ -31,9 +31,15 @@ Los siguientes apartados describen decisiones ya aprobadas en `PLANNING.md` v2 p
 - Contraseñas almacenadas con hash, nunca en texto plano.
 - `POST` recuperación **solo por correo**: enlace con token de un solo uso que vence en **15 minutos**. La respuesta pública no revela si el correo existe. SMS queda fuera de este sprint.
 
-### Token compartido Spring Boot ↔ Django (pendiente de definir)
+### Token compartido Spring Boot ↔ Django (acuerdo Persona B, pendiente de visto bueno A/C)
 
-Documentar antes de implementar: formato, roles, identificador de usuario, emisor, destinatarios y expiración. Django valida el token y aplica permisos; no duplica cuentas ni contraseñas.
+- Formato: JWT HS256. Secreto compartido de 32+ caracteres por variable de entorno `JWT_SECRET` en ambos backends. Nunca en Git.
+- Claims: `sub` = id de usuario (long), `email`, `rol` = `ADOPTANTE` | `ALBERGUE` | `ADMIN`, `iss` = `petly-spring`, `aud` = `petly-django`, `iat`, `exp` = 1 hora (3600 s).
+- Uso: cabecera `Authorization: Bearer <jwt>`. Login Spring responde `{token, tokenType: "Bearer", expiresIn: 3600, user: {id, email, rol}}`.
+- Django valida firma con `JWT_SECRET`, comprueba `exp`, `iss` y `aud`. Token inválido o vencido → 401; rol sin permiso → 403. No duplica cuentas ni contraseñas.
+- US-18: Django comprueba vigencia vía `GET /api/interno/autorizaciones?adoptanteId=&albergueId=` (Spring) → `{autorizado: true/false}`. Solo lectura, sin migraciones en Django.
+- Ejemplo de payload (sin firmar, sin secreto real):
+  `{"sub":12,"email":"adoptante@test.com","rol":"ADOPTANTE","iss":"petly-spring","aud":"petly-django","iat":1728000000,"exp":1728003600}`
 
 ### Catálogo (Spring Boot, US-12 y US-13)
 
