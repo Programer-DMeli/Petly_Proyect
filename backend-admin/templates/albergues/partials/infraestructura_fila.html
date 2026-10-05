@@ -1,0 +1,26 @@
+<!-- Fila de infraestructura -->
+<tr id="infra-{{ infra.id }}">
+    <td><span class="badge bg-secondary">{{ infra.get_tipo_display }}</span></td>
+    <td><strong>{{ infra.nombre }}</strong></td>
+    <td>{{ infra.descripcion|default:"-"|truncatechars:50 }}</td>
+    <td class="text-center">{{ infra.metros_cuadrados|default:"-" }}</td>
+    <td class="text-center">{{ infra.capacidad|default:"-" }}</td>
+    <td>{{ infra.equipamiento|default:"-"|truncatechars:40 }}</td>
+    <td class="text-center">
+        {% if infra.activo %}
+            <span class="badge bg-success">Activo</span>
+        {% else %}
+            <span class="badge bg-secondary">Inactivo</span>
+        {% endif %}
+    </td>
+    <td class="text-end">
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" hx-get="{% url 'infraestructura_editar' infra.id %}" hx-target="#infra-{{ infra.id }}" hx-swap="outerHTML" title="Editar">
+                <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-outline-danger" hx-delete="{% url 'infraestructura_eliminar' infra.id %}" hx-confirm="¿Eliminar esta área?" hx-target="#infra-{{ infra.id }}" hx-swap="outerHTML" title="Eliminar">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    </td>
+</tr>
