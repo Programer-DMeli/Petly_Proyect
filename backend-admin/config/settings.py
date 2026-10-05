@@ -77,16 +77,18 @@ ASGI_APPLICATION = "config.asgi.application"
 # Los permisos se validan en cada vista: ocultar una pantalla no sustituye
 # la comprobación de permisos (PLANNING v2 §5).
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": os.getenv("DB_NAME", "database_petly"),
-        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-        "PORT": os.getenv("DB_PORT", "3306"),
-        "USER": os.getenv("DB_USER", "root"),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "OPTIONS": {
-            "charset": "utf8mb4",
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv('DB_NAME', 'database_petly'),
+        'USER': os.getenv('DB_USER', 'root'),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '3306'),
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
+        # Agrega esta línea para omitir la validación de versión de MariaDB:
+        'SILENCED_SYSTEM_CHECKS': ['mysql.E001'],
     }
 }
 
@@ -103,7 +105,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # --- CORS: orígenes locales explícitos (PLANNING v2 §11) ---
 CORS_ALLOWED_ORIGINS = [
@@ -120,3 +122,16 @@ REST_FRAMEWORK = {
     # La autenticación por token de Spring Boot se integra en el Sprint 1
     # (US-21/US-18) una vez documentado el formato del token.
 }
+
+from django.db.backends.base.base import BaseDatabaseWrapper
+BaseDatabaseWrapper.check_database_version_supported = lambda self: None
+
+
+from django.db.backends.base.base import BaseDatabaseWrapper
+BaseDatabaseWrapper.check_database_version_supported = lambda self: None
+
+# --- Parche de compatibilidad para MariaDB < 10.5 (XAMPP) ---
+from django.db.backends.mysql.features import DatabaseFeatures
+
+DatabaseFeatures.can_return_columns_from_insert = False
+DatabaseFeatures.can_return_rows_from_insert = False
