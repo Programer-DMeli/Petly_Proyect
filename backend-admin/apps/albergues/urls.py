@@ -1,6 +1,11 @@
-"""URLs de albergues. Pendiente de implementación (US-46)."""
-from django.urls import path
+"""URLs de albergues (US-46)."""
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import AlbergueViewSet
+
+router = DefaultRouter()
+router.register(r"", AlbergueViewSet, basename="albergue")
 
 urlpatterns = [
-    # GET/POST /api/albergues/ y detalle — pendiente (US-46)
+    path("", include(router.urls)),
 ]
