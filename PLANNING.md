@@ -301,21 +301,21 @@ Interpretación de planificación utilizada en este documento:
 
 Indicaciones de liderazgo acordadas:
 
-- **Persona A:** lidera Django y panel del albergue.
-- **Persona B:** lidera Spring Boot y web del adoptante.
-- **Persona C:** lidera Kotlin e integración.
+- **Mayra:** lidera Django y panel del albergue.
+- **Angie:** lidera Spring Boot y web del adoptante.
+- **Meliton:** lidera Kotlin e integración.
 
 | Historia | Responsable principal | Revisor | Colaboración necesaria |
 | --- | --- | --- | --- |
-| US-21 — Registro y acceso | Persona B | Persona C | A integra el acceso administrativo y la validación de tokens en Django; C integra Android. |
-| US-16 — Cuestionario | Persona C | Persona A | B implementa persistencia y API en Spring Boot; C implementa el formulario Android. |
-| US-11 — Registro de mascotas | Persona A | Persona B | A implementa Django y panel React; B revisa el contrato de datos para el catálogo. |
-| US-46 — Registro de albergues | Persona A | Persona C | B apoya el vínculo con cuentas; C verifica integración y datos de demostración. |
-| US-12 — Búsqueda y filtros | Persona C | Persona B | B implementa consultas y API; A proporciona los datos de mascotas; C integra el catálogo Android. |
-| US-17 — Convivencia | Persona C | Persona B | B implementa modelo y API de perfiles; C integra los campos en el cuestionario Android. |
-| US-24 — Recuperación por correo | Persona B | Persona A | C integra el flujo Android; A integra las pantallas React administrativas. |
-| US-18 — Consulta autorizada | Persona B | Persona A | B implementa autorización/revocación y consulta autorizada; A implementa panel y permisos Django; C integra el consentimiento Android. |
-| US-13 — Estado de la mascota | Persona A | Persona C | B expone el estado en el catálogo; C verifica el cambio al consultar desde Android. |
+| US-21 — Registro y acceso | Angie | Meliton | Mayra integra el acceso administrativo y la validación de tokens en Django; Meliton integra Android. |
+| US-16 — Cuestionario | Meliton | Mayra | Angie implementa persistencia y API en Spring Boot; Meliton implementa el formulario Android. |
+| US-11 — Registro de mascotas | Mayra | Angie | Mayra implementa Django y panel React; Angie revisa el contrato de datos para el catálogo. |
+| US-46 — Registro de albergues | Mayra | Meliton | Angie apoya el vínculo con cuentas; Meliton verifica integración y datos de demostración. |
+| US-12 — Búsqueda y filtros | Meliton | Angie | Angie implementa consultas y API; Mayra proporciona los datos de mascotas; Meliton integra el catálogo Android. |
+| US-17 — Convivencia | Meliton | Angie | Angie implementa modelo y API de perfiles; Meliton integra los campos en el cuestionario Android. |
+| US-24 — Recuperación por correo | Angie | Mayra | Meliton integra el flujo Android; Mayra integra las pantallas React administrativas. |
+| US-18 — Consulta autorizada | Angie | Mayra | Angie implementa autorización/revocación y consulta autorizada; Mayra implementa panel y permisos Django; Meliton integra el consentimiento Android. |
+| US-13 — Estado de la mascota | Mayra | Meliton | Angie expone el estado en el catálogo; Meliton verifica el cambio al consultar desde Android. |
 
 Cada persona tiene tres historias como responsable, pero esto no implica igualdad de esfuerzo. El responsable coordina la historia completa, sus dependencias y su evidencia; no desarrolla necesariamente todos sus componentes. El revisor comprueba criterios y permisos y revisa los cambios antes de integrarlos. Ninguna historia se aprueba únicamente por su propio responsable.
 
