@@ -1,0 +1,87 @@
+<!-- Fila de mascota -->
+<tr id="mascota-{{ mascota.id }}">
+    <td>
+        {% if mascota.foto_principal %}
+            <img src="{{ mascota.foto_principal.url }}" alt="{{ mascota.nombre }}" class="rounded" style="width: 50px; height: 50px; object-fit: cover;">
+        {% else %}
+            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                <i class="bi bi-image text-muted"></i>
+            </div>
+        {% endif %}
+    </td>
+    <td>
+        <strong>{{ mascota.nombre }}</strong>
+        <br><small class="text-muted">#{{ mascota.codigo }}</small>
+    </td>
+    <td>
+        <span class="badge bg-secondary">{{ mascota.get_especie_display }}</span>
+        {% if mascota.raza %}
+            <br><small class="text-muted">{{ mascota.raza }}</small>
+        {% endif %}
+    </td>
+    <td class="text-center">
+        <span class="badge bg-{% if mascota.sexo == 'MACHO' %}primary{% else %}danger{% endif %}">
+            {{ mascota.get_sexo_display }}
+        </span>
+        {% if mascota.tamanio %}
+            <br><small class="text-muted">{{ mascota.get_tamanio_display }}</small>
+        {% endif %}
+    </td>
+    <td class="text-center">
+        <small>{{ mascota.edad_texto }}</small>
+    </td>
+    <td class="text-center">
+        <span class="badge bg-{% if mascota.estado == 'DISPONIBLE' %}success{% elif mascota.estado == 'EN_PROCESO' %}warning{% else %}info{% endif %} fs-6">
+            {{ mascota.get_estado_display }}
+        </span>
+    </td>
+    <td class="text-center">
+        <div class="d-flex justify-content-center gap-1">
+            <span class="badge bg-{% if mascota.esterilizado %}success{% else %}secondary{% endif %}" title="Esterilizado">
+                <i class="bi bi-scissors"></i>
+            </span>
+            <span class="badge bg-{% if mascota.vacunas_al_dia %}success{% else %}secondary{% endif %}" title="Vacunas al día">
+                <i class="bi bi-shield-check"></i>
+            </span>
+            <span class="badge bg-{% if mascota.desparasitado %}success{% else %}secondary{% endif %}" title="Desparasitado">
+                <i class="bi bi-bug"></i>
+            </span>
+        </div>
+    </td>
+    <td class="text-end">
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" hx-get="{% url 'mascota_detalle' mascota.id %}" data-bs-toggle="modal" data-bs-target="#modalDetalle" title="Ver detalle">
+                <i class="bi bi-eye"></i>
+            </button>
+            <button class="btn btn-outline-secondary" hx-get="{% url 'mascota_editar' mascota.id %}" hx-target="#mascota-form" hx-swap="innerHTML" data-bs-toggle="modal" data-bs-target="#modalMascota" title="Editar">
+                <i class="bi bi-pencil"></i>
+            </button>
+            <div class="btn-group">
+                <button class="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown" title="Cambiar estado">
+                    <i class="bi bi-arrow-repeat"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    {% for value, label in estados %}
+                        {% if value != mascota.estado and value in mascota.get_valid_transitions %}
+                            <li>
+                                <form hx-post="{% url 'mascota_cambiar_estado' mascota.id %}" hx-target="#mascota-{{ mascota.id }}" hx-swap="outerHTML">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="estado" value="{{ value }}">
+                                    <button type="submit" class="dropdown-item" hx-confirm="¿Cambiar estado a {{ label }}?">
+                                        <i class="bi bi-{% if value == 'DISPONIBLE' %}check-circle{% elif value == 'EN_PROCESO' %}hourglass{% else %}house-heart{% endif %} me-2"></i>{{ label }}
+                                    </button>
+                                </form>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if mascota.estado == 'ADOPTADO' %}
+                        <li><span class="dropdown-item-text text-muted">Estado final (Adoptado)</span></li>
+                    {% endif %}
+                </ul>
+            </div>
+            <button class="btn btn-outline-danger" hx-delete="{% url 'mascota_eliminar' mascota.id %}" hx-confirm="¿Eliminar a {{ mascota.nombre }}?" hx-target="#mascota-{{ mascota.id }}" hx-swap="outerHTML" title="Eliminar">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    </td>
+</tr>

@@ -1,0 +1,93 @@
+<!-- Detalle de mascota (modal) -->
+<div class="modal-header">
+    <h5 class="modal-title">
+        <i class="bi bi-heart-fill text-danger me-2"></i>{{ mascota.nombre }}
+        <span class="badge bg-{% if mascota.estado == 'DISPONIBLE' %}success{% elif mascota.estado == 'EN_PROCESO' %}warning{% else %}info{% endif %} ms-2">
+            {{ mascota.get_estado_display }}
+        </span>
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+</div>
+<div class="modal-body">
+    <div class="row g-3">
+        <div class="col-md-4 text-center">
+            {% if mascota.foto_principal %}
+                <img src="{{ mascota.foto_principal.url }}" alt="{{ mascota.nombre }}" class="img-fluid rounded mb-3" style="max-height: 250px;">
+            {% else %}
+                <div class="bg-light rounded d-flex align-items-center justify-content-center mb-3" style="height: 250px;">
+                    <i class="bi bi-image text-muted" style="font-size: 4rem;"></i>
+                </div>
+            {% endif %}
+            <div class="d-flex justify-content-center gap-2">
+                <button class="btn btn-outline-primary btn-sm" hx-get="{% url 'mascota_editar' mascota.id %}" hx-target="#mascota-form" hx-swap="innerHTML" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#modalMascota">
+                    <i class="bi bi-pencil me-1"></i>Editar
+                </button>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <table class="table table-sm table-borderless">
+                <tr>
+                    <th style="width: 160px;">Código</th>
+                    <td><code>{{ mascota.codigo }}</code></td>
+                </tr>
+                <tr>
+                    <th>Especie / Raza</th>
+                    <td>{{ mascota.get_especie_display }}{% if mascota.raza %} - {{ mascota.raza }}{% endif %}</td>
+                </tr>
+                <tr>
+                    <th>Sexo / Tamaño</th>
+                    <td>
+                        <span class="badge bg-{% if mascota.sexo == 'MACHO' %}primary{% else %}danger{% endif %}">{{ mascota.get_sexo_display }}</span>
+                        {% if mascota.tamanio %} / {{ mascota.get_tamanio_display }}{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Edad</th>
+                    <td>{{ mascota.edad_texto }}</td>
+                </tr>
+                <tr>
+                    <th>Fecha de ingreso</th>
+                    <td>{{ mascota.fecha_ingreso|date:"d/m/Y" }}</td>
+                </tr>
+                {% if mascota.fecha_adopcion %}
+                <tr>
+                    <th>Fecha de adopción</th>
+                    <td>{{ mascota.fecha_adopcion|date:"d/m/Y" }}</td>
+                </tr>
+                {% endif %}
+            </table>
+            
+            <hr>
+            
+            <h6><i class="bi bi-heart-pulse me-1"></i>Estado de salud</h6>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge bg-{% if mascota.esterilizado %}success{% else %}secondary{% endif %} fs-6 px-3 py-2">
+                    <i class="bi bi-{% if mascota.esterilizado %}check{% else %}x{% endif %}-circle me-1"></i>Esterilizado
+                </span>
+                <span class="badge bg-{% if mascota.vacunas_al_dia %}success{% else %}secondary{% endif %} fs-6 px-3 py-2">
+                    <i class="bi bi-{% if mascota.vacunas_al_dia %}check{% else %}x{% endif %}-circle me-1"></i>Vacunas al día
+                </span>
+                <span class="badge bg-{% if mascota.desparasitado %}success{% else %}secondary{% endif %} fs-6 px-3 py-2">
+                    <i class="bi bi-{% if mascota.desparasitado %}check{% else %}x{% endif %}-circle me-1"></i>Desparasitado
+                </span>
+            </div>
+            
+            {% if mascota.necesidades_especiales %}
+            <h6><i class="bi bi-exclamation-triangle me-1"></i>Necesidades especiales</h6>
+            <p class="text-muted">{{ mascota.necesidades_especiales }}</p>
+            {% endif %}
+            
+            {% if mascota.descripcion %}
+            <h6><i class="bi bi-journal-text me-1"></i>Descripción</h6>
+            <p>{{ mascota.descripcion|linebreaksbr }}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+    <button class="btn btn-outline-primary" hx-get="{% url 'mascota_editar' mascota.id %}" hx-target="#mascota-form" hx-swap="innerHTML" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#modalMascota">
+        <i class="bi bi-pencil me-1"></i>Editar
+    </button>
+</div>

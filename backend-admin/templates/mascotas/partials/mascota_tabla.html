@@ -1,0 +1,65 @@
+<!-- Tabla de mascotas -->
+<div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 60px;">Foto</th>
+                <th>Nombre / Código</th>
+                <th>Especie / Raza</th>
+                <th class="text-center" style="width: 100px;">Sexo / Tamaño</th>
+                <th class="text-center" style="width: 100px;">Edad</th>
+                <th class="text-center" style="width: 140px;">Estado</th>
+                <th class="text-center" style="width: 140px;">Salud</th>
+                <th class="text-end" style="width: 160px;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="mascota-rows">
+            {% for mascota in mascotas %}
+                {% include "mascotas/partials/mascota_fila.html" %}
+            {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-5">
+                        <i class="bi bi-heart fs-1 d-block mb-2"></i>
+                        <p class="mb-1">No hay mascotas registradas</p>
+                        {% if busqueda or estado_filtro or especie_filtro %}
+                            <a href="{% url 'mascota_lista' %}" class="btn btn-outline-primary btn-sm">Limpiar filtros</a>
+                        {% else %}
+                            <button class="btn btn-primary btn-sm" hx-get="{% url 'mascota_crear' %}" hx-target="#mascota-form" hx-swap="innerHTML" data-bs-toggle="modal" data-bs-target="#modalMascota">
+                                <i class="bi bi-plus-circle me-1"></i>Crear la primera
+                            </button>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Paginación (si se implementa luego) -->
+<div id="mascota-paginacion" class="p-3 border-top">
+    {% if mascotas.has_other_pages %}
+        <nav aria-label="Paginación mascotas">
+            <ul class="pagination justify-content-center mb-0">
+                {% if mascotas.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ mascotas.previous_page_number }}{% if busqueda %}&q={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if especie_filtro %}&especie={{ especie_filtro }}{% endif %}" hx-get="?page={{ mascotas.previous_page_number }}{% if busqueda %}&q={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if especie_filtro %}&especie={{ especie_filtro }}{% endif %}" hx-target="#mascota-tabla" hx-push-url="true">&laquo;</a>
+                    </li>
+                {% endif %}
+                {% for num in mascotas.paginator.page_range %}
+                    {% if mascotas.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > mascotas.number|add:'-3' and num < mascotas.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if busqueda %}&q={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if especie_filtro %}&especie={{ especie_filtro }}{% endif %}" hx-get="?page={{ num }}{% if busqueda %}&q={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if especie_filtro %}&especie={{ especie_filtro }}{% endif %}" hx-target="#mascota-tabla" hx-push-url="true">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                {% if mascotas.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ mascotas.next_page_number }}{% if busqueda %}&q={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if especie_filtro %}&especie={{ especie_filtro }}{% endif %}" hx-get="?page={{ mascotas.next_page_number }}{% if busqueda %}&q={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if especie_filtro %}&especie={{ especie_filtro }}{% endif %}" hx-target="#mascota-tabla" hx-push-url="true">&raquo;</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
