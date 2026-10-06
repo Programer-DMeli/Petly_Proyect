@@ -15,9 +15,9 @@
                 <i class="bi bi-plus-circle me-1"></i>Crear mi Albergue
             </a>
         {% endif %}
-        <button class="btn btn-outline-success disabled" aria-disabled="true">
-            <i class="bi bi-heart-fill me-1"></i>Ver Mascotas <span class="badge bg-secondary ms-1">Próximamente</span>
-        </button>
+        <a href="{% url 'mascota_lista' %}" class="btn btn-outline-success">
+            <i class="bi bi-heart-fill me-1"></i>Ver Mascotas
+        </a>
     </div>
 </div>
 

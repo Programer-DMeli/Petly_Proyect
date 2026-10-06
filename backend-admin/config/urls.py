@@ -14,6 +14,12 @@ from apps.albergues.panel_views import (
     albergue_infraestructura,
     infraestructura_eliminar,
     infraestructura_editar,
+    mascota_lista,
+    mascota_crear,
+    mascota_editar,
+    mascota_eliminar,
+    mascota_cambiar_estado,
+    mascota_detalle,
 )
 
 
@@ -56,6 +62,14 @@ urlpatterns = [
     path("panel/albergue/infraestructura/", login_required(albergue_infraestructura), name="albergue_infraestructura"),
     path("panel/albergue/infraestructura/<int:infra_id>/eliminar/", login_required(infraestructura_eliminar), name="infraestructura_eliminar"),
     path("panel/albergue/infraestructura/<int:infra_id>/editar/", login_required(infraestructura_editar), name="infraestructura_editar"),
+    
+    # Panel web - Mascotas
+    path("panel/mascotas/", login_required(mascota_lista), name="mascota_lista"),
+    path("panel/mascotas/crear/", login_required(mascota_crear), name="mascota_crear"),
+    path("panel/mascotas/<int:mascota_id>/editar/", login_required(mascota_editar), name="mascota_editar"),
+    path("panel/mascotas/<int:mascota_id>/eliminar/", login_required(mascota_eliminar), name="mascota_eliminar"),
+    path("panel/mascotas/<int:mascota_id>/cambiar-estado/", login_required(mascota_cambiar_estado), name="mascota_cambiar_estado"),
+    path("panel/mascotas/<int:mascota_id>/detalle/", login_required(mascota_detalle), name="mascota_detalle"),
 ]
 
 # Servir archivos estáticos en entorno de desarrollo
