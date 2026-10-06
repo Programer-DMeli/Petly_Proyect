@@ -1,0 +1,132 @@
+<!-- Detalle de solicitud (modal) -->
+<div class="modal-header">
+    <h5 class="modal-title">
+        <i class="bi bi-file-earmark-text me-2"></i>Solicitud #{{ solicitud.id }}
+        <span class="badge bg-{% if solicitud.estado == 'PENDIENTE' %}warning{% elif solicitud.estado == 'EN_REVISION' %}info{% elif solicitud.estado == 'APROBADA' %}success{% elif solicitud.estado == 'RECHAZADA' %}danger{% elif solicitud.estado == 'CANCELADA' %}secondary{% else %}primary{% endif %} ms-2">
+            {{ solicitud.get_estado_display }}
+        </span>
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+</div>
+<div class="modal-body">
+    <div class="row g-3">
+        <!-- Info solicitud -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header"><strong><i class="bi bi-info-circle me-1"></i>Solicitud</strong></div>
+                <div class="card-body">
+                    <dl class="row mb-0 small">
+                        <dt class="col-4">Fecha</dt>
+                        <dd class="col-8">{{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}</dd>
+                        <dt class="col-4">Estado</dt>
+                        <dd class="col-8">
+                            <span class="badge bg-{% if solicitud.estado == 'PENDIENTE' %}warning{% elif solicitud.estado == 'EN_REVISION' %}info{% elif solicitud.estado == 'APROBADA' %}success{% elif solicitud.estado == 'RECHAZADA' %}danger{% elif solicitud.estado == 'CANCELADA' %}secondary{% else %}primary{% endif %}">
+                                {{ solicitud.get_estado_display }}
+                            </span>
+                        </dd>
+                        <dt class="col-4">Revisado por</dt>
+                        <dd class="col-8">{{ solicitud.revisado_por.get_full_name|default:"Pendiente" }}</dd>
+                        <dt class="col-4">Fecha revisión</dt>
+                        <dd class="col-8">{{ solicitud.fecha_revision|date:"d/m/Y H:i"|default:"-" }}</dd>
+                        <dt class="col-4">Fecha entrega</dt>
+                        <dd class="col-8">{{ solicitud.fecha_entrega|date:"d/m/Y"|default:"-" }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Postulante -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header"><strong><i class="bi bi-person me-1"></i>Postulante</strong></div>
+                <div class="card-body">
+                    <dl class="row mb-0 small">
+                        <dt class="col-4">Nombre</dt>
+                        <dd class="col-8">{{ solicitud.postulante.nombre_completo }}</dd>
+                        <dt class="col-4">Documento</dt>
+                        <dd class="col-8"><code>{{ solicitud.postulante.documento_numero }}</code></dd>
+                        <dt class="col-4">Email</dt>
+                        <dd class="col-8">{{ solicitud.postulante.email|default:"-" }}</dd>
+                        <dt class="col-4">Teléfono</dt>
+                        <dd class="col-8">{{ solicitud.postulante.telefono|default:"-" }}</dd>
+                    </dl>
+                    <hr class="my-2">
+                    <button class="btn btn-outline-primary btn-sm w-100" hx-get="{% url 'postulante_detalle' solicitud.postulante.id %}" hx-target="#postulante-detalle" hx-swap="innerHTML" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#modalPostulante">
+                        <i class="bi bi-eye me-1"></i>Ver historial completo
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mascota -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header"><strong><i class="bi bi-heart me-1"></i>Mascota</strong></div>
+                <div class="card-body">
+                    {% if solicitud.mascota.foto_principal %}
+                        <img src="{{ solicitud.mascota.foto_principal.url }}" alt="{{ solicitud.mascota.nombre }}" class="img-fluid rounded mb-2" style="max-height: 150px;">
+                    {% endif %}
+                    <dl class="row mb-0 small">
+                        <dt class="col-4">Nombre</dt>
+                        <dd class="col-8"><strong>{{ solicitud.mascota.nombre }}</strong></dd>
+                        <dt class="col-4">Código</dt>
+                        <dd class="col-8">#{{ solicitud.mascota.codigo }}</dd>
+                        <dt class="col-4">Especie</dt>
+                        <dd class="col-8">{{ solicitud.mascota.get_especie_display }}</dd>
+                        <dt class="col-4">Raza</dt>
+                        <dd class="col-8">{{ solicitud.mascota.raza|default:"-" }}</dd>
+                        <dt class="col-4">Edad</dt>
+                        <dd class="col-8">{{ solicitud.mascota.edad_texto }}</dd>
+                        <dt class="col-4">Estado actual</dt>
+                        <dd class="col-8">
+                            <span class="badge bg-{% if solicitud.mascota.estado == 'DISPONIBLE' %}success{% elif solicitud.mascota.estado == 'EN_PROCESO' %}warning{% else %}info{% endif %}">
+                                {{ solicitud.mascota.get_estado_display }}
+                            </span>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mensaje y cuestionario -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header"><strong><i class="bi bi-chat-text me-1"></i>Mensaje del postulante</strong></div>
+                <div class="card-body">
+                    <p class="mb-0">{{ solicitud.mensaje_postulante|default:"Sin mensaje"|linebreaksbr }}</p>
+                </div>
+            </div>
+        </div>
+        
+        {% if solicitud.respuestas_cuestionario %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header"><strong><i class="bi bi-clipboard-data me-1"></i>Respuestas al cuestionario</strong></div>
+                <div class="card-body">
+                    <dl class="row mb-0 small">
+                        {% for key, value in solicitud.respuestas_cuestionario.items %}
+                            <dt class="col-md-3">{{ key|capfirst }}</dt>
+                            <dd class="col-md-9">{{ value }}</dd>
+                        {% endfor %}
+                    </dl>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Observaciones de revisión -->
+        {% if solicitud.observaciones_revision %}
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark"><strong><i class="bi bi-pencil-square me-1"></i>Observaciones de revisión</strong></div>
+                <div class="card-body">
+                    <p class="mb-0">{{ solicitud.observaciones_revision|linebreaksbr }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+</div>

@@ -1,0 +1,50 @@
+<!-- Fila de solicitud -->
+<tr id="solicitud-{{ solicitud.id }}">
+    <td><code>{{ solicitud.id }}</code></td>
+    <td>
+        <strong>{{ solicitud.postulante.nombre_completo }}</strong>
+        <br><small class="text-muted">{{ solicitud.postulante.documento_numero }}</small>
+    </td>
+    <td>
+        <strong>{{ solicitud.mascota.nombre }}</strong>
+        <br><small class="text-muted">#{{ solicitud.mascota.codigo }} - {{ solicitud.mascota.get_especie_display }}</small>
+    </td>
+    <td>{{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}</td>
+    <td class="text-center">
+        <span class="badge bg-{% if solicitud.estado == 'PENDIENTE' %}warning{% elif solicitud.estado == 'EN_REVISION' %}info{% elif solicitud.estado == 'APROBADA' %}success{% elif solicitud.estado == 'RECHAZADA' %}danger{% elif solicitud.estado == 'CANCELADA' %}secondary{% else %}primary{% endif %} fs-6">
+            {{ solicitud.get_estado_display }}
+        </span>
+    </td>
+    <td class="text-center">{{ solicitud.revisado_por.get_full_name|default:"-" }}</td>
+    <td class="text-center">{{ solicitud.fecha_revision|date:"d/m/Y H:i"|default:"-" }}</td>
+    <td class="text-end">
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" hx-get="{% url 'solicitud_detalle' solicitud.id %}" hx-target="#solicitud-detalle" hx-swap="innerHTML" data-bs-toggle="modal" data-bs-target="#modalSolicitud" title="Ver detalle">
+                <i class="bi bi-eye"></i>
+            </button>
+            <div class="btn-group">
+                <button class="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown" title="Cambiar estado">
+                    <i class="bi bi-arrow-repeat"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    {% for value, label in estados %}
+                        {% if value != solicitud.estado and value in solicitud.get_valid_transitions %}
+                            <li>
+                                <form hx-post="{% url 'solicitud_cambiar_estado' solicitud.id %}" hx-target="#solicitud-{{ solicitud.id }}" hx-swap="outerHTML">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="estado" value="{{ value }}">
+                                    <button type="submit" class="dropdown-item" hx-confirm="¿Cambiar estado a {{ label }}?">
+                                        <i class="bi bi-{% if value == 'EN_REVISION' %}clipboard-check{% elif value == 'APROBADA' %}check-circle{% elif value == 'RECHAZADA' %}x-circle{% elif value == 'CANCELADA' %}x-octagon{% else %}house-heart{% endif %} me-2"></i>{{ label }}
+                                    </button>
+                                </form>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if solicitud.estado in 'RECHAZADA CANCELADA ENTREGADA' %}
+                        <li><span class="dropdown-item-text text-muted">Estado final ({{ solicitud.get_estado_display }})</span></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </td>
+</tr>

@@ -1,0 +1,34 @@
+<!-- Fila de postulante -->
+<tr id="postulante-{{ postulante.id }}">
+    <td><code>{{ postulante.documento_numero }}</code></td>
+    <td>
+        <strong>{{ postulante.nombre_completo }}</strong>
+    </td>
+    <td>
+        {% if postulante.email %}
+            <a href="mailto:{{ postulante.email }}">{{ postulante.email }}</a><br>
+        {% endif %}
+        {% if postulante.telefono %}
+            <small class="text-muted">{{ postulante.telefono }}</small>
+        {% endif %}
+    </td>
+    <td class="text-center">
+        <span class="badge bg-{% if postulante.estado == 'ACTIVO' %}success{% elif postulante.estado == 'INACTIVO' %}secondary{% else %}danger{% endif %}">
+            {{ postulante.get_estado_display }}
+        </span>
+    </td>
+    <td class="text-center">{{ postulante.total_solicitudes }}</td>
+    <td class="text-center">
+        <span class="badge bg-success">{{ postulante.solicitudes_aprobadas }}</span>
+    </td>
+    <td class="text-center">
+        <span class="badge bg-warning text-dark">{{ postulante.solicitudes_pendientes }}</span>
+    </td>
+    <td class="text-end">
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" hx-get="{% url 'postulante_detalle' postulante.id %}" hx-target="#postulante-detalle" hx-swap="innerHTML" data-bs-toggle="modal" data-bs-target="#modalPostulante" title="Ver historial">
+                <i class="bi bi-eye"></i> Historial
+            </button>
+        </div>
+    </td>
+</tr>
