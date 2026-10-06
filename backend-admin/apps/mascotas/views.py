@@ -73,6 +73,15 @@ class MascotaViewSet(viewsets.ModelViewSet):
             creado_por=self.request.user,
         )
 
+    def create(self, request, *args, **kwargs):
+        """Override create para retornar serializer de lectura."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        read_serializer = MascotaSerializer(serializer.instance, context={'request': request})
+        headers = self.get_success_headers(read_serializer.data)
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     @action(detail=True, methods=["post"], url_path="cambiar-estado")
     def cambiar_estado(self, request, pk=None):
         """

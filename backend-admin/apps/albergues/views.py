@@ -2,7 +2,9 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
+from django.db import IntegrityError
 
 from .models import Albergue, Infraestructura
 from .serializers import (
@@ -43,6 +45,20 @@ class AlbergueViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Asigna el usuario actual como dueño al crear."""
         serializer.save(usuario=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        """Override create para retornar serializer de lectura y manejar duplicados."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            self.perform_create(serializer)
+        except IntegrityError as e:
+            if 'usuario_id' in str(e):
+                raise ValidationError({'usuario': 'Ya tienes un albergue registrado.'})
+            raise
+        read_serializer = AlbergueSerializer(serializer.instance, context={'request': request})
+        headers = self.get_success_headers(read_serializer.data)
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     @action(detail=True, methods=["get", "post"], url_path="infraestructura")
     def infraestructura_list_create(self, request, pk=None):
