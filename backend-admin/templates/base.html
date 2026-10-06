@@ -48,6 +48,16 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/panel/postulantes/' %}active{% endif %}" href="{% url 'postulante_lista' %}">
+                                <i class="bi bi-people me-2"></i>Postulantes
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/panel/solicitudes/' %}active{% endif %}" href="{% url 'solicitud_lista' %}">
+                                <i class="bi bi-file-earmark-text me-2"></i>Solicitudes
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="{% url 'admin:index' %}" target="_blank">
                                 <i class="bi bi-gear me-2"></i>Django Admin
                             </a>

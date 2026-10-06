@@ -20,6 +20,11 @@ from apps.albergues.panel_views import (
     mascota_eliminar,
     mascota_cambiar_estado,
     mascota_detalle,
+    postulante_lista,
+    postulante_detalle,
+    solicitud_lista,
+    solicitud_detalle,
+    solicitud_cambiar_estado,
 )
 
 
@@ -70,6 +75,15 @@ urlpatterns = [
     path("panel/mascotas/<int:mascota_id>/eliminar/", login_required(mascota_eliminar), name="mascota_eliminar"),
     path("panel/mascotas/<int:mascota_id>/cambiar-estado/", login_required(mascota_cambiar_estado), name="mascota_cambiar_estado"),
     path("panel/mascotas/<int:mascota_id>/detalle/", login_required(mascota_detalle), name="mascota_detalle"),
+    
+    # Panel web - Postulantes
+    path("panel/postulantes/", login_required(postulante_lista), name="postulante_lista"),
+    path("panel/postulantes/<int:postulante_id>/detalle/", login_required(postulante_detalle), name="postulante_detalle"),
+    
+    # Panel web - Solicitudes
+    path("panel/solicitudes/", login_required(solicitud_lista), name="solicitud_lista"),
+    path("panel/solicitudes/<int:solicitud_id>/detalle/", login_required(solicitud_detalle), name="solicitud_detalle"),
+    path("panel/solicitudes/<int:solicitud_id>/cambiar-estado/", login_required(solicitud_cambiar_estado), name="solicitud_cambiar_estado"),
 ]
 
 # Servir archivos estáticos en entorno de desarrollo
