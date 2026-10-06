@@ -1,0 +1,49 @@
+<!-- Perfil detalle (solo lectura) -->
+<dl class="row mb-0">
+    <dt class="col-sm-3">Nombre</dt>
+    <dd class="col-sm-9">{{ albergue.nombre }}</dd>
+
+    <dt class="col-sm-3">Descripción</dt>
+    <dd class="col-sm-9">{{ albergue.descripcion|default:"Sin descripción"|linebreaksbr }}</dd>
+
+    <dt class="col-sm-3">Dirección</dt>
+    <dd class="col-sm-9">{{ albergue.direccion }}</dd>
+
+    <dt class="col-sm-3">Teléfono</dt>
+    <dd class="col-sm-9">{{ albergue.telefono|default:"No registrado" }}</dd>
+
+    <dt class="col-sm-3">Email</dt>
+    <dd class="col-sm-9">{{ albergue.email|default:"No registrado" }}</dd>
+
+    <dt class="col-sm-3">Sitio web</dt>
+    <dd class="col-sm-9">
+        {% if albergue.sitio_web %}
+            <a href="{{ albergue.sitio_web }}" target="_blank">{{ albergue.sitio_web }}</a>
+        {% else %}
+            No registrado
+        {% endif %}
+    </dd>
+
+    <dt class="col-sm-3">Capacidad máx.</dt>
+    <dd class="col-sm-9">{{ albergue.capacidad_maxima }}</dd>
+
+    <dt class="col-sm-3">Horario atención</dt>
+    <dd class="col-sm-9">{{ albergue.horario_atencion|default:"No especificado" }}</dd>
+
+    <dt class="col-sm-3">Responsable</dt>
+    <dd class="col-sm-9">{{ albergue.responsable_nombre|default:"No asignado" }}</dd>
+
+    <dt class="col-sm-3">Tel. responsable</dt>
+    <dd class="col-sm-9">{{ albergue.responsable_telefono|default:"No registrado" }}</dd>
+
+    <dt class="col-sm-3">Email responsable</dt>
+    <dd class="col-sm-9">{{ albergue.responsable_email|default:"No registrado" }}</dd>
+</div>
+
+<hr>
+
+<div class="d-flex justify-content-end">
+    <button class="btn btn-outline-primary" hx-get="{% url 'albergue_perfil' %}#perfil-form" hx-target="#perfil-form" hx-swap="outerHTML">
+        <i class="bi bi-pencil me-1"></i>Editar datos
+    </button>
+</div>

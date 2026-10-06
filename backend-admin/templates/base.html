@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Panel Albergue - Petly{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js" defer></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .sidebar { min-height: 100vh; background: #f8f9fa; border-right: 1px solid #dee2e6; }
+        .sidebar .nav-link { color: #495057; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { background: #e9ecef; color: #0d6efd; }
+        .content-area { padding: 2rem; }
+        .card { box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075); }
+        .table th { background: #f8f9fa; }
+        .htmx-indicator { opacity: 0; transition: opacity 200ms; }
+        .htmx-request .htmx-indicator { opacity: 1; }
+        .htmx-request.htmx-indicator { opacity: 1; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <div class="px-3 mb-3">
+                        <h5 class="text-primary"><i class="bi bi-paw-fill me-2"></i>Petly Admin</h5>
+                        <small class="text-muted">Panel de Albergue</small>
+                    </div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/panel/' %}active{% endif %}" href="{% url 'panel_home' %}">
+                                <i class="bi bi-house-door me-2"></i>Inicio
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/panel/albergue/' %}active{% endif %}" href="{% url 'albergue_perfil' %}">
+                                <i class="bi bi-building me-2"></i>Mi Albergue
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/panel/mascotas/' %}active{% endif %}" href="{% url 'mascota_lista' %}">
+                                <i class="bi bi-heart-fill me-2"></i>Mascotas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/panel/postulantes/' %}active{% endif %}" href="{% url 'postulante_lista' %}">
+                                <i class="bi bi-people me-2"></i>Postulantes
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/panel/solicitudes/' %}active{% endif %}" href="{% url 'solicitud_lista' %}">
+                                <i class="bi bi-file-earmark-text me-2"></i>Solicitudes
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'admin:index' %}" target="_blank">
+                                <i class="bi bi-gear me-2"></i>Django Admin
+                            </a>
+                        </li>
+                    </ul>
+                    <hr>
+                    <div class="px-3">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <small class="text-muted d-block">{{ user.username }}</small>
+                                <small class="text-muted">{{ user.get_full_name|default:user.email }}</small>
+                            </div>
+                            <a href="{% url 'admin:logout' %}?next=/panel/" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-box-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 content-area">
+                {% if messages %}
+                    <div class="mb-3">
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Mascotas - {{ albergue.nombre }} - Petly{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-heart-fill me-2"></i>Catálogo de Mascotas</h1>
+    <button class="btn btn-primary" hx-get="{% url 'mascota_crear' %}" hx-target="#mascota-form" hx-swap="innerHTML" data-bs-toggle="modal" data-bs-target="#modalMascota">
+        <i class="bi bi-plus-circle me-1"></i>Nueva Mascota
+    </button>
+</div>
+
+<!-- Filtros y búsqueda -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form class="row g-3" hx-get="{% url 'mascota_lista' %}" hx-target="#mascota-tabla" hx-trigger="submit, change from:select" hx-push-url="true">
+            {% csrf_token %}
+            <div class="col-md-3">
+                <label class="form-label">Buscar</label>
+                <input type="text" name="q" class="form-control" value="{{ busqueda }}" placeholder="Nombre, código, raza..." hx-trigger="keyup changed delay:300ms">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Estado</label>
+                <select name="estado" class="form-select">
+                    <option value="">Todos</option>
+                    {% for value, label in estados %}
+                        <option value="{{ value }}" {% if estado_filtro == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Especie</label>
+                <select name="especie" class="form-select">
+                    <option value="">Todas</option>
+                    {% for value, label in especies %}
+                        <option value="{{ value }}" {% if especie_filtro == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <a href="{% url 'mascota_lista' %}" class="btn btn-outline-secondary w-100">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de mascotas -->
+<div class="card" id="mascota-tabla">
+    <div class="card-body p-0">
+        {% include "mascotas/partials/mascota_tabla.html" %}
+    </div>
+</div>
+
+<!-- Formulario modal (cargado via HTMX) -->
+<div class="modal fade" id="modalMascota" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content" id="mascota-form"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-abrir modal cuando se carga el formulario
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.target.id === 'mascota-form') {
+            const modal = new bootstrap.Modal(document.getElementById('modalMascota'));
+            modal.show();
+        }
+    });
+    
+    // Cerrar modal y limpiar formulario al cerrar
+    document.getElementById('modalMascota').addEventListener('hidden.bs.modal', function() {
+        document.getElementById('mascota-form').innerHTML = '';
+    });
+</script>
+{% endblock %}

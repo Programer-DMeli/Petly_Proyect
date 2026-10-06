@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Infraestructura - {{ albergue.nombre }} - Petly{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-grid-3x3-gap me-2"></i>Infraestructura</h1>
+    <a href="{% url 'albergue_perfil' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Volver al perfil
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Áreas registradas</h5>
+        <button class="btn btn-primary btn-sm" hx-get="{% url 'albergue_infraestructura' %}#infra-form" hx-target="#infra-form" hx-swap="outerHTML">
+            <i class="bi bi-plus-circle me-1"></i>Agregar área
+        </button>
+    </div>
+    <div class="card-body">
+        <!-- Tabla de infraestructura -->
+        <div id="infra-tabla">
+            {% include "albergues/partials/infraestructura_tabla.html" %}
+        </div>
+        
+        <!-- Formulario (cargado via HTMX) -->
+        <div id="infra-form"></div>
+    </div>
+</div>
+{% endblock %}

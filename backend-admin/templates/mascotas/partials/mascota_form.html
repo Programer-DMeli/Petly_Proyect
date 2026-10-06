@@ -1,0 +1,155 @@
+<!-- Formulario crear/editar mascota (modal) -->
+<div class="modal-header">
+    <h5 class="modal-title">
+        <i class="bi bi-{% if mascota %}pencil{% else %}plus-circle{% endif %} me-2"></i>
+        {% if mascota %}Editar: {{ mascota.nombre }}{% else %}Nueva Mascota{% endif %}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+</div>
+<form hx-post="{% if mascota %}{% url 'mascota_editar' mascota.id %}{% else %}{% url 'mascota_crear' %}{% endif %}" hx-target="#mascota-rows" hx-swap="{% if mascota %}outerHTML{% else %}beforeend{% endif %}" enctype="multipart/form-data" class="modal-body needs-validation" novalidate>
+    {% csrf_token %}
+    
+    <div class="row g-3">
+        <!-- Identificación -->
+        <div class="col-12">
+            <h6 class="border-bottom pb-2"><i class="bi bi-card-text me-1"></i>Identificación</h6>
+        </div>
+        
+        <div class="col-md-6">
+            <label class="form-label">Nombre *</label>
+            <input type="text" name="nombre" class="form-control" value="{{ mascota.nombre|default:'' }}" required maxlength="100">
+            <div class="form-text">Nombre visible en el catálogo</div>
+        </div>
+        
+        <div class="col-md-6">
+            <label class="form-label">Código interno *</label>
+            <input type="text" name="codigo" class="form-control" value="{{ mascota.codigo|default:'' }}" required maxlength="20" pattern="[A-Z0-9-]+" title="Solo mayúsculas, números y guiones">
+            <div class="form-text">Ej: PET-001, ABC-123 (único en el sistema)</div>
+        </div>
+        
+        <div class="col-md-4">
+            <label class="form-label">Especie *</label>
+            <select name="especie" class="form-select" required>
+                <option value="">Seleccionar...</option>
+                {% for value, label in especies %}
+                    <option value="{{ value }}" {% if mascota and mascota.especie == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="col-md-4">
+            <label class="form-label">Raza</label>
+            <input type="text" name="raza" class="form-control" value="{{ mascota.raza|default:'' }}" maxlength="100" placeholder="Ej: Labrador, Siamés, Mestizo">
+        </div>
+        
+        <div class="col-md-4">
+            <label class="form-label">Sexo *</label>
+            <select name="sexo" class="form-select" required>
+                <option value="">Seleccionar...</option>
+                {% for value, label in sexos %}
+                    <option value="{{ value }}" {% if mascota and mascota.sexo == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="col-md-4">
+            <label class="form-label">Tamaño</label>
+            <select name="tamanio" class="form-select">
+                <option value="">Seleccionar...</option>
+                {% for value, label in tamanios %}
+                    <option value="{{ value }}" {% if mascota and mascota.tamanio == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="col-md-4">
+            <label class="form-label">Edad (años)</label>
+            <input type="number" name="edad_anos" class="form-control" value="{{ mascota.edad_anos|default:'' }}" min="0" max="30" placeholder="0-30">
+        </div>
+        
+        <div class="col-md-4">
+            <label class="form-label">Edad (meses)</label>
+            <input type="number" name="edad_meses" class="form-control" value="{{ mascota.edad_meses|default:'' }}" min="0" max="11" placeholder="0-11">
+            <div class="form-text">Meses adicionales</div>
+        </div>
+        
+        <!-- Descripción -->
+        <div class="col-12">
+            <h6 class="border-bottom pb-2 mt-3"><i class="bi bi-journal-text me-1"></i>Descripción</h6>
+        </div>
+        
+        <div class="col-12">
+            <label class="form-label">Historia / Descripción</label>
+            <textarea name="descripcion" class="form-control" rows="3" placeholder="Personalidad, historia, comportamiento...">{{ mascota.descripcion|default:'' }}</textarea>
+        </div>
+        
+        <!-- Salud -->
+        <div class="col-12">
+            <h6 class="border-bottom pb-2 mt-3"><i class="bi bi-heart-pulse me-1"></i>Salud</h6>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="form-check">
+                <input type="checkbox" name="esterilizado" class="form-check-input" id="esterilizado" {% if mascota and mascota.esterilizado %}checked{% endif %}>
+                <label class="form-check-label" for="esterilizado">Esterilizado</label>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="form-check">
+                <input type="checkbox" name="vacunas_al_dia" class="form-check-input" id="vacunas_al_dia" {% if mascota and mascota.vacunas_al_dia %}checked{% endif %}>
+                <label class="form-check-label" for="vacunas_al_dia">Vacunas al día</label>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="form-check">
+                <input type="checkbox" name="desparasitado" class="form-check-input" id="desparasitado" {% if mascota and mascota.desparasitado %}checked{% endif %}>
+                <label class="form-check-label" for="desparasitado">Desparasitado</label>
+            </div>
+        </div>
+        
+        <div class="col-12">
+            <label class="form-label">Necesidades especiales</label>
+            <textarea name="necesidades_especiales" class="form-control" rows="2" placeholder="Medicación, dieta especial, discapacidad...">{{ mascota.necesidades_especiales|default:'' }}</textarea>
+        </div>
+        
+        <!-- Foto -->
+        <div class="col-12">
+            <h6 class="border-bottom pb-2 mt-3"><i class="bi bi-image me-1"></i>Foto principal</h6>
+        </div>
+        
+        <div class="col-12">
+            <label class="form-label">Imagen (JPG/PNG, máx 5MB)</label>
+            <input type="file" name="foto_principal" class="form-control" accept="image/jpeg,image/png">
+            {% if mascota and mascota.foto_principal %}
+                <div class="mt-2">
+                    <img src="{{ mascota.foto_principal.url }}" alt="Actual" class="img-thumbnail" style="max-height: 100px;">
+                    <div class="form-text">Se reemplazará al subir nueva imagen</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x me-1"></i>Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i>{% if mascota %}Actualizar{% else %}Crear{% endif %}
+        </button>
+    </div>
+</form>
+
+<script>
+    // Validación HTML5 personalizada
+    document.querySelectorAll('.needs-validation').forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+</script>

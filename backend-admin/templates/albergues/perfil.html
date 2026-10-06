@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}{{ albergue.nombre }} - Petly{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-building me-2"></i>{{ albergue.nombre }}</h1>
+    <a href="{% url 'albergue_infraestructura' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-grid-3x3-gap me-1"></i>Infraestructura
+    </a>
+</div>
+
+<div class="row">
+    <!-- Información principal -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Información Institucional</h5>
+                <button class="btn btn-sm btn-outline-primary" hx-get="{% url 'albergue_perfil' %}#perfil-form" hx-target="#perfil-form" hx-swap="outerHTML">
+                    <i class="bi bi-pencil me-1"></i>Editar
+                </button>
+            </div>
+            <div class="card-body" id="perfil-detalle">
+                {% include "albergues/partials/perfil_detalle.html" %}
+            </div>
+        </div>
+
+        <!-- Formulario de edición (cargado via HTMX) -->
+        <div id="perfil-form"></div>
+    </div>
+
+    <!-- Resumen lateral -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Resumen</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Capacidad máx.</dt>
+                    <dd class="col-sm-7">{{ albergue.capacidad_maxima }}</dd>
+                    <dt class="col-sm-5">Áreas registradas</dt>
+                    <dd class="col-sm-7">{{ albergue.infraestructura.count }}</dd>
+                    <dt class="col-sm-5">Estado</dt>
+                    <dd class="col-sm-7">
+                        {% if albergue.activo %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactivo</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-sm-5">Creado</dt>
+                    <dd class="col-sm-7">{{ albergue.creado_en|date:"d/m/Y" }}</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Responsable</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-1"><strong>{{ albergue.responsable_nombre|default:"No asignado" }}</strong></p>
+                <p class="text-muted small mb-1">{{ albergue.responsable_telefono|default:"Sin teléfono" }}</p>
+                <p class="text-muted small mb-0">{{ albergue.responsable_email|default:"Sin email" }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
