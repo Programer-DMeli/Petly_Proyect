@@ -1,8 +1,109 @@
 """Modelos de acceso y postulantes (US-18, US-21)."""
 from django.db import models
 from django.conf import settings
-from apps.albergues.models import Albergue
-from apps.mascotas.models import Mascota
+from django.contrib.auth.models import AbstractUser
+from django.utils.translation import gettext_lazy as _
+
+
+class User(AbstractUser):
+    """Usuario personalizado con roles para Petly (US-21)."""
+
+    class Rol(models.TextChoices):
+        ADOPTANTE = "ADOPTANTE", "Adoptante"
+        ALBERGUE = "ALBERGUE", "Albergue"
+        ADMIN = "ADMIN", "Administrador"
+
+    rol = models.CharField(
+        "Rol",
+        max_length=20,
+        choices=Rol.choices,
+        default=Rol.ADOPTANTE,
+        db_index=True,
+    )
+    telefono = models.CharField("Teléfono", max_length=20, blank=True)
+    fecha_nacimiento = models.DateField("Fecha de nacimiento", null=True, blank=True)
+    acepto_terminos = models.BooleanField("Aceptó términos", default=False)
+    fecha_aceptacion_terminos = models.DateTimeField("Fecha aceptación términos", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Usuario"
+        verbose_name_plural = "Usuarios"
+        ordering = ["-date_joined"]
+
+    def __str__(self):
+        return f"{self.username} ({self.get_rol_display()})"
+
+    @property
+    def is_adoptante(self):
+        return self.rol == self.Rol.ADOPTANTE
+
+    @property
+    def is_albergue(self):
+        return self.rol == self.Rol.ALBERGUE
+
+    @property
+    def is_admin_user(self):
+        return self.rol == self.Rol.ADMIN or self.is_superuser
+
+
+class AdoptanteProfile(models.Model):
+    """Perfil extendido del adoptante para el catálogo móvil (US-21, US-16, US-17)."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="adoptante_profile",
+        verbose_name="Usuario",
+    )
+
+    # Datos personales adicionales
+    documento_tipo = models.CharField("Tipo documento", max_length=20, default="DNI")
+    documento_numero = models.CharField("Número documento", max_length=20, unique=True, blank=True, null=True)
+    nombres = models.CharField("Nombres", max_length=100, blank=True)
+    apellidos = models.CharField("Apellidos", max_length=100, blank=True)
+
+    # Domicilio
+    direccion = models.CharField("Dirección", max_length=255, blank=True)
+    distrito = models.CharField("Distrito", max_length=100, blank=True)
+    provincia = models.CharField("Provincia", max_length=100, blank=True)
+    departamento = models.CharField("Departamento", max_length=100, blank=True)
+
+    # Perfil de adopción (US-16, US-17)
+    tipo_vivienda = models.CharField("Tipo de vivienda", max_length=50, blank=True,
+        help_text="Casa, departamento, quintas, etc.")
+    tiene_patio = models.BooleanField("Tiene patio/área exterior", default=False)
+    tiene_otras_mascotas = models.BooleanField("Tiene otras mascotas", default=False)
+    detalles_otras_mascotas = models.TextField("Detalle otras mascotas", blank=True)
+    experiencia_previa = models.TextField("Experiencia previa con mascotas", blank=True)
+
+    # Motivación y preferencias
+    motivo_adopcion = models.TextField("Motivo de adopción", blank=True)
+    preferencia_especie = models.CharField("Preferencia especie", max_length=10,
+        choices=[("PERRO", "Perro"), ("GATO", "Gato"), ("OTRO", "Otro")], blank=True)
+    preferencia_tamanio = models.CharField("Preferencia tamaño", max_length=10,
+        choices=[("PEQUENO", "Pequeño"), ("MEDIANO", "Mediano"), ("GRANDE", "Grande")], blank=True)
+    preferencia_edad = models.CharField("Preferencia edad", max_length=50, blank=True,
+        help_text="Ej: cachorro, joven, adulto, senior")
+
+    # Cuestionario completado (US-16)
+    cuestionario_completado = models.BooleanField("Cuestionario completado", default=False)
+    fecha_cuestionario = models.DateTimeField("Fecha cuestionario", null=True, blank=True)
+
+    # Auditoría
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Perfil de Adoptante"
+        verbose_name_plural = "Perfiles de Adoptantes"
+        ordering = ["-creado_en"]
+
+    def __str__(self):
+        return f"{self.nombres} {self.apellidos} ({self.user.username})"
+
+    @property
+    def nombre_completo(self):
+        return f"{self.nombres} {self.apellidos}"
 
 
 class Postulante(models.Model):
@@ -39,9 +140,9 @@ class Postulante(models.Model):
     # Motivación
     motivo_adopcion = models.TextField("Motivo de adopción", blank=True)
     preferencia_especie = models.CharField("Preferencia especie", max_length=10,
-        choices=Mascota.Especie.choices, blank=True)
+        choices=[("PERRO", "Perro"), ("GATO", "Gato"), ("OTRO", "Otro")], blank=True)
     preferencia_tamanio = models.CharField("Preferencia tamaño", max_length=10,
-        choices=Mascota.Tamanio.choices, blank=True)
+        choices=[("PEQUENO", "Pequeño"), ("MEDIANO", "Mediano"), ("GRANDE", "Grande")], blank=True)
     preferencia_edad = models.CharField("Preferencia edad", max_length=50, blank=True,
         help_text="Ej: cachorro, joven, adulto, senior")
 
@@ -110,13 +211,13 @@ class SolicitudAdopcion(models.Model):
         verbose_name="Postulante",
     )
     mascota = models.ForeignKey(
-        Mascota,
+        "mascotas.Mascota",
         on_delete=models.CASCADE,
         related_name="solicitudes",
         verbose_name="Mascota",
     )
     albergue = models.ForeignKey(
-        Albergue,
+        "albergues.Albergue",
         on_delete=models.CASCADE,
         related_name="solicitudes",
         verbose_name="Albergue",

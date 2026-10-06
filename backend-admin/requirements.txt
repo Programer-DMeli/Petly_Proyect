@@ -11,3 +11,5 @@ django-cors-headers==4.9.0
 mysqlclient==2.3.0
 # Carga variables de entorno desde .env (que nunca se sube a Git).
 python-dotenv==1.2.4
+# JWT para autenticación stateless (US-21, Android/Spring Boot integration).
+djangorestframework-simplejwt==5.3.1
