@@ -103,3 +103,13 @@ class Mascota(models.Model):
         if self.edad_meses:
             partes.append(f"{self.edad_meses} mes{'es' if self.edad_meses > 1 else ''}")
         return " ".join(partes) if partes else "Desconocida"
+
+    @property
+    def get_valid_transitions(self):
+        """Retorna lista de estados válidos para transición desde el actual."""
+        transiciones = {
+            self.Estado.DISPONIBLE: [self.Estado.EN_PROCESO, self.Estado.ADOPTADO],
+            self.Estado.EN_PROCESO: [self.Estado.DISPONIBLE, self.Estado.ADOPTADO],
+            self.Estado.ADOPTADO: [],
+        }
+        return transiciones.get(self.estado, [])
