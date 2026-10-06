@@ -169,3 +169,16 @@ class SolicitudAdopcion(models.Model):
 
     def __str__(self):
         return f"Solicitud #{self.id} - {self.postulante.nombre_completo} -> {self.mascota.nombre} ({self.get_estado_display()})"
+
+    @property
+    def get_valid_transitions(self):
+        """Retorna lista de estados válidos para transición desde el actual."""
+        transiciones = {
+            self.Estado.PENDIENTE: [self.Estado.EN_REVISION, self.Estado.RECHAZADA, self.Estado.CANCELADA],
+            self.Estado.EN_REVISION: [self.Estado.APROBADA, self.Estado.RECHAZADA, self.Estado.PENDIENTE],
+            self.Estado.APROBADA: [self.Estado.ENTREGADA, self.Estado.RECHAZADA],
+            self.Estado.RECHAZADA: [],
+            self.Estado.CANCELADA: [],
+            self.Estado.ENTREGADA: [],
+        }
+        return transiciones.get(self.estado, [])
