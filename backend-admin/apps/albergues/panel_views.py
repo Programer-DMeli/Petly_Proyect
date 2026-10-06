@@ -4,10 +4,12 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpResponse
 from django.urls import reverse
-from django.db.models import Q
+from django.db.models import Q, Count
+from django.utils import timezone
 
 from apps.albergues.models import Albergue, Infraestructura
 from apps.mascotas.models import Mascota
+from apps.acceso.models import Postulante, SolicitudAdopcion
 
 
 @login_required
@@ -306,3 +308,188 @@ def mascota_detalle(request, mascota_id):
     
     context = {'mascota': mascota, 'albergue': albergue}
     return render(request, 'mascotas/partials/mascota_detalle.html', context)
+
+
+# ==================== VISTAS DE POSTULANTES Y SOLICITUDES ====================
+
+@login_required
+def postulante_lista(request):
+    """Lista de postulantes con solicitudes en el albergue."""
+    albergue = get_object_or_404(Albergue, usuario=request.user)
+    
+    # Filtros
+    estado_filtro = request.GET.get('estado', '')
+    busqueda = request.GET.get('q', '')
+    
+    postulantes = Postulante.objects.filter(
+        solicitudes__albergue=albergue
+    ).distinct().annotate(
+        total_solicitudes=Count('solicitudes'),
+        solicitudes_pendientes=Count('solicitudes', filter=Q(solicitudes__estado=SolicitudAdopcion.Estado.PENDIENTE)),
+        solicitudes_aprobadas=Count('solicitudes', filter=Q(solicitudes__estado=SolicitudAdopcion.Estado.APROBADA)),
+    )
+    
+    if estado_filtro:
+        postulantes = postulantes.filter(estado=estado_filtro)
+    if busqueda:
+        postulantes = postulantes.filter(
+            Q(nombres__icontains=busqueda) |
+            Q(apellidos__icontains=busqueda) |
+            Q(documento_numero__icontains=busqueda) |
+            Q(email__icontains=busqueda)
+        )
+    
+    postulantes = postulantes.order_by('-creado_en')
+    
+    context = {
+        'albergue': albergue,
+        'postulantes': postulantes,
+        'estado_filtro': estado_filtro,
+        'busqueda': busqueda,
+        'estados': Postulante.EstadoPostulante.choices,
+    }
+    return render(request, 'postulantes/lista.html', context)
+
+
+@login_required
+def postulante_detalle(request, postulante_id):
+    """Detalle de postulante con historial de solicitudes (modal HTMX)."""
+    albergue = get_object_or_404(Albergue, usuario=request.user)
+    postulante = get_object_or_404(Postulante, pk=postulante_id)
+    
+    # Verificar que el postulante tiene solicitudes en este albergue
+    if not postulante.solicitudes.filter(albergue=albergue).exists():
+        return HttpResponse('Postulante no encontrado', status=404)
+    
+    solicitudes = postulante.solicitudes.filter(albergue=albergue).select_related('mascota', 'revisado_por').order_by('-fecha_solicitud')
+    
+    # Resumen por estado
+    resumen = {
+        'total': solicitudes.count(),
+        'pendientes': solicitudes.filter(estado=SolicitudAdopcion.Estado.PENDIENTE).count(),
+        'en_revision': solicitudes.filter(estado=SolicitudAdopcion.Estado.EN_REVISION).count(),
+        'aprobadas': solicitudes.filter(estado=SolicitudAdopcion.Estado.APROBADA).count(),
+        'rechazadas': solicitudes.filter(estado=SolicitudAdopcion.Estado.RECHAZADA).count(),
+        'canceladas': solicitudes.filter(estado=SolicitudAdopcion.Estado.CANCELADA).count(),
+        'entregadas': solicitudes.filter(estado=SolicitudAdopcion.Estado.ENTREGADA).count(),
+    }
+    
+    context = {
+        'postulante': postulante,
+        'albergue': albergue,
+        'solicitudes': solicitudes,
+        'resumen': resumen,
+    }
+    return render(request, 'postulantes/partials/postulante_detalle.html', context)
+
+
+@login_required
+def solicitud_lista(request):
+    """Lista de solicitudes del albergue con filtros."""
+    albergue = get_object_or_404(Albergue, usuario=request.user)
+    
+    # Filtros
+    estado_filtro = request.GET.get('estado', '')
+    mascota_filtro = request.GET.get('mascota', '')
+    busqueda = request.GET.get('q', '')
+    
+    solicitudes = albergue.solicitudes.select_related('postulante', 'mascota', 'revisado_por').all()
+    
+    if estado_filtro:
+        solicitudes = solicitudes.filter(estado=estado_filtro)
+    if mascota_filtro:
+        solicitudes = solicitudes.filter(mascota_id=mascota_filtro)
+    if busqueda:
+        solicitudes = solicitudes.filter(
+            Q(postulante__nombres__icontains=busqueda) |
+            Q(postulante__apellidos__icontains=busqueda) |
+            Q(postulante__documento_numero__icontains=busqueda) |
+            Q(mascota__nombre__icontains=busqueda)
+        )
+    
+    solicitudes = solicitudes.order_by('-fecha_solicitud')
+    
+    # Mascotas para filtro dropdown
+    mascotas_disponibles = albergue.mascotas.exclude(estado=Mascota.Estado.ADOPTADO)
+    
+    context = {
+        'albergue': albergue,
+        'solicitudes': solicitudes,
+        'estado_filtro': estado_filtro,
+        'mascota_filtro': mascota_filtro,
+        'busqueda': busqueda,
+        'estados': SolicitudAdopcion.Estado.choices,
+        'mascotas_filtro': mascotas_disponibles,
+    }
+    return render(request, 'solicitudes/lista.html', context)
+
+
+@login_required
+def solicitud_detalle(request, solicitud_id):
+    """Detalle de solicitud (modal HTMX)."""
+    albergue = get_object_or_404(Albergue, usuario=request.user)
+    solicitud = get_object_or_404(SolicitudAdopcion, pk=solicitud_id, albergue=albergue)
+    
+    context = {'solicitud': solicitud, 'albergue': albergue}
+    return render(request, 'solicitudes/partials/solicitud_detalle.html', context)
+
+
+@login_required
+def solicitud_cambiar_estado(request, solicitud_id):
+    """Cambiar estado de solicitud (HTMX POST)."""
+    albergue = get_object_or_404(Albergue, usuario=request.user)
+    solicitud = get_object_or_404(SolicitudAdopcion, pk=solicitud_id, albergue=albergue)
+    
+    if request.method == 'POST':
+        nuevo_estado = request.POST.get('estado')
+        observaciones = request.POST.get('observaciones_revision', '')
+        
+        # Validar transiciones permitidas
+        transiciones_validas = {
+            SolicitudAdopcion.Estado.PENDIENTE: [
+                SolicitudAdopcion.Estado.EN_REVISION,
+                SolicitudAdopcion.Estado.RECHAZADA,
+                SolicitudAdopcion.Estado.CANCELADA,
+            ],
+            SolicitudAdopcion.Estado.EN_REVISION: [
+                SolicitudAdopcion.Estado.APROBADA,
+                SolicitudAdopcion.Estado.RECHAZADA,
+                SolicitudAdopcion.Estado.PENDIENTE,
+            ],
+            SolicitudAdopcion.Estado.APROBADA: [
+                SolicitudAdopcion.Estado.ENTREGADA,
+                SolicitudAdopcion.Estado.RECHAZADA,
+            ],
+            SolicitudAdopcion.Estado.RECHAZADA: [],
+            SolicitudAdopcion.Estado.CANCELADA: [],
+            SolicitudAdopcion.Estado.ENTREGADA: [],
+        }
+        
+        if nuevo_estado not in transiciones_validas.get(solicitud.estado, []):
+            messages.error(request, f'Transición no permitida: {solicitud.get_estado_display()} -> {dict(SolicitudAdopcion.Estado.choices).get(nuevo_estado, nuevo_estado)}')
+            return render(request, 'solicitudes/partials/solicitud_fila.html', {'solicitud': solicitud})
+        
+        solicitud.estado = nuevo_estado
+        solicitud.revisado_por = request.user
+        solicitud.fecha_revision = timezone.now()
+        if observaciones:
+            solicitud.observaciones_revision = observaciones
+        
+        # Si se entrega, actualizar mascota a ADOPTADO
+        if nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA:
+            solicitud.fecha_entrega = timezone.now().date()
+            mascota = solicitud.mascota
+            if mascota.estado != Mascota.Estado.ADOPTADO:
+                mascota.estado = Mascota.Estado.ADOPTADO
+                mascota.fecha_adopcion = timezone.now().date()
+                mascota.save(update_fields=['estado', 'fecha_adopcion', 'actualizado_en'])
+        
+        solicitud.save(update_fields=[
+            'estado', 'revisado_por', 'fecha_revision',
+            'observaciones_revision', 'fecha_entrega', 'actualizado_en'
+        ])
+        
+        messages.success(request, f'Estado cambiado a {solicitud.get_estado_display()}')
+        return render(request, 'solicitudes/partials/solicitud_fila.html', {'solicitud': solicitud})
+    
+    return HttpResponse('Método no permitido', status=405)
