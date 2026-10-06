@@ -1,6 +1,11 @@
-"""URLs de mascotas. Pendiente de implementación (US-11, US-13)."""
-from django.urls import path
+"""URLs de mascotas (US-11, US-13)."""
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import MascotaViewSet
+
+router = DefaultRouter()
+router.register(r"", MascotaViewSet, basename="mascota")
 
 urlpatterns = [
-    # CRUD /api/mascotas/ y PATCH /api/mascotas/<id>/estado/ — pendiente
+    path("", include(router.urls)),
 ]
