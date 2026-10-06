@@ -46,6 +46,8 @@ uploads/
 photos/
 *.sql
 *.dump
+# Excepción: migraciones Flyway versionadas (sin datos personales).
+!backend_usuario/petly_proyect/src/main/resources/db/migration/*.sql
 
 # --- Logs ---
 *.log
