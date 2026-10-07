@@ -26,23 +26,13 @@ public class AuthController {
 
     @PostMapping("/registro")
     public ResponseEntity<?> registro(@Valid @RequestBody RegistroRequest request) {
-        try {
-            AuthResponse creado = authService.registrar(request);
-            return ResponseEntity.status(201).body(creado);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(409).body(e.getMessage());
-        }
+        AuthResponse creado = authService.registrar(request);
+        return ResponseEntity.status(201).body(creado);
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        try {
-            LoginResponse respuesta = authService.login(request);
-            return ResponseEntity.ok(respuesta);
-        } catch (AuthCuentaBloqueadaException e) {
-            return ResponseEntity.status(423).body(e.getMessage());
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body(e.getMessage());
-        }
+        LoginResponse respuesta = authService.login(request);
+        return ResponseEntity.ok(respuesta);
     }
 }

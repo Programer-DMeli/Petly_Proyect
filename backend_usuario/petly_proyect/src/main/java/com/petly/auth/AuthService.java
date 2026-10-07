@@ -26,7 +26,7 @@ public class AuthService {
     public AuthResponse registrar(RegistroRequest request) {
         String correo = request.getCorreo().trim().toLowerCase();
         if (usuarios.existsByCorreo(correo)) {
-            throw new RuntimeException("correo ya registrado");
+            throw new CorreoYaRegistradoException("correo ya registrado");
         }
         Usuario usuario = new Usuario(correo, passwordEncoder.encode(request.getPassword()), "ADOPTANTE");
         Usuario guardado = usuarios.save(usuario);
