@@ -39,6 +39,8 @@ public class AuthController {
         try {
             LoginResponse respuesta = authService.login(request);
             return ResponseEntity.ok(respuesta);
+        } catch (AuthCuentaBloqueadaException e) {
+            return ResponseEntity.status(423).body(e.getMessage());
         } catch (RuntimeException e) {
             return ResponseEntity.status(401).body(e.getMessage());
         }
