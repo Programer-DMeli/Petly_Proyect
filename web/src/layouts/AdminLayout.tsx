@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom';
 
 /**
  * Administración general mínima: gestión de albergues.
@@ -12,5 +12,5 @@ export default function AdminLayout() {
       </nav>
       <Outlet />
     </div>
-  )
+  );
 }

@@ -1,16 +1,16 @@
-import { createBrowserRouter } from 'react-router-dom'
-import App from '../App'
-import AdoptanteLayout from '../layouts/AdoptanteLayout'
-import AlbergueLayout from '../layouts/AlbergueLayout'
-import AdminLayout from '../layouts/AdminLayout'
-import ProtectedRoute from './ProtectedRoute'
-import HomePage from '../features/auth/pages/HomePage'
-import AccesoPage from '../features/auth/pages/AccesoPage'
-import RecuperacionPage from '../features/auth/pages/RecuperacionPage'
-import CatalogoPage from '../features/adoptante/catalogo/pages/CatalogoPage'
-import CuestionarioPage from '../features/adoptante/perfil/pages/CuestionarioPage'
-import PanelAlberguePage from '../features/albergue/perfil/pages/PanelAlberguePage'
-import AlberguesAdminPage from '../features/administracion/albergues/pages/AlberguesAdminPage'
+import { createBrowserRouter } from 'react-router-dom';
+import App from '../App';
+import AdoptanteLayout from '../layouts/AdoptanteLayout';
+import AlbergueLayout from '../layouts/AlbergueLayout';
+import AdminLayout from '../layouts/AdminLayout';
+import ProtectedRoute from './ProtectedRoute';
+import HomePage from '../features/auth/pages/HomePage';
+import AccesoPage from '../features/auth/pages/AccesoPage';
+import RecuperacionPage from '../features/auth/pages/RecuperacionPage';
+import CatalogoPage from '../features/adoptante/catalogo/pages/CatalogoPage';
+import CuestionarioPage from '../features/adoptante/perfil/pages/CuestionarioPage';
+import PanelAlberguePage from '../features/albergue/perfil/pages/PanelAlberguePage';
+import AlberguesAdminPage from '../features/administracion/albergues/pages/AlberguesAdminPage';
 
 /**
  * Rutas de Petly web. Estructura prevista según PLANNING v2 §9.2:
@@ -62,4 +62,4 @@ export const router = createBrowserRouter([
       { path: '*', element: <HomePage /> },
     ],
   },
-])
+]);

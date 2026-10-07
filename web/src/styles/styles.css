@@ -9,7 +9,11 @@
   --petly-text: #26302b;
   --petly-muted: #6b7a72;
   --petly-border: #e2ded6;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 * {

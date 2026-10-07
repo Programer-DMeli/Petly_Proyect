@@ -1,4 +1,4 @@
-import PendingBadge from '../../../components/PendingBadge'
+import PendingBadge from '../../../components/PendingBadge';
 
 /**
  * Pantalla de acceso (login). El alcance aprobado (US-21) está en
@@ -13,12 +13,12 @@ export default function AccesoPage() {
         Acceso <PendingBadge sprint="Sprint 1 · US-21" />
       </h1>
       <p className="muted">
-        Formulario pendiente de implementación: inicio de sesión con correo y contraseña,
-        bloqueo temporal tras intentos fallidos y validación de permisos por rol en el backend.
+        Formulario pendiente de implementación: inicio de sesión con correo y contraseña, bloqueo
+        temporal tras intentos fallidos y validación de permisos por rol en el backend.
       </p>
       <p>
         <a href="/recuperacion">¿Olvidaste tu contraseña?</a>
       </p>
     </section>
-  )
+  );
 }

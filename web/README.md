@@ -6,10 +6,14 @@ Stack: React 19 + TypeScript + Vite. Puerto **5173**.
 ## Comandos (Windows / PowerShell)
 
 ```powershell
-npm install        # instala dependencias (genera package-lock.json)
-npm run typecheck  # comprobación de tipos
-npm run build      # compilación de verificación
-npm run dev        # desarrollo en http://localhost:5173
+npm install           # instala dependencias (genera package-lock.json)
+npm run typecheck     # comprobación de tipos
+npm run build         # compilación de verificación
+npm run dev           # desarrollo en http://localhost:5173
+npm run lint          # ESLint (recomendado en CI)
+npm run lint:fix      # ESLint con corrección automática
+npm run format        # Prettier (formatea código)
+npm run format:check  # Prettier (solo verifica formato)
 ```
 
 ## Configuración

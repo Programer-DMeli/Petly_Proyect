@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet } from 'react-router-dom';
 
 /**
  * Componente raíz de la aplicación: envuelve todas las rutas con el
@@ -18,5 +18,5 @@ export default function App() {
         <small>Petly — proyecto académico. Los datos mostrados son de demostración.</small>
       </footer>
     </div>
-  )
+  );
 }

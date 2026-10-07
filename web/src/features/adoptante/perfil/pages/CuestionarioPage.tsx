@@ -1,4 +1,4 @@
-import PendingBadge from '../../../../components/PendingBadge'
+import PendingBadge from '../../../../components/PendingBadge';
 
 /**
  * Cuestionario de estilo de vida (US-16) y datos de convivencia (US-17).
@@ -16,5 +16,5 @@ export default function CuestionarioPage() {
         implementación.
       </p>
     </section>
-  )
+  );
 }
