@@ -11,12 +11,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Seguridad básica de la API.
+ * Reglas de acceso de la API (US-21).
  *
- * Solo se expone sin autenticación el endpoint de salud. El resto de rutas
- * queda protegido por defecto hasta que US-21 implemente registro, acceso y
- * tokens reales (PLANNING v2 §9). No se declara ninguna autenticación
- * completada en esta etapa.
+ * Públicos: salud y auth (registro/login), porque ahí el usuario todavía no
+ * tiene token. Todo lo demás pide token en la cabecera Authorization.
+ * Con JWT no hay sesión ni cookies, así que el CSRF se apaga.
  */
 @Configuration
 @EnableWebSecurity
@@ -26,12 +25,17 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
+                // sin cookies no hay nada que proteger contra CSRF
+                .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Cubre /api/health y /api/health/ (Spring Security 7
-                        // ya no asocia la barra final automáticamente).
+                        // cubre /api/health y /api/health/ (Spring Security 7
+                        // ya no asocia la barra final automáticamente)
                         .requestMatchers("/api/health", "/api/health/", "/api/health/**")
+                        .permitAll()
+                        // registro y login son públicos, recién ahí sale el token
+                        .requestMatchers("/api/auth/**")
                         .permitAll()
                         .anyRequest().authenticated());
         return http.build();
