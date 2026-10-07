@@ -1,8 +1,8 @@
 # API — Petly
 
-Fuente: `PLANNING.md` v2, secciones 6, 10 y 11. **Solo los endpoints de salud están implementados en esta etapa.** Todo lo demás queda como contrato previsto para los sprints.
+Fuente: `PLANNING.md` v2, secciones 6, 10 y 11.
 
-## Endpoints implementados (etapa de estructura)
+## Endpoints implementados
 
 ### `GET /api/health/` — Spring Boot (`:8080`)
 
@@ -20,11 +20,199 @@ Sin información sensible: no expone versión, base de datos, rutas ni configura
 
 Mismo criterio: respuesta básica, sin detalles internos.
 
-## Contrato previsto (pendiente de implementar)
+### Autenticación — Django (`:8000`) — **US-21, US-24 IMPLEMENTADOS**
 
-Los siguientes apartados describen decisiones ya aprobadas en `PLANNING.md` v2 pero **no están implementados**. Sirven para redactar el contrato real antes de programar.
+Base: `/api/acceso/auth/`
 
-### Autenticación (Spring Boot, US-21 y US-24)
+#### `POST /registro/` — Registro usuario (adoptante/albergue)
+
+**Request:**
+```json
+{
+  "username": "string",
+  "email": "string",
+  "password": "string",
+  "password_confirm": "string",
+  "rol": "ADOPTANTE|ALBERGUE|ADMIN",
+  "first_name": "string",
+  "last_name": "string",
+  "telefono": "string (opcional)",
+  "fecha_nacimiento": "YYYY-MM-DD (opcional)"
+}
+```
+
+**Response 201:**
+```json
+{
+  "user": {
+    "id": 1,
+    "username": "string",
+    "email": "string",
+    "first_name": "string",
+    "last_name": "string",
+    "rol": "ADOPTANTE",
+    "telefono": "",
+    "fecha_nacimiento": null,
+    "acepto_terminos": false,
+    "fecha_aceptacion_terminos": null,
+    "date_joined": "2026-10-06T15:45:15.030511-05:00",
+    "last_login": null
+  },
+  "access": "eyJhbGciOiJIUzI1NiIs...",
+  "refresh": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+#### `POST /login/` — Acceso + tokens
+
+**Request:**
+```json
+{ "username": "string", "password": "string" }
+```
+
+**Response 200:**
+```json
+{
+  "refresh": "eyJhbGciOiJIUzI1NiIs...",
+  "access": "eyJhbGciOiJIUzI1NiIs...",
+  "user": {
+    "id": 1,
+    "username": "string",
+    "email": "string",
+    "rol": "ADOPTANTE",
+    "first_name": "string",
+    "last_name": "string"
+  }
+}
+```
+
+**JWT Payload (access):**
+```json
+{
+  "user_id": 1,
+  "rol": "ADOPTANTE",
+  "username": "string",
+  "email": "string",
+  "exp": 1791323115,
+  "iat": 1791319515,
+  "jti": "...",
+  "token_type": "access"
+}
+```
+
+#### `POST /refresh/` — Renovación con rotación
+
+**Request:**
+```json
+{ "refresh": "eyJhbGciOiJIUzI1NiIs..." }
+```
+
+**Response 200:**
+```json
+{ "access": "...", "refresh": "..." }
+```
+
+#### `POST /logout/` — Cierre de sesión (blacklist)
+
+**Request (auth required):**
+```json
+{ "refresh": "eyJhbGciOiJIUzI1NiIs..." }
+```
+
+**Response 200:** `{ "detail": "Sesión cerrada correctamente." }`
+
+#### `GET /me/` — Perfil usuario autenticado
+
+**Headers:** `Authorization: Bearer <access>`
+
+**Response 200:**
+```json
+{
+  "id": 1,
+  "username": "string",
+  "email": "string",
+  "first_name": "string",
+  "last_name": "string",
+  "rol": "ADOPTANTE",
+  "telefono": "",
+  "fecha_nacimiento": null,
+  "acepto_terminos": false,
+  "fecha_aceptacion_terminos": null,
+  "date_joined": "...",
+  "last_login": "..."
+}
+```
+
+#### `GET/PATCH /me/profile/` — Perfil adoptante extendido (US-16, US-17)
+
+**Headers:** `Authorization: Bearer <access>`
+
+**Response 200 (GET):**
+```json
+{
+  "id": 1,
+  "user": { ... },
+  "nombre_completo": "Juan Perez",
+  "documento_tipo": "DNI",
+  "documento_numero": "12345678",
+  "nombres": "Juan",
+  "apellidos": "Perez",
+  "direccion": "Av. Lima 123",
+  "distrito": "Miraflores",
+  "provincia": "Lima",
+  "departamento": "Lima",
+  "tipo_vivienda": "Casa",
+  "tiene_patio": true,
+  "tiene_otras_mascotas": false,
+  "detalles_otras_mascotas": "",
+  "experiencia_previa": "Tuve perros 10 años",
+  "motivo_adopcion": "Quiero compañía",
+  "preferencia_especie": "PERRO",
+  "preferencia_tamanio": "MEDIANO",
+  "preferencia_edad": "joven",
+  "cuestionario_completado": true,
+  "fecha_cuestionario": "2026-10-06T15:45:15.030511-05:00",
+  "creado_en": "...",
+  "actualizado_en": "..."
+}
+```
+
+**PATCH:** mismos campos editables (excepto `user`, `documento_numero` único).
+
+#### `POST /password/reset/` — Solicitud recuperación (US-24)
+
+**Request:**
+```json
+{ "email": "usuario@test.com" }
+```
+
+**Response 200:** `{ "detail": "Si el email existe, se enviaron instrucciones." }`
+
+Envía email con enlace: `FRONTEND_URL/recuperacion?token=<access_token>`
+
+Token: access JWT con claim `"type": "password_reset"`, expira 15 min.
+
+#### `POST /password/reset/confirm/` — Confirmación recuperación (US-24)
+
+**Request:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "new_password": "NuevaPass123!",
+  "new_password_confirm": "NuevaPass123!"
+}
+```
+
+**Response 200:** `{ "detail": "Contraseña actualizada correctamente." }`
+
+#### Throttle (US-21)
+
+- **2 intentos fallidos** en `/login/`, `/registro/`, `/refresh/`, `/password/reset/` → **429 Too Many Requests** por **5 minutos**
+- Header: `Retry-After: 300`
+
+---
+
+### Autenticación (Spring Boot, US-21 y US-24) — PENDIENTE
 
 - `POST` registro de adoptante (correo + contraseña), rechazando correo duplicado.
 - `POST` acceso; tras **2 intentos consecutivos fallidos**, bloqueo de **5 minutos** con desbloqueo automático; se restablece el contador al acceder correctamente; limitación de peticiones aplicada.
