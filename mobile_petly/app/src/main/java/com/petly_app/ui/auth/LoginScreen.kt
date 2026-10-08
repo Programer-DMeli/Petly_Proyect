@@ -6,7 +6,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -20,13 +22,13 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-
     Column(
         modifier = Modifier.fillMaxSize().imePadding()
             .verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text("Petly", style = MaterialTheme.typography.headlineLarge)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ){
+        Text("Petly", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
         Text("Ingresa para comenzar tu búsqueda.")
         state.connectionMessage?.let { Text(it) }
         OutlinedButton(
@@ -48,6 +50,9 @@ fun LoginScreen(
         )
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(
+
+
+
             onClick = { onLogin(email, password) },
             enabled = !state.busy, modifier = Modifier.fillMaxWidth()
         ) { Text(if (state.busy) "Ingresando…" else "Ingresar") }
