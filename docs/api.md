@@ -1,11 +1,11 @@
 ﻿# API â€” Petly
 
-Fuente: `PLANNING.md` v2, secciones 6, 10 y 11. **Solo los endpoints de salud y autenticación (`/api/auth/registro`, `/api/auth/login`) están implementados en esta etapa (US-21). El resto queda como contrato previsto para los sprints.
-- POST /api/auth/registro (correo + contraseña). Respuestas: 201 (creado), 409 (correo duplicado), 400 (validación).
-- POST /api/auth/login (correo + contraseña). Respuestas: 200 ({token, tokenType: Bearer, expiresIn: 3600, user: {id,email,rol}}), 401 (credenciales inválidas), 423 (bloqueado 5 min tras 2 fallos).
+Fuente: `PLANNING.md` v2, secciones 6, 10 y 11. **Solo los endpoints de salud y autenticacion (`/api/auth/registro`, `/api/auth/login`) están implementados en esta etapa (US-21). El resto queda como contrato previsto para los sprints.
+- POST /api/auth/registro (correo + contrasena). Respuestas: 201 (creado), 409 (correo duplicado), 400 (validacion).
+- POST /api/auth/login (correo + contrasena). Respuestas: 200 ({token, tokenType: Bearer, expiresIn: 3600, user: {id,email,rol}}), 401 (credenciales invalidas), 423 (bloqueado 5 min tras 2 fallos).
 
-- Contraseñas almacenadas con hash, nunca en texto plano.
-- POST recuperación solo por correo: enlace con token de un solo uso que vence en 15 minutos. La respuesta pública no revela si el correo existe. SMS queda fuera de este sprint.
+- Contrasenas almacenadas con hash, nunca en texto plano.
+- POST recuperacion solo por correo: enlace con token de un solo uso que vence en 15 minutos. La respuesta publica no revela si el correo existe. SMS queda fuera de este sprint.
 
 
 
