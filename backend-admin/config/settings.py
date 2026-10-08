@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "rest_framework_simplejwt",
+    "drf_spectacular",
     # Petly
     "apps.acceso",
     "apps.albergues",
@@ -192,3 +193,57 @@ from django.db.backends.mysql.features import DatabaseFeatures
 
 DatabaseFeatures.can_return_columns_from_insert = False
 DatabaseFeatures.can_return_rows_from_insert = False
+
+# --- Logging ---
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "apps": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}
+
+# --- DRF Spectacular (OpenAPI 3 / Swagger UI) ---
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Petly Admin API",
+    "DESCRIPTION": "API para gestión de albergues, mascotas y administración (PLANNING v2).",
+    "VERSION": "0.1.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": "/api/",
+    "TAGS": [
+        {"name": "albergues", "description": "Gestión de albergues (US-46)"},
+        {"name": "mascotas", "description": "Catálogo de mascotas (US-11, US-13)"},
+        {"name": "acceso", "description": "Autenticación y tokens (US-21)"},
+        {"name": "postulantes", "description": "Consulta de postulantes (US-18)"},
+    ],
+}

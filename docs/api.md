@@ -2,6 +2,13 @@
 
 Fuente: `PLANNING.md` v2, secciones 6, 10 y 11.
 
+## Documentación OpenAPI / Swagger UI
+
+| Servicio | Esquema OpenAPI | Swagger UI |
+| --- | --- | --- |
+| Spring Boot (usuarios) | `GET http://localhost:8080/v3/api-docs` | `http://localhost:8080/swagger-ui.html` |
+| Django (administración) | `GET http://localhost:8000/api/schema/` | `http://localhost:8000/api/docs/` |
+
 ## Endpoints implementados
 
 ### `GET /api/health/` — Spring Boot (`:8080`)

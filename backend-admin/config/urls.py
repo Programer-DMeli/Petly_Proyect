@@ -27,6 +27,9 @@ from apps.albergues.panel_views import (
     solicitud_cambiar_estado,
 )
 
+# drf-spectacular
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
 
 def health(request):
     """GET /api/health/ — respuesta básica."""
@@ -56,6 +59,10 @@ urlpatterns = [
     path("api/albergues/", include("apps.albergues.urls")),
     path("api/mascotas/", include("apps.mascotas.urls")),
     path("api/acceso/", include("apps.acceso.urls")),
+    
+    # OpenAPI 3 / Swagger UI (drf-spectacular)
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     
     # Autenticación (login/logout)
     path("accounts/login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),

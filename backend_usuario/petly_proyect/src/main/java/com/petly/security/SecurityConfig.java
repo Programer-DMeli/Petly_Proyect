@@ -11,10 +11,10 @@ import org.springframework.security.web.SecurityFilterChain;
 /**
  * Seguridad básica de la API.
  *
- * Solo se expone sin autenticación el endpoint de salud. El resto de rutas
- * queda protegido por defecto hasta que US-21 implemente registro, acceso y
- * tokens reales (PLANNING v2 §9). No se declara ninguna autenticación
- * completada en esta etapa.
+ * Solo se expone sin autenticación el endpoint de salud y la documentación
+ * OpenAPI/Swagger. El resto de rutas queda protegido por defecto hasta que
+ * US-21 implemente registro, acceso y tokens reales (PLANNING v2 §9).
+ * No se declara ninguna autenticación completada en esta etapa.
  */
 @Configuration
 @EnableWebSecurity
@@ -29,7 +29,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Cubre /api/health y /api/health/ (Spring Security 7
                         // ya no asocia la barra final automáticamente).
-                        .requestMatchers("/api/health", "/api/health/", "/api/health/**")
+                        .requestMatchers(
+                                "/api/health",
+                                "/api/health/",
+                                "/api/health/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html")
                         .permitAll()
                         .anyRequest().authenticated());
         return http.build();

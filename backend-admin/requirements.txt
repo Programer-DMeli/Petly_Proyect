@@ -13,3 +13,5 @@ mysqlclient==2.3.0
 python-dotenv==1.2.4
 # JWT para autenticación stateless (US-21, Android/Spring Boot integration).
 djangorestframework-simplejwt==5.3.1
+# Documentación de API con OpenAPI 3 / Swagger UI.
+drf-spectacular==0.28.0
