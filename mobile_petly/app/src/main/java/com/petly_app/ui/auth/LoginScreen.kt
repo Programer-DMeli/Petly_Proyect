@@ -10,7 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -18,7 +17,8 @@ fun LoginScreen(
     state: AuthUiState,
     onLogin: (String, String) -> Unit,
     onRegister: () -> Unit,
-    onCheckConnection: () -> Unit
+    onCheckConnection: () -> Unit,
+    onPreview: (() -> Unit)? = null
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -42,20 +42,20 @@ fun LoginScreen(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             singleLine = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth()
         )
-        OutlinedTextField(
-            value = password, onValueChange = { password = it }, label = { Text("Contraseña") },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            singleLine = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth()
-        )
+        PasswordField(password, { password = it }, "Contraseña", !state.busy)
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(
 
 
 
             onClick = { onLogin(email, password) },
-            enabled = !state.busy, modifier = Modifier.fillMaxWidth()
+            enabled = !state.busy && email.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth()
         ) { Text(if (state.busy) "Ingresando…" else "Ingresar") }
         TextButton(onClick = onRegister, enabled = !state.busy) { Text("Crear cuenta") }
+        if (onPreview != null) {
+            HorizontalDivider()
+            OutlinedButton(onClick = onPreview, enabled = !state.busy) { Text("Ver pantallas de prueba") }
+            Text("Datos ficticios. No inicia sesión ni guarda información en el servidor.")
+        }
     }
 }

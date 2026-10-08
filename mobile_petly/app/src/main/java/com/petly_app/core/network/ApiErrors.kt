@@ -3,6 +3,7 @@ package com.petly_app.core.network
 import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 import java.io.IOException
+import com.petly_app.data.repository.BackendPendingException
 
 class ContractException : Exception()
 class AdoptanteOnlyException : Exception()
@@ -10,6 +11,7 @@ class AdoptanteOnlyException : Exception()
 fun apiErrorMessage(error: Exception): String {
     if (error is CancellationException) throw error
     return when (error) {
+        is BackendPendingException -> "Esta función todavía no está conectada al servidor."
         is IOException -> "No se pudo conectar. Revisa tu conexión y Spring Boot."
         is ContractException -> "La respuesta del servidor no coincide con el contrato acordado."
         is AdoptanteOnlyException -> "Esta aplicación es para cuentas de adoptantes."
