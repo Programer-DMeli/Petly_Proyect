@@ -406,6 +406,46 @@ Esta etapa prepara el proyecto para que el equipo programe. No equivale a comple
 7. Mantener las funcionalidades del Sprint 1 como pendientes durante esta preparación. Las decisiones de v2 definen cómo programarlas cuando se solicite esa etapa; no autorizan implementarlas todas al leer este archivo.
 8. Preparar únicamente el proyecto local de acuerdo a la estructura del repositorio. No publicar en GitHub, hacer push ni crear repositorios remotos en esta etapa.
 
+## 10.1. Mejoras de preparación (octubre 2026)
+
+Como parte de la preparación de la estructura, se han implementado las siguientes mejoras de calidad y herramientas:
+
+**Web (React + TypeScript + Vite):**
+- ESLint con reglas TypeScript y React Hooks, Prettier para formateo consistente
+- TypeScript estricto con `noImplicitOverride`, `noPropertyAccessFromIndexSignature`, path aliases (`@/*`)
+- Vite optimizado: alias `@`, build con sourcemaps y code-splitting (vendor chunk), host binding
+- ErrorBoundary para captura graceful de errores en producción
+- Scripts npm: `lint`, `lint:fix`, `format`, `format:check`, `typecheck`
+- Formateo completo con Prettier en todos los archivos fuente
+
+**Backend Administrativo (Django + DRF):**
+- Logging configurado con formatter verbose y niveles por logger (`django`, `apps`)
+- drf-spectacular para documentación OpenAPI 3 / Swagger UI automática
+- Endpoints: `GET /api/schema/` (esquema) y `GET /api/docs/` (Swagger UI)
+- Variables de entorno: `JWT_SECRET` (integración Spring Boot), `DJANGO_LOG_LEVEL`
+
+**Backend de Usuarios (Spring Boot + Java 21 + Maven):**
+- springdoc-openapi-starter-webmvc-ui para OpenAPI 3 / Swagger UI
+- Endpoints: `GET /v3/api-docs` (esquema) y `GET /swagger-ui.html` (Swagger UI)
+- OpenApiConfig con esquema de seguridad Bearer JWT
+- GlobalExceptionHandler para respuestas de error consistentes (validación, argumentos, genérico)
+- SecurityConfig actualizado para permitir endpoints de documentación sin autenticación
+- Variable de entorno: `SPRING_JWT_SECRET` (clave compartida con Django)
+
+**Móvil (Kotlin + Jetpack Compose):**
+- Network Security Config: debug permite cleartext para `10.0.2.2`/`localhost`; release solo HTTPS
+- AndroidManifest con `networkSecurityConfig` y permisos `INTERNET`, `ACCESS_NETWORK_STATE`
+- Dependencias añadidas: OkHttp + logging interceptor, Moshi (JSON), Retrofit, Navigation Compose, Lifecycle ViewModel Compose
+- ProGuard rules para release builds
+- libs.versions.toml actualizado con catálogo de versiones centralizado
+
+**Documentación y configuración:**
+- README principal con tabla de endpoints OpenAPI/Swagger UI
+- docs/api.md con sección de documentación OpenAPI
+- CHANGELOG.md con formato Keep a Changelog
+- .gitignore añadidos en backend-admin/, database/, docs/, mobile_petly/app/
+- Variables de entorno JWT documentadas en .env.example de ambos backends
+
 ## 11. Entorno y configuración
 
 - React: puerto 5173.
