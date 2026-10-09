@@ -5,11 +5,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.petly.usuarios.Usuario;
-import com.petly.usuarios.UsuarioRepository;
+import com.petly.usuarios.repository.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
- * Registro de adoptantes (US-21).
+ * Registro y login de adoptantes (US-21).
  */
 @Service
 public class AuthService {
@@ -25,12 +25,30 @@ public class AuthService {
 
     public AuthResponse registrar(RegistroRequest request) {
         String correo = request.getCorreo().trim().toLowerCase();
+        String username = request.getUsername().trim().toLowerCase();
+        
         if (usuarios.existsByCorreo(correo)) {
             throw new RuntimeException("correo ya registrado");
         }
-        Usuario usuario = new Usuario(correo, passwordEncoder.encode(request.getPassword()), "ADOPTANTE");
+        if (usuarios.existsByUsername(username)) {
+            throw new RuntimeException("nombre de usuario ya existe");
+        }
+        
+        Usuario usuario = new Usuario(
+            username,
+            correo,
+            passwordEncoder.encode(request.getPassword()),
+            Usuario.Rol.valueOf(request.getRol().toUpperCase())
+        );
+        usuario.setFirstName(request.getFirstName());
+        usuario.setLastName(request.getLastName());
+        usuario.setTelefono(request.getTelefono());
+        if (request.getFechaNacimiento() != null) {
+            usuario.setFechaNacimiento(java.time.LocalDate.parse(request.getFechaNacimiento()));
+        }
+        
         Usuario guardado = usuarios.save(usuario);
-        return new AuthResponse(guardado.getId(), guardado.getCorreo(), guardado.getRol());
+        return new AuthResponse(guardado.getId(), guardado.getCorreo(), guardado.getRol().name());
     }
 
     public LoginResponse login(LoginRequest request) {
@@ -58,7 +76,7 @@ public class AuthService {
         usuario.setBloqueadoHasta(null);
         usuarios.save(usuario);
         String token = jwtService.generarToken(usuario);
-        AuthResponse user = new AuthResponse(usuario.getId(), usuario.getCorreo(), usuario.getRol());
+        AuthResponse user = new AuthResponse(usuario.getId(), usuario.getCorreo(), usuario.getRol().name());
         return new LoginResponse(token, user);
     }
 }

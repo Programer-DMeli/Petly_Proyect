@@ -13,10 +13,9 @@ import org.springframework.security.web.SecurityFilterChain;
 /**
  * Seguridad básica de la API.
  *
- * Solo se expone sin autenticación el endpoint de salud y la documentación
- * OpenAPI/Swagger. El resto de rutas queda protegido por defecto hasta que
- * US-21 implemente registro, acceso y tokens reales (PLANNING v2 §9).
- * No se declara ninguna autenticación completada en esta etapa.
+ * Endpoints públicos: /api/health, /api/auth/registro, /api/auth/login,
+ * documentación OpenAPI/Swagger.
+ * El resto de rutas queda protegido por defecto (requiere JWT válido).
  */
 @Configuration
 @EnableWebSecurity
@@ -29,12 +28,11 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Cubre /api/health y /api/health/ (Spring Security 7
-                        // ya no asocia la barra final automáticamente).
                         .requestMatchers(
                                 "/api/health",
                                 "/api/health/",
                                 "/api/health/**",
+                                "/api/auth/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html")
