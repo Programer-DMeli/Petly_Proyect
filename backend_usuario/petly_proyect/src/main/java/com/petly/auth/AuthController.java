@@ -6,7 +6,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
+import io.jsonwebtoken.Claims;
+import java.util.Map;
 import com.petly.auth.dto.AuthResponse;
 import com.petly.auth.dto.LoginRequest;
 import com.petly.auth.dto.LoginResponse;
@@ -34,5 +38,16 @@ public class AuthController {
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse respuesta = authService.login(request);
         return ResponseEntity.ok(respuesta);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> me() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Claims claims = (Claims) auth.getPrincipal();
+        Map<String, Object> cuerpo = Map.of(
+            "id", claims.getSubject(),
+            "correo", claims.get("email"),
+            "rol", claims.get("rol"));
+        return ResponseEntity.ok(cuerpo);
     }
 }

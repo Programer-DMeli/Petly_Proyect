@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.petly.usuarios.Usuario;
-
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
@@ -42,5 +42,15 @@ public class JwtService {
                 .expiration(vence)
                 .signWith(key)
                 .compact();
+    }
+
+    public Claims validarToken(String token) {
+        return Jwts.parser()
+            .verifyWith(key)
+            .requireIssuer("petly-spring")
+            .requireAudience("petly-django")
+            .build()
+            .parseSignedClaims(token)
+            .getPayload();
     }
 }
