@@ -1,5 +1,6 @@
 package com.petly_app.core.network
 
+import android.util.Log
 import com.petly_app.BuildConfig
 import com.petly_app.core.session.SessionManager
 import okhttp3.OkHttpClient
@@ -13,6 +14,17 @@ object ApiClient {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .writeTimeout(20, TimeUnit.SECONDS)
+            .apply {
+                if (BuildConfig.DEBUG) {
+                    addInterceptor { chain ->
+                        val request = chain.request()
+                        Log.d("ApiClient", "--> ${request.method} ${request.url}")
+                        val response = chain.proceed(request)
+                        Log.d("ApiClient", "<-- ${response.code} ${request.url}")
+                        response
+                    }
+                }
+            }
             .build()
     }
 
@@ -44,3 +56,5 @@ object ApiClient {
             .build()
     }
 }
+
+

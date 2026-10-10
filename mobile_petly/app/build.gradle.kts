@@ -5,14 +5,12 @@ plugins {
 android {
   namespace = "com.petly_app"
 
-  compileSdk {
-    version = release(37)
-  }
+  compileSdk = 35
 
   defaultConfig {
     applicationId = "com.petly_app"
     minSdk = 24
-    targetSdk = 37
+    targetSdk = 35
     versionCode = 1
     versionName = "1.0"
 
@@ -30,15 +28,11 @@ android {
     }
 
     getByName("release") {
-      optimization {
-        enable = true
-        packageScope = setOf(
-          "androidx.**",
-          "kotlin.**",
-          "kotlinx.**"
-        )
-      }
-
+      isMinifyEnabled = false
+      proguardFiles(
+        getDefaultProguardFile("proguard-android-optimize.txt"),
+        "proguard-rules.pro"
+      )
       buildConfigField(
         "String",
         "API_BASE_URL",
@@ -67,16 +61,16 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-  //Dependecias implementadas
+
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
     implementation("androidx.navigation:navigation-compose:2.8.9")
-  implementation(libs.androidx.ui)
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     testImplementation(libs.junit)
@@ -86,5 +80,5 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
-
 }
+

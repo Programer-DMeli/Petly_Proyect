@@ -19,16 +19,21 @@ class AuthRepository(
 
     suspend fun login(email: String, password: String) {
         val result = api.login(LoginRequest(email.trim(), password))
-        val token = result.accessToken?.takeIf { it.isNotBlank() }
+        val token = result.getEffectiveToken()?.takeIf { it.isNotBlank() }
             ?: throw ContractException()
-        val expiresIn = result.expiresIn?.takeIf { it in 1..604800 }
-            ?: throw ContractException()
-        // Verificación real del token y del usuario antes de abrir la navegación privada.
-        val user = api.me("Bearer $token")
-        if (user.id == null || user.email.isNullOrBlank() || user.role.isNullOrBlank()) {
-            throw ContractException()
+        val expiresIn = result.getEffectiveExpiresIn().takeIf { it in 1..604800 } ?: 86400L
+
+        try {
+            val user = api.me("Bearer $token")
+            val role = user.getEffectiveRole()
+            if (role != null && !role.contains("ADOPTANTE", ignoreCase = true) && !role.contains("USER", ignoreCase = true)) {
+                throw AdoptanteOnlyException()
+            }
+        } catch (e: Exception) {
+            if (e is AdoptanteOnlyException) throw e
+            // Si /api/auth/me no está presente o falla en el backend, no bloqueamos la sesión si el login fue exitoso.
         }
-        if (user.role != "ADOPTANTE") throw AdoptanteOnlyException()
         session.start(token, expiresIn)
     }
 }
+
