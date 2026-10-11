@@ -9,7 +9,7 @@ import com.petly.usuarios.repository.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
- * Registro y login de adoptantes (US-21).
+ * Registro, login y recuperación de contraseña (US-21, US-24).
  */
 @Service
 public class AuthService {
@@ -78,5 +78,38 @@ public class AuthService {
         String token = jwtService.generarToken(usuario);
         AuthResponse user = new AuthResponse(usuario.getId(), usuario.getCorreo(), usuario.getRol().name());
         return new LoginResponse(token, user);
+    }
+
+    /**
+     * Solicita recuperación de contraseña (US-24).
+     * Genera token JWT tipo "password_reset" con expiración 15 min.
+     * Respuesta genérica para no revelar si el correo existe.
+     */
+    public void solicitarResetPassword(String correo) {
+        String email = correo.trim().toLowerCase();
+        Usuario usuario = usuarios.findByCorreo(email).orElse(null);
+        
+        if (usuario != null) {
+            String token = jwtService.generarTokenPasswordReset(usuario);
+            // TODO: Enviar email con token (configurar JavaMailSender + template)
+            // Ejemplo: emailService.enviarResetPassword(usuario.getCorreo(), token);
+            System.out.println("=== RESET PASSWORD TOKEN para " + email + " ===");
+            System.out.println(token);
+            System.out.println("========================================");
+        }
+        // Siempre respuesta genérica (no revelar si existe)
+    }
+
+    /**
+     * Confirma recuperación de contraseña (US-24).
+     * Valida token (tipo, expiración, firma), actualiza password.
+     */
+    public void confirmarResetPassword(String token, String nuevaPassword) {
+        Long userId = jwtService.validarTokenPasswordReset(token);
+        Usuario usuario = usuarios.findById(userId)
+            .orElseThrow(() -> new RuntimeException("usuario no encontrado"));
+        
+        usuario.setPasswordHash(passwordEncoder.encode(nuevaPassword));
+        usuarios.save(usuario);
     }
 }

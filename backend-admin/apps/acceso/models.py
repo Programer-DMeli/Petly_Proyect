@@ -72,6 +72,7 @@ class AdoptanteProfile(models.Model):
     tipo_vivienda = models.CharField("Tipo de vivienda", max_length=50, blank=True,
         help_text="Casa, departamento, quintas, etc.")
     tiene_patio = models.BooleanField("Tiene patio/área exterior", default=False)
+    tiene_ninos = models.BooleanField("Viven niños en el hogar", default=False)
     tiene_otras_mascotas = models.BooleanField("Tiene otras mascotas", default=False)
     detalles_otras_mascotas = models.TextField("Detalle otras mascotas", blank=True)
     experiencia_previa = models.TextField("Experiencia previa con mascotas", blank=True)

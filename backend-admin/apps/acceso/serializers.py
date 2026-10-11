@@ -296,7 +296,7 @@ class AdoptanteProfileSerializer(serializers.ModelSerializer):
             "id", "user", "nombre_completo",
             "documento_tipo", "documento_numero", "nombres", "apellidos",
             "direccion", "distrito", "provincia", "departamento",
-            "tipo_vivienda", "tiene_patio", "tiene_otras_mascotas",
+            "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
             "detalles_otras_mascotas", "experiencia_previa",
             "motivo_adopcion", "preferencia_especie", "preferencia_tamanio",
             "preferencia_edad", "cuestionario_completado", "fecha_cuestionario",
@@ -313,7 +313,7 @@ class AdoptanteProfileCreateUpdateSerializer(serializers.ModelSerializer):
         fields = [
             "documento_tipo", "documento_numero", "nombres", "apellidos",
             "direccion", "distrito", "provincia", "departamento",
-            "tipo_vivienda", "tiene_patio", "tiene_otras_mascotas",
+            "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
             "detalles_otras_mascotas", "experiencia_previa",
             "motivo_adopcion", "preferencia_especie", "preferencia_tamanio",
             "preferencia_edad",

@@ -15,11 +15,14 @@ import com.petly.auth.dto.AuthResponse;
 import com.petly.auth.dto.LoginRequest;
 import com.petly.auth.dto.LoginResponse;
 import com.petly.auth.dto.RegistroRequest;
+import com.petly.auth.dto.PasswordResetRequest;
+import com.petly.auth.dto.PasswordResetConfirmRequest;
 
 import jakarta.validation.Valid;
 
 /**
  * Registro público de adoptantes (US-21).
+ * Recuperación de contraseña por correo (US-24).
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -55,5 +58,17 @@ public class AuthController {
             "correo", claims.get("email"),
             "rol", claims.get("rol"));
         return ResponseEntity.ok(cuerpo);
+    }
+
+    @PostMapping("/password/reset")
+    public ResponseEntity<?> solicitarReset(@Valid @RequestBody PasswordResetRequest request) {
+        authService.solicitarResetPassword(request.getCorreo());
+        return ResponseEntity.ok(Map.of("detail", "Si el correo existe, se enviaron instrucciones."));
+    }
+
+    @PostMapping("/password/reset/confirm")
+    public ResponseEntity<?> confirmarReset(@Valid @RequestBody PasswordResetConfirmRequest request) {
+        authService.confirmarResetPassword(request.getToken(), request.getNuevaPassword());
+        return ResponseEntity.ok(Map.of("detail", "Contraseña actualizada correctamente."));
     }
 }
