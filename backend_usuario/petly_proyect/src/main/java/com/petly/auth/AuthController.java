@@ -6,7 +6,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
+import io.jsonwebtoken.Claims;
+import java.util.Map;
 import com.petly.auth.dto.AuthResponse;
 import com.petly.auth.dto.LoginRequest;
 import com.petly.auth.dto.LoginResponse;
@@ -26,12 +30,8 @@ public class AuthController {
 
     @PostMapping("/registro")
     public ResponseEntity<?> registro(@Valid @RequestBody RegistroRequest request) {
-        try {
-            AuthResponse creado = authService.registrar(request);
-            return ResponseEntity.status(201).body(creado);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(409).body(e.getMessage());
-        }
+        AuthResponse creado = authService.registrar(request);
+        return ResponseEntity.status(201).body(creado);
     }
 
     @PostMapping("/login")
@@ -44,5 +44,16 @@ public class AuthController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(401).body(e.getMessage());
         }
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> me() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Claims claims = (Claims) auth.getPrincipal();
+        Map<String, Object> cuerpo = Map.of(
+            "id", claims.getSubject(),
+            "correo", claims.get("email"),
+            "rol", claims.get("rol"));
+        return ResponseEntity.ok(cuerpo);
     }
 }

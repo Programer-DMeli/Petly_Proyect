@@ -28,7 +28,7 @@ public class AuthService {
         String username = request.getUsername().trim().toLowerCase();
         
         if (usuarios.existsByCorreo(correo)) {
-            throw new RuntimeException("correo ya registrado");
+            throw new CorreoYaRegistradoException("correo ya registrado");
         }
         if (usuarios.existsByUsername(username)) {
             throw new RuntimeException("nombre de usuario ya existe");
