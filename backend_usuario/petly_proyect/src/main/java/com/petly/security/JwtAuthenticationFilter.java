@@ -3,11 +3,9 @@ package com.petly.security;
 import java.io.IOException;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.petly.auth.JwtService;
@@ -21,13 +19,15 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * Lee el JWT de la cabecera Authorization y deja al usuario autenticado (US-21).
  * Sin cabecera sigue igual (Spring rechaza el recurso privado).
- * Token inválido o vencido: responde 401 y no deja pasar.
+ * Token invalido o vencido: responde 401 y no deja pasar.
  */
-@Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtService jwtService;
+    private final JwtService jwtService;
+
+    public JwtAuthenticationFilter(JwtService jwtService) {
+        this.jwtService = jwtService;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
