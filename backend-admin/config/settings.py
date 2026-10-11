@@ -132,6 +132,7 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.acceso.authentication.DualJWTAuthentication",
     ],
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
@@ -145,28 +146,33 @@ REST_FRAMEWORK = {
 }
 
 # --- SimpleJWT (US-21) ---
+# Para adoptante móvil: Django emite/valida sus propios tokens (refresh, logout, etc.)
+# Para admin/albergue: Django VALIDA tokens emitidos por Spring Boot
 from datetime import timedelta
 
 SIMPLE_JWT = {
+    # Configuración para tokens Django (adoptante móvil)
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
+    # Configuración común
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
-    "VERIFYING_KEY": None,
-    "AUDIENCE": None,
-    "ISSUER": None,
+    "SIGNING_KEY": SECRET_KEY,  # Para firmar tokens Django (adoptante)
+    "VERIFYING_KEY": os.getenv("JWT_SECRET"),  # Para VALIDAR tokens Spring Boot (admin)
+    "AUDIENCE": "petly-django",
+    "ISSUER": "petly-spring",
     "JWK_URL": None,
     "LEEWAY": 0,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    # Spring Boot usa 'sub' como user_id
     "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
-    "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
+    "USER_ID_CLAIM": "sub",
+    # Deshabilitar token_type claim (Spring Boot no lo envía)
+    "TOKEN_TYPE_CLAIM": None,
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
-    "TOKEN_TYPE_CLAIM": "token_type",
     "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
     "JTI_CLAIM": "jti",
     "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
