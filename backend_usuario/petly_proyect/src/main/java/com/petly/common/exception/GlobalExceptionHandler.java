@@ -2,6 +2,7 @@ package com.petly.common.exception;
 
 import com.petly.auth.CorreoYaRegistradoException;
 import com.petly.auth.TokenRecuperacionInvalidoException;
+import com.petly.autorizacion.AutorizacionNoEncontradaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -65,6 +66,17 @@ public class GlobalExceptionHandler {
                         Instant.now(),
                         HttpStatus.BAD_REQUEST.value(),
                         "Token de recuperación inválido",
+                        ex.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(AutorizacionNoEncontradaException.class)
+    public ResponseEntity<ErrorResponse> handleAutorizacionNoEncontrada(AutorizacionNoEncontradaException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(
+                        Instant.now(),
+                        HttpStatus.NOT_FOUND.value(),
+                        "Autorización no encontrada",
                         ex.getMessage()
                 ));
     }

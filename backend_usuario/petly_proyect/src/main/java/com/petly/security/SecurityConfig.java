@@ -56,6 +56,9 @@ public class SecurityConfig {
                         // registro y login son publicos, recien ahi sale el token
                         .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()
+                        // la autorizacion de consulta es exclusiva del adoptante (US-18)
+                        .requestMatchers("/api/autorizaciones/**")
+                        .hasRole("ADOPTANTE")
                         .anyRequest().authenticated());
         return http.build();
     }
