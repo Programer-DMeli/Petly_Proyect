@@ -382,4 +382,11 @@ ol=ADOPTANTE|ALBERGUE|ADMIN, iss=petly-spring, ud=petly-django, exp=1h (3600s)
 
 ## Recuperación Spring Boot US-24
 
-Endpoints presentes en el código integrado: `POST /api/auth/password/reset` (campo `correo`) y `POST /api/auth/password/reset/confirm` (campos `token` y `nuevaPassword`). Su presencia no confirma el envío de correo ni el cierre de la historia; falta verificar el flujo completo.
+Endpoints: `POST /api/auth/password/reset` (campo `correo`) y `POST /api/auth/password/reset/confirm` (campos `token`, `nuevaPassword` y `nuevaPasswordConfirm`).
+
+- El token es un JWT con claim `"type": "password_reset"`, expira en **15 minutos** y lleva `jti` unico.
+- **Uso unico real**: al solicitar el reset se guarda solo el hash del token en `tokens_recuperacion`; al confirmar se consume de forma atomica. Un segundo intento con el mismo token responde **400**.
+- Pedir un enlace nuevo invalida los pendientes anteriores.
+- Errores **400** con mensaje claro si el token es invalido, expiro, ya fue usado, o si `nuevaPassword` no coincide con `nuevaPasswordConfirm`.
+
+Pendiente de verificación en el entorno: envio real del correo (SMTP/MailHog).

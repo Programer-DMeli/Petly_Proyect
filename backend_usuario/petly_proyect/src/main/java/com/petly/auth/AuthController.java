@@ -68,7 +68,10 @@ public class AuthController {
 
     @PostMapping("/password/reset/confirm")
     public ResponseEntity<?> confirmarReset(@Valid @RequestBody PasswordResetConfirmRequest request) {
-        authService.confirmarResetPassword(request.getToken(), request.getNuevaPassword());
+        authService.confirmarResetPassword(
+                request.getToken(),
+                request.getNuevaPassword(),
+                request.getNuevaPasswordConfirm());
         return ResponseEntity.ok(Map.of("detail", "Contraseña actualizada correctamente."));
     }
 }

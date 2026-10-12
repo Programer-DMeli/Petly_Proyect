@@ -6,12 +6,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
 
 import com.petly.usuarios.Usuario;
 import com.petly.usuarios.repository.UsuarioRepository;
@@ -35,6 +41,9 @@ public class AuthService {
 
     @Autowired
     private JavaMailSender mailSender;
+
+    @Autowired
+    private RecuperacionTokenRepository tokens;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -107,51 +116,110 @@ public class AuthService {
 
     /**
      * Solicita recuperación de contraseña (US-24).
-     * Genera token JWT tipo "password_reset" con expiración 15 min.
-     * Envía email con enlace de recuperación.
+     * Genera token JWT tipo "password_reset" con expiración 15 min, guarda
+     * SOLO su hash en tokens_recuperacion (un solo uso) e invalida los
+     * enlaces pendientes anteriores. Envía email con el enlace.
      * Respuesta genérica para no revelar si el correo existe.
      */
+    @Transactional
     public void solicitarResetPassword(String correo) {
         String email = correo.trim().toLowerCase();
         Usuario usuario = usuarios.findByCorreo(email).orElse(null);
-        
-        if (usuario != null) {
-            String token = jwtService.generarTokenPasswordReset(usuario);
-            String resetUrl = frontendUrl + "/recuperacion?token=" + token;
-            
-            try {
-                SimpleMailMessage message = new SimpleMailMessage();
-                message.setFrom(mailFrom);
-                message.setTo(usuario.getCorreo());
-                message.setSubject("Recuperación de contraseña - Petly");
-                message.setText(
-                    "Hola " + usuario.getUsername() + ",\n\n" +
-                    "Para restablecer tu contraseña, haz clic en el siguiente enlace:\n" +
-                    resetUrl + "\n\n" +
-                    "El enlace expira en 15 minutos.\n\n" +
-                    "Si no solicitaste esto, ignora este correo.\n\n" +
-                    "Equipo Petly"
-                );
-                mailSender.send(message);
-            } catch (Exception e) {
-                // Log error pero no revelar si el email falló
-                System.err.println("Error enviando email de recuperación: " + e.getMessage());
-            }
+
+        if (usuario == null) {
+            // Siempre respuesta genérica (no revelar si existe)
+            return;
         }
-        // Siempre respuesta genérica (no revelar si existe)
+
+        // Un solo enlace activo por usuario: los pendientes quedan invalidados
+        tokens.invalidarPendientes(usuario.getId(), LocalDateTime.now());
+
+        String token = jwtService.generarTokenPasswordReset(usuario);
+        RecuperacionToken registro = new RecuperacionToken(
+                usuario.getId(),
+                hashSha256(token),
+                LocalDateTime.now().plusMinutes(15));
+        tokens.save(registro);
+
+        String resetUrl = frontendUrl + "/recuperacion?token=" + token;
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(mailFrom);
+            message.setTo(usuario.getCorreo());
+            message.setSubject("Recuperación de contraseña - Petly");
+            message.setText(
+                "Hola " + usuario.getUsername() + ",\n\n" +
+                "Para restablecer tu contraseña, haz clic en el siguiente enlace:\n" +
+                resetUrl + "\n\n" +
+                "El enlace expira en 15 minutos y solo puede usarse una vez.\n\n" +
+                "Si no solicitaste esto, ignora este correo.\n\n" +
+                "Equipo Petly"
+            );
+            mailSender.send(message);
+        } catch (Exception e) {
+            // Log error pero no revelar si el email falló
+            System.err.println("Error enviando email de recuperación: " + e.getMessage());
+        }
     }
 
     /**
      * Confirma recuperación de contraseña (US-24).
-     * Valida token (tipo, expiración, firma), actualiza password.
+     * Valida que las contraseñas coincidan, que el token sea de tipo
+     * password_reset, no esté expirado y no haya sido usado; luego lo
+     * consume (un solo uso) y actualiza la contraseña.
      */
-    public void confirmarResetPassword(String token, String nuevaPassword) {
-        Long userId = jwtService.validarTokenPasswordReset(token);
+    @Transactional
+    public void confirmarResetPassword(String token, String nuevaPassword, String confirmacion) {
+        if (!nuevaPassword.equals(confirmacion)) {
+            throw new IllegalArgumentException("Las contraseñas no coinciden");
+        }
+
+        Long userId;
+        try {
+            userId = jwtService.validarTokenPasswordReset(token);
+        } catch (IllegalArgumentException e) {
+            throw new TokenRecuperacionInvalidoException("Token de recuperación inválido");
+        } catch (io.jsonwebtoken.JwtException e) {
+            throw new TokenRecuperacionInvalidoException("El enlace de recuperación es inválido o expiró");
+        }
+
+        String hash = hashSha256(token);
+        RecuperacionToken registro = tokens.findByTokenHash(hash)
+            .orElseThrow(() -> new TokenRecuperacionInvalidoException("Token de recuperación inválido"));
+
+        if (!registro.getUsuarioId().equals(userId)) {
+            throw new TokenRecuperacionInvalidoException("Token de recuperación inválido");
+        }
+        if (registro.getExpiraEn().isBefore(LocalDateTime.now())) {
+            throw new TokenRecuperacionInvalidoException("El enlace de recuperación expiró");
+        }
+
+        // Consumo atómico: si ya fue usado, no se actualiza nada
+        int consumidos = tokens.marcarComoUsado(hash, LocalDateTime.now());
+        if (consumidos == 0) {
+            throw new TokenRecuperacionInvalidoException("El enlace de recuperación ya fue usado");
+        }
+
         Usuario usuario = usuarios.findById(userId)
-            .orElseThrow(() -> new RuntimeException("usuario no encontrado"));
-        
+            .orElseThrow(() -> new TokenRecuperacionInvalidoException("Usuario no encontrado"));
+
         usuario.setPasswordHash(passwordEncoder.encode(nuevaPassword));
         usuarios.save(usuario);
+    }
+
+    private String hashSha256(String valor) {
+        try {
+            byte[] bytes = MessageDigest.getInstance("SHA-256")
+                    .digest(valor.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                hex.append(String.format("%02x", b & 0xff));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 no disponible", e);
+        }
     }
 
     /**

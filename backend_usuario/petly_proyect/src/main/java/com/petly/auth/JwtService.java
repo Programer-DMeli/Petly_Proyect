@@ -48,12 +48,14 @@ public class JwtService {
 
     /**
      * Genera token de recuperación de contraseña (US-24).
-     * Expira en 15 minutos, claim type=password_reset.
+     * Expira en 15 minutos, claim type=password_reset y jti unico para que
+     * cada solicitud produzca un token distinto (hash unico en la tabla).
      */
     public String generarTokenPasswordReset(Usuario usuario) {
         Date ahora = new Date();
         Date vence = new Date(ahora.getTime() + 900_000L); // 15 minutos
         return Jwts.builder()
+                .id(java.util.UUID.randomUUID().toString())
                 .subject(String.valueOf(usuario.getId()))
                 .claim("email", usuario.getCorreo())
                 .claim("type", "password_reset")

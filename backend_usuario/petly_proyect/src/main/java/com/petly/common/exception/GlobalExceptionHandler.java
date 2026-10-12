@@ -1,6 +1,7 @@
 package com.petly.common.exception;
 
 import com.petly.auth.CorreoYaRegistradoException;
+import com.petly.auth.TokenRecuperacionInvalidoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -53,6 +54,17 @@ public class GlobalExceptionHandler {
                         Instant.now(),
                         HttpStatus.BAD_REQUEST.value(),
                         "Argumento inválido",
+                        ex.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(TokenRecuperacionInvalidoException.class)
+    public ResponseEntity<ErrorResponse> handleTokenRecuperacionInvalido(TokenRecuperacionInvalidoException ex) {
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse(
+                        Instant.now(),
+                        HttpStatus.BAD_REQUEST.value(),
+                        "Token de recuperación inválido",
                         ex.getMessage()
                 ));
     }
