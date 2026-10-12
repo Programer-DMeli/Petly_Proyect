@@ -38,15 +38,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        try {
-            LoginResponse respuesta = authService.login(request);
-            return ResponseEntity.ok(respuesta);
-        } catch (AuthCuentaBloqueadaException e) {
-            return ResponseEntity.status(423).body(e.getMessage());
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body(e.getMessage());
-        }
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 
     @GetMapping("/me")

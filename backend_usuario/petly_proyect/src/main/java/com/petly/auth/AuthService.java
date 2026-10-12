@@ -52,14 +52,14 @@ public class AuthService {
             throw new CorreoYaRegistradoException("correo ya registrado");
         }
         if (usuarios.existsByUsername(username)) {
-            throw new RuntimeException("nombre de usuario ya existe");
+            throw new UsuarioYaRegistradoException("nombre de usuario ya existe");
         }
         
         Usuario usuario = new Usuario(
             username,
             correo,
             passwordEncoder.encode(request.getPassword()),
-            Usuario.Rol.valueOf(request.getRol().toUpperCase())
+            Usuario.Rol.ADOPTANTE
         );
         usuario.setFirstName(request.getFirstName());
         usuario.setLastName(request.getLastName());
@@ -75,7 +75,7 @@ public class AuthService {
     public LoginResponse login(LoginRequest request) {
         String correo = request.getCorreo().trim().toLowerCase();
         Usuario usuario = usuarios.findByCorreo(correo)
-            .orElseThrow(() -> new RuntimeException("credenciales inválidas"));
+            .orElseThrow(() -> new CredencialesInvalidasException("credenciales inválidas"));
         if (usuario.getBloqueadoHasta() != null) {
             if (usuario.getBloqueadoHasta().isAfter(java.time.LocalDateTime.now())) {
                 throw new AuthCuentaBloqueadaException("cuenta bloqueada temporalmente");
@@ -91,7 +91,7 @@ public class AuthService {
                 usuario.setBloqueadoHasta(java.time.LocalDateTime.now().plusMinutes(5));
             }
             usuarios.save(usuario);
-            throw new RuntimeException("credenciales inválidas");
+            throw new CredencialesInvalidasException("credenciales inválidas");
         }
         usuario.setIntentosFallidos(0);
         usuario.setBloqueadoHasta(null);

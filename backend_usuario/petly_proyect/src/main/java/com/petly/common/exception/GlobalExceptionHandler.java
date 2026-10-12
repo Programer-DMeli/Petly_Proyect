@@ -1,7 +1,10 @@
 package com.petly.common.exception;
 
+import com.petly.auth.AuthCuentaBloqueadaException;
 import com.petly.auth.CorreoYaRegistradoException;
+import com.petly.auth.CredencialesInvalidasException;
 import com.petly.auth.TokenRecuperacionInvalidoException;
+import com.petly.auth.UsuarioYaRegistradoException;
 import com.petly.autorizacion.AutorizacionNoEncontradaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +49,39 @@ public class GlobalExceptionHandler {
                         Instant.now(),
                         HttpStatus.CONFLICT.value(),
                         "Conflicto",
+                        ex.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(UsuarioYaRegistradoException.class)
+    public ResponseEntity<ErrorResponse> handleUsuarioYaRegistrado(UsuarioYaRegistradoException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(
+                        Instant.now(),
+                        HttpStatus.CONFLICT.value(),
+                        "Conflicto",
+                        ex.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ErrorResponse> handleCredencialesInvalidas(CredencialesInvalidasException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse(
+                        Instant.now(),
+                        HttpStatus.UNAUTHORIZED.value(),
+                        "Credenciales inválidas",
+                        ex.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(AuthCuentaBloqueadaException.class)
+    public ResponseEntity<ErrorResponse> handleCuentaBloqueada(AuthCuentaBloqueadaException ex) {
+        return ResponseEntity.status(HttpStatus.LOCKED)
+                .body(new ErrorResponse(
+                        Instant.now(),
+                        HttpStatus.LOCKED.value(),
+                        "Cuenta bloqueada temporalmente",
                         ex.getMessage()
                 ));
     }

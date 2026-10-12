@@ -7,8 +7,8 @@ import jakarta.validation.constraints.Size;
 /**
  * Datos para crear una cuenta (US-21).
  * Requeridos: usuario, correo y contraseña. El resto es opcional.
- * El rol por defecto es ADOPTANTE; las cuentas ALBERGUE/ADMIN se crean
- * por procedimiento y no desde el registro público.
+ * El registro público siempre crea cuentas ADOPTANTE; las cuentas
+ * ALBERGUE/ADMIN se crean por procedimiento, nunca desde aquí.
  */
 public class RegistroRequest {
 
@@ -23,8 +23,6 @@ public class RegistroRequest {
     @NotBlank(message = "contraseña requerida")
     @Size(min = 8, max = 72, message = "la contraseña debe tener entre 8 y 72 caracteres")
     private String password;
-
-    private String rol = "ADOPTANTE";
 
     private String firstName;
 
@@ -56,14 +54,6 @@ public class RegistroRequest {
 
     public void setPassword(String password) {
         this.password = password;
-    }
-
-    public String getRol() {
-        return rol;
-    }
-
-    public void setRol(String rol) {
-        this.rol = rol;
     }
 
     public String getFirstName() {
