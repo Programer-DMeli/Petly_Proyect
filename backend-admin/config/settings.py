@@ -203,6 +203,8 @@ REST_FRAMEWORK = {
         "user": "100/min",
         "auth": "2/min",  # Base rate; custom AuthThrottle handles 5-min window
     },
+    # drf-spectacular (US-12, US-24): OpenAPI schema generation
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     # Paginación global (US-12): preserva query params en next/previous
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
