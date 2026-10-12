@@ -52,6 +52,16 @@ public class AutorizacionService {
         }
     }
 
+    /** Vigencia de la autorizacion para el endpoint interno de Django (US-18). */
+    @Transactional(readOnly = true)
+    public boolean estaAutorizado(Long adoptanteId, Long albergueId) {
+        if (adoptanteId == null || albergueId == null) {
+            throw new IllegalArgumentException("adoptanteId y albergueId son obligatorios");
+        }
+        return autorizaciones.existsByAdoptanteIdAndAlbergueIdAndEstado(
+                adoptanteId, albergueId, EstadoAutorizacion.ACTIVA);
+    }
+
     private void validarAlbergue(Long albergueId) {
         if (albergueId == null || albergueId <= 0) {
             throw new IllegalArgumentException("albergueId invalido");

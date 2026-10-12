@@ -71,7 +71,6 @@ springdoc:
 # JWT Configuration (US-21)
 # Auth configuration (US-21)
 # Email configuration (US-24)
-# Django API URL para comunicación interna (US-18)
-django:
-  api:
-    url: ${DJANGO_API_URL:http://localhost:8000}
+# Secreto compartido con Django para el endpoint interno (US-18)
+interno:
+  api-secret: ${INTERNAL_API_SECRET:local-internal-secret-change-me}

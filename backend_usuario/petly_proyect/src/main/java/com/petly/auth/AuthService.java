@@ -7,12 +7,6 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -25,7 +19,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Registro, login y recuperación de contraseña (US-21, US-24).
- * Verificación de autorización con Django (US-18).
  */
 @Service
 public class AuthService {
@@ -45,17 +38,11 @@ public class AuthService {
     @Autowired
     private RecuperacionTokenRepository tokens;
 
-    @Autowired
-    private RestTemplate restTemplate;
-
     @Value("${spring.mail.from:noreply@petly.local}")
     private String mailFrom;
 
     @Value("${FRONTEND_URL:http://localhost:5173}")
     private String frontendUrl;
-
-    @Value("${DJANGO_API_URL:http://localhost:8000}")
-    private String djangoApiUrl;
 
     public AuthResponse registrar(RegistroRequest request) {
         String correo = request.getCorreo().trim().toLowerCase();
@@ -220,47 +207,5 @@ public class AuthService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 no disponible", e);
         }
-    }
-
-    /**
-     * Verifica autorización de perfil con Django (US-18).
-     * Llama a endpoint interno de Django /api/interno/autorizacion/
-     * para verificar si un adoptante autorizó a un albergue específico.
-     */
-    public boolean verificarAutorizacion(Long adoptanteId, Long albergueId, String djangoToken) {
-        try {
-            String url = djangoApiUrl + "/api/acceso/interno/autorizacion/";
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.setBearerAuth(djangoToken);
-            
-            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-            params.add("adoptante_id", adoptanteId.toString());
-            params.add("albergue_id", albergueId.toString());
-            
-            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
-            
-            var response = restTemplate.postForEntity(url, request, AutorizacionResponse.class);
-            
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return response.getBody().isAutorizado();
-            }
-            return false;
-        } catch (Exception e) {
-            System.err.println("Error verificando autorización con Django: " + e.getMessage());
-            return false;
-        }
-    }
-
-    // Response class for autorización check
-    public static class AutorizacionResponse {
-        private boolean autorizado;
-        private java.util.List<String> campos_permitidos;
-        
-        public boolean isAutorizado() { return autorizado; }
-        public void setAutorizado(boolean autorizado) { this.autorizado = autorizado; }
-        public java.util.List<String> getCampos_permitidos() { return campos_permitidos; }
-        public void setCampos_permitidos(java.util.List<String> campos_permitidos) { this.campos_permitidos = campos_permitidos; }
     }
 }

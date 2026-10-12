@@ -236,7 +236,7 @@ Token: access JWT con claim `"type": "password_reset"`, expira 15 min.
 - Claims: `sub` = id (long), `email`, `rol` = `ADOPTANTE|ALBERGUE|ADMIN`, `iss=petly-spring`, `aud=petly-django`, `exp=1h`.
 - Uso: `Authorization: Bearer <jwt>`. Login Spring responde `{token, tokenType: "Bearer", expiresIn: 3600, user: {id, email, rol}}`.
 - Django valida firma, `exp`, `iss`, `aud`. Token inválido/vencido → 401; rol sin permiso → 403. No duplica cuentas ni contraseñas.
-- US-18: Django comprueba autorización vía Spring Boot. Solo lectura, sin migraciones en Django.
+- US-18: Django comprueba la autorización llamando a Spring Boot (`GET /api/interno/autorizaciones?adoptanteId=&albergueId=`, cabecera `X-Internal-Secret`). **Spring: IMPLEMENTADO**; **Django: pendiente**. Solo lectura, sin migraciones en Django.
 
 - `POST /api/auth/registro` (correo + contrasena). Respuestas: 201 (creado), 409 (correo duplicado), 400 (validacion).
 - `POST /api/auth/login` (correo + contrasena). Respuestas: 200 ({token, tokenType: Bearer, expiresIn: 3600, user: {id,email,rol}}), 401 (credenciales invalidas), 423 (bloqueado 5 min tras 2 fallos).
@@ -251,7 +251,7 @@ Token: access JWT con claim `"type": "password_reset"`, expira 15 min.
 - Claims: `sub` = id de usuario (long), `email`, `rol` = `ADOPTANTE` | `ALBERGUE` | `ADMIN`, `iss` = `petly-spring`, `aud` = `petly-django`, `iat`, `exp` = 1 hora (3600 s).
 - Uso: cabecera `Authorization: Bearer <jwt>`. Login Spring responde `{token, tokenType: "Bearer", expiresIn: 3600, user: {id, email, rol}}`.
 - Django valida firma con `JWT_SECRET`, comprueba `exp`, `iss` y `aud`. Token invalido o vencido -> 401; rol sin permiso -> 403. No duplica cuentas ni contrasenas.
-- US-18: Django comprueba vigencia via `GET /api/interno/autorizaciones?adoptanteId=&albergueId=` (Spring) -> `{autorizado: true/false}`. Solo lectura, sin migraciones en Django.
+- US-18: Django comprueba vigencia via `GET /api/interno/autorizaciones?adoptanteId=&albergueId=` (Spring) -> `{autorizado: true/false}`, autenticado con la cabecera `X-Internal-Secret`. **Spring: IMPLEMENTADO**, **Django: pendiente**. Solo lectura, sin migraciones en Django.
 - Ejemplo de payload (sin firmar, sin secreto real):
   `{"sub":12,"email":"adoptante@test.com","rol":"ADOPTANTE","iss":"petly-spring","aud":"petly-django","iat":1728000000,"exp":1728003600}`
 
