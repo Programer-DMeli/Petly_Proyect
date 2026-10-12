@@ -15,3 +15,5 @@ python-dotenv==1.2.4
 djangorestframework-simplejwt==5.3.1
 # Documentación de API con OpenAPI 3 / Swagger UI.
 drf-spectacular==0.28.0
+# Filtros para API (US-12: filtros especie, tamaño, temperamento, edad).
+django-filter==23.5

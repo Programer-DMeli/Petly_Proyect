@@ -26,6 +26,15 @@ class Mascota(models.Model):
         MEDIANO = "MEDIANO", "Mediano"
         GRANDE = "GRANDE", "Grande"
 
+    class Temperamento(models.TextChoices):
+        TRANQUILO = "TRANQUILO", "Tranquilo"
+        ACTIVO = "ACTIVO", "Activo"
+        JUGUETON = "JUGUETON", "Juguetón"
+        TIMIDO = "TIMIDO", "Tímido"
+        SOCIABLE = "SOCIABLE", "Sociable"
+        INDEPENDIENTE = "INDEPENDIENTE", "Independiente"
+        POR_EVALUAR = "POR_EVALUAR", "Por evaluar"
+
     # Relación obligatoria con albergue
     albergue = models.ForeignKey(
         Albergue,
@@ -45,6 +54,15 @@ class Mascota(models.Model):
     # Edad aproximada
     edad_anos = models.PositiveIntegerField("Edad (años)", null=True, blank=True)
     edad_meses = models.PositiveIntegerField("Edad (meses)", null=True, blank=True)
+
+    # Temperamento (US-12): categorías predefinidas, "Por evaluar" cuando se desconozca
+    temperamento = models.CharField(
+        "Temperamento",
+        max_length=20,
+        choices=Temperamento.choices,
+        default=Temperamento.POR_EVALUAR,
+        blank=True,
+    )
 
     # Estado de adopción
     estado = models.CharField(
