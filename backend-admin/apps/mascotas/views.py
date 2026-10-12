@@ -58,10 +58,7 @@ class MascotaViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs = self.queryset
 
-        if user.is_staff:
-            return qs
-
-        # Usuario normal: solo sus mascotas
+                # Usuario normal: solo sus mascotas
         try:
             albergue = user.albergue
             return qs.filter(albergue=albergue)
@@ -85,6 +82,15 @@ class MascotaViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(read_serializer.data)
         return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        instance._prefetched_objects_cache = {}
+        return Response(MascotaSerializer(instance, context={"request": request}).data)
+
     @action(detail=True, methods=["post"], url_path="cambiar-estado")
     def cambiar_estado(self, request, pk=None):
         """
@@ -96,36 +102,23 @@ class MascotaViewSet(viewsets.ModelViewSet):
         - EN_PROCESO -> ADOPTADO
         - DISPONIBLE -> ADOPTADO (adopción directa)
         
-        No se puede volver de ADOPTADO a otro estado.
+        Se permite corregir manualmente ADOPTADO; al salir se limpia fecha_adopcion.
         """
         mascota = self.get_object()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         nuevo_estado = serializer.validated_data["estado"]
-        actual = mascota.estado
 
-        # Validar transiciones permitidas
-        transiciones_validas = {
-            Mascota.Estado.DISPONIBLE: [Mascota.Estado.EN_PROCESO, Mascota.Estado.ADOPTADO],
-            Mascota.Estado.EN_PROCESO: [Mascota.Estado.DISPONIBLE, Mascota.Estado.ADOPTADO],
-            Mascota.Estado.ADOPTADO: [],  # Estado terminal
-        }
-
-        if nuevo_estado not in transiciones_validas.get(actual, []):
-            return Response(
-                {
-                    "error": f"Transición no permitida: {actual} -> {nuevo_estado}",
-                    "transiciones_validas": transiciones_validas.get(actual, []),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Actualizar estado
+        # Sprint 1: corrección manual entre cualquiera de los tres estados.
+        # No crea solicitudes ni expedientes de adopción.
         mascota.estado = nuevo_estado
-        if nuevo_estado == Mascota.Estado.ADOPTADO and not mascota.fecha_adopcion:
-            from django.utils import timezone
-            mascota.fecha_adopcion = timezone.now().date()
+        if nuevo_estado == Mascota.Estado.ADOPTADO:
+            if not mascota.fecha_adopcion:
+                from django.utils import timezone
+                mascota.fecha_adopcion = timezone.now().date()
+        else:
+            mascota.fecha_adopcion = None
         mascota.save(update_fields=["estado", "fecha_adopcion", "actualizado_en"])
 
         return Response(MascotaSerializer(mascota, context={"request": request}).data)

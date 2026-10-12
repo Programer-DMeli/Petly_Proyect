@@ -30,7 +30,7 @@ Django utiliza el mismo contenedor; sus mensajes de campo pueden ser listas. Est
 | POST `/api/auth/registro` | `correo`, `password`; 201 con `id`, `correo`, `rol` | Público; siempre ADOPTANTE |
 | POST `/api/auth/login` | `correo`, `password`; 200 con `token`, `tokenType`, `expiresIn`, `user` | Público |
 | GET `/api/auth/me` | `id` como texto, `correo`, `rol` | Acceso válido |
-| POST `/api/auth/password/reset` | `correo`; 200 con mensaje genérico | Público |
+| POST `/api/auth/password/reset` (opcional `?canal=web`) | `correo`; 200 con mensaje genérico | Público |
 | POST `/api/auth/password/reset/confirm` | `token`, `nuevaPassword`, `nuevaPasswordConfirm`; 200 | Público; token de recuperación válido |
 
 Ejemplo de registro/login:
@@ -39,9 +39,9 @@ Ejemplo de registro/login:
 {"correo":"adoptante@example.test","password":"<contraseña privada>"}
 ```
 
-Correo válido, normalizado a minúsculas y sin espacios externos, único. Contraseña: al menos ocho caracteres, máximo 72 bytes UTF-8 para BCrypt, sin recortarla. Recuperación exige confirmación idéntica. El primer fallo devuelve 401; el segundo activa bloqueo persistido de cinco minutos y devuelve 423. Una contraseña correcta no evita el bloqueo. Al vencer, el siguiente intento reinicia el contador; un acceso correcto también lo reinicia. Login, registro y recuperación comparten límite de diez peticiones por minuto/IP; 429 incluye `Retry-After: 60`. La cuota está en memoria de una instancia; no requiere Redis. `/me` no consume esa cuota.
+Correo válido, normalizado a minúsculas y sin espacios externos, único. Contraseña: al menos ocho caracteres, máximo 72 bytes UTF-8 para BCrypt, sin recortarla. Recuperación exige confirmación idéntica. El primer fallo devuelve 401; el segundo activa bloqueo persistido de un minuto y devuelve 423. Una contraseña correcta no evita el bloqueo. Al vencer, el siguiente intento reinicia el contador; un acceso correcto también lo reinicia. Login, registro y recuperación comparten límite de diez peticiones por minuto/IP; 429 incluye Retry-After con los segundos restantes reales de la ventana (1–60). La cuota está en memoria de una instancia; no requiere Redis. `/me` no consume esa cuota.
 
-Recuperación: token aleatorio opaco, distinto de un JWT de acceso; solo su hash SHA-256 se guarda. Expira a los 15 minutos, se consume una sola vez en transacción y el cambio invalida sesiones y demás enlaces pendientes de esa cuenta. No se entrega el token en la respuesta API. Un correo desconocido recibe el mismo mensaje público. SMTP debe estar configurado: recibir 200 no prueba entrega de correo. En desarrollo el enlace abre Petly; la pantalla permite pegar el código como alternativa. El custom scheme no es un Android App Link verificado; confirmar dominio propio antes de una publicación futura.
+Recuperación: token aleatorio opaco, distinto de un JWT de acceso; solo su hash SHA-256 se guarda. Expira a los 15 minutos, se consume una sola vez en transacción y el cambio invalida sesiones y demás enlaces pendientes de esa cuenta. No se entrega el token en la respuesta API. Un correo desconocido recibe el mismo mensaje público. SMTP debe estar configurado: recibir 200 no prueba entrega de correo. Sin canal o con canal=android, el enlace abre Petly Android; con canal=web usa WEB_RESET_LINK_BASE (por defecto http://localhost:5173/recuperacion). No se acepta una URL arbitraria del cliente. Un canal distinto devuelve 400; la pantalla permite pegar el código como alternativa. El custom scheme no es un Android App Link verificado; confirmar dominio propio antes de una publicación futura.
 
 ## US-16 y US-17: perfil propio
 
@@ -116,15 +116,45 @@ ADOPTANTE:
 
 ALBERGUE:
 
+- GET Spring `/api/albergue/perfiles` y GET Django `/api/acceso/perfiles-compartidos/`: lista únicamente consentimientos vigentes del albergue propietario, con adoptanteId y correo para identificar la cuenta. Sin contraseñas ni tokens.
 - GET Spring `/api/albergue/perfiles/{adoptanteId}`.
 - GET Django `/api/acceso/perfiles-compartidos/{adoptanteId}/`: valida identidad y consulta la ruta Spring con el token original.
 
-Spring comprueba relación `acceso_user.spring_id → albergue.usuario_id` y consentimiento vigente. Sin autorización, otro albergue o tras revocación: 403. Solo devuelve las respuestas del cuestionario; no incluye correo, contraseñas, token ni historial. Revocar impide consultas futuras; no puede retirar información que el albergue ya haya visto. Android pide confirmación expresa antes de autorizar. Esto no crea una solicitud.
+Spring comprueba relación `acceso_user.spring_id → albergue.usuario_id` y consentimiento vigente. Sin autorización, otro albergue o tras revocación: 403. Solo devuelve las respuestas del cuestionario; no incluye correo, contraseñas, token ni historial. Revocar impide consultas futuras; no puede retirar información que el albergue ya haya visto. Android y React piden confirmación expresa antes de autorizar. React no conserva el perfil consultado al actualizar la lista; cada consulta vuelve a comprobar el consentimiento. Esto no crea una solicitud.
 
 Las rutas antiguas `/api/acceso/auth/**`, postulantes, solicitudes y autorización provisional responden 410; se conserva código previo fuera del enrutamiento para revisión del equipo. El admin Django mantiene acceso técnico interno, separado de cuentas Petly.
 
 ## Django: administración e integración
 
-API existente: `/api/albergues/` (perfil/infrastructura del propietario) y `/api/mascotas/` (CRUD del propietario), con JWT Spring y control de rol. Crear una mascota genera un código interno y asigna su albergue desde la identidad, no desde datos del cliente. POST `/api/mascotas/{id}/cambiar-estado/`, JSON `{"estado":"EN_PROCESO"}`: permite Disponible→En Proceso/Adoptado y En Proceso→Disponible/Adoptado; Adoptado es terminal según el código existente. Otro propietario recibe 404. El catálogo refleja el cambio al consultar de nuevo; no utiliza push.
+API existente: `/api/albergues/` (perfil/infrastructura del propietario) y `/api/mascotas/` (CRUD del propietario), con JWT Spring y control de rol. Crear una mascota genera un código interno y asigna su albergue desde la identidad, no desde datos del cliente. POST `/api/mascotas/{id}/cambiar-estado/`, JSON `{"estado":"EN_PROCESO"}`: permite corrección manual entre los tres estados. Adoptado registra fecha si no existía; cambiar a otro estado limpia esa fecha. Repetir el mismo estado es idempotente. Otro propietario recibe 404. El catálogo refleja el cambio al consultar de nuevo; no utiliza push.
 
-US-46/US-11/US-13 tienen apoyo API comprobable; el panel React y la revisión completa de historias de Mayra siguen pendientes. OpenAPI: Spring `/v3/api-docs` y `/swagger-ui.html`; Django `/api/schema/` y `/api/docs/`. Este contrato escrito cubre también las validaciones de perfil que dependen del contenido PATCH.
+React integra US-46/US-11/US-13 por estas APIs. Por solicitud posterior del usuario, ADMIN realiza CRUD de albergues y gestión institucional/infraestructura sin is_staff. Las cuentas se crean mediante el procedimiento del equipo. ADMIN no utiliza el CRUD de mascotas del propietario. ALBERGUE consulta y modifica sus propios recursos. ADOPTANTE no accede a estas APIs administrativas. Los filtros de edad Django edad_min_meses/edad_max_meses usan años*12+meses y rechazan valores/rangos inválidos. La revisión cruzada sigue pendiente. OpenAPI: Spring `/v3/api-docs` y `/swagger-ui.html`; Django `/api/schema/` y `/api/docs/`. Este contrato escrito cubre también las validaciones de perfil que dependen del contenido PATCH.
+
+## Sesión React
+
+El JWT y la identidad permanecen en memoria, sin localStorage ni cookies de negocio. Cambiar de rol desde la interfaz no concede permisos. Rutas protegidas redirigen al área real del rol; el backend valida cada petición. Recargar o cerrar la página requiere iniciar sesión de nuevo. Expiración o 401 elimina la sesión. La recuperación quita el token de la barra de dirección tras cargarlo. HTTP queda limitado a la demostración local; HTTPS y configuración SMTP propia antes de despliegue.
+
+Si MEDIA_BASE_URL usa 10.0.2.2 para Android, React sustituye únicamente ese host por VITE_API_ADMINISTRACION_URL para mostrar la foto desde navegador. Las demás URLs de medios se conservan.
+
+## Ampliación US-46: CRUD ADMIN
+
+- Spring GET /api/admin/cuentas-albergue y /{id}: solo ADMIN; identidad mínima id/correo/rol de cuentas ALBERGUE, sin hashes, contraseñas ni tokens. Otros roles reciben 403; cuenta de otro rol o inexistente recibe 404.
+- Django GET /api/albergues/cuentas-disponibles/: solo ADMIN, obtiene identidades desde Spring y agrega asignada para no vincular dos instituciones a la misma cuenta. Se excluyen cuentas técnicas locales.
+- POST /api/albergues/: ADMIN envía propietario_spring_id (ID Spring), nombre, direccion, capacidad_maxima y demás información institucional. Django valida el rol contra Spring y crea/reutiliza un espejo sin contraseña utilizable. No asigna ADMIN como dueño. ALBERGUE conserva su alta propia y no puede elegir otro propietario.
+- GET/PATCH/PUT /api/albergues/{id}/: ADMIN consulta y edita instituciones; ALBERGUE solo la propia. ADMIN puede cambiar activo; ALBERGUE no puede enviar ese campo. No se transfieren propietarios desde el formulario. Respuesta completa con ID y propietario_spring_id/propietario_correo de lectura.
+- DELETE /api/albergues/{id}/: elimina institución e infraestructura solo si no tiene mascotas. Con mascotas devuelve 409 y no borra nada; ADMIN puede desactivarla. La cuenta Spring y su espejo local se conservan. No modifica tablas de consentimiento Spring; sus consultas excluyen instituciones eliminadas/inactivas.
+- search en lista Django filtra nombre, dirección o responsable y conserva paginación.
+
+Sexo de mascota: POR_EVAL (Por evaluar), MACHO y HEMBRA. No se infiere de fotografías; la edad desconocida permanece null y tamaño desconocido vacío. Una sola JPEG/PNG real de máximo 5 MiB. No hay nueva autoridad de acceso ni credenciales duplicadas.
+
+En desarrollo DEBUG, Django admite explícitamente Host 10.0.2.2 para servir las fotografías al emulador. Si se configura DJANGO_ALLOWED_HOSTS, incluir ese host local. Para teléfono físico incluir la IP LAN correspondiente; no se utiliza '*'. En producción configurar únicamente los dominios propios.
+
+## US-21: bloqueo visible y cuota en los clientes
+
+Dos contraseñas incorrectas consecutivas para una cuenta EXISTENTE producen 401 y luego 423. Los errores de formato/contraseña vacía se validan antes de enviar desde React/Kotlin y no incrementan el contador de la cuenta. Un correo válido pero inexistente devuelve 401; no hay cuenta que bloquear. Cada petición HTTP real de autenticación sí consume cuota, incluso cuando termina en 400/401/423.
+
+423: error, campos, codigo=CUENTA_BLOQUEADA, reintentarEnSegundos y Retry-After con el tiempo restante; el primer bloqueo dura 60 segundos. Intentar desde otro cliente, recargar o utilizar la contraseña correcta no evade ni reinicia el bloqueo. Tras vencer, un acceso correcto reinicia contador/vencimiento.
+
+429: codigo=LIMITE_PETICIONES, reintentarEnSegundos y Retry-After (1–60); cuota global de diez peticiones/minuto/IP para las rutas públicas de autenticación. No equivale a bloqueo de un minuto de una cuenta. CORS expone Retry-After a React.
+
+React y Kotlin muestran mm:ss y deshabilitan el botón mientras esperan. Los campos pueden editarse para acceder con otra cuenta cuando solo hay bloqueo de cuenta; la cuota por IP afecta a todas. El contador del cliente es UX, no autoridad de seguridad: el servidor persiste y aplica el bloqueo. React solo exige mínimo ocho caracteres al REGISTRAR; al acceder envía cualquier contraseña no vacía para que los errores de autenticación lleguen al servidor. Kotlin aplica la misma distinción.

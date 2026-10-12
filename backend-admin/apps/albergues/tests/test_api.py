@@ -78,6 +78,8 @@ class AlbergueAPITest(TestCase):
         response = self.client.patch(f'/api/albergues/{self.albergue.id}/', {'nombre': 'Actualizado'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['nombre'], 'Actualizado')
+        self.assertEqual(response.data['id'], self.albergue.id)
+        self.assertIn('infraestructura', response.data)
 
     def test_no_puede_actualizar_ajeno_retorna_404(self):
         """No puede actualizar albergue de otro usuario (retorna 404 por seguridad)."""
@@ -114,3 +116,23 @@ class AlbergueAPITest(TestCase):
         response = self.client.get(f'/api/albergues/{self.albergue.id}/infraestructura/')
         data = response.data if isinstance(response.data, list) else response.data.get('results', [])
         self.assertEqual(len(data), 0)
+    def test_admin_consulta_y_edita_sin_staff(self):
+        admin = User.objects.create_user(username="admin_negocio", rol="ADMIN", is_staff=False)
+        self._auth(admin)
+        response = self.client.get('/api/albergues/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(self.client.get(f'/api/albergues/{self.albergue.id}/').status_code, 200)
+        self.assertEqual(self.client.patch(f'/api/albergues/{self.albergue.id}/', {'nombre': 'Actualizado ADMIN'}).status_code, 200)
+        self.assertEqual(self.client.post('/api/albergues/', {'nombre': 'No', 'direccion': 'No'}).status_code, 400)
+        self.assertEqual(self.client.post(f'/api/albergues/{self.albergue.id}/infraestructura/', {'tipo':'PATIO','nombre':'Área ADMIN'}).status_code, 201)
+
+    def test_adoptante_no_consulta_admin(self):
+        adoptante = User.objects.create_user(username="adoptante_denegado", rol="ADOPTANTE")
+        self._auth(adoptante)
+        self.assertEqual(self.client.get('/api/albergues/').status_code, 403)
+
+    def test_area_negativa_rechazada(self):
+        self._auth(self.user)
+        response = self.client.post(f'/api/albergues/{self.albergue.id}/infraestructura/', {'tipo':'PATIO','nombre':'Área','metros_cuadrados':-1})
+        self.assertEqual(response.status_code, 400)

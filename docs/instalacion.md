@@ -55,7 +55,7 @@ Desde la raíz:
 python3 scripts/pruebas-spring.py
 ```
 
-El script genera un secreto temporal y ejecuta las 16 pruebas sobre H2; no usa credenciales de la base del equipo. En Windows se puede establecer `PETLY_TEST_SECRET` privado y ejecutar `.\mvnw.cmd test` directamente desde Spring. Django, desde su carpeta: `python manage.py test --settings=config.test_settings`. Usa SQLite aislado y claves aleatorias. Las pruebas fuera de alcance de solicitudes/postulantes se conservan pero se omiten explícitamente; una comprobación específica de MariaDB se omite cuando SQLite soporta índices parciales.
+El script genera un secreto temporal y ejecuta las 20 pruebas sobre H2; no usa credenciales de la base del equipo. En Windows se puede establecer `PETLY_TEST_SECRET` privado y ejecutar `.\mvnw.cmd test` directamente desde Spring. Django, desde su carpeta: `python manage.py test --settings=config.test_settings`. Usa SQLite aislado y claves aleatorias. Las pruebas fuera de alcance de solicitudes/postulantes se conservan pero se omiten explícitamente; una comprobación específica de MariaDB se omite cuando SQLite soporta índices parciales.
 
 Para pruebas reales, iniciar una instancia MariaDB **aislada** con base `petly_test_*` o `petly_integracion`; no utilizar la base del equipo. Ejemplo Linux con datos en /tmp:
 
@@ -82,3 +82,37 @@ Con servicios y mascotas de prueba listos, desde `mobile_petly`:
 ```
 
 Verificar el reporte de instrumentación, además del código de salida Gradle: se observó que Gradle podía informar BUILD SUCCESSFUL cuando el runner fallaba por firma de instalación. Las pruebas instrumentadas requieren APIs activas y al menos una mascota persistida; no ejecutarlas como si fueran pruebas offline.
+
+## React funcional y demostración de Sprint 1
+
+React incluye los tres roles. `VITE_API_USUARIO_URL=http://localhost:8080` y `VITE_API_ADMINISTRACION_URL=http://localhost:8000`; los orígenes admitidos deben coincidir. Arrancar con `cd web`, `npm ci`, `npm run dev -- --strictPort`. Puerto 5173; no permitir que Vite cambie de puerto silenciosamente. Usar http://localhost:5173. El JWT está en memoria: recargar la página requiere nuevo acceso.
+
+Para correos solicitados desde React, Spring usa `WEB_RESET_LINK_BASE=http://localhost:5173/recuperacion`; Android conserva `RESET_LINK_BASE=petly://recuperacion`. El cliente envía canal=web, no una URL arbitraria. SMTP local de pruebas guarda solo el último correo en /tmp/petly-correo-prueba.eml con permisos privados. Ese archivo no se sube a Git.
+
+Sobre una MariaDB aislada ya iniciada, `python scripts/servicios-pruebas.py` arranca Spring, aplica migraciones Django y arranca Django/SMTP. El script requiere las dependencias de scripts/requirements-tests.txt. Su puerto MariaDB predeterminado es 13306. Mantenerlo activo. No aplicar el procedimiento a la base del equipo sin revisar historial/esquema.
+
+`python scripts/crear-cuentas-demo.py` crea las tres cuentas siguiendo registro Spring y promoción controlada del equipo únicamente en la base aislada. Guarda /tmp/petly-demo-cuentas.json privado (600); no imprime ni versiona credenciales. Si ya existe, elegir otro nombre mediante PETLY_DEMO_FILE tanto al generar como al ejecutar pruebas. Consultar ese archivo local para iniciar sesión. Nunca convertir las cuentas de pruebas en cuentas reales del equipo.
+
+Validación web: `npm run lint`, `npm run build`, `npx playwright install chromium`, `npm run test:e2e` desde web/. Servicios y cuentas deben existir antes. La prueba usa Chromium real y no usa respuestas simuladas. No ejecutar varias suites HTTP simultáneamente, porque comparten cuota de acceso. El primer fallo puede bloquear cuentas de prueba; el script no elimina datos automáticamente. Reportes/credenciales/trace no se versionan. No habilitar trace de Playwright con tokens y contraseñas.
+
+Recorrido de presentación: ALBERGUE registra institución/infraestructura/mascota y estado; ADOPTANTE guarda perfil, filtra catálogo y autoriza; ALBERGUE consulta y luego comprueba revocación; ADMIN consulta instituciones y responsables. Repetir consulta catálogo desde Android. Mostrar recuperación con SMTP de pruebas y enlace web, sin revelar token al público.
+
+## US-46 ADMIN y fotografías suministradas
+
+Nueva migración Django mascotas/0004_alter_mascota_sexo.py agrega la opción POR_EVAL; los tipos/identificadores anteriores se conservan. Aplicar migrate después de revisar el entorno. No cambia tablas Spring.
+
+Para probar el CRUD ADMIN preparar una cuenta ALBERGUE libre con python scripts/preparar-propietario-crud.py sobre la base aislada. Credenciales solo en /tmp/petly-crud-owner.json; el script no crea cuentas en la base real. El test web tests/admin-crud.spec.js utiliza ese archivo privado además de PETLY_DEMO_FILE. Crear cuentas reales siguiendo cuentas-admin.md.
+
+Publicación de imágenes de ejemplo: desde web ejecutar node scripts/publicar-mascotas.mjs con los servicios iniciados. Requiere img_mascotas (originales del usuario, no versionados), Chromium instalado y la cuenta demo ALBERGUE con institución. Reutiliza registros de demostración iguales; no reemplaza otras mascotas. Las pruebas Android de fotografías requieren primero publicar estas siete imágenes. API y medios siguen siendo Django; clientes reciben las URLs del catálogo Spring.
+
+Ejecutar las suites de navegador y Android secuencialmente: comparten la cuota local de autenticación y usan recursos de la máquina. Si Gradle tiene problemas de memoria, usar --no-daemon --max-workers=1 -Dorg.gradle.jvmargs=-Xmx1024m. Los reportes temporales pueden contener datos privados; no se versionan ni publican.
+
+En desarrollo DEBUG, Django admite explícitamente Host 10.0.2.2 para servir las fotografías al emulador. Si se configura DJANGO_ALLOWED_HOSTS, incluir ese host local. Para teléfono físico incluir la IP LAN correspondiente; no se utiliza '*'. En producción configurar únicamente los dominios propios.
+
+Guía para compartir con compañeros, con instalación Windows/Linux, base nueva, correo y cuentas: [guia-companeros-sprint-01.md](guia-companeros-sprint-01.md).
+
+## Mailpit de la instalación actual
+
+Configuración aplicada: MAIL_HOST=127.0.0.1, MAIL_PORT=1026. La bandeja se abre en http://localhost:8025; 8025 no es el puerto SMTP. Spring fue reiniciado cargando esas variables y se verificó la recepción de un correo de recuperación de una cuenta ficticia en Mailpit.
+
+El arranque scripts/servicios-pruebas.py respeta MAIL_HOST/MAIL_PORT del entorno o del .env privado de Spring. Cuando se usa 1026, no inicia ni detiene Mailpit. Las suites antiguas que leen /tmp/petly-correo-prueba.eml requieren el receptor interno: arrancar explícitamente con MAIL_HOST=127.0.0.1 MAIL_PORT=1025. Mailpit externo puede permanecer en 1026.

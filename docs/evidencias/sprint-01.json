@@ -3,12 +3,12 @@
   "zona": "America/Lima",
   "rama": "feature/petly_proyect",
   "spring": {
-    "tests": 18,
+    "tests": 23,
     "fallos": 0
   },
   "django": {
-    "descubiertas": 54,
-    "ejecutadas": 44,
+    "descubiertas": 66,
+    "ejecutadas": 56,
     "omitidas": 10,
     "fallos": 0
   },
@@ -17,7 +17,7 @@
     "fallos": 0
   },
   "android_instrumentadas": {
-    "tests": 4,
+    "tests": 5,
     "fallos": 0,
     "avd": "Medium_Phone",
     "api": 34
@@ -38,5 +38,57 @@
   },
   "base_equipo_modificada": false,
   "revision_cruzada": "pendiente",
-  "telefono_fisico": "pendiente"
+  "telefono_fisico": "pendiente",
+  "react": {
+    "build": "PASS",
+    "lint": "PASS",
+    "formato": "PASS",
+    "playwright": {
+      "tests": 4,
+      "fallos": 0,
+      "backend": "APIs reales Spring y Django",
+      "browser": "Chromium"
+    },
+    "npm_vulnerabilidades": 0
+  },
+  "base_equipo_verificacion": "No existe backend-admin/.env local; no se modificó la base del equipo",
+  "publicacion": {
+    "primera_entrega": "cc83ea3",
+    "cambios_posteriores": "locales"
+  },
+  "us46_admin": {
+    "crud": "PASS",
+    "propietario_verificado_spring": true,
+    "eliminacion_con_mascotas": "rechazada 409",
+    "cuenta_conservada": true
+  },
+  "fotografias_usuario": {
+    "publicadas": 7,
+    "desde": "formulario real ALBERGUE React",
+    "djangohost_emulador": "PASS",
+    "originales_identicos_sha256": true,
+    "android_descarga_decodificacion": "PASS",
+    "nombres": [
+      "Luna",
+      "Toby",
+      "Bruno",
+      "Miel",
+      "Copito",
+      "Simba",
+      "Nube"
+    ],
+    "republicacion_sin_duplicados": "PASS"
+  },
+  "us21_bloqueo_clientes": {
+    "spring_suite_tests": 23,
+    "react_casos_reales": 2,
+    "android_casos_reales": 2,
+    "fallos": 0,
+    "correo_invalido_no_envia": true,
+    "password_corta_acceso_llega_spring": true,
+    "bloqueo_persistente_tras_recargar": true,
+    "contador_423_429_y_boton_deshabilitado": true,
+    "autoridad": "Spring Boot",
+    "cuentas_equipo_bloqueadas": false
+  }
 }

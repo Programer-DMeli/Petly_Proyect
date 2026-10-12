@@ -79,6 +79,7 @@ Respuesta básica, sin información sensible (versión, base de datos o rutas).
 - [`PLANNING.md`](PLANNING.md) — planificación v2 (alcance, decisiones, sprints).
 - [`docs/arquitectura.md`](docs/arquitectura.md) — componentes, integración y responsables de datos.
 - [`docs/instalacion.md`](docs/instalacion.md) — requisitos y comandos en Windows.
+- [`docs/guia-companeros-sprint-01.md`](docs/guia-companeros-sprint-01.md) — guía para reproducir el avance en Windows/Linux con cuentas y fotografías locales.
 - [`docs/acuerdos-equipo.md`](docs/acuerdos-equipo.md) — reparto y revisión cruzada.
 - [`docs/api.md`](docs/api.md) — endpoints implementados y contrato previsto.
 - [`docs/sprint-01.md`](docs/sprint-01.md) — alcance del Sprint 1 (**implementación y revisión**).
@@ -93,12 +94,14 @@ Implementación Sprint 1 en `feature/petly_proyect` (12 de octubre de 2026):
 - Spring como única autoridad de credenciales; Android consume JWT y Django lo valida.
 - Recuperación por correo, token de uso único y consentimiento revocable por albergue.
 - Migraciones aditivas, pruebas automatizadas y recorrido real en una base aislada; base del equipo sin modificar.
-- Las historias esperan revisión cruzada; panel React del albergue y verificaciones en el entorno del equipo siguen pendientes.
+- React funcional para ADMIN, ALBERGUE y ADOPTANTE: acceso/recuperación, CRUD institucional ADMIN, gestión del albergue/mascotas y experiencia web del adoptante.
+- Fotografías suministradas publicadas desde ALBERGUE y servidas por Django para React y Android.
+- Las historias esperan revisión cruzada y verificación en el entorno compartido del equipo.
 
-Ver [`docs/entrega-sprint-01.md`](docs/entrega-sprint-01.md) para resultados y límites, [`docs/api.md`](docs/api.md) para contratos y [`docs/sprint-01.md`](docs/sprint-01.md) para estado por historia. No se hizo commit ni push de esta implementación.
+Ver [`docs/entrega-sprint-01.md`](docs/entrega-sprint-01.md) para resultados y límites, [`docs/api.md`](docs/api.md) para contratos y [`docs/sprint-01.md`](docs/sprint-01.md) para estado por historia. La implementación Android anterior se publicó en cc83ea3. Los cambios posteriores de React y correcciones permanecen locales hasta una nueva publicación solicitada.
 
 ## Reglas del repositorio
 
 - Sin secretos en Git: `.env` (y `local.properties`) están excluidos; solo se versionan `.env.example`.
 - Sin Docker ni microservicios adicionales.
-- No hay push a GitHub en esta etapa.
+- Los commits/push se realizan cuando el usuario los solicita.

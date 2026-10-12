@@ -126,8 +126,8 @@ class MascotaModelTest(TestCase):
         self.assertIn(Mascota.Estado.DISPONIBLE, transiciones)
         self.assertIn(Mascota.Estado.ADOPTADO, transiciones)
 
-    def test_get_valid_transiciones_adoptado_terminal(self):
-        """ADOPTADO no tiene transiciones válidas."""
+    def test_get_valid_transiciones_adoptado_corregible(self):
+        """ADOPTADO permite corrección manual en Sprint 1."""
         mascota = Mascota.objects.create(
             albergue=self.albergue,
             nombre='Test',
@@ -136,4 +136,4 @@ class MascotaModelTest(TestCase):
             sexo=Mascota.Sexo.MACHO,
             estado=Mascota.Estado.ADOPTADO,
         )
-        self.assertEqual(mascota.get_valid_transitions, [])
+        self.assertEqual(set(mascota.get_valid_transitions), {Mascota.Estado.DISPONIBLE, Mascota.Estado.EN_PROCESO})

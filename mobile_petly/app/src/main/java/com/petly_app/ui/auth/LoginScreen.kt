@@ -23,6 +23,9 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    val accountRemaining = if (state.blockedEmail == email.trim().lowercase()) state.lockRemainingSeconds else 0
+    val remaining = maxOf(accountRemaining, state.rateLimitRemainingSeconds)
+    val waitLabel = "${remaining / 60}:${(remaining % 60).toString().padStart(2, '0')}"
     Column(
         modifier = Modifier.fillMaxSize().imePadding()
             .verticalScroll(rememberScrollState()).padding(24.dp),
@@ -45,12 +48,18 @@ fun LoginScreen(
         )
         PasswordField(password, { password = it }, "Contraseña", !state.busy)
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (remaining > 0) Text(
+            (if (state.rateLimitRemainingSeconds > 0) "Límite de peticiones alcanzado" else "Cuenta bloqueada temporalmente") +
+                ". Puedes volver a intentar en $waitLabel.",
+            color = MaterialTheme.colorScheme.error
+        )
+        Text("Dos contraseñas incorrectas consecutivas bloquean una cuenta registrada durante 1 minuto. Los errores de formato no cuentan como intentos de acceso.", style = MaterialTheme.typography.bodySmall)
         Button(
 
 
 
             onClick = { onLogin(email, password) },
-            enabled = !state.busy && email.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth()
+            enabled = !state.busy && remaining == 0 && email.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth()
         ) { Text(if (state.busy) "Ingresando…" else "Ingresar") }
         TextButton(onClick = onRecovery, enabled = !state.busy) { Text("Olvidé mi contraseña") }
         TextButton(onClick = onRegister, enabled = !state.busy) { Text("Crear cuenta") }

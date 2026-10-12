@@ -23,21 +23,32 @@ class MascotaFilter(DjangoFilterBackend):
         if temperamento:
             queryset = queryset.filter(temperamento=temperamento)
         
-        # Edad: edad_meses entre min y max
-        edad_min = request.query_params.get("edad_min_meses")
-        if edad_min:
-            try:
-                queryset = queryset.filter(edad_meses__gte=int(edad_min))
-            except ValueError:
-                pass
-        
-        edad_max = request.query_params.get("edad_max_meses")
-        if edad_max:
-            try:
-                queryset = queryset.filter(edad_meses__lte=int(edad_max))
-            except ValueError:
-                pass
-        
+        # Mismos meses totales que el catálogo Spring; edad desconocida no coincide.
+        from django.db.models import Case, When, Value, IntegerField, F, Q
+        from django.db.models.functions import Coalesce
+        total = Case(
+            When(Q(edad_anos__isnull=True) & Q(edad_meses__isnull=True), then=Value(None)),
+            default=Coalesce(F("edad_anos"), Value(0)) * 12 + Coalesce(F("edad_meses"), Value(0)),
+            output_field=IntegerField(),
+        )
+        bounds = {}
+        for key, lookup in [("edad_min_meses", "gte"), ("edad_max_meses", "lte")]:
+            raw = request.query_params.get(key)
+            if raw is not None and raw != "":
+                try:
+                    number = int(raw)
+                    if not 0 <= number <= 600:
+                        raise ValueError()
+                    bounds[lookup] = number
+                except ValueError:
+                    raise serializers.ValidationError({key: "Usa meses enteros entre 0 y 600."})
+        if bounds.get("gte", 0) > bounds.get("lte", 600):
+            raise serializers.ValidationError({"edad_min_meses": "La edad mínima supera la máxima."})
+        if bounds:
+            queryset = queryset.annotate(edad_total=total)
+            for lookup, number in bounds.items():
+                queryset = queryset.filter(**{"edad_total__" + lookup: number})
+
         # Estado
         estado = request.query_params.get("estado")
         if estado:

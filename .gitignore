@@ -59,3 +59,12 @@ logs/
 *.iml
 .DS_Store
 Thumbs.db
+# Evidencia temporal de pruebas web; puede contener cuentas de prueba.
+web/test-results/
+web/playwright-report/
+
+# React: artefactos reproducibles de compilación.
+web/dist/
+
+# Fotografías suministradas para publicaciones locales (originales conservados).
+img_mascotas/

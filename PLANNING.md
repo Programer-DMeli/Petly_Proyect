@@ -57,13 +57,17 @@ React y Kotlin acceden a APIs, nunca directamente a la base de datos. React util
 
 ## 5. Actores y permisos
 
-- **Adoptante:** gestiona su propio perfil, consulta mascotas y, posteriormente, sus solicitudes y seguimientos.
-- **Personal del albergue:** gestiona la información y mascotas de su organización. Consulta datos de postulantes únicamente cuando exista una relación autorizada.
-- **Administrador de Petly:** gestiona accesos y albergues dentro del alcance implementado.
+Actualización explícita del usuario: tres roles de negocio en Sprint 1.
 
-No confundir al administrador general con el personal del albergue. Ocultar una pantalla no sustituye la validación de permisos en el backend.
+| Rol | Funciones | Backend funcional |
+| --- | --- | --- |
+| ADMIN | Acceso y recuperación; CRUD de albergues y consulta de responsables, incorporado por solicitud posterior del usuario. Cuentas mediante procedimiento del equipo, sin pantalla de alta obligatoria. | Spring autentica; Django permite consulta administrativa. |
+| ALBERGUE | Propietario responsable de información institucional, infraestructura, mascotas/foto/estado y consulta de perfiles autorizados. | Django gestiona recursos; Spring autentica y conserva consentimientos. |
+| ADOPTANTE | Registro/acceso/recuperación, cuestionario y convivencia, catálogo/detalle/filtros/paginación, autorización y revocación. | Spring; Django conserva los datos de mascotas consultados por el catálogo. |
 
-El rol veterinario aparece en US-59, pero su implementación está pendiente de definición y fuera de la estructura inicial.
+React presenta las funciones de los tres roles en web; Kotlin presenta al adoptante en Android. No se requiere distinguir administrador y trabajadores dentro del mismo albergue en Sprint 1. ADMIN de Petly no equivale al propietario ALBERGUE ni al superusuario técnico Django. Ocultar pantallas no sustituye permisos API.
+
+El rol veterinario de US-59 queda fuera de esta entrega.
 
 ## 6. Autenticación y propiedad de datos
 
@@ -277,25 +281,23 @@ El PDF contiene 33 tareas que suman **26 horas**, aunque declara **30 horas**. N
 
 El usuario eligió la opción A de las alternativas de aclaración, con la excepción de pantallas, donde combinó A y B. Estas decisiones sustituyen los pendientes anteriores. La tabla de horas conserva el alcance y estimaciones del PDF como referencia histórica; no constituye una nueva estimación del alcance actualizado.
 
-- **US-21:** registro del adoptante con correo y contraseña. Las cuentas de albergue y administrador son creadas por el equipo mediante un procedimiento documentado, sin contraseñas en Git. Tras dos intentos consecutivos fallidos, bloqueo temporal de la cuenta durante **5 minutos**, con desbloqueo automático. Aplicar también limitación de peticiones. No incluir registro mediante redes sociales en esta entrega.
+- **US-21:** registro del adoptante con correo y contraseña. Las cuentas de albergue y administrador son creadas por el equipo mediante un procedimiento documentado, sin contraseñas en Git. Tras dos intentos consecutivos fallidos, bloqueo temporal de la cuenta durante **1 minuto**, con desbloqueo automático. Aplicar también limitación de peticiones. No incluir registro mediante redes sociales en esta entrega.
 - **US-11:** **una fotografía por mascota**, en JPEG o PNG, de máximo **5 MB**. El archivo se guarda en almacenamiento local de Django y su referencia en la DB. Validar el archivo en el backend; no guardar las fotografías privadas en Git.
 - **US-12:** filtros por especie, tamaño, edad y temperamento. El temperamento utiliza categorías predefinidas registradas por el albergue, incluyendo **“Por evaluar”** cuando se desconozca. No inferirlo mediante IA. Documentar las categorías y su correspondencia entre registro y filtros.
 - **US-24:** recuperación **solo por correo**, mediante enlace con token de un solo uso que vence en **15 minutos**. SMS queda pendiente para una versión posterior. No declarar entregada la alternativa SMS.
 - **US-18:** consulta del perfil únicamente cuando el adoptante **autorice expresamente compartirlo con un albergue específico**. El adoptante puede revocar la autorización. No incluir antecedentes externos ni historial de adopciones en el Sprint 1. Spring Boot conserva la autorización vinculada al perfil; Django comprueba su vigencia antes de permitir la consulta. La consulta no equivale a una solicitud de adopción.
 
-### 9.2. Pantallas: indicación exacta del usuario
+### 9.2. Interfaces acordadas — actualización del usuario
 
-> React: acceso, recuperación, catálogo, cuestionario, panel del albergue. Kotlin: experiencia completa del adoptante y el portal React del adoptante pasa al siguiente sprint
+La indicación posterior del usuario incorpora el portal React del adoptante al Sprint 1 y sustituye su aplazamiento anterior al Sprint 2.
 
-Esta indicación combina el inventario de pantallas React con el aplazamiento del portal del adoptante. Se conserva literalmente para no perder ninguna de las dos decisiones.
-
-Interpretación de planificación utilizada en este documento:
-
-- **Sprint 1, React:** acceso y recuperación para el personal del albergue y administrador; panel del albergue con perfil institucional, registro de mascotas, estados y consulta autorizada de perfiles. Administración general mínima.
-- **Sprint 1, Kotlin:** experiencia completa del adoptante **dentro de las historias de este sprint**: registro, acceso, recuperación por correo, catálogo con filtros, detalle de mascota, cuestionario y convivencia, y autorización/revocación para compartir el perfil con un albergue.
-- **Sprint 2, React:** portal funcional del adoptante, con acceso, recuperación, catálogo y cuestionario. Sus carpetas y rutas previstas se conservan desde la preparación inicial, sin presentar pantallas pendientes como terminadas.
-- “Experiencia completa” no incorpora matchmaking, solicitudes, chatbot ni otras historias fuera del Sprint 1.
-- Si el usuario esperaba entregar también catálogo y cuestionario funcionales en React durante el Sprint 1, confirmar esa diferencia antes de ampliar la programación. No borrar ni descartar esas pantallas del producto.
+- React: una aplicación con áreas ADMIN, ALBERGUE y ADOPTANTE; acceso y recuperación Spring para los tres roles.
+- ADMIN: registro, consulta, edición, activación/desactivación y eliminación protegida de albergues mediante Django, vinculados a cuentas ALBERGUE existentes. Creación de cuentas por procedimiento documentado del equipo.
+- ALBERGUE: información institucional e infraestructura, CRUD de mascotas con una fotografía, cambios de estado y consulta de perfiles con consentimiento vigente.
+- ADOPTANTE en React y Kotlin: registro/acceso/recuperación, catálogo/filtros/paginación/detalle, cuestionario/convivencia y autorización/revocación.
+- Spring es la única autoridad de autenticación. Django valida los tokens y permisos de sus recursos. Clientes acceden a APIs, nunca a DB.
+- No incluye matchmaking, solicitudes, IA, chatbot, mensajería ni seguimiento.
+- Este cambio de alcance requiere reestimar el esfuerzo; no modifica automáticamente las horas del PDF.
 
 ### 9.3. Responsables y revisión cruzada
 
@@ -325,7 +327,7 @@ Cada persona tiene tres historias como responsable, pero esto no implica igualda
 
 - El adoptante puede crear una cuenta con correo válido y contraseña; se rechazan registros con correo duplicado y entradas inválidas.
 - Con credenciales válidas obtiene acceso según su rol; con credenciales incorrectas se rechaza el acceso.
-- El segundo intento consecutivo fallido activa un bloqueo de 5 minutos; las credenciales correctas tampoco permiten entrar durante el bloqueo. Tras el plazo puede volver a intentarlo.
+- El segundo intento consecutivo fallido activa un bloqueo de 1 minuto; las credenciales correctas tampoco permiten entrar durante el bloqueo. Tras el plazo puede volver a intentarlo.
 - Se restablece el contador tras un acceso válido y se comprueba la limitación de peticiones.
 - Las credenciales se almacenan mediante hash de contraseña, nunca como texto plano. Ambos backends aplican permisos sin duplicar cuentas de negocio.
 
@@ -345,6 +347,7 @@ Cada persona tiene tres historias como responsable, pero esto no implica igualda
 **US-46 — Registro de albergues**
 
 - Una cuenta de albergue creada por el equipo registra y recupera su información institucional, ubicación y capacidad.
+- ADMIN registra una institución para una cuenta ALBERGUE existente validada por Spring; consulta/edita sus datos y puede eliminarla si no tiene mascotas. Si tiene mascotas, se rechaza el borrado y se permite desactivarla. La cuenta se conserva y no se transfieren propietarios desde el formulario.
 - Se validan los campos requeridos y se conserva la relación con su cuenta.
 - Otro albergue no puede modificar esa información.
 
@@ -377,7 +380,7 @@ Cada persona tiene tres historias como responsable, pero esto no implica igualda
 
 **US-13 — Estado de la mascota**
 
-- El albergue propietario puede cambiar el estado entre Disponible, En Proceso y Adoptado, rechazando valores no permitidos.
+- El albergue propietario puede cambiar manualmente entre Disponible, En Proceso y Adoptado, rechazando valores no permitidos. Se admite corregir Adoptado; al salir de ese estado se limpia la fecha manual de adopción. No existe aún un expediente de adopción.
 - El estado persiste y se refleja al volver a consultar el catálogo Android. El reflejo no exige una actualización push.
 - Otro albergue no puede cambiarlo. El cambio manual de este sprint no crea una solicitud ni un expediente de adopción.
 
@@ -466,7 +469,7 @@ Como parte de la preparación de la estructura, se han implementado las siguient
 
 Propuesta pendiente de estimación y aprobación, no compromiso cerrado:
 
-- **Sprint 2:** incorporar el portal React del adoptante según la decisión de v2. Como propuesta adicional, compatibilidad explicada y flujo inicial de solicitudes, sujetos a capacidad y reestimación una vez estable la base del Sprint 1.
+- **Sprint 2:** el portal React básico del adoptante se adelantó al Sprint 1 por instrucción posterior del usuario. Como propuesta adicional, compatibilidad explicada y flujo inicial de solicitudes, sujetos a capacidad y reestimación una vez estable la base del Sprint 1.
 - **Sprint 3:** completar la evaluación y registro de adopciones e incorporar descripciones asistidas por IA.
 - **Sprint 4:** seguimiento básico, integración final, correcciones, pruebas y preparación de la demostración.
 
@@ -505,3 +508,11 @@ Las restricciones explícitas y actualizaciones del usuario prevalecen sobre las
 ## 16. Implementación local de Persona C — 12 de octubre de 2026
 
 La solicitud posterior de Meliton autorizó implementar e integrar US-16, US-17 y US-12 y sus apoyos, corregir compilación, migraciones y autenticación, sin publicar. El estado de preparación descrito previamente queda como antecedente histórico. Consultar `docs/sprint-01.md` y `docs/entrega-sprint-01.md` para resultados actuales. Los nuevos detalles de contrato se registran como decisiones propuestas en `docs/api.md`; no se atribuye aprobación previa del grupo ni se modifican estimaciones. La revisión cruzada y la verificación de la base existente siguen pendientes.
+
+## 17. Cierre técnico de interfaces Sprint 1
+
+El usuario autorizó completar en orden las actividades pendientes. Se implementaron las áreas React de los tres roles, consulta ADMIN por rol (sin depender de is_staff), listado protegido de perfiles autorizados, recuperación con enlace web además del enlace Android, edad total consistente y corrección manual de disponibilidad. Resultados y límites en docs/entrega-sprint-01.md. La revisión cruzada sigue siendo una aprobación humana pendiente y no se atribuye al agente.
+
+## 18. Ampliación explícita US-46 y fotografías suministradas
+
+Meliton solicitó CRUD de albergues desde ADMIN React y publicar img_mascotas desde ALBERGUE, visibles en Android. Se implementó el CRUD en Django/React y la consulta restringida ADMIN de cuentas ALBERGUE en Spring. Las siete fotos se subieron usando el formulario real del albergue; nombres/descripciones son de demostración. Edad, tamaño, sexo, energía y temperamento desconocidos no se deducen de la imagen. Django admite sexo POR_EVAL mediante migración 0004 propia. Originales y medios privados quedan fuera de Git. Evidencia actual en entrega-sprint-01.md.

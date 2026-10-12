@@ -18,7 +18,7 @@ fun MascotaPhoto(url: String?, nombre: String, modifier: Modifier = Modifier) {
     Box(modifier = modifier.background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
         if (!url.isNullOrBlank() && !failed) {
             AsyncImage(model = url, contentDescription = "Fotografía de $nombre",
-                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(),
                 onSuccess = { loaded = true }, onError = { failed = true })
             if (!loaded) Text("Cargando fotografía…", modifier = Modifier.padding(12.dp))
         } else Text("Fotografía no disponible", modifier = Modifier.padding(12.dp))

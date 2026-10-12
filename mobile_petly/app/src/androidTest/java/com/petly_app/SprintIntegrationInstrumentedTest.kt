@@ -40,4 +40,29 @@ class SprintIntegrationInstrumentedTest {
         consent.revoke(shelter.id); assertFalse(consent.list().any { it.albergueId == shelter.id })
         session.clear();assertFalse(session.authenticated.value)
     }
+    @Test fun suppliedPhotosAreVisibleAndDecodeOnAndroid() = runBlocking {
+        val session = SessionManager()
+        val auth = AuthRepository(ApiClient.publicApi().create(AuthApi::class.java), session)
+        val password = java.util.UUID.randomUUID().toString()
+        val email = "photos-${java.util.UUID.randomUUID()}@example.test"
+        auth.register(email, password); auth.login(email, password)
+        val catalog = RemoteCatalogoRepository(ApiClient.authenticatedApi(session).create(CatalogoApi::class.java))
+        for (name in listOf("Luna", "Toby", "Bruno", "Miel", "Copito", "Simba", "Nube")) {
+            val pet = catalog.search(CatalogoFilters(search = name), 1, 100).items.first {
+                it.nombre == name && it.descripcion.contains("Publicación de demostración de Petly")
+            }
+            assertNull(pet.edadMeses)
+            assertEquals("Por evaluar", pet.temperamento)
+            val connection = java.net.URI(pet.fotografiaUrl!!).toURL().openConnection() as java.net.HttpURLConnection
+            connection.connectTimeout = 10000; connection.readTimeout = 10000
+            try {
+                assertEquals(200, connection.responseCode)
+                val bitmap = connection.inputStream.use { android.graphics.BitmapFactory.decodeStream(it) }
+                assertNotNull("Fotografía real de $name", bitmap)
+                assertTrue(bitmap.width > 100 && bitmap.height > 100)
+                bitmap.recycle()
+            } finally { connection.disconnect() }
+        }
+        session.clear()
+    }
 }

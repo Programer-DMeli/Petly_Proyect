@@ -23,6 +23,9 @@ ALLOWED_HOSTS = [
     for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
     if host.strip()
 ]
+# Android Emulator reaches Django with this Host header; local DEBUG only.
+if DEBUG and "10.0.2.2" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("10.0.2.2")
 
 # Aplicaciones locales: gestión de albergues, catálogo de mascotas y acceso.
 INSTALLED_APPS = [
@@ -89,8 +92,6 @@ DATABASES = {
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
-        # Agrega esta línea para omitir la validación de versión de MariaDB:
-        'SILENCED_SYSTEM_CHECKS': ['mysql.E001'],
     }
 }
 

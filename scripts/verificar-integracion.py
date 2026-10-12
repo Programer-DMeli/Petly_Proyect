@@ -102,12 +102,12 @@ check('POST',spring,'/api/auth/login',423,json={'correo':email,'password':passwo
 check('POST',spring,'/api/auth/login',423,json={'correo':email,'password':newpassword})
 with db.cursor() as cursor:
     cursor.execute('SELECT TIMESTAMPDIFF(SECOND,CURRENT_TIMESTAMP,bloqueado_hasta) FROM usuarios WHERE id=%s',(aid,))
-    assert 0 < cursor.fetchone()[0] <= 300
+    assert 0 < cursor.fetchone()[0] <= 60
     cursor.execute('UPDATE usuarios SET bloqueado_hasta=DATE_SUB(CURRENT_TIMESTAMP,INTERVAL 1 SECOND) WHERE id=%s',(aid,))
 check('POST',spring,'/api/auth/login',json={'correo':email,'password':newpassword})
 # A separate unknown account does not leak whether email exists.
 # May encounter rate limit legitimately; backend tests cover response equality.
-results+=['SMTP real de pruebas; token válido 15 minutos, uso único y sesión previa revocada','Bloqueo 5 minutos tras dos fallos y desbloqueo automático']
+results+=['SMTP real de pruebas; token válido 15 minutos, uso único y sesión previa revocada','Bloqueo 1 minuto tras dos fallos y desbloqueo automático']
 Path('/tmp/petly-evidencia-integracion.json').write_text(json.dumps({'database':name,'result':'PASS','checks':results},ensure_ascii=False,indent=2))
 print('PASS: '+str(len(results))+' grupos de comprobaciones reales. Evidencia en /tmp/petly-evidencia-integracion.json',flush=True)
 db.close()

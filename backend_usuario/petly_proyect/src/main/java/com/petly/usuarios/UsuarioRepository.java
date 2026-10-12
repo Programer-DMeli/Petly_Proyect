@@ -15,6 +15,8 @@ import java.util.Optional;
 @Repository
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
+    java.util.List<Usuario> findByRolOrderByIdAsc(Usuario.Rol rol);
+
     Optional<Usuario> findByUsername(String username);
 
     Optional<Usuario> findByCorreo(String correo);

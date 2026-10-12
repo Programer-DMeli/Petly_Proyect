@@ -52,3 +52,16 @@ class SpringIdentityTest(TestCase):
             TechnicalAdminLoginForm().confirm_login_allowed(business)
         technical = User.objects.create_superuser(username="technical", password="private-test-only")
         TechnicalAdminLoginForm().confirm_login_allowed(technical)
+
+    @patch("apps.acceso.integracion.spring_get")
+    @patch("apps.acceso.authentication.spring_get")
+    def test_lista_compartidos_y_rol_denegado(self, authority, profiles):
+        authority.return_value = self.identity
+        profiles.return_value = [{"adoptanteId":202,"correo":"authorized@example.test"}]
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token())
+        response = self.client.get('/api/acceso/perfiles-compartidos/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data[0]['adoptanteId'], 202)
+        authority.return_value = dict(self.identity, rol="ADOPTANTE")
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token(rol="ADOPTANTE"))
+        self.assertEqual(self.client.get('/api/acceso/perfiles-compartidos/').status_code, 403)

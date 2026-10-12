@@ -23,7 +23,11 @@ public class GlobalExceptionHandler {
  @ExceptionHandler(CorreoYaRegistradoException.class)
  ResponseEntity<?> duplicate(CorreoYaRegistradoException e) {return ResponseEntity.status(409).body(body("correo ya registrado",Map.of()));}
  @ExceptionHandler(AuthCuentaBloqueadaException.class)
- ResponseEntity<?> locked(AuthCuentaBloqueadaException e) {return ResponseEntity.status(423).body(body("cuenta bloqueada temporalmente",Map.of()));}
+ ResponseEntity<?> locked(AuthCuentaBloqueadaException e) {
+  return ResponseEntity.status(423).header("Retry-After",String.valueOf(e.getRetryAfterSeconds()))
+   .body(Map.of("error","Cuenta bloqueada tras dos fallos. Espera para volver a intentar.","campos",Map.of(),
+     "codigo","CUENTA_BLOQUEADA","reintentarEnSegundos",e.getRetryAfterSeconds()));
+ }
  @ExceptionHandler(CredencialesInvalidasException.class)
  ResponseEntity<?> credentials(CredencialesInvalidasException e) {return ResponseEntity.status(401).body(body(e.getMessage(),Map.of()));}
  @ExceptionHandler({IllegalArgumentException.class,HttpMessageNotReadableException.class,MethodArgumentTypeMismatchException.class})

@@ -54,8 +54,11 @@ public class AuthController {
     }
 
     @PostMapping("/password/reset")
-    public ResponseEntity<?> solicitarReset(@Valid @RequestBody PasswordResetRequest request) {
-        authService.solicitarResetPassword(request.getCorreo());
+    public ResponseEntity<?> solicitarReset(@Valid @RequestBody PasswordResetRequest request,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue="android") String canal) {
+        if (!canal.equals("android") && !canal.equals("web"))
+            throw new com.petly.common.exception.ApiException(400, "canal inválido");
+        authService.solicitarResetPassword(request.getCorreo(), canal.equals("web"));
         return ResponseEntity.ok(Map.of("detail", "Si el correo existe, se enviaron instrucciones."));
     }
 

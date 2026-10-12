@@ -16,6 +16,16 @@ class PerfilCompartidoView(APIView):
         except urllib.error.HTTPError as error:
             return Response({"error": "perfil no autorizado", "campos": {}}, status=403 if error.code in (403,404) else 503)
 
+class PerfilesCompartidosListView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        if request.user.rol != "ALBERGUE":
+            return Response({"error": "perfil no autorizado", "campos": {}}, status=403)
+        try:
+            return Response(spring_get("/api/albergue/perfiles", request.auth))
+        except urllib.error.HTTPError as error:
+            return Response({"error": "consulta no disponible", "campos": {}}, status=403 if error.code in (403,404) else 503)
+
 class RetiredBusinessAccessView(APIView):
     authentication_classes = []
     permission_classes = []

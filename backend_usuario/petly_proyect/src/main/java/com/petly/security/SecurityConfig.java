@@ -60,6 +60,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/registro", "/api/auth/login", "/api/auth/password/reset", "/api/auth/password/reset/confirm", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()
                         .requestMatchers("/api/perfil/**", "/api/autorizaciones/**").hasRole("ADOPTANTE")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/albergue/**").hasRole("ALBERGUE")
                         .anyRequest().authenticated());
         return http.build();

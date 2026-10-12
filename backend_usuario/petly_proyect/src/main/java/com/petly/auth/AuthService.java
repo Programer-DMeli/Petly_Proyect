@@ -21,6 +21,7 @@ public class AuthService {
  private final JavaMailSender mail;
  private final JdbcTemplate db;
  private final String mailFrom, resetBase;
+ @Value("${petly.web-reset-link-base:http://localhost:5173/recuperacion}") private String webResetBase;
  public AuthService(UsuarioRepository usuarios, PasswordEncoder encoder, JwtService jwt,
     JavaMailSender mail, JdbcTemplate db, @Value("${spring.mail.from}") String mailFrom,
     @Value("${petly.reset-link-base}") String resetBase) {
@@ -40,11 +41,11 @@ public class AuthService {
   Usuario u=usuarios.bloquearPorCorreo(request.getCorreo().trim().toLowerCase(Locale.ROOT))
     .orElseThrow(CredencialesInvalidasException::new);
   LocalDateTime now=LocalDateTime.now();
-  if(u.getBloqueadoHasta()!=null && u.getBloqueadoHasta().isAfter(now)) throw new AuthCuentaBloqueadaException("bloqueada");
+  if(u.getBloqueadoHasta()!=null && u.getBloqueadoHasta().isAfter(now)) throw new AuthCuentaBloqueadaException("bloqueada",Math.max(1,(Duration.between(now,u.getBloqueadoHasta()).toMillis()+999)/1000));
   if(u.getBloqueadoHasta()!=null) {u.setIntentosFallidos(0);u.setBloqueadoHasta(null);}
   if(!encoder.matches(request.getPassword(),u.getPasswordHash())) {
    u.setIntentosFallidos(u.getIntentosFallidos()+1);
-   if(u.getIntentosFallidos()>=2) {u.setBloqueadoHasta(now.plusMinutes(5));usuarios.save(u);throw new AuthCuentaBloqueadaException("bloqueada");}
+   if(u.getIntentosFallidos()>=2) {u.setBloqueadoHasta(now.plusMinutes(1));usuarios.save(u);throw new AuthCuentaBloqueadaException("bloqueada");}
    usuarios.save(u);throw new CredencialesInvalidasException();
   }
   u.setIntentosFallidos(0);u.setBloqueadoHasta(null);usuarios.save(u);
@@ -58,7 +59,8 @@ public class AuthService {
   try {return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8)));}
   catch(NoSuchAlgorithmException e) {throw new IllegalStateException(e);}
  }
- public void solicitarResetPassword(String correo) {
+ public void solicitarResetPassword(String correo) { solicitarResetPassword(correo, false); }
+ public void solicitarResetPassword(String correo, boolean web) {
   var optional=usuarios.findByCorreo(correo.trim().toLowerCase(Locale.ROOT));
   if(optional.isEmpty()) return;
   Usuario u=optional.get(); byte[] bytes=new byte[32];new SecureRandom().nextBytes(bytes);
@@ -66,7 +68,7 @@ public class AuthService {
   db.update("INSERT INTO password_resets (token_hash,usuario_id,expires_at) VALUES (?,?,?)",hash(token),u.getId(),java.sql.Timestamp.from(Instant.now().plusSeconds(900)));
   SimpleMailMessage msg=new SimpleMailMessage();msg.setFrom(mailFrom);msg.setTo(u.getCorreo());
   msg.setSubject("Recuperación de contraseña - Petly");
-  msg.setText("Abre este enlace en Petly para cambiar tu contraseña (vence en 15 minutos y sirve una sola vez):\n"+resetBase+"?token="+token);
+  msg.setText("Abre este enlace en Petly para cambiar tu contraseña (vence en 15 minutos y sirve una sola vez):\n"+(web ? webResetBase : resetBase)+"?token="+token);
   try {mail.send(msg);} catch(org.springframework.mail.MailException e) {
    org.slf4j.LoggerFactory.getLogger(getClass()).warn("Envío de recuperación no disponible; revisar SMTP.");
   }

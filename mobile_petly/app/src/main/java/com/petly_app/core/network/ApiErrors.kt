@@ -21,8 +21,8 @@ fun apiErrorMessage(error: Exception): String {
             403 -> "Tu cuenta no tiene permiso para esta operación."
             404 -> "No se encontró el recurso solicitado."
             409 -> "El correo ya está registrado."
-            423 -> "Cuenta bloqueada temporalmente. Intenta después de 5 minutos."
-            429 -> "Demasiados intentos. Espera antes de volver a intentar."
+            423 -> "Cuenta bloqueada tras dos contraseñas incorrectas. Espera el tiempo indicado."
+            429 -> "Límite de peticiones alcanzado. Espera antes de volver a intentar."
             in 500..599 -> "El servidor de Spring Boot tuvo un problema interno (${error.code()})."
             else -> "La operación no pudo completarse (${error.code()})."
         }

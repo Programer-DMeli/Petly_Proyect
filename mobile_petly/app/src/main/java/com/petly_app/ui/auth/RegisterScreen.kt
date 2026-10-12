@@ -72,9 +72,10 @@ fun RegisterScreen(
                 Text(it, color = MaterialTheme.colorScheme.error)
             }
 
+            if (state.rateLimitRemainingSeconds > 0) Text("Límite de peticiones. Vuelve a intentar en ${state.rateLimitRemainingSeconds} segundos.", color = MaterialTheme.colorScheme.error)
             Button(
                 onClick = { onRegister(email, password, confirmation) },
-                enabled = !state.busy && email.isNotBlank() && password.isNotBlank() && confirmation.isNotBlank(),
+                enabled = !state.busy && state.rateLimitRemainingSeconds == 0 && email.isNotBlank() && password.isNotBlank() && confirmation.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(if (state.busy) "Creando cuenta…" else "Registrarme")

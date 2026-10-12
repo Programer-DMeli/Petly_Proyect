@@ -106,7 +106,7 @@ class MascotaAPITest(TestCase):
         self._auth(self.user)
         response = self.client.post(
             f'/api/mascotas/{self.mascota.id}/cambiar-estado/',
-            {'estado': Mascota.Estado.DISPONIBLE}
+            {'estado': 'INVALIDO'}
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('error', response.data)
@@ -165,3 +165,39 @@ class MascotaAPITest(TestCase):
         self.assertEqual(self.client.post('/api/mascotas/',payload).status_code,400)
         payload["foto_principal"] = foto_prueba(); payload["edad_meses"] = 12
         self.assertEqual(self.client.post('/api/mascotas/',payload).status_code,400)
+
+    def test_edad_total_y_filtros_invalidos(self):
+        self._auth(self.user)
+        self.mascota.edad_anos = 2
+        self.mascota.edad_meses = 3
+        self.mascota.save()
+        r = self.client.get('/api/mascotas/?edad_min_meses=27&edad_max_meses=27')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data['count'], 1)
+        self.assertEqual(self.client.get('/api/mascotas/?edad_max_meses=3').data['count'], 0)
+        for query in ['edad_min_meses=x','edad_min_meses=-1','edad_min_meses=28&edad_max_meses=27']:
+            self.assertEqual(self.client.get('/api/mascotas/?'+query).status_code, 400)
+
+    def test_revertir_adoptado_limpia_fecha(self):
+        import datetime
+        self._auth(self.user)
+        self.mascota.estado = Mascota.Estado.ADOPTADO
+        self.mascota.fecha_adopcion = datetime.date.today()
+        self.mascota.save()
+        r = self.client.post(f'/api/mascotas/{self.mascota.id}/cambiar-estado/', {'estado':'DISPONIBLE'})
+        self.assertEqual(r.status_code, 200)
+        self.mascota.refresh_from_db()
+        self.assertIsNone(self.mascota.fecha_adopcion)
+        self.assertEqual(self.mascota.estado, 'DISPONIBLE')
+
+    def test_edicion_multipart_limpia_edad(self):
+        self._auth(self.user)
+        self.mascota.edad_anos = 2
+        self.mascota.save()
+        response = self.client.patch(f'/api/mascotas/{self.mascota.id}/', {'edad_anos':'','edad_meses':'','nombre':'Actualizada'}, format='multipart')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['id'], self.mascota.id)
+        self.assertIn('estado', response.data)
+        self.mascota.refresh_from_db()
+        self.assertIsNone(self.mascota.edad_anos)
+        self.assertIsNone(self.mascota.edad_meses)

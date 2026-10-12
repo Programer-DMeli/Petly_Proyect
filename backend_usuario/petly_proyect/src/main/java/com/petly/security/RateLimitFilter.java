@@ -52,8 +52,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
             if (tiempos.size() >= LIMITE) {
                 response.setStatus(429);
                 response.setContentType("application/json");
-                response.setHeader("Retry-After", "60");
-                response.getWriter().write("{\"error\":\"demasiados intentos\",\"campos\":{}}");
+                long remaining = Math.max(1, (java.time.Duration.between(ahora, tiempos.peekFirst().plusSeconds(60)).toMillis()+999)/1000);
+                response.setHeader("Retry-After", String.valueOf(remaining));
+                response.getWriter().write("{\"error\":\"Demasiadas peticiones. Espera para volver a intentar.\",\"campos\":{},\"codigo\":\"LIMITE_PETICIONES\",\"reintentarEnSegundos\":"+remaining+"}");
                 return;
             }
             tiempos.addLast(ahora);

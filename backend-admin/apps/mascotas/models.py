@@ -13,6 +13,7 @@ class Mascota(models.Model):
         OTRO = "OTRO", "Otro"
 
     class Sexo(models.TextChoices):
+        POR_EVAL = "POR_EVAL", "Por evaluar"
         MACHO = "MACHO", "Macho"
         HEMBRA = "HEMBRA", "Hembra"
 
@@ -130,6 +131,6 @@ class Mascota(models.Model):
         transiciones = {
             self.Estado.DISPONIBLE: [self.Estado.EN_PROCESO, self.Estado.ADOPTADO],
             self.Estado.EN_PROCESO: [self.Estado.DISPONIBLE, self.Estado.ADOPTADO],
-            self.Estado.ADOPTADO: [],
+            self.Estado.ADOPTADO: [self.Estado.DISPONIBLE, self.Estado.EN_PROCESO],
         }
         return transiciones.get(self.estado, [])

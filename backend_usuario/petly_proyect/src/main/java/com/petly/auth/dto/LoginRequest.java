@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
  */
 public class LoginRequest {
 
+    @jakarta.validation.constraints.Pattern(regexp = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", message = "correo inválido")
     @Email(message = "correo inválido")
     @NotBlank(message = "correo requerido")
     private String correo;

@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Size;
  */
 public class RegistroRequest {
 
+    @jakarta.validation.constraints.Pattern(regexp = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", message = "correo inválido")
     @Email(message = "correo inválido")
     @NotBlank(message = "correo requerido")
     private String correo;

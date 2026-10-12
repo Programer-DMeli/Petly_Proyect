@@ -1,8 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 
 /**
- * Área del adoptante (catálogo, cuestionario). El portal completo del
- * adoptante se desarrolla en el Sprint 2 según PLANNING v2 §9.2.
+ * Área del adoptante (catálogo, cuestionario). Portal del adoptante incluido en Sprint 1 por la actualización del usuario.
  */
 export default function AdoptanteLayout() {
   return (
@@ -10,6 +9,7 @@ export default function AdoptanteLayout() {
       <nav className="layout__nav">
         <NavLink to="/adoptante/catalogo">Catálogo</NavLink>
         <NavLink to="/adoptante/cuestionario">Cuestionario</NavLink>
+        <NavLink to="/adoptante/autorizaciones">Autorizaciones</NavLink>
       </nav>
       <Outlet />
     </div>

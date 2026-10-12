@@ -77,9 +77,14 @@ class IntegracionSprintTest {
   mvc.perform(get(path).header("Authorization","Bearer "+shelter)).andExpect(status().isForbidden());
   mvc.perform(put("/api/autorizaciones/100").header("Authorization","Bearer "+adopt)).andExpect(status().isOk());
   mvc.perform(get(path).header("Authorization","Bearer "+shelter)).andExpect(status().isOk());
+  mvc.perform(get("/api/albergue/perfiles").header("Authorization","Bearer "+shelter))
+   .andExpect(status().isOk()).andExpect(jsonPath("$[0].adoptanteId").value(uid(adopt)));
+  mvc.perform(get("/api/albergue/perfiles").header("Authorization","Bearer "+other))
+   .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
   mvc.perform(get(path).header("Authorization","Bearer "+other)).andExpect(status().isForbidden());
   mvc.perform(delete("/api/autorizaciones/100").header("Authorization","Bearer "+adopt)).andExpect(status().isOk());
   mvc.perform(get(path).header("Authorization","Bearer "+shelter)).andExpect(status().isForbidden());
+  mvc.perform(get("/api/albergue/perfiles").header("Authorization","Bearer "+shelter)).andExpect(jsonPath("$").isEmpty());
  }
  @Test void resetSingleUseExpiryAndOldSessionRejected() throws Exception {
   String t=token("ADOPTANTE");Usuario u=users.findById(uid(t)).orElseThrow();
@@ -110,4 +115,61 @@ class IntegracionSprintTest {
   assertEquals(real,absent);
  }
 
+ @Test void recoveryWebLinkAndInvalidChannel() throws Exception {
+  String t=token("ADOPTANTE");String correo=users.findById(uid(t)).orElseThrow().getCorreo();
+  mvc.perform(post("/api/auth/password/reset").param("canal","web").with(r->{r.setRemoteAddr("10.9.1.4");return r;})
+   .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("correo",correo)))).andExpect(status().isOk());
+  var captor=ArgumentCaptor.forClass(SimpleMailMessage.class);verify(mail).send(captor.capture());
+  assertTrue(captor.getValue().getText().contains("http://localhost:5173/recuperacion?token="));
+  mvc.perform(post("/api/auth/password/reset").param("canal","other").with(r->{r.setRemoteAddr("10.9.1.5");return r;})
+   .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("correo",correo)))).andExpect(status().isBadRequest());
+ }
+ @Test void adminShelterAccountsAndRoleDenied() throws Exception {
+  String shelter=token("ALBERGUE"), admin=token("ADMIN"), adopt=token("ADOPTANTE");
+  mvc.perform(get("/api/admin/cuentas-albergue/"+uid(shelter)).header("Authorization","Bearer "+admin))
+   .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(uid(shelter))).andExpect(jsonPath("$.rol").value("ALBERGUE"))
+   .andExpect(jsonPath("$.passwordHash").doesNotExist()).andExpect(jsonPath("$.tokenVersion").doesNotExist());
+  mvc.perform(get("/api/admin/cuentas-albergue").header("Authorization","Bearer "+shelter)).andExpect(status().isForbidden());
+  mvc.perform(get("/api/admin/cuentas-albergue/"+uid(adopt)).header("Authorization","Bearer "+admin)).andExpect(status().isNotFound());
+ }
+ @Test void loginLockPersistsAndReportsRemainingAcrossRequests() throws Exception {
+  String initial=token("ADOPTANTE");Usuario u=users.findById(uid(initial)).orElseThrow();
+  String bad=json.writeValueAsString(Map.of("correo",u.getCorreo(),"password","x"));
+  var ip="10.8.0.1";
+  mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr(ip);return r;}).contentType(MediaType.APPLICATION_JSON).content(bad))
+   .andExpect(status().isUnauthorized());
+  assertEquals(1,users.findById(u.getId()).orElseThrow().getIntentosFallidos());
+  mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr(ip);return r;}).contentType(MediaType.APPLICATION_JSON).content(bad))
+   .andExpect(status().isLocked()).andExpect(header().string("Retry-After","60"))
+   .andExpect(jsonPath("$.codigo").value("CUENTA_BLOQUEADA")).andExpect(jsonPath("$.reintentarEnSegundos").value(60));
+  Usuario locked=users.findById(u.getId()).orElseThrow();assertEquals(2,locked.getIntentosFallidos());assertNotNull(locked.getBloqueadoHasta());
+  // Otro cliente no evade el bloqueo; el tiempo no se reinicia a un minuto.
+  db.update("UPDATE usuarios SET bloqueado_hasta=? WHERE id=?",java.sql.Timestamp.valueOf(LocalDateTime.now().plusSeconds(20)),u.getId());
+  mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr("10.8.0.2");return r;}).contentType(MediaType.APPLICATION_JSON)
+   .content(json.writeValueAsString(Map.of("correo",u.getCorreo(),"password","password123"))))
+   .andExpect(status().isLocked()).andExpect(jsonPath("$.reintentarEnSegundos").value(org.hamcrest.Matchers.lessThanOrEqualTo(20)));
+  db.update("UPDATE usuarios SET bloqueado_hasta=? WHERE id=?",java.sql.Timestamp.valueOf(LocalDateTime.now().minusSeconds(1)),u.getId());
+  mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr(ip);return r;}).contentType(MediaType.APPLICATION_JSON)
+   .content(json.writeValueAsString(Map.of("correo",u.getCorreo(),"password","password123"))))
+   .andExpect(status().isOk());
+  assertEquals(0,users.findById(u.getId()).orElseThrow().getIntentosFallidos());
+ }
+ @Test void rateLimitHasRetryHeaderAndDoesNotLockUnknownAccount() throws Exception {
+  for(int i=0;i<10;i++) mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr("10.8.0.3");return r;})
+   .contentType(MediaType.APPLICATION_JSON).content("{\"correo\":\"missing@example.test\",\"password\":\"x\"}"))
+   .andExpect(status().isUnauthorized());
+  mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr("10.8.0.3");return r;})
+   .contentType(MediaType.APPLICATION_JSON).content("{\"correo\":\"missing@example.test\",\"password\":\"x\"}"))
+   .andExpect(status().isTooManyRequests()).andExpect(header().exists("Retry-After"))
+   .andExpect(jsonPath("$.codigo").value("LIMITE_PETICIONES"))
+   .andExpect(jsonPath("$.reintentarEnSegundos").value(org.hamcrest.Matchers.lessThanOrEqualTo(60)));
+  assertTrue(users.findByCorreo("missing@example.test").isEmpty());
+ }
+ @Test void malformedEmailDoesNotIncrementRegisteredAccount() throws Exception {
+  String t=token("ADOPTANTE");long id=uid(t);
+  mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr("10.8.0.4");return r;})
+   .contentType(MediaType.APPLICATION_JSON).content("{\"correo\":\"nombre@gmail\",\"password\":\"x\"}"))
+   .andExpect(status().isBadRequest());
+  assertEquals(0,users.findById(id).orElseThrow().getIntentosFallidos());
+ }
 }
