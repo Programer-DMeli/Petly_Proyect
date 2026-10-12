@@ -54,7 +54,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/me")
                         .authenticated()
                         // registro y login son publicos, recien ahi sale el token
-                        .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                        .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**")
                         .permitAll()
                         .anyRequest().authenticated());
         return http.build();
