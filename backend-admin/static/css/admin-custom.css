@@ -1,0 +1,606 @@
+/* Django Admin - Verde Refugio Identity */
+
+/* Importar fuentes de Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Plus+Jakarta+Sans:wght@600;700&display=swap');
+
+:root {
+  --petly-primary: #166D56;
+  --petly-primary-dark: #125643;
+  --petly-primary-light: #1AA382;
+  --petly-secondary: #C8E8D8;
+  --petly-accent: #F4B860;
+  --petly-background: #F6FAF7;
+  --petly-surface: #FFFFFF;
+  --petly-text: #183A30;
+  --petly-text-secondary: #4B6258;
+  --petly-muted: #6B7D73;
+  --petly-border: #D4E4DB;
+  --petly-focus: #166D56;
+}
+
+/* Tipografía global */
+body, #header, #content, #footer, .module, .inline-group, .form-row, .submit-row {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+h1, h2, h3, h4, .module h2, .inline-group h2, .submit-row input,
+#header h1, #branding h1, #user-tools a {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-weight: 600 !important;
+}
+
+/* Header / Branding */
+#header {
+  background: var(--petly-primary) !important;
+  border-bottom: none !important;
+  box-shadow: 0 2px 8px rgba(22, 109, 86, 0.15) !important;
+}
+
+#header a {
+  color: #fff !important;
+}
+
+#branding h1, #branding h1 a:link, #branding h1 a:visited {
+  color: #fff !important;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+#user-tools {
+  background: transparent !important;
+  color: #fff !important;
+}
+
+#user-tools a {
+  color: #fff !important;
+  font-weight: 500 !important;
+}
+
+#user-tools a:hover {
+  color: var(--petly-secondary) !important;
+}
+
+/* Breadcrumbs */
+.breadcrumbs {
+  background: var(--petly-background) !important;
+  border-bottom: 1px solid var(--petly-border) !important;
+  padding: 0.75rem 1.5rem !important;
+}
+
+.breadcrumbs a {
+  color: var(--petly-primary) !important;
+  font-weight: 500 !important;
+}
+
+.breadcrumbs a:hover {
+  color: var(--petly-primary-dark) !important;
+  text-decoration: underline !important;
+}
+
+/* Sidebar / Navigation */
+#sidebar {
+  background: var(--petly-surface) !important;
+  border-right: 1px solid var(--petly-border) !important;
+}
+
+#sidebar h2 {
+  color: var(--petly-primary-dark) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 0.875rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding-left: 1rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+#sidebar a {
+  color: var(--petly-text) !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+  margin: 0.125rem 0.75rem !important;
+  padding: 0.5rem 0.75rem !important;
+  transition: all 0.2s ease !important;
+}
+
+#sidebar a:hover {
+  background: var(--petly-secondary) !important;
+  color: var(--petly-primary-dark) !important;
+}
+
+#sidebar .selected a {
+  background: var(--petly-secondary) !important;
+  color: var(--petly-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* Content area */
+#content {
+  background: var(--petly-background) !important;
+}
+
+#content-main {
+  padding: 1.5rem !important;
+}
+
+.module h2, .inline-group h2 {
+  color: var(--petly-primary-dark) !important;
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  border-bottom: 2px solid var(--petly-primary) !important;
+  padding-bottom: 0.5rem !important;
+  margin-bottom: 1rem !important;
+}
+
+/* Buttons */
+input[type="submit"], input[type="button"], .button, a.button, .btn {
+  background: var(--petly-primary) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 0.625rem 1.25rem !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.9375rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(22, 109, 86, 0.2) !important;
+}
+
+input[type="submit"]:hover, input[type="button"]:hover, .button:hover, a.button:hover, .btn:hover {
+  background: var(--petly-primary-dark) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(22, 109, 86, 0.25) !important;
+}
+
+input[type="submit"]:active, .button:active {
+  transform: translateY(0) !important;
+}
+
+input[type="submit"][name="_addanother"],
+input[type="submit"][name="_continue"],
+input[type="submit"][name="_save"] {
+  background: var(--petly-primary) !important;
+}
+
+input[type="submit"][name="_delete"] {
+  background: #DC3545 !important;
+}
+
+input[type="submit"][name="_delete"]:hover {
+  background: #C82333 !important;
+}
+
+/* Secondary buttons */
+a.button.secondary, .button.secondary,
+input[type="submit"].secondary {
+  background: var(--petly-secondary) !important;
+  color: var(--petly-primary-dark) !important;
+  box-shadow: none !important;
+  border: 1px solid var(--petly-border) !important;
+}
+
+a.button.secondary:hover, .button.secondary:hover {
+  background: #B8D8C8 !important;
+  color: var(--petly-primary-dark) !important;
+}
+
+/* Default buttons (cancel, etc) */
+a.button.cancel, .button.cancel,
+input[type="submit"].cancel {
+  background: transparent !important;
+  color: var(--petly-text-secondary) !important;
+  border: 1px solid var(--petly-border) !important;
+  box-shadow: none !important;
+}
+
+a.button.cancel:hover, .button.cancel:hover {
+  background: var(--petly-background) !important;
+  color: var(--petly-text) !important;
+}
+
+/* Delete button */
+.deletelink-box a, a.deletelink, .deletelink {
+  background: #DC3545 !important;
+  color: #fff !important;
+  border: none !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+.deletelink-box a:hover, a.deletelink:hover {
+  background: #C82333 !important;
+}
+
+/* Form fields */
+input[type="text"], input[type="email"], input[type="password"],
+input[type="number"], input[type="url"], input[type="tel"],
+textarea, select {
+  border: 2px solid var(--petly-border) !important;
+  border-radius: 8px !important;
+  padding: 0.625rem 0.875rem !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 1rem !important;
+  color: var(--petly-text) !important;
+  background: #fff !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  border-color: var(--petly-focus) !important;
+  box-shadow: 0 0 0 3px rgba(22, 109, 86, 0.15) !important;
+}
+
+.vTextField, .vLargeTextField, .vLargeTextField select {
+  width: 100% !important;
+  max-width: 400px !important;
+}
+
+/* Labels */
+label, .form-row label, .form-row .label {
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 500 !important;
+  color: var(--petly-text) !important;
+  font-size: 0.875rem !important;
+  margin-bottom: 0.375rem !important;
+  display: block !important;
+}
+
+.required label:after {
+  content: " *" !important;
+  color: #DC3545 !important;
+}
+
+/* Help text */
+.help, .help-block, .field-help {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 0.8125rem !important;
+  color: var(--petly-muted) !important;
+  margin-top: 0.375rem !important;
+}
+
+/* Messages / Alerts */
+.messagelist {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 1rem 0 !important;
+}
+
+.messagelist li {
+  padding: 1rem 1.25rem !important;
+  border-radius: 8px !important;
+  margin-bottom: 0.75rem !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 0.9375rem !important;
+  border: none !important;
+}
+
+.messagelist .success {
+  background: #D4EDDA !important;
+  border: 1px solid #C3E6CB !important;
+  color: #155724 !important;
+}
+
+.messagelist .error {
+  background: #F8D7DA !important;
+  border: 1px solid #F5C6CB !important;
+  color: #721C24 !important;
+}
+
+.messagelist .warning {
+  background: #FFF3CD !important;
+  border: 1px solid #FFEEBA !important;
+  color: #856404 !important;
+}
+
+.messagelist .info {
+  background: #D1ECF1 !important;
+  border: 1px solid #BEE5EB !important;
+  color: #0C5460 !important;
+}
+
+/* Tables / Changelist */
+table, .results table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 0.9375rem !important;
+}
+
+th, td {
+  padding: 0.75rem 1rem !important;
+  border-bottom: 1px solid var(--petly-border) !important;
+  vertical-align: middle !important;
+}
+
+th {
+  background: var(--petly-background) !important;
+  color: var(--petly-primary-dark) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.8125rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+tr:hover td {
+  background: var(--petly-background) !important;
+}
+
+td {
+  color: var(--petly-text) !important;
+  border-bottom: 1px solid var(--petly-border) !important;
+}
+
+tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Row actions */
+td .button, td a.button {
+  padding: 0.375rem 0.75rem !important;
+  font-size: 0.8125rem !important;
+}
+
+/* Action links */
+.action-counter {
+  color: var(--petly-muted) !important;
+  font-size: 0.875rem !important;
+}
+
+/* Pagination */
+.pagination {
+  padding: 1rem 0 !important;
+}
+
+.pagination .step-links a, .pagination .step-links span {
+  padding: 0.5rem 0.875rem !important;
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  margin: 0 0.25rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.pagination .step-links a {
+  background: var(--petly-surface) !important;
+  color: var(--petly-primary) !important;
+  border: 1px solid var(--petly-border) !important;
+}
+
+.pagination .step-links a:hover {
+  background: var(--petly-primary) !important;
+  color: #fff !important;
+  border-color: var(--petly-primary) !important;
+}
+
+.pagination .step-links .current {
+  background: var(--petly-primary) !important;
+  color: #fff !important;
+  border-color: var(--petly-primary) !important;
+}
+
+/* Filters */
+#changelist-filter {
+  background: var(--petly-surface) !important;
+  border: 1px solid var(--petly-border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(24, 58, 48, 0.06) !important;
+}
+
+#changelist-filter h2 {
+  background: var(--petly-primary) !important;
+  color: #fff !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  padding: 0.75rem 1rem !important;
+  margin: 0 !important;
+  border-radius: 8px 8px 0 0 !important;
+}
+
+#changelist-filter h3 {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.8125rem !important;
+  color: var(--petly-primary-dark) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 0.75rem 1rem 0.25rem !important;
+}
+
+#changelist-filter ul {
+  padding: 0 1rem 1rem !important;
+  margin: 0 !important;
+}
+
+#changelist-filter li {
+  margin: 0.25rem 0 !important;
+}
+
+#changelist-filter a {
+  color: var(--petly-text) !important;
+  font-weight: 500 !important;
+  padding: 0.375rem 0.75rem !important;
+  border-radius: 6px !important;
+  display: block !important;
+  transition: all 0.2s ease !important;
+}
+
+#changelist-filter a:hover {
+  background: var(--petly-secondary) !important;
+  color: var(--petly-primary-dark) !important;
+}
+
+#changelist-filter li.selected a {
+  background: var(--petly-secondary) !important;
+  color: var(--petly-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* Search bar */
+#searchbar {
+  background: var(--petly-surface) !important;
+  border: 1px solid var(--petly-border) !important;
+  border-radius: 8px !important;
+  padding: 0.75rem 1rem !important;
+  margin-bottom: 1rem !important;
+}
+
+#searchbar input[type="text"] {
+  border: 2px solid var(--petly-border) !important;
+  border-radius: 8px !important;
+  padding: 0.625rem 1rem !important;
+  font-size: 1rem !important;
+  width: 100% !important;
+  max-width: 300px !important;
+}
+
+#searchbar input[type="text"]:focus {
+  border-color: var(--petly-focus) !important;
+  box-shadow: 0 0 0 3px rgba(22, 109, 86, 0.15) !important;
+}
+
+#searchbar input[type="submit"] {
+  margin-left: 0.5rem !important;
+}
+
+/* Footer */
+#footer {
+  background: var(--petly-surface) !important;
+  border-top: 1px solid var(--petly-border) !important;
+  color: var(--petly-muted) !important;
+  font-size: 0.8125rem !important;
+  padding: 1rem 1.5rem !important;
+}
+
+/* Object tools (add, history, etc) */
+.object-tools {
+  background: var(--petly-background) !important;
+  border: 1px solid var(--petly-border) !important;
+  border-radius: 8px !important;
+  padding: 1rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.object-tools a {
+  background: var(--petly-primary) !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+  padding: 0.625rem 1.25rem !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.9375rem !important;
+  text-decoration: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.object-tools a:hover {
+  background: var(--petly-primary-dark) !important;
+  text-decoration: none !important;
+}
+
+/* Inline forms */
+.inline-group {
+  border: 1px solid var(--petly-border) !important;
+  border-radius: 8px !important;
+  background: var(--petly-surface) !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.inline-group h2 {
+  background: var(--petly-primary) !important;
+  color: #fff !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  padding: 0.75rem 1rem !important;
+  margin: 0 !important;
+  border-radius: 8px 8px 0 0 !important;
+}
+
+.tabular .add-row a {
+  background: var(--petly-accent) !important;
+  color: #4A2C10 !important;
+  font-weight: 600 !important;
+}
+
+.tabular .add-row a:hover {
+  background: #E8A84A !important;
+}
+
+/* Related widget wrapper */
+.related-widget-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+.related-widget-wrapper-link {
+  background: var(--petly-secondary) !important;
+  color: var(--petly-primary-dark) !important;
+  border-radius: 6px !important;
+  padding: 0.375rem 0.75rem !important;
+  font-weight: 500 !important;
+  font-size: 0.8125rem !important;
+}
+
+.related-widget-wrapper-link:hover {
+  background: #B8D8C8 !important;
+}
+
+/* Related lookup popup */
+#content-related .module h2 {
+  background: var(--petly-primary) !important;
+  color: #fff !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--petly-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--petly-muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--petly-text-secondary);
+}
+
+/* Focus visible */
+:focus-visible {
+  outline: 3px solid var(--petly-focus) !important;
+  outline-offset: 2px !important;
+}
+
+/* Custom badges for status */
+.badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 0.25rem 0.75rem !important;
+  border-radius: 999px !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.badge-success { background: #D4EDDA !important; color: #155724 !important; }
+.badge-warning { background: #FFF3CD !important; color: #856404 !important; }
+.badge-error { background: #F8D7DA !important; color: #721C24 !important; }
+.badge-info { background: #D1ECF1 !important; color: #0C5460 !important; }
+.badge-pending { background: var(--petly-secondary) !important; color: var(--petly-text-secondary) !important; }
+.badge-success::before, .badge-warning::before, .badge-error::before, .badge-info::before, .badge-pending::before {
+  content: '' !important;
+}
