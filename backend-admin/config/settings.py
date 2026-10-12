@@ -144,6 +144,11 @@ REST_FRAMEWORK = {
         "user": "100/min",
         "auth": "2/min",  # Base rate; custom AuthThrottle handles 5-min window
     },
+    # Paginación global (US-12): preserva query params en next/previous
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+    "PAGE_SIZE_QUERY_PARAM": "page_size",
+    "MAX_PAGE_SIZE": 100,
 }
 
 # --- SimpleJWT (US-21) ---
