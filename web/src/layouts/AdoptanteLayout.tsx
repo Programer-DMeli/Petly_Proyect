@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom';
 
 /**
  * Área del adoptante (catálogo, cuestionario). El portal completo del
@@ -13,5 +13,5 @@ export default function AdoptanteLayout() {
       </nav>
       <Outlet />
     </div>
-  )
+  );
 }

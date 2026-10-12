@@ -65,6 +65,13 @@ Detalle, requisitos y comprobaciones en [`docs/instalacion.md`](docs/instalacion
 
 Respuesta básica, sin información sensible (versión, base de datos o rutas).
 
+## Documentación de API (OpenAPI / Swagger UI)
+
+| Servicio | Esquema OpenAPI | Swagger UI |
+| --- | --- | --- |
+| Spring Boot | `GET http://localhost:8080/v3/api-docs` | `http://localhost:8080/swagger-ui.html` |
+| Django | `GET http://localhost:8000/api/schema/` | `http://localhost:8000/api/docs/` |
+
 ## Documentación
 
 - [`PLANNING.md`](PLANNING.md) — planificación v2 (alcance, decisiones, sprints).

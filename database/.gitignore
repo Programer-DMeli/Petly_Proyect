@@ -1,0 +1,27 @@
+# Database dumps and exports
+*.sql
+*.dump
+*.backup
+
+# MariaDB/MySQL data directory
+/data/
+/mysql/
+/data_petly/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SQLyog
+*.sqlproj
+*.snippet
+
+# Temporary files
+*.tmp
+*.temp

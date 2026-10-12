@@ -1,14 +1,22 @@
 """Vistas de acceso y postulantes (US-18, US-21)."""
-from rest_framework import viewsets, permissions, status, filters
+from rest_framework import viewsets, permissions, status, filters, generics, throttling
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
+from django.conf import settings
+from django.core.cache import cache
+import time
 
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
-from .models import Postulante, SolicitudAdopcion
+from .models import Postulante, SolicitudAdopcion, User, AdoptanteProfile
 from .serializers import (
     PostulanteSerializer,
     PostulanteListSerializer,
@@ -17,7 +25,16 @@ from .serializers import (
     SolicitudAdopcionListSerializer,
     SolicitudEstadoSerializer,
     SolicitudCreateSerializer,
+    CustomTokenObtainPairSerializer,
+    UserRegistrationSerializer,
+    UserSerializer,
+    AdoptanteProfileSerializer,
+    AdoptanteProfileCreateUpdateSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer,
 )
+
+User = get_user_model()
 
 
 class IsAlbergueStaffOrReadOnly(permissions.BasePermission):
@@ -244,3 +261,224 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
     def mis_solicitudes(self, request):
         """Solicitudes del albergue del usuario (alias para list)."""
         return self.list(request)
+
+
+class AuthThrottle(throttling.BaseThrottle):
+    """Throttle para auth: 2 intentos por 5 minutos (US-21)."""
+    
+    def allow_request(self, request, view):
+        ident = self.get_ident(request)
+        key = f"auth_throttle_{ident}"
+        
+        # Obtener historial de intentos
+        history = cache.get(key, [])
+        now = time.time()
+        
+        # Filtrar intentos de los últimos 5 minutos (300 segundos)
+        history = [t for t in history if now - t < 300]
+        
+        if len(history) >= 2:
+            return False
+        
+        # Agregar intento actual
+        history.append(now)
+        cache.set(key, history, 300)  # 5 minutos TTL
+        return True
+    
+    def wait(self):
+        return 300  # 5 minutos
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    """Login con JWT + info de usuario y rol (US-21)."""
+    serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [AuthThrottle]
+
+
+class CustomTokenRefreshView(TokenRefreshView):
+    """Refresh token con rotación (US-21)."""
+    throttle_classes = [AuthThrottle]
+
+
+class LogoutView(APIView):
+    """Logout: blacklist refresh token (US-21)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data.get("refresh")
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            return Response({"detail": "Sesión cerrada correctamente."})
+        except Exception:
+            return Response({"detail": "Token inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserRegistrationView(generics.CreateAPIView):
+    """Registro de usuario (adoptante o albergue) (US-21)."""
+    serializer_class = UserRegistrationSerializer
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthThrottle]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        # Si es adoptante, crear perfil vacío
+        if user.rol == User.Rol.ADOPTANTE:
+            AdoptanteProfile.objects.create(user=user)
+
+        # Generar tokens
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "user": UserSerializer(user).data,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        }, status=status.HTTP_201_CREATED)
+
+
+class UserProfileView(generics.RetrieveUpdateAPIView):
+    """Perfil del usuario autenticado (US-21)."""
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+class AdoptanteProfileView(generics.RetrieveUpdateAPIView):
+    """Perfil extendido del adoptante para móvil (US-21, US-16, US-17)."""
+    serializer_class = AdoptanteProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method in ["PUT", "PATCH"]:
+            return AdoptanteProfileCreateUpdateSerializer
+        return AdoptanteProfileSerializer
+
+    def get_object(self):
+        profile, created = AdoptanteProfile.objects.get_or_create(user=self.request.user)
+        return profile
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(AdoptanteProfileSerializer(instance).data)
+
+
+class PasswordResetRequestView(APIView):
+    """Solicitud de recuperación de contraseña (US-24)."""
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthThrottle]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        user = User.objects.get(email=email)
+
+        # Generar token de reset (usando JWT con claim personalizado)
+        refresh = RefreshToken.for_user(user)
+        refresh["type"] = "password_reset"
+        refresh.set_exp(lifetime=timezone.timedelta(minutes=15))  # US-24: 15 min
+
+        reset_token = str(refresh.access_token)
+
+        # Enviar email (configurar EMAIL_BACKEND en producción)
+        reset_url = f"{settings.FRONTEND_URL}/recuperacion?token={reset_token}"
+        send_mail(
+            subject="Recuperación de contraseña - Petly",
+            message=f"Hola {user.username},\n\n"
+                    f"Para restablecer tu contraseña, haz clic en el siguiente enlace:\n"
+                    f"{reset_url}\n\n"
+                    f"El enlace expira en 15 minutos.\n\n"
+                    f"Si no solicitaste esto, ignora este correo.\n\n"
+                    f"Equipo Petly",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=True,  # No fallar si email no configurado
+        )
+
+        return Response({"detail": "Si el email existe, se enviaron instrucciones."})
+
+
+class PasswordResetConfirmView(APIView):
+    """Confirmación de recuperación de contraseña (US-24)."""
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthThrottle]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token_str = serializer.validated_data["token"]
+        new_password = serializer.validated_data["new_password"]
+
+        try:
+            token = RefreshToken(token_str)
+            if token.get("type") != "password_reset":
+                return Response({"detail": "Token inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+            user_id = token["user_id"]
+            user = User.objects.get(id=user_id)
+            user.set_password(new_password)
+            user.save()
+
+            # Invalidar token (blacklist)
+            token.blacklist()
+
+            return Response({"detail": "Contraseña actualizada correctamente."})
+        except Exception:
+            return Response({"detail": "Token inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AutorizacionCheckView(APIView):
+    """
+    Verifica si un adoptante ha autorizado a un albergue específico (US-18).
+    Endpoint interno llamado por Spring Boot para validar autorización.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [AuthThrottle]
+
+    def get(self, request):
+        adoptante_id = request.query_params.get("adoptante_id")
+        albergue_id = request.query_params.get("albergue_id")
+        
+        if not adoptante_id or not albergue_id:
+            return Response({"detail": "adoptante_id y albergue_id son requeridos."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            adoptante_id = int(adoptante_id)
+            albergue_id = int(albergue_id)
+        except ValueError:
+            return Response({"detail": "IDs inválidos."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar que el usuario autenticado es un albergue
+        if not hasattr(request.user, 'albergue') or request.user.albergue.id != albergue_id:
+            return Response({"detail": "No autorizado: solo el albergue propietario puede consultar."}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Verificar autorización (asumiendo modelo Autorizacion en AdoptanteProfile o similar)
+        # Por ahora retornamos estructura esperada; implementar lógica real según modelo
+        from .models import AdoptanteProfile
+        try:
+            profile = AdoptanteProfile.objects.get(user_id=adoptante_id)
+            # TODO: Implementar lógica real de autorización cuando exista modelo Autorizacion
+            # Por ahora: autorizado si profile existe
+            autorizado = True
+            campos_permitidos = [
+                "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
+                "detalles_otras_mascotas", "experiencia_previa", "motivo_adopcion",
+                "preferencia_especie", "preferencia_tamanio", "preferencia_edad",
+                "horas_fuera", "presupuesto"
+            ]
+            return Response({
+                "autorizado": autorizado,
+                "campos_permitidos": campos_permitidos
+            })
+        except AdoptanteProfile.DoesNotExist:
+            return Response({"autorizado": False, "detail": "Perfil no encontrado."}, status=status.HTTP_404_NOT_FOUND)

@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
+from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.albergues.models import Albergue
 from .models import Mascota
@@ -13,6 +14,7 @@ from .serializers import (
     MascotaListSerializer,
     MascotaCreateUpdateSerializer,
     MascotaEstadoSerializer,
+    MascotaFilter,
 )
 
 
@@ -32,14 +34,14 @@ class IsAlbergueOwnerOrReadOnly(permissions.BasePermission):
 
 
 class MascotaViewSet(viewsets.ModelViewSet):
-    """CRUD de mascotas + endpoint cambio de estado."""
+    """CRUD de mascotas + endpoint cambio de estado + filtros (US-12)."""
 
     queryset = Mascota.objects.select_related("albergue", "albergue__usuario", "creado_por").all()
     permission_classes = [permissions.IsAuthenticated, IsAlbergueOwnerOrReadOnly]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [MascotaFilter, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["nombre", "codigo", "raza", "descripcion"]
-    ordering_fields = ["creado_en", "fecha_ingreso", "nombre", "estado"]
+    ordering_fields = ["creado_en", "fecha_ingreso", "nombre", "estado", "especie", "tamanio", "temperamento", "edad_meses"]
     ordering = ["-creado_en"]
 
     def get_serializer_class(self):

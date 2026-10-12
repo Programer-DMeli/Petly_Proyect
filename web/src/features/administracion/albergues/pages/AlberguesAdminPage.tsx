@@ -1,4 +1,4 @@
-import PendingBadge from '../../../../components/PendingBadge'
+import PendingBadge from '../../../../components/PendingBadge';
 
 /**
  * Administración general mínima: gestión de albergues (US-46).
@@ -12,10 +12,10 @@ export default function AlberguesAdminPage() {
         Albergues <PendingBadge sprint="Sprint 1 · US-46" />
       </h1>
       <p className="muted">
-        Alta y gestión de albergues por parte del administrador de Petly. Las cuentas de
-        albergue y administrador las crea el equipo mediante un procedimiento documentado;
-        no hay registro público ni contraseñas en Git.
+        Alta y gestión de albergues por parte del administrador de Petly. Las cuentas de albergue y
+        administrador las crea el equipo mediante un procedimiento documentado; no hay registro
+        público ni contraseñas en Git.
       </p>
     </section>
-  )
+  );
 }

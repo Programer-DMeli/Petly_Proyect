@@ -1,4 +1,4 @@
-import PendingBadge from '../../../../components/PendingBadge'
+import PendingBadge from '../../../../components/PendingBadge';
 
 /**
  * Catálogo de mascotas con filtros (US-12). El portal del adoptante en
@@ -12,9 +12,9 @@ export default function CatalogoPage() {
         Catálogo de mascotas <PendingBadge sprint="Sprint 2 · US-12" />
       </h1>
       <p className="muted">
-        Búsqueda y filtros por especie, tamaño, edad y temperamento (incluido «Por evaluar»),
-        con paginación que conserva los filtros. Pendiente de implementación.
+        Búsqueda y filtros por especie, tamaño, edad y temperamento (incluido «Por evaluar»), con
+        paginación que conserva los filtros. Pendiente de implementación.
       </p>
     </section>
-  )
+  );
 }

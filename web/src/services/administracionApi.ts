@@ -3,22 +3,24 @@
  * albergues, mascotas y administración general.
  */
 
-const BASE_URL = import.meta.env.VITE_API_ADMINISTRACION_URL ?? 'http://localhost:8000'
+const BASE_URL =
+  (import.meta.env['VITE_API_ADMINISTRACION_URL'] as string) ?? 'http://localhost:8000';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
-  })
+  });
   if (!response.ok) {
-    throw new Error(`Error ${response.status} en ${path}`)
+    throw new Error(`Error ${response.status} en ${path}`);
   }
-  return (await response.json()) as T
+  const data = (await response.json()) as T;
+  return data;
 }
 
 /** Comprobación básica del backend administrativo (sin información sensible). */
 export function getHealthAdministracion(): Promise<{ status: string }> {
-  return request<{ status: string }>('/api/health/')
+  return request<{ status: string }>('/api/health/');
 }
 
 // Endpoints previstos (PLANNING v2 §9) — pendientes de implementar en los sprints:

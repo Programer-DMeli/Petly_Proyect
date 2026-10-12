@@ -5,22 +5,23 @@
  * Este backend nunca se sustituye con llamadas directas a la base de datos.
  */
 
-const BASE_URL = import.meta.env.VITE_API_USUARIO_URL ?? 'http://localhost:8080'
+const BASE_URL = (import.meta.env['VITE_API_USUARIO_URL'] as string) ?? 'http://localhost:8080';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
-  })
+  });
   if (!response.ok) {
-    throw new Error(`Error ${response.status} en ${path}`)
+    throw new Error(`Error ${response.status} en ${path}`);
   }
-  return (await response.json()) as T
+  const data = (await response.json()) as T;
+  return data;
 }
 
 /** Comprobación básica del backend de usuarios (sin información sensible). */
 export function getHealthUsuario(): Promise<{ status: string }> {
-  return request<{ status: string }>('/api/health/')
+  return request<{ status: string }>('/api/health/');
 }
 
 // Endpoints previstos (PLANNING v2 §9) — pendientes de implementar en los sprints:

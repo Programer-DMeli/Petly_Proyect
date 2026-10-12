@@ -9,7 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -43,23 +42,12 @@ fun RegisterScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth()
             )
-            OutlinedTextField(
-                value = password, onValueChange = { password = it }, label = { Text("Contraseña") },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = confirmation, onValueChange = { confirmation = it },
-                label = { Text("Repetir contraseña") },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth()
-            )
+            PasswordField(password, { password = it }, "Contraseña", !state.busy)
+            PasswordField(confirmation, { confirmation = it }, "Repetir contraseña", !state.busy)
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(
                 onClick = { onRegister(email, password, confirmation) },
-                enabled = !state.busy, modifier = Modifier.fillMaxWidth()
+                enabled = !state.busy && email.isNotBlank() && password.isNotBlank() && confirmation.isNotBlank(), modifier = Modifier.fillMaxWidth()
             ) { Text(if (state.busy) "Creando cuenta…" else "Registrarme") }
         }
         TextButton(onClick = onBack, enabled = !state.busy) { Text("Volver al acceso") }
