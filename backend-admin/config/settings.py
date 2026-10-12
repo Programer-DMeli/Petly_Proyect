@@ -5,9 +5,30 @@ Variables de entorno: ver `.env.example`. En desarrollo se puede crear un
 archivo `.env` (excluido de Git) que se carga con python-dotenv.
 """
 import os
+import copy
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+# Monkey patch para compatibilidad Django 5.0 + Jazzmin 3.0.5
+# Fix para: 'super' object has no attribute 'dicts' and no __dict__ for setting new attributes
+# Ver: https://github.com/farridav/django-jazzmin/issues/1234
+import django.template.context
+original_context_copy = django.template.context.Context.__copy__
+
+def patched_context_copy(self):
+    try:
+        return original_context_copy(self)
+    except AttributeError:
+        # Fallback para Django 5.0 + Jazzmin
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        if hasattr(self, 'dicts'):
+            result.dicts = self.dicts[:]
+        return result
+
+django.template.context.Context.__copy__ = patched_context_copy
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,7 +41,7 @@ DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() in {"1", "true", "yes"}
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
     if host.strip()
 ]
 
