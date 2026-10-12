@@ -57,3 +57,23 @@ spring:
   auth:
     max-attempts: 2
     block-duration-minutes: 5
+
+# Email configuration (US-24)
+spring:
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_PROPERTIES_MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:true}
+    from: ${MAIL_FROM:noreply@petly.local}
+
+# Django API URL para comunicación interna (US-18)
+django:
+  api:
+    url: ${DJANGO_API_URL:http://localhost:8000}

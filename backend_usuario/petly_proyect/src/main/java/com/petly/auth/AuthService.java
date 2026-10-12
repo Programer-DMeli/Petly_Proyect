@@ -2,7 +2,16 @@ package com.petly.auth;
 
 import com.petly.auth.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
 import com.petly.usuarios.Usuario;
 import com.petly.usuarios.repository.UsuarioRepository;
@@ -10,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Registro, login y recuperación de contraseña (US-21, US-24).
+ * Verificación de autorización con Django (US-18).
  */
 @Service
 public class AuthService {
@@ -22,6 +32,21 @@ public class AuthService {
 
     @Autowired
     private JwtService jwtService;
+
+    @Autowired
+    private JavaMailSender mailSender;
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Value("${spring.mail.from:noreply@petly.local}")
+    private String mailFrom;
+
+    @Value("${FRONTEND_URL:http://localhost:5173}")
+    private String frontendUrl;
+
+    @Value("${DJANGO_API_URL:http://localhost:8000}")
+    private String djangoApiUrl;
 
     public AuthResponse registrar(RegistroRequest request) {
         String correo = request.getCorreo().trim().toLowerCase();
@@ -83,6 +108,7 @@ public class AuthService {
     /**
      * Solicita recuperación de contraseña (US-24).
      * Genera token JWT tipo "password_reset" con expiración 15 min.
+     * Envía email con enlace de recuperación.
      * Respuesta genérica para no revelar si el correo existe.
      */
     public void solicitarResetPassword(String correo) {
@@ -91,11 +117,26 @@ public class AuthService {
         
         if (usuario != null) {
             String token = jwtService.generarTokenPasswordReset(usuario);
-            // TODO: Enviar email con token (configurar JavaMailSender + template)
-            // Ejemplo: emailService.enviarResetPassword(usuario.getCorreo(), token);
-            System.out.println("=== RESET PASSWORD TOKEN para " + email + " ===");
-            System.out.println(token);
-            System.out.println("========================================");
+            String resetUrl = frontendUrl + "/recuperacion?token=" + token;
+            
+            try {
+                SimpleMailMessage message = new SimpleMailMessage();
+                message.setFrom(mailFrom);
+                message.setTo(usuario.getCorreo());
+                message.setSubject("Recuperación de contraseña - Petly");
+                message.setText(
+                    "Hola " + usuario.getUsername() + ",\n\n" +
+                    "Para restablecer tu contraseña, haz clic en el siguiente enlace:\n" +
+                    resetUrl + "\n\n" +
+                    "El enlace expira en 15 minutos.\n\n" +
+                    "Si no solicitaste esto, ignora este correo.\n\n" +
+                    "Equipo Petly"
+                );
+                mailSender.send(message);
+            } catch (Exception e) {
+                // Log error pero no revelar si el email falló
+                System.err.println("Error enviando email de recuperación: " + e.getMessage());
+            }
         }
         // Siempre respuesta genérica (no revelar si existe)
     }
@@ -111,5 +152,47 @@ public class AuthService {
         
         usuario.setPasswordHash(passwordEncoder.encode(nuevaPassword));
         usuarios.save(usuario);
+    }
+
+    /**
+     * Verifica autorización de perfil con Django (US-18).
+     * Llama a endpoint interno de Django /api/interno/autorizacion/
+     * para verificar si un adoptante autorizó a un albergue específico.
+     */
+    public boolean verificarAutorizacion(Long adoptanteId, Long albergueId, String djangoToken) {
+        try {
+            String url = djangoApiUrl + "/api/acceso/interno/autorizacion/";
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.setBearerAuth(djangoToken);
+            
+            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+            params.add("adoptante_id", adoptanteId.toString());
+            params.add("albergue_id", albergueId.toString());
+            
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
+            
+            var response = restTemplate.postForEntity(url, request, AutorizacionResponse.class);
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return response.getBody().isAutorizado();
+            }
+            return false;
+        } catch (Exception e) {
+            System.err.println("Error verificando autorización con Django: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // Response class for autorización check
+    public static class AutorizacionResponse {
+        private boolean autorizado;
+        private java.util.List<String> campos_permitidos;
+        
+        public boolean isAutorizado() { return autorizado; }
+        public void setAutorizado(boolean autorizado) { this.autorizado = autorizado; }
+        public java.util.List<String> getCampos_permitidos() { return campos_permitidos; }
+        public void setCampos_permitidos(java.util.List<String> campos_permitidos) { this.campos_permitidos = campos_permitidos; }
     }
 }

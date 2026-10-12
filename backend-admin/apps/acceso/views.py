@@ -435,3 +435,50 @@ class PasswordResetConfirmView(APIView):
             return Response({"detail": "Contraseña actualizada correctamente."})
         except Exception:
             return Response({"detail": "Token inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AutorizacionCheckView(APIView):
+    """
+    Verifica si un adoptante ha autorizado a un albergue específico (US-18).
+    Endpoint interno llamado por Spring Boot para validar autorización.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [AuthThrottle]
+
+    def get(self, request):
+        adoptante_id = request.query_params.get("adoptante_id")
+        albergue_id = request.query_params.get("albergue_id")
+        
+        if not adoptante_id or not albergue_id:
+            return Response({"detail": "adoptante_id y albergue_id son requeridos."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            adoptante_id = int(adoptante_id)
+            albergue_id = int(albergue_id)
+        except ValueError:
+            return Response({"detail": "IDs inválidos."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar que el usuario autenticado es un albergue
+        if not hasattr(request.user, 'albergue') or request.user.albergue.id != albergue_id:
+            return Response({"detail": "No autorizado: solo el albergue propietario puede consultar."}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Verificar autorización (asumiendo modelo Autorizacion en AdoptanteProfile o similar)
+        # Por ahora retornamos estructura esperada; implementar lógica real según modelo
+        from .models import AdoptanteProfile
+        try:
+            profile = AdoptanteProfile.objects.get(user_id=adoptante_id)
+            # TODO: Implementar lógica real de autorización cuando exista modelo Autorizacion
+            # Por ahora: autorizado si profile existe
+            autorizado = True
+            campos_permitidos = [
+                "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
+                "detalles_otras_mascotas", "experiencia_previa", "motivo_adopcion",
+                "preferencia_especie", "preferencia_tamanio", "preferencia_edad",
+                "horas_fuera", "presupuesto"
+            ]
+            return Response({
+                "autorizado": autorizado,
+                "campos_permitidos": campos_permitidos
+            })
+        except AdoptanteProfile.DoesNotExist:
+            return Response({"autorizado": False, "detail": "Perfil no encontrado."}, status=status.HTTP_404_NOT_FOUND)

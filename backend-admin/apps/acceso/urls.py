@@ -12,6 +12,7 @@ from .views import (
     AdoptanteProfileView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
+    AutorizacionCheckView,
 )
 
 router = DefaultRouter()
@@ -30,4 +31,7 @@ urlpatterns = [
     path("auth/me/profile/", AdoptanteProfileView.as_view(), name="auth_me_profile"),
     path("auth/password/reset/", PasswordResetRequestView.as_view(), name="auth_password_reset"),
     path("auth/password/reset/confirm/", PasswordResetConfirmView.as_view(), name="auth_password_reset_confirm"),
+    
+    # US-18: Verificación de autorización de perfil
+    path("interno/autorizacion/", AutorizacionCheckView.as_view(), name="autorizacion_check"),
 ]
