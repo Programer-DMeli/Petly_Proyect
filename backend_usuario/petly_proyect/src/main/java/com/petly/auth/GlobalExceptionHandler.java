@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * Traduce las excepciones a respuestas con código claro (US-21).
- * Sin esto, Spring devolvería 500 pelados.
+ * Traduce las excepciones a respuestas con codigo claro (US-21).
+ * Sin esto, Spring devolveria 500 pelados.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {

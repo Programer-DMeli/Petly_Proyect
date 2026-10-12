@@ -62,8 +62,8 @@
 			<optional>true</optional>
 		</dependency>
 		<!-- Motor comprobado en el entorno: MariaDB 10.4.32 (XAMPP).
-		     Se usa el driver MariaDB porque el de MySQL reporta una versión
-		     engañosa (5.5.5) y provoca advertencias de Hibernate. -->
+		     Se usa el driver MariaDB porque el de MySQL reporta una versi??n
+		     enga??osa (5.5.5) y provoca advertencias de Hibernate. -->
 		<dependency>
 			<groupId>org.mariadb.jdbc</groupId>
 			<artifactId>mariadb-java-client</artifactId>
@@ -128,6 +128,11 @@
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
 	</dependencies>
 
 	<build>
