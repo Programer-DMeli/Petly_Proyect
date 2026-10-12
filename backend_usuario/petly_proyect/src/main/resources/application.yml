@@ -30,6 +30,31 @@ spring:
       password: ${REDIS_PASSWORD:}
       timeout: 2000ms
 
+  jwt:
+    secret: ${SPRING_JWT_SECRET:change-me-shared-secret-for-jwt-validation-min-32-chars}
+    access-token-minutes: 60
+    refresh-token-days: 7
+    issuer: petly-spring
+    audience: petly-django
+
+  auth:
+    max-attempts: 2
+    block-duration-minutes: 5
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_PROPERTIES_MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:true}
+    from: ${MAIL_FROM:noreply@petly.local}
+
+
 server:
   port: 8080
 
@@ -44,35 +69,8 @@ springdoc:
   packages-to-scan: com.petly
 
 # JWT Configuration (US-21)
-spring:
-  jwt:
-    secret: ${SPRING_JWT_SECRET:change-me-shared-secret-for-jwt-validation-min-32-chars}
-    access-token-minutes: 60
-    refresh-token-days: 7
-    issuer: petly-spring
-    audience: petly-django
-
 # Auth configuration (US-21)
-spring:
-  auth:
-    max-attempts: 2
-    block-duration-minutes: 5
-
 # Email configuration (US-24)
-spring:
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: ${MAIL_PROPERTIES_MAIL_SMTP_AUTH:true}
-          starttls:
-            enable: ${MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:true}
-    from: ${MAIL_FROM:noreply@petly.local}
-
 # Django API URL para comunicación interna (US-18)
 django:
   api:

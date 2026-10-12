@@ -285,3 +285,101 @@ Token: access JWT con claim `"type": "password_reset"`, expira 15 min.
 - Puerto por proyecto: web 5173, Django 8000, Spring Boot 8080.
 - Origenes CORS locales explicitos en ambos backends.
 - Nunca documentar secretos, contrasenas ni tokens reales en este archivo.
+
+
+## Contrato detallado Spring Boot US-21 (rama de Angie)
+
+### POST /api/auth/registro
+
+Registro publico de adoptante.
+
+**Request:**
+```json
+{ "correo": "user@example.com", "password": "clave12345" }
+```
+
+**Respuestas:**
+- 201 Created
+```json
+{ "id": 1, "correo": "user@example.com", "rol": "ADOPTANTE" }
+```
+- 400 Bad Request (validacion)
+```json
+{ "correo": "correo invalido", "password": "minimo 8 caracteres" }
+```
+- 409 Conflict (correo duplicado)
+```json
+{ "error": "correo ya registrado" }
+```
+
+### POST /api/auth/login
+
+Login publico, emite JWT 1h.
+
+**Request:**
+```json
+{ "correo": "user@example.com", "password": "clave12345" }
+```
+
+**Respuestas:**
+- 200 OK
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "user": { "id": 1, "correo": "user@example.com", "rol": "ADOPTANTE" }
+}
+```
+- 401 Unauthorized (credenciales invalidas)
+```json
+{ "error": "credenciales invalidas" }
+```
+- 423 Locked (cuenta bloqueada 5 min tras 2 fallos)
+```json
+{ "error": "cuenta bloqueada temporalmente" }
+```
+
+### GET /api/auth/me
+
+Recurso privado - requiere token valido. Identifica al usuario autenticado (adoptante/albergue/admin).
+
+**Headers:**
+```
+Authorization: Bearer <jwt>
+```
+
+**Respuestas:**
+- 200 OK
+```json
+{ "id": "1", "correo": "user@example.com", "rol": "ADOPTANTE" }
+```
+- 401 Unauthorized (sin token, token invalido o vencido)
+```json
+{ "error": "no autorizado" }
+```
+o
+```json
+{ "error": "token invalido o vencido" }
+```
+
+## Contrato JWT (HS256)
+
+- Secreto: variable de entorno JWT_SECRET (32+ caracteres, nunca en Git)
+- Claims: sub=id (long), email,
+ol=ADOPTANTE|ALBERGUE|ADMIN, iss=petly-spring, ud=petly-django, exp=1h (3600s)
+- Cabecera: Authorization: Bearer <jwt>
+- Token invalido/vencido -> 401, rol sin permiso -> 403
+
+## Seguridad
+
+- Contraseñas: BCrypt hash, nunca en texto plano
+- Bloqueo: 2 fallos consecutivos -> 5 min (desbloqueo automatico, reset contador en login OK)
+- Rate limit: 10 peticiones/min/IP sobre /api/auth/** -> 429 Too Many Requests
+- Errores: formato JSON {"error": "mensaje"} con codigo HTTP apropiado (400, 401, 409, 423, 429, 500)
+- CORS: orígenes locales explicitos en `application.yml`
+
+
+## Recuperación Spring Boot US-24
+
+Endpoints presentes en el código integrado: `POST /api/auth/password/reset` (campo `correo`) y `POST /api/auth/password/reset/confirm` (campos `token` y `nuevaPassword`). Su presencia no confirma el envío de correo ni el cierre de la historia; falta verificar el flujo completo.

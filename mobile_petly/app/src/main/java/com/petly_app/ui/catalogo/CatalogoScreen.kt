@@ -66,16 +66,31 @@ fun CatalogoScreen(
             state.items.isEmpty() -> item { Text("Sin resultados. Prueba con otros filtros.") }
             else -> {
                 item { Text("${state.total} mascotas encontradas") }
-                items(state.items, key = { it.id }) { mascota ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        MascotaPhoto(mascota.fotografiaUrl, mascota.nombre, Modifier.fillMaxWidth().height(160.dp))
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(mascota.nombre, style = MaterialTheme.typography.titleLarge)
-                            Text("${mascota.especie} · ${mascota.edadMeses} meses · ${mascota.tamano}")
-                            Text("Temperamento: ${mascota.temperamento}")
-                            Text("Estado: ${mascota.estado}")
-                            Text(mascota.albergue)
-                            Button(onClick = { onDetail(mascota.id) }) { Text("Ver detalle") }
+                item {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(state.items, key = { it.id }) { mascota ->
+                            Card(
+                                modifier = Modifier.width(160.dp)
+                            ) {
+                                Column {
+                                    MascotaPhoto(mascota.fotografiaUrl, mascota.nombre, Modifier.fillMaxWidth().height(140.dp))
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(mascota.nombre, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                                        Button(
+                                            onClick = { onDetail(mascota.id) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Ver detalle")
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
