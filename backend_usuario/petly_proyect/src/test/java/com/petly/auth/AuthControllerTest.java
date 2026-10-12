@@ -44,6 +44,7 @@ class AuthControllerTest {
 
     private void registrar(String ip, String correo) throws Exception {
         RegistroRequest req = new RegistroRequest();
+        req.setUsername(correo.split("@")[0]);
         req.setCorreo(correo);
         req.setPassword("clave12345");
         mvc.perform(desde(ip, "/api/auth/registro")
@@ -55,6 +56,7 @@ class AuthControllerTest {
     @Test
     void registroCuentaNueva() throws Exception {
         RegistroRequest req = new RegistroRequest();
+        req.setUsername("nuevo");
         req.setCorreo("nuevo@petly.test");
         req.setPassword("clave12345");
 
@@ -71,6 +73,7 @@ class AuthControllerTest {
         registrar("10.0.0.2", "repetido@petly.test");
 
         RegistroRequest req = new RegistroRequest();
+        req.setUsername("repetido");
         req.setCorreo("repetido@petly.test");
         req.setPassword("clave12345");
 

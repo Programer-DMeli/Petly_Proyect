@@ -57,6 +57,7 @@ class TokenSecurityTest {
 
     private String registrarYLogin(String ip, String correo) throws Exception {
         RegistroRequest registro = new RegistroRequest();
+        registro.setUsername(correo.split("@")[0]);
         registro.setCorreo(correo);
         registro.setPassword("clave12345");
         mvc.perform(desde(ip, post("/api/auth/registro"))
