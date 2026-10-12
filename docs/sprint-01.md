@@ -1,50 +1,27 @@
-# Sprint 1 — alcance y estado
+# Sprint 1 — estado de implementación
 
-Fuente: `PLANNING.md` v2, sección 9. **Estado: pendiente.** Esta preparación de estructura no implementa ninguna historia.
+Actualización: 12 de octubre de 2026. Rama `feature/petly_proyect`; sin commit ni push de esta implementación.
 
-## Objetivo
+El recorrido Android → Spring → datos persistidos y la integración administrativa Django fueron verificados sobre una instancia aislada MariaDB 11.8.8. No se modificó la base del equipo. Ver contratos en `api.md`, configuración en `instalacion.md` y evidencia en `entrega-sprint-01.md`.
 
-Base integrada donde el albergue registre mascotas y actualice su disponibilidad, y el adoptante acceda, complete su perfil y consulte el catálogo.
+| Historia | Principal / revisor | Estado formal | Implementación y pendiente |
+| --- | --- | --- | --- |
+| US-16 Cuestionario | Meliton / Mayra | Parcial | Implementación y pruebas técnicas completas: borrador, finalización, edición, persistencia, errores y privacidad. Falta revisión de Mayra. |
+| US-17 Convivencia | Meliton / Angie | Parcial | Implementación y pruebas técnicas completas: false distinto de null, persistencia y actualización. Falta revisión de Angie. |
+| US-12 Catálogo | Meliton / Angie | Parcial | Implementación y pruebas técnicas completas: consulta Spring real, filtros combinados, edad total, paginación, detalle/foto y disponibilidad. Falta revisión de Angie. |
+| US-21 Acceso | Angie / Meliton | Parcial | Apoyo Android y unificación JWT completos técnicamente; registro/login, bloqueo, tokens y permisos comprobados. Falta revisión integral de Angie y acceso/panel React del equipo. |
+| US-24 Recuperación | Angie / Mayra | Parcial | Apoyo Android, enlace y API corregida: correo SMTP de pruebas recibido, 15 minutos, uso único, sesión anterior revocada. Falta revisión A/B y SMTP del entorno del equipo. |
+| US-18 Consulta autorizada | Angie / Mayra | Parcial | Consentimiento/revocación Android+Spring y consulta protegida Django comprobados. Falta vista del albergue en React y revisión A/B. |
+| US-46 Albergues | Mayra / Meliton | Parcial | Registro y aislamiento de propietarios comprobados por API. Falta panel React, vínculo/verificación de cuentas reales del equipo y revisión de Mayra. |
+| US-13 Disponibilidad | Mayra / Meliton | Parcial | Cambio Django y consulta Spring verificados con datos reales. Falta revisión integral del panel albergue por Mayra. |
+| US-11 Mascotas | Mayra / Angie | Parcial | CRUD existente, imagen validada y campos de energía/temperamento integrados. Falta revisión del alcance completo y panel React por A/B. |
 
-## Historias (estimaciones originales del PDF, como referencia histórica)
+Parcial expresa las condiciones de cierre de PLANNING §9.5, que requieren revisión de otro integrante; no significa que estas pantallas sigan usando simulaciones. El modo de muestra Android sigue disponible únicamente en debug y está identificado como ficticio; el acceso real utiliza repositorios HTTP.
 
-| Historia | Alcance | Horas PDF | Responsable | Estado |
-| --- | --- | --- | --- | --- |
-| US-21 | Acceso, tokens, bloqueo por intentos fallidos y pruebas | 3 h | Persona B | Pendiente |
-| US-16 | Cuestionario de vivienda y estilo de vida | 5 h | Persona C | Pendiente |
-| US-11 | Registro de mascotas, CRUD y validaciones | 3,5 h | Persona A | Pendiente |
-| US-46 | Registro de información del albergue | 3 h | Persona A | Pendiente |
-| US-12 | Búsqueda, filtros, paginación y pruebas | 2,5 h | Persona C | Pendiente |
-| US-17 | Datos de convivencia | 2 h | Persona C | Pendiente |
-| US-24 | Recuperación de contraseña por correo | 2 h | Persona B | Pendiente |
-| US-18 | Consulta autorizada de postulantes | 3 h | Persona B | Pendiente |
-| US-13 | Estados Disponible / En Proceso / Adoptado | 2 h | Persona A | Pendiente |
+## Revisión cruzada solicitada al equipo, sin envío de mensajes
 
-El PDF suma 26 horas en 33 tareas pero declara 30 horas: pendiente de aclarar si las 4 restantes son reserva.
+- Mayra: revisar US-16, migraciones Django aditivas, identidad `spring_id`, validación de imágenes, consentimiento Django y separación de acceso técnico/negocio. Conservar identidades antiguas y revisar su vínculo antes de aplicar cambios en la base existente.
+- Angie: revisar US-17/US-12, contratos JSON, las tablas Spring/Flyway y las correcciones de acceso, bloqueo y recuperación. Validar las decisiones propuestas de campos/unidades/visibilidad.
+- Ambos: confirmar decisiones propuestas, revisar panel React pendiente, verificar XAMPP 10.4.32, teléfono físico y SMTP del entorno propio; conservar evidencia.
 
-## Decisiones aprobadas (v2) que condicionan la implementación
-
-- **US-21:** registro solo con correo y contraseña; cuentas de albergue y administrador creadas por el equipo sin contraseñas en Git; bloqueo de 5 minutos tras 2 fallos consecutivos; limitación de peticiones; sin registro por redes sociales.
-- **US-11:** una fotografía por mascota, JPEG o PNG, máximo 5 MB, validada en Django; no subir fotos privadas a Git.
-- **US-12:** filtros por especie, tamaño, edad y temperamento; categorías predefinidas con «Por evaluar»; no inferir temperamento con IA.
-- **US-24:** solo correo, token de un solo uso de 15 minutos; SMS fuera de este sprint.
-- **US-18:** consulta solo con autorización expresa hacia un albergue específico, revocable; sin antecedentes externos ni historial en el Sprint 1.
-
-## Pantallas (indicación literal del usuario)
-
-> React: acceso, recuperación, catálogo, cuestionario, panel del albergue. Kotlin: experiencia completa del adoptante y el portal React del adoptante pasa al siguiente sprint
-
-Interpretación registrada:
-
-- **Sprint 1 React:** acceso y recuperación (personal del albergue y administrador), panel del albergue (perfil institucional, registro de mascotas, estados, consulta autorizada de perfiles) y administración general mínima.
-- **Sprint 1 Kotlin:** experiencia completa del adoptante dentro de las historias de este sprint.
-- **Sprint 2 React:** portal del adoptante; sus carpetas y rutas ya están previstas en `web/` pero **no** están terminadas.
-- «Experiencia completa» no incluye matchmaking, solicitudes, chatbot ni otras historias fuera del sprint.
-
-## Fuera del alcance del Sprint 1
-
-Motor de compatibilidad, IA, solicitudes de adopción, chatbot, mensajería ni seguimiento.
-
-## Condiciones comunes de cierre
-
-Ver `PLANNING.md` v2 §9.5 y `docs/acuerdos-equipo.md`. Resumen: integración real con persistencia, revisión cruzada, verificación de acceso autorizado y denegado, documentación sin secretos y evidencia de las comprobaciones.
+No se añadieron matchmaking, IA, solicitudes, chatbot ni seguimiento. Se conservaron implementaciones antiguas de solicitudes fuera del enrutamiento activo para revisión futura. Las 26/30 horas, capacidad y fecha exacta de entrega continúan pendientes de acuerdo; no se inventaron estimaciones nuevas.

@@ -37,7 +37,7 @@ class AdoptanteProfileAdmin(admin.ModelAdmin):
 @admin.register(Postulante)
 class PostulanteAdmin(admin.ModelAdmin):
     list_display = ('nombre_completo', 'documento_numero', 'email', 'estado', 'total_solicitudes', 'solicitudes_aprobadas', 'creado_en')
-    list_filter = ('estado', 'tipo_vivienda', 'tiene_ninos', 'tiene_otras_mascotas', 'preferencia_especie', 'creado_en')
+    list_filter = ('estado', 'tipo_vivienda', 'tiene_otras_mascotas', 'preferencia_especie', 'creado_en')
     search_fields = ('nombres', 'apellidos', 'documento_numero', 'email')
     readonly_fields = ('creado_en', 'actualizado_en', 'total_solicitudes', 'solicitudes_aprobadas', 'solicitudes_pendientes')
     ordering = ('-creado_en',)
@@ -45,7 +45,7 @@ class PostulanteAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Identificación', {'fields': ('documento_tipo', 'documento_numero', 'nombres', 'apellidos', 'email', 'telefono', 'fecha_nacimiento')}),
         ('Domicilio', {'fields': ('direccion', 'distrito', 'provincia', 'departamento')}),
-        ('Perfil de adopción', {'fields': ('tipo_vivienda', 'tiene_patio', 'tiene_ninos', 'tiene_otras_mascotas', 'detalles_otras_mascotas', 'experiencia_previa')}),
+        ('Perfil de adopción', {'fields': ('tipo_vivienda', 'tiene_patio', 'tiene_otras_mascotas', 'detalles_otras_mascotas', 'experiencia_previa')}),
         ('Motivación y preferencias', {'fields': ('motivo_adopcion', 'preferencia_especie', 'preferencia_tamanio', 'preferencia_edad')}),
         ('Estado y control', {'fields': ('estado', 'observaciones_internas')}),
         ('Auditoría', {'fields': ('creado_por', 'creado_en', 'actualizado_en', 'total_solicitudes', 'solicitudes_aprobadas', 'solicitudes_pendientes')}),

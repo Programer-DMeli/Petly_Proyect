@@ -28,6 +28,8 @@ Un solo repositorio, sin repositorios Git anidados:
 
 ## Puesta en marcha rápida (Windows)
 
+Antes de arrancar, completar las variables privadas y revisar migraciones según [`docs/instalacion.md`](docs/instalacion.md). En una base vacía iniciar Spring/Flyway primero, después aplicar migraciones Django. Spring no carga `.env` automáticamente.
+
 1. Arrancar MariaDB desde XAMPP (base `database_petly`).
 2. Spring Boot:
 
@@ -79,19 +81,21 @@ Respuesta básica, sin información sensible (versión, base de datos o rutas).
 - [`docs/instalacion.md`](docs/instalacion.md) — requisitos y comandos en Windows.
 - [`docs/acuerdos-equipo.md`](docs/acuerdos-equipo.md) — reparto y revisión cruzada.
 - [`docs/api.md`](docs/api.md) — endpoints implementados y contrato previsto.
-- [`docs/sprint-01.md`](docs/sprint-01.md) — alcance del Sprint 1 (**pendiente**).
+- [`docs/sprint-01.md`](docs/sprint-01.md) — alcance del Sprint 1 (**implementación y revisión**).
 - [`database/modelo-datos.md`](database/modelo-datos.md) — modelo preliminar de datos.
 
 ## Estado actual
 
-Etapa de **preparación de estructura** (PLANNING v2 §10), no de Sprint 1:
+Implementación Sprint 1 en `feature/petly_proyect` (12 de octubre de 2026):
 
-- ✅ Estructura de repositorio, documentación y configuraciones.
-- ✅ Pantalla inicial de Petly en web y Android.
-- ✅ Endpoints de salud en ambos backends.
-- ⬜ Historias del Sprint 1 (US-21, US-16, US-11, US-46, US-12, US-17, US-24, US-18, US-13) — **sin implementar**.
-- ⬜ Entidades y migraciones de negocio — **sin crear**.
-- ⬜ Integración de autenticación entre backends — **pendiente de definir el token**.
+- Perfil y convivencia Android con persistencia Spring, borrador/finalización y validaciones.
+- Catálogo Spring con datos Django reales, filtros combinados, paginación, detalle, fotografía y estados.
+- Spring como única autoridad de credenciales; Android consume JWT y Django lo valida.
+- Recuperación por correo, token de uso único y consentimiento revocable por albergue.
+- Migraciones aditivas, pruebas automatizadas y recorrido real en una base aislada; base del equipo sin modificar.
+- Las historias esperan revisión cruzada; panel React del albergue y verificaciones en el entorno del equipo siguen pendientes.
+
+Ver [`docs/entrega-sprint-01.md`](docs/entrega-sprint-01.md) para resultados y límites, [`docs/api.md`](docs/api.md) para contratos y [`docs/sprint-01.md`](docs/sprint-01.md) para estado por historia. No se hizo commit ni push de esta implementación.
 
 ## Reglas del repositorio
 

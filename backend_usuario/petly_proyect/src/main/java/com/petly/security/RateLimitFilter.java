@@ -35,7 +35,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain chain) throws ServletException, IOException {
-        if (!request.getRequestURI().startsWith(RUTA_AUTH)) {
+        if (!request.getRequestURI().startsWith(RUTA_AUTH) || request.getRequestURI().equals("/api/auth/me")) {
             chain.doFilter(request, response);
             return;
         }
@@ -51,7 +51,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
             }
             if (tiempos.size() >= LIMITE) {
                 response.setStatus(429);
-                response.getWriter().write("demasiados intentos, espera un minuto");
+                response.setContentType("application/json");
+                response.setHeader("Retry-After", "60");
+                response.getWriter().write("{\"error\":\"demasiados intentos\",\"campos\":{}}");
                 return;
             }
             tiempos.addLast(ahora);

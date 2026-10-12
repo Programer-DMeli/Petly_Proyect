@@ -12,9 +12,9 @@ class AlbergueAPITest(TestCase):
     """Tests de endpoints API de Albergue."""
 
     def setUp(self):
-        self.user = User.objects.create_user(username='owner', password='pass123')
-        self.other_user = User.objects.create_user(username='other', password='pass123')
-        self.staff = User.objects.create_user(username='staff', password='pass123', is_staff=True)
+        self.user = User.objects.create_user(username='owner', password='pass123', rol='ALBERGUE')
+        self.other_user = User.objects.create_user(username='other', password='pass123', rol='ALBERGUE')
+        self.staff = User.objects.create_user(username='staff', password='pass123', is_staff=True, rol='ADMIN')
         
         self.albergue = Albergue.objects.create(
             usuario=self.user,

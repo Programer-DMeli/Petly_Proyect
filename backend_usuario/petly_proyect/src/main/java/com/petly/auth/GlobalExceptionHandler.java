@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * Traduce las excepciones a respuestas con codigo claro (US-21).
  * Sin esto, Spring devolveria 500 pelados.
  */
-@RestControllerAdvice
+
 public class GlobalExceptionHandler {
 
     // validacion de @Valid: campo -> mensaje

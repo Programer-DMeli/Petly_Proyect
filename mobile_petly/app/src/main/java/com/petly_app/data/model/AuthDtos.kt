@@ -3,12 +3,12 @@ package com.petly_app.data.model
 import com.google.gson.annotations.SerializedName
 
 data class LoginRequest(
-    val email: String,
+    @SerializedName("correo") val email: String,
     val password: String
 )
 
 data class RegisterRequest(
-    val email: String,
+    @SerializedName("correo") val email: String,
     val password: String
 )
 
@@ -26,7 +26,7 @@ data class LoginResponse(
 
 data class UserDto(
     val id: Long? = null,
-    val email: String? = null,
+    @SerializedName("correo") val email: String? = null,
     val role: String? = null,
     val rol: String? = null
 ) {

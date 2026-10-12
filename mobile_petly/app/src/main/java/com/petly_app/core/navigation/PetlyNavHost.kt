@@ -24,15 +24,15 @@ private object Routes {
 }
 
 @Composable
-fun PetlyNavHost(container: AppContainer) {
+fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHandled: () -> Unit = {}) {
     val authenticated by container.session.authenticated.collectAsStateWithLifecycle()
     var preview by rememberSaveable { mutableStateOf(false) }
     // La vista de prueba no crea tokens, no inicia una sesión real y solo existe en debug.
     val isPreview = BuildConfig.DEBUG && preview
-    key(authenticated, isPreview) {
+    key(authenticated, isPreview, resetToken) {
         val nav = rememberNavController()
-        val privateGraph = authenticated || isPreview
-        NavHost(navController = nav, startDestination = if (privateGraph) Routes.CATALOG else Routes.LOGIN) {
+        val privateGraph = resetToken == null && (authenticated || isPreview)
+        NavHost(navController = nav, startDestination = if (privateGraph) Routes.CATALOG else if (resetToken != null) "recuperacion" else Routes.LOGIN) {
             if (!privateGraph) {
                 composable(Routes.LOGIN) {
                     val factory = remember(container) {
@@ -43,7 +43,16 @@ fun PetlyNavHost(container: AppContainer) {
                     LoginScreen(state, vm::login,
                         onRegister = { vm.clearFormState(); nav.navigate(Routes.REGISTER) { launchSingleTop = true } },
                         onCheckConnection = vm::checkConnection,
+                        onRecovery = { nav.navigate("recuperacion") },
                         onPreview = if (BuildConfig.DEBUG) ({ container.resetPreview(); preview = true }) else null)
+                }
+                composable("recuperacion") {
+                    val factory = remember(container) { viewModelFactory { initializer { RecuperacionViewModel(container.recuperacion) } } }
+                    val vm: RecuperacionViewModel = viewModel(factory = factory)
+                    val state by vm.state.collectAsStateWithLifecycle()
+                    RecuperacionScreen(state, resetToken, vm::request, vm::confirm, onBack = {
+                        if(resetToken != null) onResetHandled() else nav.popBackStack()
+                    })
                 }
                 composable(Routes.REGISTER) {
                     val factory = remember(container) {
@@ -51,7 +60,7 @@ fun PetlyNavHost(container: AppContainer) {
                     }
                     val vm: AuthViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    RegisterScreen(state, vm::register, onBack = { nav.popBackStack() })
+                    RegisterScreen(state, vm::register, onBack = { vm.clearFormState(); nav.popBackStack() })
                 }
             } else {
                 composable(Routes.CATALOG) {
@@ -60,6 +69,7 @@ fun PetlyNavHost(container: AppContainer) {
                     }
                     val vm: CatalogoViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
+                    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) { vm.retry() }
                     CatalogoScreen(state, isPreview, vm::edit, vm::applyFilters, vm::clearFilters,
                         vm::changePage, vm::retry,
                         onDetail = { nav.navigate("mascota/$it") { launchSingleTop = true } },
@@ -74,7 +84,13 @@ fun PetlyNavHost(container: AppContainer) {
                     }
                     val vm: PerfilViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    CuestionarioScreen(state, isPreview, vm::edit, vm::save, vm::load, onBack = { nav.popBackStack() })
+                    CuestionarioScreen(state, isPreview, vm::edit, vm::save, vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }))
+                }
+                composable("autorizaciones") {
+                    val factory = remember(container) { viewModelFactory { initializer { AutorizacionViewModel(container.autorizaciones) } } }
+                    val vm: AutorizacionViewModel = viewModel(factory = factory)
+                    val state by vm.state.collectAsStateWithLifecycle()
+                    AutorizacionesScreen(state, vm::change, vm::load, onBack = { nav.popBackStack() })
                 }
                 composable(Routes.DETAIL, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
                     val id = requireNotNull(entry.arguments).getLong("id")

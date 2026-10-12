@@ -1,69 +1,66 @@
-"""Autenticación JWT para validar tokens de Spring Boot (US-21)."""
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+"""Valida Spring JWT y su vigencia contra la única autoridad de cuentas."""
+import json
+import urllib.request
+import urllib.error
+import jwt
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from rest_framework.authentication import BaseAuthentication, get_authorization_header
+from rest_framework.exceptions import AuthenticationFailed, APIException
 
-User = get_user_model()
-
-
-class SpringBootJWTAuthentication(JWTAuthentication):
-    """
-    Autenticación que valida tokens emitidos por Spring Boot.
-    
-    Spring Boot claims: sub=id, email, rol, iss=petly-spring, aud=petly-django
-    Crea/actualiza User local para permisos Django sin duplicar contraseñas.
-    """
-    
-    def get_user(self, validated_token):
-        """Obtener/crear usuario local desde claims de Spring Boot."""
-        try:
-            user_id = validated_token.get("sub")
-            email = validated_token.get("email", "")
-            rol = validated_token.get("rol", "ADOPTANTE")
-            
-            if not user_id:
-                raise InvalidToken("Token sin claim 'sub' (user_id)")
-            
-            # Get or create local User para permisos Django
-            user, created = User.objects.get_or_create(
-                id=user_id,
-                defaults={
-                    "username": email or f"user_{user_id}",
-                    "email": email,
-                    "rol": rol,
-                    "is_active": True,
-                }
-            )
-            
-            # Actualizar rol si cambió
-            if not created and user.rol != rol:
-                user.rol = rol
-                user.save(update_fields=["rol"])
-            
-            return user
-            
-        except User.DoesNotExist:
-            raise InvalidToken("Usuario no encontrado")
-        except Exception as e:
-            raise InvalidToken(f"Error validando token: {str(e)}")
+class AuthorityUnavailable(APIException):
+    status_code = 503
+    default_detail = "La autoridad de acceso no está disponible."
 
 
-class DualJWTAuthentication(JWTAuthentication):
-    """
-    Autenticación que intenta primero validar token Spring Boot,
-    si falla, valida token Django (para adoptante móvil).
-    """
-    
+def spring_get(path, token):
+    req = urllib.request.Request(settings.SPRING_API_URL + path, headers={"Authorization": "Bearer " + token})
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as error:
+        if error.code == 401:
+            raise AuthenticationFailed("Token inválido o vencido.")
+        raise
+    except (urllib.error.URLError, TimeoutError):
+        raise AuthorityUnavailable()
+
+
+class SpringBootJWTAuthentication(BaseAuthentication):
+    def authenticate_header(self, request):
+        return "Bearer"
+
     def authenticate(self, request):
-        # Intentar autenticación estándar (Django tokens para adoptante)
-        try:
-            return super().authenticate(request)
-        except (InvalidToken, TokenError):
-            pass
-        
-        # Si falla, intentar Spring Boot token
-        spring_auth = SpringBootJWTAuthentication()
-        try:
-            return spring_auth.authenticate(request)
-        except (InvalidToken, TokenError):
+        header = get_authorization_header(request).split()
+        if not header:
             return None
+        if len(header) != 2 or header[0].lower() != b"bearer":
+            raise AuthenticationFailed("Cabecera de acceso inválida.")
+        try:
+            token = header[1].decode("ascii")
+            claims = jwt.decode(token, settings.SPRING_JWT_SECRET, algorithms=["HS256"],
+                issuer="petly-spring", audience="petly-django", options={"require": ["sub", "exp", "iat", "rol", "type", "version"]})
+            if claims["type"] != "access" or claims["rol"] not in {"ADOPTANTE", "ALBERGUE", "ADMIN"}:
+                raise ValueError()
+            uid = int(claims["sub"])
+            if uid < 1:
+                raise ValueError()
+        except (jwt.PyJWTError, ValueError, UnicodeError):
+            raise AuthenticationFailed("Token inválido o vencido.")
+        # No confiar solo en firma: comprueba revocación por cambio de contraseña.
+        try:
+            identity = spring_get("/api/auth/me", token)
+        except urllib.error.HTTPError:
+            raise AuthorityUnavailable()
+        if str(identity["id"]) != str(uid) or identity["rol"] != claims["rol"]:
+            raise AuthenticationFailed("Identidad inválida.")
+        User = get_user_model()
+        user, created = User.objects.get_or_create(spring_id=uid, defaults={
+            "username": "spring_" + str(uid), "email": identity["correo"], "rol": identity["rol"]})
+        if not user.is_active:
+            raise AuthenticationFailed("Cuenta deshabilitada.")
+        user.email = identity["correo"]
+        user.rol = identity["rol"]
+        user.set_unusable_password()
+        user.save(update_fields=["email", "rol", "password"])
+        return user, token

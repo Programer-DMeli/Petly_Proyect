@@ -19,7 +19,7 @@ fun apiErrorMessage(error: Exception): String {
             400, 422 -> "Revisa los datos ingresados."
             401 -> "Credenciales inválidas o sesión vencida."
             403 -> "Tu cuenta no tiene permiso para esta operación."
-            404 -> "El servicio no existe o la ruta no está configurada en Spring Boot."
+            404 -> "No se encontró el recurso solicitado."
             409 -> "El correo ya está registrado."
             423 -> "Cuenta bloqueada temporalmente. Intenta después de 5 minutos."
             429 -> "Demasiados intentos. Espera antes de volver a intentar."
@@ -30,3 +30,13 @@ fun apiErrorMessage(error: Exception): String {
     }
 }
 
+
+fun apiFieldErrors(error: Exception): Map<String,String> {
+    if(error !is HttpException || error.code() != 400) return emptyMap()
+    return try {
+        val objectValue = com.google.gson.JsonParser.parseString(error.response()?.errorBody()?.string()).asJsonObject
+        objectValue.getAsJsonObject("campos").entrySet().associate { (key,value) ->
+            (when(key) { "tieneNinos" -> "ninos"; "tieneOtrasMascotas" -> "mascotas"; else -> key }) to value.asString
+        }
+    } catch(e: Exception) { emptyMap() }
+}

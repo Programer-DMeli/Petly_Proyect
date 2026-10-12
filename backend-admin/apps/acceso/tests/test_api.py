@@ -1,5 +1,6 @@
 """Tests de API para Acceso (Postulantes, Solicitudes)."""
 from django.test import TestCase
+from unittest import skip
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
@@ -11,6 +12,7 @@ from apps.acceso.models import Postulante, SolicitudAdopcion
 User = get_user_model()
 
 
+@skip("API de solicitudes/postulantes fuera de Sprint 1; ruta retirada por consentimiento explícito.")
 class PostulanteAPITest(TestCase):
     """Tests de endpoints API de Postulantes."""
 
@@ -64,6 +66,7 @@ class PostulanteAPITest(TestCase):
         self.assertEqual(response.data['resumen']['pendientes'], 1)
 
 
+@skip("Solicitudes fuera de Sprint 1; se conserva el código para el siguiente sprint.")
 class SolicitudAdopcionAPITest(TestCase):
     """Tests de endpoints API de Solicitudes de Adopción."""
 

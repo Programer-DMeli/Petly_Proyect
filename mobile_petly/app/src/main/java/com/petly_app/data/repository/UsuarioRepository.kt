@@ -12,10 +12,10 @@ class UsuarioRepository(
 ) {
     suspend fun currentUser(): UserDto {
         val user = api.me()
-        if (user.id == null || user.email.isNullOrBlank() || user.role.isNullOrBlank()) {
+        if (user.id == null || user.email.isNullOrBlank() || user.getEffectiveRole().isNullOrBlank()) {
             throw ContractException()
         }
-        if (user.role != "ADOPTANTE") {
+        if (user.getEffectiveRole() != "ADOPTANTE") {
             session.clear()
             throw AdoptanteOnlyException()
         }

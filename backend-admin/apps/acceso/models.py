@@ -8,6 +8,8 @@ from django.utils.translation import gettext_lazy as _
 class User(AbstractUser):
     """Usuario personalizado con roles para Petly (US-21)."""
 
+    spring_id = models.PositiveBigIntegerField(null=True, blank=True, unique=True)
+
     class Rol(models.TextChoices):
         ADOPTANTE = "ADOPTANTE", "Adoptante"
         ALBERGUE = "ALBERGUE", "Albergue"

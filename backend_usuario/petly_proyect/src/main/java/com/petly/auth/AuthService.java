@@ -1,198 +1,87 @@
 package com.petly.auth;
-
 import com.petly.auth.dto.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.petly.usuarios.*;
+import com.petly.common.exception.ApiException;
+import java.time.*;
+import java.util.*;
+import java.nio.charset.StandardCharsets;
+import java.security.*;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-
-import com.petly.usuarios.Usuario;
-import com.petly.usuarios.repository.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
-/**
- * Registro, login y recuperación de contraseña (US-21, US-24).
- * Verificación de autorización con Django (US-18).
- */
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthService {
-
-    @Autowired
-    private UsuarioRepository usuarios;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private JwtService jwtService;
-
-    @Autowired
-    private JavaMailSender mailSender;
-
-    @Autowired
-    private RestTemplate restTemplate;
-
-    @Value("${spring.mail.from:noreply@petly.local}")
-    private String mailFrom;
-
-    @Value("${FRONTEND_URL:http://localhost:5173}")
-    private String frontendUrl;
-
-    @Value("${DJANGO_API_URL:http://localhost:8000}")
-    private String djangoApiUrl;
-
-    public AuthResponse registrar(RegistroRequest request) {
-        String correo = request.getCorreo().trim().toLowerCase();
-        String username = request.getUsername().trim().toLowerCase();
-        
-        if (usuarios.existsByCorreo(correo)) {
-            throw new CorreoYaRegistradoException("correo ya registrado");
-        }
-        if (usuarios.existsByUsername(username)) {
-            throw new RuntimeException("nombre de usuario ya existe");
-        }
-        
-        Usuario usuario = new Usuario(
-            username,
-            correo,
-            passwordEncoder.encode(request.getPassword()),
-            Usuario.Rol.valueOf(request.getRol().toUpperCase())
-        );
-        usuario.setFirstName(request.getFirstName());
-        usuario.setLastName(request.getLastName());
-        usuario.setTelefono(request.getTelefono());
-        if (request.getFechaNacimiento() != null) {
-            usuario.setFechaNacimiento(java.time.LocalDate.parse(request.getFechaNacimiento()));
-        }
-        
-        Usuario guardado = usuarios.save(usuario);
-        return new AuthResponse(guardado.getId(), guardado.getCorreo(), guardado.getRol().name());
-    }
-
-    public LoginResponse login(LoginRequest request) {
-        String correo = request.getCorreo().trim().toLowerCase();
-        Usuario usuario = usuarios.findByCorreo(correo)
-            .orElseThrow(() -> new RuntimeException("credenciales inválidas"));
-        if (usuario.getBloqueadoHasta() != null) {
-            if (usuario.getBloqueadoHasta().isAfter(java.time.LocalDateTime.now())) {
-                throw new AuthCuentaBloqueadaException("cuenta bloqueada temporalmente");
-            }
-            // bloqueo vencido: los 2 intentos ya se usaron, empieza de 0
-            usuario.setIntentosFallidos(0);
-            usuario.setBloqueadoHasta(null);
-            usuarios.save(usuario);
-        }
-        if (!passwordEncoder.matches(request.getPassword(), usuario.getPasswordHash())) {
-            usuario.setIntentosFallidos(usuario.getIntentosFallidos() + 1);
-            if (usuario.getIntentosFallidos() >= 2) {
-                usuario.setBloqueadoHasta(java.time.LocalDateTime.now().plusMinutes(5));
-            }
-            usuarios.save(usuario);
-            throw new RuntimeException("credenciales inválidas");
-        }
-        usuario.setIntentosFallidos(0);
-        usuario.setBloqueadoHasta(null);
-        usuarios.save(usuario);
-        String token = jwtService.generarToken(usuario);
-        AuthResponse user = new AuthResponse(usuario.getId(), usuario.getCorreo(), usuario.getRol().name());
-        return new LoginResponse(token, user);
-    }
-
-    /**
-     * Solicita recuperación de contraseña (US-24).
-     * Genera token JWT tipo "password_reset" con expiración 15 min.
-     * Envía email con enlace de recuperación.
-     * Respuesta genérica para no revelar si el correo existe.
-     */
-    public void solicitarResetPassword(String correo) {
-        String email = correo.trim().toLowerCase();
-        Usuario usuario = usuarios.findByCorreo(email).orElse(null);
-        
-        if (usuario != null) {
-            String token = jwtService.generarTokenPasswordReset(usuario);
-            String resetUrl = frontendUrl + "/recuperacion?token=" + token;
-            
-            try {
-                SimpleMailMessage message = new SimpleMailMessage();
-                message.setFrom(mailFrom);
-                message.setTo(usuario.getCorreo());
-                message.setSubject("Recuperación de contraseña - Petly");
-                message.setText(
-                    "Hola " + usuario.getUsername() + ",\n\n" +
-                    "Para restablecer tu contraseña, haz clic en el siguiente enlace:\n" +
-                    resetUrl + "\n\n" +
-                    "El enlace expira en 15 minutos.\n\n" +
-                    "Si no solicitaste esto, ignora este correo.\n\n" +
-                    "Equipo Petly"
-                );
-                mailSender.send(message);
-            } catch (Exception e) {
-                // Log error pero no revelar si el email falló
-                System.err.println("Error enviando email de recuperación: " + e.getMessage());
-            }
-        }
-        // Siempre respuesta genérica (no revelar si existe)
-    }
-
-    /**
-     * Confirma recuperación de contraseña (US-24).
-     * Valida token (tipo, expiración, firma), actualiza password.
-     */
-    public void confirmarResetPassword(String token, String nuevaPassword) {
-        Long userId = jwtService.validarTokenPasswordReset(token);
-        Usuario usuario = usuarios.findById(userId)
-            .orElseThrow(() -> new RuntimeException("usuario no encontrado"));
-        
-        usuario.setPasswordHash(passwordEncoder.encode(nuevaPassword));
-        usuarios.save(usuario);
-    }
-
-    /**
-     * Verifica autorización de perfil con Django (US-18).
-     * Llama a endpoint interno de Django /api/interno/autorizacion/
-     * para verificar si un adoptante autorizó a un albergue específico.
-     */
-    public boolean verificarAutorizacion(Long adoptanteId, Long albergueId, String djangoToken) {
-        try {
-            String url = djangoApiUrl + "/api/acceso/interno/autorizacion/";
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.setBearerAuth(djangoToken);
-            
-            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-            params.add("adoptante_id", adoptanteId.toString());
-            params.add("albergue_id", albergueId.toString());
-            
-            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
-            
-            var response = restTemplate.postForEntity(url, request, AutorizacionResponse.class);
-            
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return response.getBody().isAutorizado();
-            }
-            return false;
-        } catch (Exception e) {
-            System.err.println("Error verificando autorización con Django: " + e.getMessage());
-            return false;
-        }
-    }
-
-    // Response class for autorización check
-    public static class AutorizacionResponse {
-        private boolean autorizado;
-        private java.util.List<String> campos_permitidos;
-        
-        public boolean isAutorizado() { return autorizado; }
-        public void setAutorizado(boolean autorizado) { this.autorizado = autorizado; }
-        public java.util.List<String> getCampos_permitidos() { return campos_permitidos; }
-        public void setCampos_permitidos(java.util.List<String> campos_permitidos) { this.campos_permitidos = campos_permitidos; }
-    }
+ private final UsuarioRepository usuarios;
+ private final PasswordEncoder encoder;
+ private final JwtService jwt;
+ private final JavaMailSender mail;
+ private final JdbcTemplate db;
+ private final String mailFrom, resetBase;
+ public AuthService(UsuarioRepository usuarios, PasswordEncoder encoder, JwtService jwt,
+    JavaMailSender mail, JdbcTemplate db, @Value("${spring.mail.from}") String mailFrom,
+    @Value("${petly.reset-link-base}") String resetBase) {
+  this.usuarios=usuarios;this.encoder=encoder;this.jwt=jwt;this.mail=mail;this.db=db;
+  this.mailFrom=mailFrom;this.resetBase=resetBase;
+ }
+ @Transactional
+ public AuthResponse registrar(RegistroRequest request) {
+  validarPassword(request.getPassword(),"password");
+  String correo=request.getCorreo().trim().toLowerCase(Locale.ROOT);
+  if(usuarios.existsByCorreo(correo)) throw new CorreoYaRegistradoException("correo ya registrado");
+  Usuario u=new Usuario("petly_"+UUID.randomUUID().toString().replace("-",""),correo,encoder.encode(request.getPassword()),Usuario.Rol.ADOPTANTE);
+  usuarios.save(u); return new AuthResponse(u.getId(),u.getCorreo(),u.getRol().name());
+ }
+ @Transactional(noRollbackFor={CredencialesInvalidasException.class,AuthCuentaBloqueadaException.class})
+ public LoginResponse login(LoginRequest request) {
+  Usuario u=usuarios.bloquearPorCorreo(request.getCorreo().trim().toLowerCase(Locale.ROOT))
+    .orElseThrow(CredencialesInvalidasException::new);
+  LocalDateTime now=LocalDateTime.now();
+  if(u.getBloqueadoHasta()!=null && u.getBloqueadoHasta().isAfter(now)) throw new AuthCuentaBloqueadaException("bloqueada");
+  if(u.getBloqueadoHasta()!=null) {u.setIntentosFallidos(0);u.setBloqueadoHasta(null);}
+  if(!encoder.matches(request.getPassword(),u.getPasswordHash())) {
+   u.setIntentosFallidos(u.getIntentosFallidos()+1);
+   if(u.getIntentosFallidos()>=2) {u.setBloqueadoHasta(now.plusMinutes(5));usuarios.save(u);throw new AuthCuentaBloqueadaException("bloqueada");}
+   usuarios.save(u);throw new CredencialesInvalidasException();
+  }
+  u.setIntentosFallidos(0);u.setBloqueadoHasta(null);usuarios.save(u);
+  return new LoginResponse(jwt.generarToken(u),new AuthResponse(u.getId(),u.getCorreo(),u.getRol().name()));
+ }
+ private static void validarPassword(String password,String campo) {
+  if(password.length()<8 || password.getBytes(StandardCharsets.UTF_8).length>72)
+   throw new ApiException(400,"datos inválidos",Map.of(campo,"Usa al menos 8 caracteres y hasta 72 bytes UTF-8."));
+ }
+ public static String hash(String token) {
+  try {return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8)));}
+  catch(NoSuchAlgorithmException e) {throw new IllegalStateException(e);}
+ }
+ public void solicitarResetPassword(String correo) {
+  var optional=usuarios.findByCorreo(correo.trim().toLowerCase(Locale.ROOT));
+  if(optional.isEmpty()) return;
+  Usuario u=optional.get(); byte[] bytes=new byte[32];new SecureRandom().nextBytes(bytes);
+  String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+  db.update("INSERT INTO password_resets (token_hash,usuario_id,expires_at) VALUES (?,?,?)",hash(token),u.getId(),java.sql.Timestamp.from(Instant.now().plusSeconds(900)));
+  SimpleMailMessage msg=new SimpleMailMessage();msg.setFrom(mailFrom);msg.setTo(u.getCorreo());
+  msg.setSubject("Recuperación de contraseña - Petly");
+  msg.setText("Abre este enlace en Petly para cambiar tu contraseña (vence en 15 minutos y sirve una sola vez):\n"+resetBase+"?token="+token);
+  try {mail.send(msg);} catch(org.springframework.mail.MailException e) {
+   org.slf4j.LoggerFactory.getLogger(getClass()).warn("Envío de recuperación no disponible; revisar SMTP.");
+  }
+ }
+ @Transactional
+ public void confirmarResetPassword(String token,String password) {
+  validarPassword(password,"nuevaPassword");
+  String hash=hash(token);
+  var rows=db.queryForList("SELECT usuario_id FROM password_resets WHERE token_hash=? AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP",hash);
+  if(rows.isEmpty()) throw new ApiException(400,"enlace inválido, vencido o utilizado");
+  long id=((Number)rows.get(0).get("usuario_id")).longValue();
+  db.queryForObject("SELECT id FROM usuarios WHERE id=? FOR UPDATE",Long.class,id);
+  int changed=db.update("UPDATE password_resets SET used_at=CURRENT_TIMESTAMP WHERE token_hash=? AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP",hash);
+  if(changed!=1) throw new ApiException(400,"enlace inválido, vencido o utilizado");
+  db.update("UPDATE usuarios SET password_hash=?,token_version=token_version+1,intentos_fallidos=0,bloqueado_hasta=NULL WHERE id=?",encoder.encode(password),id);
+  db.update("UPDATE password_resets SET used_at=CURRENT_TIMESTAMP WHERE usuario_id=? AND used_at IS NULL",id);
+ }
 }

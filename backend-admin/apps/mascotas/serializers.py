@@ -74,6 +74,7 @@ class MascotaSerializer(serializers.ModelSerializer):
             "edad_meses",
             "edad_texto",
             "temperamento",
+            "energia",
             "temperamento_display",
             "estado",
             "estado_display",
@@ -132,6 +133,7 @@ class MascotaListSerializer(serializers.ModelSerializer):
             "tamanio",
             "edad_texto",
             "temperamento",
+            "energia",
             "temperamento_display",
             "estado",
             "estado_display",
@@ -152,6 +154,7 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             "sexo",
             "tamanio",
             "temperamento",
+            "energia",
             "edad_anos",
             "edad_meses",
             "descripcion",
@@ -163,10 +166,35 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             "fotos_adicionales",
         ]
 
+    def validate_foto_principal(self, photo):
+        if photo is None:
+            raise serializers.ValidationError("La fotografía es obligatoria.")
+        if photo.size > 5 * 1024 * 1024:
+            raise serializers.ValidationError("Máximo 5 MB.")
+        from PIL import Image
+        try:
+            image = Image.open(photo)
+            if image.format not in {"JPEG", "PNG"}:
+                raise ValueError()
+            image.verify()
+            photo.seek(0)
+        except Exception:
+            raise serializers.ValidationError("Usa una fotografía JPEG o PNG válida.")
+        return photo
+
     def validate(self, attrs):
-        """Validar que al menos edad_anos o edad_meses esté presente."""
-        if not attrs.get("edad_anos") and not attrs.get("edad_meses"):
-            raise serializers.ValidationError("Debe especificar al menos años o meses de edad.")
+        years = attrs.get("edad_anos", getattr(self.instance, "edad_anos", None))
+        months = attrs.get("edad_meses", getattr(self.instance, "edad_meses", None))
+        if years is not None and not 0 <= years <= 50:
+            raise serializers.ValidationError({"edad_anos": "Entre 0 y 50."})
+        if months is not None and not 0 <= months <= 11:
+            raise serializers.ValidationError({"edad_meses": "Resto de meses entre 0 y 11."})
+        if (years or 0) * 12 + (months or 0) > 600:
+            raise serializers.ValidationError({"edad_anos": "Edad total máxima: 600 meses."})
+        if self.instance is None and not attrs.get("foto_principal"):
+            raise serializers.ValidationError({"foto_principal": "Una fotografía es obligatoria."})
+        if attrs.get("fotos_adicionales"):
+            raise serializers.ValidationError({"fotos_adicionales": "Sprint 1 admite una sola fotografía."})
         return attrs
 
 

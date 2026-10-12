@@ -43,6 +43,8 @@ class Mascota(models.Model):
         verbose_name="Albergue",
     )
 
+    energia = models.CharField(max_length=20, default="POR_EVALUAR", choices=[("BAJA", "Baja"), ("MEDIA", "Media"), ("ALTA", "Alta"), ("POR_EVALUAR", "Por evaluar")])
+
     # Identificación
     nombre = models.CharField("Nombre", max_length=100)
     codigo = models.CharField("Código interno", max_length=20, unique=True)

@@ -10,9 +10,9 @@ import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 
-// Rutas propuestas. Ajustar a los controllers reales de Persona B.
+// Contrato documentado en docs/api.md.
 interface AuthApi {
-    @POST("api/auth/register")
+    @POST("api/auth/registro")
     suspend fun register(@Body request: RegisterRequest): Response<Unit>
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse

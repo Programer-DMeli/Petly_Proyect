@@ -6,6 +6,14 @@ from rest_framework import status
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
 
+from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
+from io import BytesIO
+
+def foto_prueba():
+    out = BytesIO(); Image.new("RGB", (10,10)).save(out, format="PNG")
+    return SimpleUploadedFile("mascota.png", out.getvalue(), content_type="image/png")
+
 User = get_user_model()
 
 
@@ -13,9 +21,9 @@ class MascotaAPITest(TestCase):
     """Tests de endpoints API de Mascotas."""
 
     def setUp(self):
-        self.user = User.objects.create_user(username='owner', password='pass123')
-        self.other_user = User.objects.create_user(username='other', password='pass123')
-        self.staff = User.objects.create_user(username='staff', password='pass123', is_staff=True)
+        self.user = User.objects.create_user(username='owner', password='pass123', rol='ALBERGUE')
+        self.other_user = User.objects.create_user(username='other', password='pass123', rol='ALBERGUE')
+        self.staff = User.objects.create_user(username='staff', password='pass123', is_staff=True, rol='ADMIN')
         
         self.albergue = Albergue.objects.create(
             usuario=self.user,
@@ -70,6 +78,7 @@ class MascotaAPITest(TestCase):
             'nombre': 'Nueva', 'codigo': 'PET-010',
             'especie': 'GATO', 'sexo': 'HEMBRA',
             'edad_anos': 1,
+            'foto_principal': foto_prueba(),
         }
         response = self.client.post('/api/mascotas/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -148,3 +157,11 @@ class MascotaAPITest(TestCase):
         self._auth(self.user)
         response = self.client.get(f'/api/mascotas/{mascota_ajena.id}/')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    def test_foto_y_edad_invalidas_rechazadas(self):
+        self._auth(self.user)
+        payload = {"nombre": "Luna", "especie": "PERRO", "sexo": "HEMBRA", "edad_anos": 2}
+        self.assertEqual(self.client.post('/api/mascotas/',payload).status_code,400)
+        payload["foto_principal"] = SimpleUploadedFile("fake.png",b"not an image",content_type="image/png")
+        self.assertEqual(self.client.post('/api/mascotas/',payload).status_code,400)
+        payload["foto_principal"] = foto_prueba(); payload["edad_meses"] = 12
+        self.assertEqual(self.client.post('/api/mascotas/',payload).status_code,400)

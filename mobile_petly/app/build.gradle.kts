@@ -21,11 +21,12 @@ android {
 
     buildTypes {
         getByName("debug") {
-            buildConfigField(
-                "String",
-                "API_BASE_URL",
-                "\"http://10.0.2.2:8080/\""
-            )
+            if (providers.gradleProperty("petlyIntegrationInstall").orNull == "true") {
+                applicationIdSuffix = ".integration"
+            }
+            val apiBase = providers.gradleProperty("petlyApiBaseUrl").getOrElse("http://10.0.2.2:8080/")
+            require(apiBase.endsWith("/") && apiBase.matches(Regex("https?://[A-Za-z0-9.:-]+/")))
+            buildConfigField("String", "API_BASE_URL", "\"$apiBase\"")
             isMinifyEnabled = false
             isShrinkResources = false
         }
@@ -53,9 +54,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -84,6 +83,10 @@ dependencies {
     implementation(libs.moshi.kotlin)
     implementation(libs.retrofit)
     implementation(libs.retrofit.moshi)
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     testImplementation(libs.junit)
@@ -94,3 +97,4 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
+kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11) } }

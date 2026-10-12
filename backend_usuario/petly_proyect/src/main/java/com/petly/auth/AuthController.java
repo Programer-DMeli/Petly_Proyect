@@ -39,14 +39,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        try {
-            LoginResponse respuesta = authService.login(request);
-            return ResponseEntity.ok(respuesta);
-        } catch (AuthCuentaBloqueadaException e) {
-            return ResponseEntity.status(423).body(e.getMessage());
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body(e.getMessage());
-        }
+        return ResponseEntity.ok(authService.login(request));
     }
 
     @GetMapping("/me")
@@ -68,6 +61,8 @@ public class AuthController {
 
     @PostMapping("/password/reset/confirm")
     public ResponseEntity<?> confirmarReset(@Valid @RequestBody PasswordResetConfirmRequest request) {
+        if (!request.getNuevaPassword().equals(request.getNuevaPasswordConfirm()))
+            throw new com.petly.common.exception.ApiException(400, "las contraseñas no coinciden");
         authService.confirmarResetPassword(request.getToken(), request.getNuevaPassword());
         return ResponseEntity.ok(Map.of("detail", "Contraseña actualizada correctamente."));
     }

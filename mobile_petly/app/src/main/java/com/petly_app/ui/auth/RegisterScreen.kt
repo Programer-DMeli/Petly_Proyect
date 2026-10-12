@@ -20,7 +20,9 @@ fun RegisterScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
-    BackHandler(enabled = state.busy) { /* Esperar a que termine la petición. */ }
+
+    BackHandler(enabled = state.busy) { /* Bloquear navegación mientras está procesando la solicitud. */ }
+
     LaunchedEffect(state.registered) {
         if (state.registered) {
             password = ""
@@ -29,27 +31,62 @@ fun RegisterScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().imePadding()
-            .verticalScroll(rememberScrollState()).padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("Crear cuenta", style = MaterialTheme.typography.headlineMedium)
+
         if (state.registered) {
-            Text("Cuenta creada. Ya puedes iniciar sesión.")
+            Text(
+                "¡Cuenta creada con éxito!",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text("Tu registro se ha completado correctamente. Ya puedes iniciar sesión con tu correo y contraseña.")
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onBack,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Iniciar sesión")
+            }
         } else {
+            Text("Ingresa tus datos para registrarte en Petly.")
             OutlinedTextField(
-                value = email, onValueChange = { email = it }, label = { Text("Correo") },
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Correo electrónico") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                singleLine = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth()
+                singleLine = true,
+                enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth()
             )
             PasswordField(password, { password = it }, "Contraseña", !state.busy)
             PasswordField(confirmation, { confirmation = it }, "Repetir contraseña", !state.busy)
-            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+
+            state.error?.let {
+                Text(it, color = MaterialTheme.colorScheme.error)
+            }
+
             Button(
                 onClick = { onRegister(email, password, confirmation) },
-                enabled = !state.busy && email.isNotBlank() && password.isNotBlank() && confirmation.isNotBlank(), modifier = Modifier.fillMaxWidth()
-            ) { Text(if (state.busy) "Creando cuenta…" else "Registrarme") }
+                enabled = !state.busy && email.isNotBlank() && password.isNotBlank() && confirmation.isNotBlank(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (state.busy) "Creando cuenta…" else "Registrarme")
+            }
+
+            TextButton(
+                onClick = onBack,
+                enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("¿Ya tienes una cuenta? Iniciar sesión")
+            }
         }
-        TextButton(onClick = onBack, enabled = !state.busy) { Text("Volver al acceso") }
     }
 }

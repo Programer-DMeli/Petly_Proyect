@@ -46,3 +46,11 @@ La frontera todavía está por detallar antes de los sprints que la usan:
 ## Relación con `database/`
 
 `database/modelo-datos.md` y `database/seeds/` contienen el detalle y datos de demostración. **No** duplican ni sustituyen las migraciones.
+
+## Esquema implementado para integración de Persona C
+
+Spring/Flyway: V1 usuarios; V2 amplía la cuenta y añade perfiles_adoptantes (nullable para borradores), autorizaciones_perfil (clave compuesta usuario/albergue) y password_resets (hash, expiración, consumo). Django no migra estas tablas.
+
+Django: acceso_user conserva su ID local y añade spring_id único nullable para identidad Spring; albergues_albergue conserva la relación con ese espejo; mascotas_mascota añade energía además del temperamento existente. Se añade una unión sin operaciones del grafo acceso. No se eliminan migraciones ni datos anteriores. Spring consulta estas tablas con JDBC sin entidades que generen esquema.
+
+En una base vacía, Flyway primero y migraciones Django después. La base existente del equipo requiere revisar historiales/esquema y decidir cualquier baseline explícitamente; ver docs/instalacion.md. La comprobación real se hizo en una base aislada MariaDB 11.8.8, no en XAMPP del equipo.

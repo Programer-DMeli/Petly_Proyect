@@ -2,7 +2,7 @@ package com.petly_app.data.model
 
 data class Mascota(
     val id: Long, val nombre: String, val especie: String, val tamano: String,
-    val edadMeses: Int, val temperamento: String, val energia: String,
+    val edadMeses: Int?, val temperamento: String, val energia: String,
     val descripcion: String, val albergue: String, val ubicacion: String,
     val estado: String, val fotografiaUrl: String? = null
 )
@@ -14,9 +14,9 @@ data class CatalogoFilters(
     fun ageError(): String? {
         val min = edadMinimaMeses.trim()
         val max = edadMaximaMeses.trim()
-        if ((min.isNotEmpty() && (min.toIntOrNull() == null || min.toInt() < 0)) ||
-            (max.isNotEmpty() && (max.toIntOrNull() == null || max.toInt() < 0))) {
-            return "La edad se expresa en meses enteros, desde cero."
+        if ((min.isNotEmpty() && (min.toIntOrNull() == null || min.toInt() !in 0..600)) ||
+            (max.isNotEmpty() && (max.toIntOrNull() == null || max.toInt() !in 0..600))) {
+            return "La edad se expresa en meses enteros, entre 0 y 600."
         }
         if (min.isNotEmpty() && max.isNotEmpty() && min.toInt() > max.toInt()) return "La edad mínima no puede superar la máxima."
         return null
@@ -41,7 +41,7 @@ object DemoCatalogoQuery {
                 (filters.especie == null || it.especie == filters.especie) &&
                 (filters.tamano == null || it.tamano == filters.tamano) &&
                 (filters.temperamento == null || it.temperamento == filters.temperamento) &&
-                (min == null || it.edadMeses >= min) && (max == null || it.edadMeses <= max)
+                (min == null || it.edadMeses != null && it.edadMeses >= min) && (max == null || it.edadMeses != null && it.edadMeses <= max)
         }.sortedBy { it.id }
         val pages = if (matching.isEmpty()) 1 else (matching.size - 1) / pageSize + 1
         val safePage = page.coerceAtMost(pages)

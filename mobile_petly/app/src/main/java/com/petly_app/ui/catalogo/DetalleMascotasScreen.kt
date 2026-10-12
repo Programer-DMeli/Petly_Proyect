@@ -27,7 +27,7 @@ fun DetalleMascotaScreen(state: DetalleMascotaUiState, preview: Boolean, onRetry
                 Text("Estado: ${mascota.estado}", style = MaterialTheme.typography.titleMedium)
                 Text("Especie: ${mascota.especie}")
                 Text("Tamaño: ${mascota.tamano}")
-                Text("Edad: ${mascota.edadMeses} meses")
+                Text("Edad: " + (mascota.edadMeses?.let { "${it / 12} años · ${it % 12} meses" } ?: "Por evaluar"))
                 Text("Temperamento: ${mascota.temperamento}")
                 Text("Energía: ${mascota.energia}")
                 Text(mascota.descripcion)

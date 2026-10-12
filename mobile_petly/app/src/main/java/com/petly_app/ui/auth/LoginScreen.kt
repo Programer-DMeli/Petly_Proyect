@@ -18,7 +18,8 @@ fun LoginScreen(
     onLogin: (String, String) -> Unit,
     onRegister: () -> Unit,
     onCheckConnection: () -> Unit,
-    onPreview: (() -> Unit)? = null
+    onPreview: (() -> Unit)? = null,
+    onRecovery: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -51,6 +52,7 @@ fun LoginScreen(
             onClick = { onLogin(email, password) },
             enabled = !state.busy && email.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth()
         ) { Text(if (state.busy) "Ingresando…" else "Ingresar") }
+        TextButton(onClick = onRecovery, enabled = !state.busy) { Text("Olvidé mi contraseña") }
         TextButton(onClick = onRegister, enabled = !state.busy) { Text("Crear cuenta") }
         if (onPreview != null) {
             HorizontalDivider()

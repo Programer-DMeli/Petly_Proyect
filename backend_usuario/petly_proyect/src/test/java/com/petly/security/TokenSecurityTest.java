@@ -32,6 +32,7 @@ import io.jsonwebtoken.security.Keys;
  * invalidos y vencidos, y aceptan uno bueno (US-21).
  * Cada test usa su propia IP para no chocar con el rate-limit.
  */
+@org.springframework.test.context.ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -43,7 +44,7 @@ class TokenSecurityTest {
     @Autowired
     private JwtService jwtService;
 
-    @Value("${JWT_SECRET:petly-dev-secret-local-de-32-caracteres-minimo}")
+    @Value("${spring.jwt.secret}")
     private String secreto;
 
     private final ObjectMapper json = new ObjectMapper();
@@ -99,11 +100,13 @@ class TokenSecurityTest {
                 .subject("1")
                 .claim("email", "vencido@petly.test")
                 .claim("rol", "ADOPTANTE")
+                .claim("type", "access")
+                .claim("version", 0)
                 .issuer("petly-spring")
-                .audience().add("petly-django").and()
+                .audience().add("petly-django").add("petly-api").and()
                 .issuedAt(new Date(System.currentTimeMillis() - 120_000L))
                 .expiration(new Date(System.currentTimeMillis() - 60_000L))
-                .signWith(clave)
+                .signWith(clave, Jwts.SIG.HS256)
                 .compact();
 
         mvc.perform(desde("10.0.1.3", get("/api/auth/me"))

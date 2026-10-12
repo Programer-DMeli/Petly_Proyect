@@ -1,6 +1,8 @@
 package com.petly_app
 
 import android.os.Bundle
+import android.content.Intent
+import androidx.compose.runtime.mutableStateOf
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -12,10 +14,21 @@ import com.petly_app.core.navigation.PetlyNavHost
 import com.petly_app.ui.theme.Petly_appTheme
 
 class MainActivity : ComponentActivity() {
+    private val resetToken = mutableStateOf<String?>(null)
+    private fun acceptLink(intent: Intent?) {
+        val uri = intent?.data
+        if(uri?.scheme == "petly" && uri.host == "recuperacion") {
+            (application as PetlyApplication).container.session.clear()
+            resetToken.value = uri.getQueryParameter("token")
+        }
+    }
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); acceptLink(intent) }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        acceptLink(intent)
         enableEdgeToEdge()
 
         val container = (application as PetlyApplication).container
@@ -27,7 +40,7 @@ class MainActivity : ComponentActivity() {
                         .fillMaxSize()
                         .safeDrawingPadding()
                 ) {
-                    PetlyNavHost(container)
+                    PetlyNavHost(container, resetToken.value) { resetToken.value = null; intent.data = null }
                 }
             }
         }

@@ -18,9 +18,9 @@ object ApiClient {
                 if (BuildConfig.DEBUG) {
                     addInterceptor { chain ->
                         val request = chain.request()
-                        Log.d("ApiClient", "--> ${request.method} ${request.url}")
+                        Log.d("ApiClient", "--> ${request.method} ${request.url.encodedPath}")
                         val response = chain.proceed(request)
-                        Log.d("ApiClient", "<-- ${response.code} ${request.url}")
+                        Log.d("ApiClient", "<-- ${response.code} ${request.url.encodedPath}")
                         response
                     }
                 }
@@ -31,7 +31,7 @@ object ApiClient {
     fun publicApi(): Retrofit = Retrofit.Builder()
         .baseUrl(BuildConfig.API_BASE_URL)
         .client(baseClient)
-        .addConverterFactory(GsonConverterFactory.create())
+        .addConverterFactory(GsonConverterFactory.create(com.google.gson.GsonBuilder().serializeNulls().create()))
         .build()
 
     fun authenticatedApi(session: SessionManager): Retrofit {
@@ -52,7 +52,7 @@ object ApiClient {
         return Retrofit.Builder()
             .baseUrl(BuildConfig.API_BASE_URL)
             .client(authClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(com.google.gson.GsonBuilder().serializeNulls().create()))
             .build()
     }
 }

@@ -30,7 +30,7 @@ class IsAlbergueOwnerOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         # Para crear, verificar que el usuario tiene un albergue
-        return hasattr(request.user, 'albergue')
+        return request.user.rol == 'ALBERGUE' and hasattr(request.user, 'albergue')
 
 
 class MascotaViewSet(viewsets.ModelViewSet):
@@ -73,6 +73,7 @@ class MascotaViewSet(viewsets.ModelViewSet):
         serializer.save(
             albergue=self.request.user.albergue,
             creado_por=self.request.user,
+            codigo=__import__("uuid").uuid4().hex[:20].upper(),
         )
 
     def create(self, request, *args, **kwargs):

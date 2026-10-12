@@ -18,6 +18,9 @@ from .serializers import (
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """Permiso: solo el usuario dueño del albergue puede modificar."""
 
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.rol in {"ALBERGUE", "ADMIN"}
+
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True

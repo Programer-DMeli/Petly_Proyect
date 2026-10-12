@@ -24,6 +24,7 @@ import com.petly.auth.dto.RegistroRequest;
  * 10 por minuto. Con @Transactional todo se revierte al final y la BD
  * queda como estaba. Requiere MariaDB en marcha.
  */
+@org.springframework.test.context.ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -124,7 +125,7 @@ class AuthControllerTest {
             mvc.perform(desde("10.0.0.5", "/api/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(json.writeValueAsString(mala)))
-                    .andExpect(status().isUnauthorized());
+                    .andExpect(i == 0 ? status().isUnauthorized() : status().isLocked());
         }
 
         // tercer intento: ya no entra ni con la clave correcta

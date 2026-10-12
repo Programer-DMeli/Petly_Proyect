@@ -2,19 +2,8 @@ package com.petly_app.core
 
 import com.petly_app.core.network.ApiClient
 import com.petly_app.core.session.SessionManager
-import com.petly_app.data.remote.AuthApi
-import com.petly_app.data.remote.HealthApi
-import com.petly_app.data.remote.UsuarioApi
-import com.petly_app.data.repository.AuthRepository
-import com.petly_app.data.repository.HealthRepository
-import com.petly_app.data.repository.UsuarioRepository
-import com.petly_app.data.repository.PreviewPerfilRepository
-import com.petly_app.data.repository.PreviewCatalogoRepository
-import com.petly_app.data.repository.PendingPerfilRepository
-import com.petly_app.data.repository.PendingCatalogoRepository
-import com.petly_app.data.repository.PerfilRepository
-import com.petly_app.data.repository.CatalogoRepository
-
+import com.petly_app.data.remote.*
+import com.petly_app.data.repository.*
 // Dependencias compartidas de la aplicación; no se crean al recomponer una pantalla.
 class AppContainer {
     val session = SessionManager()
@@ -25,10 +14,12 @@ class AppContainer {
     val usuarioRepository = UsuarioRepository(privateApi.create(UsuarioApi::class.java), session)
     private val previewPerfil = PreviewPerfilRepository()
     private val previewCatalogo = PreviewCatalogoRepository()
-    private val pendingPerfil = PendingPerfilRepository()
-    private val pendingCatalogo = PendingCatalogoRepository()
+    private val remotePerfil = RemotePerfilRepository(privateApi.create(PerfilApi::class.java))
+    private val remoteCatalogo = RemoteCatalogoRepository(privateApi.create(CatalogoApi::class.java))
 
-    fun perfil(preview: Boolean): PerfilRepository = if (preview) previewPerfil else pendingPerfil
-    fun catalogo(preview: Boolean): CatalogoRepository = if (preview) previewCatalogo else pendingCatalogo
+    fun perfil(preview: Boolean): PerfilRepository = if (preview) previewPerfil else remotePerfil
+    fun catalogo(preview: Boolean): CatalogoRepository = if (preview) previewCatalogo else remoteCatalogo
+    val autorizaciones = AutorizacionRepository(privateApi.create(AutorizacionApi::class.java))
+    val recuperacion = RecuperacionRepository(publicApi.create(RecuperacionApi::class.java))
     fun resetPreview() = previewPerfil.reset()
 }

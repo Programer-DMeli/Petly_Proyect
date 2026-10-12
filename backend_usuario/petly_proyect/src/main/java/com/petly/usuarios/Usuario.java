@@ -29,7 +29,7 @@ import org.springframework.security.core.userdetails.UserDetails;
  * Django valida estos tokens vía DualJWTAuthentication.
  */
 @Entity
-@Table(name = "usuarios", schema = "database_petly", uniqueConstraints = @UniqueConstraint(columnNames = "correo"))
+@Table(name = "usuarios", uniqueConstraints = @UniqueConstraint(columnNames = "correo"))
 public class Usuario implements UserDetails {
 
     public enum Rol {
@@ -84,6 +84,11 @@ public class Usuario implements UserDetails {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion = 0;
+    public int getTokenVersion() { return tokenVersion; }
+    public void setTokenVersion(int value) { tokenVersion = value; }
 
     // Constructors
     protected Usuario() {}

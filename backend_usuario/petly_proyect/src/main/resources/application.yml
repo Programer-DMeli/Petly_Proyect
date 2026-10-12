@@ -22,18 +22,9 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
-  # Redis para rate limiting y bloqueo de intentos fallidos (US-21)
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      timeout: 2000ms
-
   jwt:
-    secret: ${SPRING_JWT_SECRET:change-me-shared-secret-for-jwt-validation-min-32-chars}
+    secret: ${SPRING_JWT_SECRET}
     access-token-minutes: 60
-    refresh-token-days: 7
     issuer: petly-spring
     audience: petly-django
 
@@ -42,16 +33,16 @@ spring:
     block-duration-minutes: 5
 
   mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
-          auth: ${MAIL_PROPERTIES_MAIL_SMTP_AUTH:true}
+          auth: ${MAIL_PROPERTIES_MAIL_SMTP_AUTH:false}
           starttls:
-            enable: ${MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:true}
+            enable: ${MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:false}
     from: ${MAIL_FROM:noreply@petly.local}
 
 
@@ -68,10 +59,6 @@ springdoc:
     tags-sorter: alpha
   packages-to-scan: com.petly
 
-# JWT Configuration (US-21)
-# Auth configuration (US-21)
-# Email configuration (US-24)
-# Django API URL para comunicación interna (US-18)
-django:
-  api:
-    url: ${DJANGO_API_URL:http://localhost:8000}
+petly:
+  reset-link-base: ${RESET_LINK_BASE:petly://recuperacion}
+  media-base-url: ${MEDIA_BASE_URL:http://10.0.2.2:8000/media/}

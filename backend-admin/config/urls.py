@@ -1,4 +1,5 @@
 """URLs del backend administrativo de Petly."""
+from apps.acceso.forms import TechnicalAdminLoginForm
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -52,6 +53,8 @@ def home(request):
     })
 
 
+admin.site.login_form = TechnicalAdminLoginForm
+
 urlpatterns = [
     path("", home, name="home"),
     path("admin/", admin.site.urls),
@@ -65,7 +68,7 @@ urlpatterns = [
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     
     # Autenticación (login/logout)
-    path("accounts/login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
+    path("accounts/login/", auth_views.LoginView.as_view(template_name="registration/login.html", authentication_form=TechnicalAdminLoginForm), name="login"),
     path("accounts/logout/", auth_views.LogoutView.as_view(next_page="/"), name="logout"),
     
     # Panel web del albergue (protegido con login)
@@ -84,15 +87,13 @@ urlpatterns = [
     path("panel/mascotas/<int:mascota_id>/detalle/", login_required(mascota_detalle), name="mascota_detalle"),
     
     # Panel web - Postulantes
-    path("panel/postulantes/", login_required(postulante_lista), name="postulante_lista"),
-    path("panel/postulantes/<int:postulante_id>/detalle/", login_required(postulante_detalle), name="postulante_detalle"),
     
     # Panel web - Solicitudes
-    path("panel/solicitudes/", login_required(solicitud_lista), name="solicitud_lista"),
-    path("panel/solicitudes/<int:solicitud_id>/detalle/", login_required(solicitud_detalle), name="solicitud_detalle"),
-    path("panel/solicitudes/<int:solicitud_id>/cambiar-estado/", login_required(solicitud_cambiar_estado), name="solicitud_cambiar_estado"),
 ]
 
 # Servir archivos estáticos en entorno de desarrollo
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

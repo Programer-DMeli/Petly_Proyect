@@ -1,77 +1,38 @@
 package com.petly.common.exception;
-
-import com.petly.auth.CorreoYaRegistradoException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
+import java.util.*;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
-
-/**
- * Manejador global de excepciones para respuestas de error consistentes.
- */
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.dao.DataIntegrityViolationException;
+import com.petly.auth.*;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
-        return ResponseEntity.badRequest()
-                .body(new ErrorResponse(
-                        Instant.now(),
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Error de validación",
-                        errors.toString()
-                ));
-    }
-
-    @ExceptionHandler(CorreoYaRegistradoException.class)
-    public ResponseEntity<ErrorResponse> handleCorreoYaRegistrado(CorreoYaRegistradoException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse(
-                        Instant.now(),
-                        HttpStatus.CONFLICT.value(),
-                        "Conflicto",
-                        ex.getMessage()
-                ));
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
-        return ResponseEntity.badRequest()
-                .body(new ErrorResponse(
-                        Instant.now(),
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Argumento inválido",
-                        ex.getMessage()
-                ));
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse(
-                        Instant.now(),
-                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                        "Error interno del servidor",
-                        ex.getMessage()
-                ));
-    }
-
-    public record ErrorResponse(
-            Instant timestamp,
-            int status,
-            String error,
-            String message
-    ) {}
+ public static Map<String,Object> body(String message, Map<String,String> fields) {
+  return Map.of("error",message,"campos",fields);
+ }
+ @ExceptionHandler(MethodArgumentNotValidException.class)
+ ResponseEntity<?> validation(MethodArgumentNotValidException e) {
+  Map<String,String> fields=new LinkedHashMap<>();
+  e.getBindingResult().getFieldErrors().forEach(f->fields.put(f.getField(),f.getDefaultMessage()));
+  return ResponseEntity.badRequest().body(body("datos inválidos",fields));
+ }
+ @ExceptionHandler(ApiException.class)
+ ResponseEntity<?> api(ApiException e) { return ResponseEntity.status(e.status).body(body(e.getMessage(),e.fields)); }
+ @ExceptionHandler(CorreoYaRegistradoException.class)
+ ResponseEntity<?> duplicate(CorreoYaRegistradoException e) {return ResponseEntity.status(409).body(body("correo ya registrado",Map.of()));}
+ @ExceptionHandler(AuthCuentaBloqueadaException.class)
+ ResponseEntity<?> locked(AuthCuentaBloqueadaException e) {return ResponseEntity.status(423).body(body("cuenta bloqueada temporalmente",Map.of()));}
+ @ExceptionHandler(CredencialesInvalidasException.class)
+ ResponseEntity<?> credentials(CredencialesInvalidasException e) {return ResponseEntity.status(401).body(body(e.getMessage(),Map.of()));}
+ @ExceptionHandler({IllegalArgumentException.class,HttpMessageNotReadableException.class,MethodArgumentTypeMismatchException.class})
+ ResponseEntity<?> bad(Exception e) {return ResponseEntity.badRequest().body(body("datos inválidos",Map.of()));}
+ @ExceptionHandler(DataIntegrityViolationException.class)
+ ResponseEntity<?> conflict(Exception e) {return ResponseEntity.status(409).body(body("conflicto de datos",Map.of()));}
+ @ExceptionHandler(Exception.class)
+ ResponseEntity<?> unexpected(Exception e) {
+  org.slf4j.LoggerFactory.getLogger(getClass()).error("Error interno de Petly",e);
+  return ResponseEntity.internalServerError().body(body("error interno",Map.of()));
+ }
 }

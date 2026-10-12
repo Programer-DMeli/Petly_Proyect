@@ -66,30 +66,19 @@ fun CatalogoScreen(
             state.items.isEmpty() -> item { Text("Sin resultados. Prueba con otros filtros.") }
             else -> {
                 item { Text("${state.total} mascotas encontradas") }
-                item {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(state.items, key = { it.id }) { mascota ->
-                            Card(
-                                modifier = Modifier.width(160.dp)
-                            ) {
-                                Column {
-                                    MascotaPhoto(mascota.fotografiaUrl, mascota.nombre, Modifier.fillMaxWidth().height(140.dp))
-                                    Column(
-                                        modifier = Modifier.padding(12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Text(mascota.nombre, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                                        Button(
-                                            onClick = { onDetail(mascota.id) },
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Ver detalle")
-                                        }
-                                    }
-                                }
+                items(state.items, key = { it.id }) { mascota ->
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            MascotaPhoto(mascota.fotografiaUrl, mascota.nombre, Modifier.fillMaxWidth().height(180.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(mascota.nombre, style = MaterialTheme.typography.titleLarge)
+                                SuggestionChip(onClick = {}, label = { Text(mascota.estado) })
+                            }
+                            Text("${mascota.especie} · ${mascota.edadMeses?.let { "$it meses" } ?: "Edad por evaluar"} · ${mascota.tamano}")
+                            Text(mascota.albergue, color = MaterialTheme.colorScheme.primary)
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Button(onClick = { onDetail(mascota.id) }) { Text("Ver detalle") }
+                                OutlinedButton(onClick = onProfile) { Text("Mi perfil") }
                             }
                         }
                     }

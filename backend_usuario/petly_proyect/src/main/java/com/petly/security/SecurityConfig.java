@@ -40,10 +40,13 @@ public class SecurityConfig {
                 // el filtro JWT corre antes de la autenticacion estandar
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 // sin token o token malo: 401 con JSON en vez del 403 por defecto
-                .exceptionHandling(ex -> ex.authenticationEntryPoint((req, res, e) -> {
+                .exceptionHandling(ex -> ex.accessDeniedHandler((req, res, e) -> {
+                    res.setStatus(403); res.setContentType("application/json");
+                    res.getWriter().write("{\"error\":\"acceso denegado\",\"campos\":{}}");
+                }).authenticationEntryPoint((req, res, e) -> {
                     res.setStatus(401);
                     res.setContentType("application/json");
-                    res.getWriter().write("{\"error\":\"no autorizado\"}");
+                    res.getWriter().write("{\"error\":\"no autorizado\",\"campos\":{}}");
                 }))
                 .authorizeHttpRequests(auth -> auth
                         // cubre /api/health y /api/health/ (Spring Security 7
@@ -54,8 +57,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/me")
                         .authenticated()
                         // registro y login son publicos, recien ahi sale el token
-                        .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                        .requestMatchers("/api/auth/registro", "/api/auth/login", "/api/auth/password/reset", "/api/auth/password/reset/confirm", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()
+                        .requestMatchers("/api/perfil/**", "/api/autorizaciones/**").hasRole("ADOPTANTE")
+                        .requestMatchers("/api/albergue/**").hasRole("ALBERGUE")
                         .anyRequest().authenticated());
         return http.build();
     }

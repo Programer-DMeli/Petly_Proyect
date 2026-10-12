@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
  * Requiere MariaDB en marcha; si no está disponible, la prueba falla y se
  * registra como pendiente (PLANNING v2 §14).
  */
+@org.springframework.test.context.ActiveProfiles("test")
 @SpringBootTest
 class PetlyProyectApplicationTests {
 

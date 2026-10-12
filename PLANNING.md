@@ -501,3 +501,7 @@ Cambios de v2: opciones A aprobadas para registro/acceso, fotografías, temperam
 
 Este documento resume la conversación de planificación, la arquitectura proporcionada.
 Las restricciones explícitas y actualizaciones del usuario prevalecen sobre las propuestas pendientes de este documento. Leer este archivo como contexto para la tarea solicitada; IMPORTANTE: no ejecutar automáticamente todas las funcionalidades aquí descritas.
+
+## 16. Implementación local de Persona C — 12 de octubre de 2026
+
+La solicitud posterior de Meliton autorizó implementar e integrar US-16, US-17 y US-12 y sus apoyos, corregir compilación, migraciones y autenticación, sin publicar. El estado de preparación descrito previamente queda como antecedente histórico. Consultar `docs/sprint-01.md` y `docs/entrega-sprint-01.md` para resultados actuales. Los nuevos detalles de contrato se registran como decisiones propuestas en `docs/api.md`; no se atribuye aprobación previa del grupo ni se modifican estimaciones. La revisión cruzada y la verificación de la base existente siguen pendientes.

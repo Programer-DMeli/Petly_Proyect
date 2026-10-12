@@ -2,6 +2,7 @@ package com.petly_app.ui.perfil
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.petly_app.core.network.apiFieldErrors
 import com.petly_app.core.network.apiErrorMessage
 import com.petly_app.data.model.PerfilDraft
 import com.petly_app.data.model.PerfilValidation
@@ -16,7 +17,7 @@ data class PerfilUiState(
     val form: PerfilDraft = PerfilDraft(), val loading: Boolean = false,
     val saving: Boolean = false, val dirty: Boolean = false,
     val errors: Map<String, String> = emptyMap(), val error: String? = null,
-    val message: String? = null
+    val message: String? = null, val loaded: Boolean = false
 )
 
 class PerfilViewModel(private val repository: PerfilRepository, private val preview: Boolean) : ViewModel() {
@@ -30,7 +31,7 @@ class PerfilViewModel(private val repository: PerfilRepository, private val prev
         viewModelScope.launch {
             try {
                 val form = repository.load() ?: PerfilDraft()
-                _state.value = PerfilUiState(form = form)
+                _state.value = PerfilUiState(form = form, loaded = true)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _state.update { it.copy(loading = false, error = apiErrorMessage(e)) }
@@ -39,13 +40,13 @@ class PerfilViewModel(private val repository: PerfilRepository, private val prev
     }
 
     fun edit(form: PerfilDraft) {
-        if (_state.value.loading || _state.value.saving) return
+        if (_state.value.loading || _state.value.saving || !_state.value.loaded) return
         _state.update { it.copy(form = form.copy(finalizado = false), dirty = true, message = null,
             error = null, errors = emptyMap()) }
     }
 
     fun save(finalizar: Boolean) {
-        if (_state.value.loading || _state.value.saving) return
+        if (_state.value.loading || _state.value.saving || !_state.value.loaded) return
         val form = _state.value.form.copy(finalizado = finalizar)
         val errors = PerfilValidation.validate(form, finalizar)
         if (errors.isNotEmpty()) {
@@ -61,7 +62,7 @@ class PerfilViewModel(private val repository: PerfilRepository, private val prev
                     else if (finalizar) "Cuestionario guardado." else "Borrador guardado.") }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                _state.update { it.copy(saving = false, error = apiErrorMessage(e)) }
+                _state.update { it.copy(saving = false, error = apiErrorMessage(e), errors = apiFieldErrors(e)) }
             }
         }
     }

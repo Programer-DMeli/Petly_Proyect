@@ -1,5 +1,5 @@
 """Tests para modelos de acceso (Postulante, SolicitudAdopcion)."""
-from django.test import TestCase
+from django.test import TestCase, skipIfDBFeature
 from django.contrib.auth import get_user_model
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
@@ -136,6 +136,7 @@ class SolicitudAdopcionModelTest(TestCase):
             )
             self.assertEqual(solicitud.get_valid_transitions, [], f"Estado {estado} debería ser terminal")
 
+    @skipIfDBFeature("supports_partial_indexes")
     def test_unique_pending_por_mascota_solo_bd_no_aplica_mariadb(self):
         """
         MariaDB no soporta constraints condicionales (UniqueConstraint con condition).

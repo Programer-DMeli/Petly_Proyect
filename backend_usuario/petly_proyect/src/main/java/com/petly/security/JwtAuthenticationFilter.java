@@ -44,11 +44,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             var autoridad = new SimpleGrantedAuthority("ROLE_" + claims.get("rol", String.class));
             var auth = new UsernamePasswordAuthenticationToken(claims, null, List.of(autoridad));
             SecurityContextHolder.getContext().setAuthentication(auth);
-            chain.doFilter(request, response);
         } catch (Exception e) {
             response.setStatus(401);
             response.setContentType("application/json");
-            response.getWriter().write("{\"error\":\"token invalido o vencido\"}");
+            response.getWriter().write("{\"error\":\"token invalido o vencido\",\"campos\":{}}");
+            return;
         }
+        chain.doFilter(request, response);
     }
 }

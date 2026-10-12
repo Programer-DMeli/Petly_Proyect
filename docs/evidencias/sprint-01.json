@@ -1,0 +1,42 @@
+{
+  "fecha": "2026-10-12",
+  "zona": "America/Lima",
+  "rama": "feature/petly_proyect",
+  "spring": {
+    "tests": 18,
+    "fallos": 0
+  },
+  "django": {
+    "descubiertas": 54,
+    "ejecutadas": 44,
+    "omitidas": 10,
+    "fallos": 0
+  },
+  "android_unitarias": {
+    "tests": 19,
+    "fallos": 0
+  },
+  "android_instrumentadas": {
+    "tests": 4,
+    "fallos": 0,
+    "avd": "Medium_Phone",
+    "api": 34
+  },
+  "integracion_real": {
+    "database": "petly_integracion",
+    "result": "PASS",
+    "checks": [
+      "Registro/login Spring y JWT Django reales",
+      "Albergues y mascotas persistidos; foto real",
+      "Perfil parcial/final y convivencia false/null",
+      "Filtros combinados y segunda página",
+      "Estado cambiado en Django y consultado desde Spring",
+      "Consentimiento por albergue y revocación con 403 Django",
+      "SMTP real de pruebas; token válido 15 minutos, uso único y sesión previa revocada",
+      "Bloqueo 5 minutos tras dos fallos y desbloqueo automático"
+    ]
+  },
+  "base_equipo_modificada": false,
+  "revision_cruzada": "pendiente",
+  "telefono_fisico": "pendiente"
+}

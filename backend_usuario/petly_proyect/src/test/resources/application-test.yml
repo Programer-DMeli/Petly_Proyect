@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:petly;MODE=MariaDB;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jwt:
+    secret: ${PETLY_TEST_SECRET}
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:django-read-model.sql
+  mail:
+    host: localhost
+    port: 1025

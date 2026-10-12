@@ -48,12 +48,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/panel/postulantes/' %}active{% endif %}" href="{% url 'postulante_lista' %}">
+                            <a class="nav-link {% if request.path == '/panel/postulantes/' %}active{% endif %}" aria-disabled="true" tabindex="-1">
                                 <i class="bi bi-people me-2"></i>Postulantes
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/panel/solicitudes/' %}active{% endif %}" href="{% url 'solicitud_lista' %}">
+                            <a class="nav-link {% if request.path == '/panel/solicitudes/' %}active{% endif %}" aria-disabled="true" tabindex="-1">
                                 <i class="bi bi-file-earmark-text me-2"></i>Solicitudes
                             </a>
                         </li>

@@ -8,7 +8,8 @@ djangorestframework==3.16.1
 django-cors-headers==4.9.0
 # Conector para MariaDB/MySQL (XAMPP). Si la instalación falla en Windows,
 # alternativa documentada: PyMySQL==1.2.3 (ver README).
-mysqlclient==2.3.0
+PyMySQL==1.2.3
+Pillow==12.3.0
 # Carga variables de entorno desde .env (que nunca se sube a Git).
 python-dotenv==1.2.4
 # JWT para autenticación stateless (US-21, Android/Spring Boot integration).
