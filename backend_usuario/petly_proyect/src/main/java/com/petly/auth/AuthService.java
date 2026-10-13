@@ -14,7 +14,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 
 import com.petly.usuarios.Usuario;
-import com.petly.usuarios.repository.UsuarioRepository;
+import com.petly.usuarios.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
@@ -196,6 +196,20 @@ public class AuthService {
     }
 
     private String hashSha256(String valor) {
+        try {
+            byte[] bytes = MessageDigest.getInstance("SHA-256")
+                    .digest(valor.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                hex.append(String.format("%02x", b & 0xff));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 no disponible", e);
+        }
+    }
+
+    public static String hash(String valor) {
         try {
             byte[] bytes = MessageDigest.getInstance("SHA-256")
                     .digest(valor.getBytes(StandardCharsets.UTF_8));
