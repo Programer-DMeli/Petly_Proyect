@@ -21,6 +21,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    baseline-on-migrate: true
 
   jwt:
     secret: ${SPRING_JWT_SECRET}
