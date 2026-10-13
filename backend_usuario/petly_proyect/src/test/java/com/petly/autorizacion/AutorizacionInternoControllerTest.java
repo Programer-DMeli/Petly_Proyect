@@ -13,7 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.petly.usuarios.Usuario;
-import com.petly.usuarios.repository.UsuarioRepository;
+import com.petly.usuarios.UsuarioRepository;
 
 /**
  * Pruebas del endpoint interno de vigencia (US-18).

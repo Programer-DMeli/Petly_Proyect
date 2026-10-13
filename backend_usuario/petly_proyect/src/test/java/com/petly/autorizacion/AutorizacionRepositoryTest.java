@@ -12,7 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.petly.usuarios.Usuario;
-import com.petly.usuarios.repository.UsuarioRepository;
+import com.petly.usuarios.UsuarioRepository;
 
 /**
  * Persistencia de autorizaciones de consulta (US-18).
