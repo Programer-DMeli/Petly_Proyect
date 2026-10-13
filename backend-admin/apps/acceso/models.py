@@ -27,6 +27,10 @@ class User(AbstractUser):
     acepto_terminos = models.BooleanField("Aceptó términos", default=False)
     fecha_aceptacion_terminos = models.DateTimeField("Fecha aceptación términos", null=True, blank=True)
 
+    # Bloqueo por intentos fallidos (US-21): 2 fallos consecutivos -> 5 min bloqueo
+    intentos_fallidos = models.PositiveIntegerField("Intentos fallidos", default=0)
+    bloqueado_hasta = models.DateTimeField("Bloqueado hasta", null=True, blank=True)
+
     class Meta:
         verbose_name = "Usuario"
         verbose_name_plural = "Usuarios"
@@ -107,6 +111,72 @@ class AdoptanteProfile(models.Model):
     @property
     def nombre_completo(self):
         return f"{self.nombres} {self.apellidos}"
+
+
+class Autorizacion(models.Model):
+    """Autorización del adoptante para que un albergue consulte su perfil (US-18)."""
+
+    class Estado(models.TextChoices):
+        VIGENTE = "VIGENTE", "Vigente"
+        REVOCADA = "REVOCADA", "Revocada"
+        EXPIRADA = "EXPIRADA", "Expirada"
+
+    adoptante = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="autorizaciones",
+        verbose_name="Adoptante",
+        limit_choices_to={"rol": "ADOPTANTE"},
+    )
+    albergue = models.ForeignKey(
+        "albergues.Albergue",
+        on_delete=models.CASCADE,
+        related_name="autorizaciones",
+        verbose_name="Albergue",
+    )
+    estado = models.CharField(
+        "Estado",
+        max_length=15,
+        choices=Estado.choices,
+        default=Estado.VIGENTE,
+        db_index=True,
+    )
+    campos_permitidos = models.JSONField(
+        "Campos permitidos",
+        default=list,
+        help_text="Lista de campos del perfil que el albergue puede consultar",
+    )
+    fecha_autorizacion = models.DateTimeField(auto_now_add=True)
+    fecha_revocacion = models.DateTimeField(null=True, blank=True)
+    fecha_expiracion = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Autorización"
+        verbose_name_plural = "Autorizaciones"
+        ordering = ["-fecha_autorizacion"]
+        unique_together = ["adoptante", "albergue"]
+        indexes = [
+            models.Index(fields=["adoptante", "estado"]),
+            models.Index(fields=["albergue", "estado"]),
+        ]
+
+    def __str__(self):
+        return f"{self.adoptante.username} -> {self.albergue.nombre} ({self.get_estado_display()})"
+
+    def esta_vigente(self):
+        from django.utils import timezone
+        ahora = timezone.now()
+        if self.estado != self.Estado.VIGENTE:
+            return False
+        if self.fecha_expiracion and self.fecha_expiracion < ahora:
+            return False
+        return True
+
+    def revocar(self):
+        from django.utils import timezone
+        self.estado = self.Estado.REVOCADA
+        self.fecha_revocacion = timezone.now()
+        self.save(update_fields=["estado", "fecha_revocacion"])
 
 
 class Postulante(models.Model):

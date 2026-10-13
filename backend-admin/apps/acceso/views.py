@@ -16,7 +16,7 @@ import time
 
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
-from .models import Postulante, SolicitudAdopcion, User, AdoptanteProfile
+from .models import Postulante, SolicitudAdopcion, User, AdoptanteProfile, Autorizacion
 from .serializers import (
     PostulanteSerializer,
     PostulanteListSerializer,
@@ -32,6 +32,9 @@ from .serializers import (
     AdoptanteProfileCreateUpdateSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
+    AutorizacionSerializer,
+    AutorizacionCreateSerializer,
+    AutorizacionRevokeSerializer,
 )
 
 User = get_user_model()
@@ -437,13 +440,58 @@ class PasswordResetConfirmView(APIView):
             return Response({"detail": "Token inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class AutorizacionViewSet(viewsets.ModelViewSet):
+    """
+    Gestión de autorizaciones de perfil por el adoptante (US-18).
+    El adoptante puede autorizar a albergues específicos a consultar su perfil,
+    ver sus autorizaciones activas y revocarlas.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    # No AuthThrottle aquí; usa throttle por defecto de usuario (100/min)
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return AutorizacionCreateSerializer
+        if self.action == "revocar":
+            return AutorizacionRevokeSerializer
+        return AutorizacionSerializer
+
+    def get_queryset(self):
+        # El adoptante ve solo sus autorizaciones
+        return Autorizacion.objects.filter(adoptante=self.request.user).select_related("albergue")
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
+    @action(detail=True, methods=["post"], url_path="revocar")
+    def revocar(self, request, pk=None):
+        """Revoca una autorización vigente."""
+        autorizacion = self.get_object()
+        if autorizacion.estado != Autorizacion.Estado.VIGENTE:
+            return Response(
+                {"detail": f"No se puede revocar una autorización {autorizacion.get_estado_display().lower()}."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        autorizacion.revocar()
+        return Response(AutorizacionSerializer(autorizacion, context={"request": request}).data)
+
+    @action(detail=False, methods=["get"], url_path="activas")
+    def activas(self, request):
+        """Lista solo autorizaciones vigentes."""
+        qs = self.get_queryset().filter(estado=Autorizacion.Estado.VIGENTE)
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
+
+
 class AutorizacionCheckView(APIView):
     """
     Verifica si un adoptante ha autorizado a un albergue específico (US-18).
     Endpoint interno llamado por Spring Boot para validar autorización.
     """
     permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [AuthThrottle]
+    # Sin AuthThrottle: endpoint interno, no auth público
 
     def get(self, request):
         adoptante_id = request.query_params.get("adoptante_id")
@@ -462,23 +510,42 @@ class AutorizacionCheckView(APIView):
         if not hasattr(request.user, 'albergue') or request.user.albergue.id != albergue_id:
             return Response({"detail": "No autorizado: solo el albergue propietario puede consultar."}, status=status.HTTP_403_FORBIDDEN)
         
-        # Verificar autorización (asumiendo modelo Autorizacion en AdoptanteProfile o similar)
-        # Por ahora retornamos estructura esperada; implementar lógica real según modelo
-        from .models import AdoptanteProfile
+        # Verificar autorización usando el modelo Autorizacion
+        from .models import Autorizacion, AdoptanteProfile
+        
+        try:
+            autorizacion = Autorizacion.objects.get(
+                adoptante_id=adoptante_id,
+                albergue_id=albergue_id
+            )
+        except Autorizacion.DoesNotExist:
+            return Response({
+                "autorizado": False,
+                "detail": "El adoptante no ha autorizado a este albergue.",
+                "campos_permitidos": []
+            })
+        
+        if not autorizacion.esta_vigente():
+            return Response({
+                "autorizado": False,
+                "detail": f"Autorización {autorizacion.get_estado_display().lower()}.",
+                "campos_permitidos": []
+            })
+        
+        # Verificar que el adoptante existe y tiene perfil
         try:
             profile = AdoptanteProfile.objects.get(user_id=adoptante_id)
-            # TODO: Implementar lógica real de autorización cuando exista modelo Autorizacion
-            # Por ahora: autorizado si profile existe
-            autorizado = True
-            campos_permitidos = [
-                "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
-                "detalles_otras_mascotas", "experiencia_previa", "motivo_adopcion",
-                "preferencia_especie", "preferencia_tamanio", "preferencia_edad",
-                "horas_fuera", "presupuesto"
-            ]
-            return Response({
-                "autorizado": autorizado,
-                "campos_permitidos": campos_permitidos
-            })
         except AdoptanteProfile.DoesNotExist:
-            return Response({"autorizado": False, "detail": "Perfil no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"autorizado": False, "detail": "Perfil del adoptante no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+        
+        campos_permitidos = autorizacion.campos_permitidos or [
+            "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
+            "detalles_otras_mascotas", "experiencia_previa", "motivo_adopcion",
+            "preferencia_especie", "preferencia_tamanio", "preferencia_edad",
+            "horas_fuera", "presupuesto"
+        ]
+        
+        return Response({
+            "autorizado": True,
+            "campos_permitidos": campos_permitidos
+        })

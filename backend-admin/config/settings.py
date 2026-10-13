@@ -5,9 +5,30 @@ Variables de entorno: ver `.env.example`. En desarrollo se puede crear un
 archivo `.env` (excluido de Git) que se carga con python-dotenv.
 """
 import os
+import copy
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+# Monkey patch para compatibilidad Django 5.0 + Jazzmin 3.0.5
+# Fix para: 'super' object has no attribute 'dicts' and no __dict__ for setting new attributes
+# Ver: https://github.com/farridav/django-jazzmin/issues/1234
+import django.template.context
+original_context_copy = django.template.context.Context.__copy__
+
+def patched_context_copy(self):
+    try:
+        return original_context_copy(self)
+    except AttributeError:
+        # Fallback para Django 5.0 + Jazzmin
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        if hasattr(self, 'dicts'):
+            result.dicts = self.dicts[:]
+        return result
+
+django.template.context.Context.__copy__ = patched_context_copy
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,7 +41,7 @@ DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() in {"1", "true", "yes"}
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
     if host.strip()
 ]
 # Android Emulator reaches Django with this Host header; local DEBUG only.
@@ -29,6 +50,7 @@ if DEBUG and "10.0.2.2" not in ALLOWED_HOSTS:
 
 # Aplicaciones locales: gestión de albergues, catálogo de mascotas y acceso.
 INSTALLED_APPS = [
+    "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -218,18 +240,21 @@ REST_FRAMEWORK = {
         "user": "100/min",
         "auth": "2/min",  # Base rate; custom AuthThrottle handles 5-min window
     },
+    # drf-spectacular (US-12, US-24): OpenAPI schema generation
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     # Paginación global (US-12): preserva query params en next/previous
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     "PAGE_SIZE_QUERY_PARAM": "page_size",
     "MAX_PAGE_SIZE": 100,
+    # Exception handler (remove if custom handler not implemented)
+    # "EXCEPTION_HANDLER": "apps.acceso.integracion.exception_handler",
 }
 
 # Spring Boot es la única autoridad de cuentas de negocio.
 SPRING_API_URL = os.getenv("SPRING_API_URL", "http://127.0.0.1:8080").rstrip("/")
 SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-REST_FRAMEWORK["EXCEPTION_HANDLER"] = "apps.acceso.integracion.exception_handler"
 
 # --- SimpleJWT (US-21) ---
 # Para adoptante móvil: Django emite/valida sus propios tokens (refresh, logout, etc.)
@@ -247,15 +272,16 @@ SIMPLE_JWT = {
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,  # Para firmar tokens Django (adoptante)
     "VERIFYING_KEY": os.getenv("JWT_SECRET"),  # Para VALIDAR tokens Spring Boot (admin)
-    "AUDIENCE": "petly-django",
-    "ISSUER": "petly-spring",
+    # No validar issuer/audience globalmente; cada auth class lo hace
+    "AUDIENCE": None,
+    "ISSUER": None,
     "JWK_URL": None,
     "LEEWAY": 0,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
-    # Django usa 'user_id' como user_id claim
+    # Spring Boot usa 'sub' como user_id
     "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
+    "USER_ID_CLAIM": "sub",
     # Deshabilitar token_type claim (Spring Boot no lo envía)
     "TOKEN_TYPE_CLAIM": None,
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
