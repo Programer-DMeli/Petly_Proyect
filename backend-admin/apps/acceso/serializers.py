@@ -3,7 +3,9 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from .models import Postulante, SolicitudAdopcion, User, AdoptanteProfile
+from django.db import models
+from django.utils import timezone
+from .models import Postulante, SolicitudAdopcion, User, AdoptanteProfile, Autorizacion
 from apps.mascotas.serializers import MascotaListSerializer
 
 User = get_user_model()
@@ -209,7 +211,9 @@ class SolicitudCreateSerializer(serializers.ModelSerializer):
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """JWT token con información del usuario y rol (US-21)."""
+    """JWT token con información del usuario y rol (US-21).
+    Incluye bloqueo por 2 intentos fallidos consecutivos -> 5 min (US-21).
+    """
 
     @classmethod
     def get_token(cls, user):
@@ -217,10 +221,55 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token["rol"] = user.rol
         token["username"] = user.username
         token["email"] = user.email
+        # Usar issuer/audience propios de Django para adoptante móvil
+        token["iss"] = "petly-django"
+        token["aud"] = "petly-mobile"
+        # sub debe ser string para JWT spec
+        token["sub"] = str(user.id)
         return token
 
     def validate(self, attrs):
-        data = super().validate(attrs)
+        from django.utils import timezone
+        from django.contrib.auth import authenticate
+        from rest_framework import exceptions as drf_exceptions
+        
+        username = attrs.get("username", "").strip()
+        password = attrs.get("password", "")
+        
+        # Buscar usuario por username o email
+        user = User.objects.filter(models.Q(username__iexact=username) | models.Q(email__iexact=username)).first()
+        
+        if user:
+            # Verificar si está bloqueado
+            if user.bloqueado_hasta and user.bloqueado_hasta > timezone.now():
+                raise serializers.ValidationError(
+                    {"detail": "Cuenta bloqueada temporalmente. Intente más tarde."},
+                    code="account_locked"
+                )
+            # Bloqueo vencido: resetear contador
+            elif user.bloqueado_hasta and user.bloqueado_hasta <= timezone.now():
+                user.intentos_fallidos = 0
+                user.bloqueado_hasta = None
+                user.save(update_fields=["intentos_fallidos", "bloqueado_hasta"])
+        
+        # Intentar autenticar
+        try:
+            data = super().validate(attrs)
+        except drf_exceptions.AuthenticationFailed:
+            # Login fallido: incrementar contador si el usuario existe
+            if user:
+                user.intentos_fallidos += 1
+                if user.intentos_fallidos >= 2:
+                    user.bloqueado_hasta = timezone.now() + timezone.timedelta(minutes=5)
+                user.save(update_fields=["intentos_fallidos", "bloqueado_hasta"])
+            raise
+        
+        # Login exitoso: resetear contador
+        if self.user:
+            self.user.intentos_fallidos = 0
+            self.user.bloqueado_hasta = None
+            self.user.save(update_fields=["intentos_fallidos", "bloqueado_hasta"])
+        
         data["user"] = {
             "id": self.user.id,
             "username": self.user.username,
@@ -349,3 +398,68 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if attrs["new_password"] != attrs["new_password_confirm"]:
             raise serializers.ValidationError({"new_password_confirm": "Las contraseñas no coinciden."})
         return attrs
+
+
+class AutorizacionSerializer(serializers.ModelSerializer):
+    """Serializador para autorización de consulta de perfil (US-18)."""
+
+    adoptante_username = serializers.CharField(source="adoptante.username", read_only=True)
+    albergue_nombre = serializers.CharField(source="albergue.nombre", read_only=True)
+    estado_display = serializers.CharField(source="get_estado_display", read_only=True)
+
+    class Meta:
+        model = Autorizacion
+        fields = [
+            "id",
+            "adoptante",
+            "adoptante_username",
+            "albergue",
+            "albergue_nombre",
+            "estado",
+            "estado_display",
+            "campos_permitidos",
+            "fecha_autorizacion",
+            "fecha_revocacion",
+            "fecha_expiracion",
+        ]
+        read_only_fields = [
+            "id", "adoptante", "adoptante_username",
+            "albergue", "albergue_nombre",
+            "fecha_autorizacion", "fecha_revocacion",
+            "estado_display",
+        ]
+
+
+class AutorizacionCreateSerializer(serializers.ModelSerializer):
+    """Serializador para crear autorización (adoptante autoriza a albergue)."""
+
+    class Meta:
+        model = Autorizacion
+        fields = [
+            "albergue",
+            "campos_permitidos",
+            "fecha_expiracion",
+        ]
+
+    def validate_albergue(self, value):
+        user = self.context["request"].user
+        if Autorizacion.objects.filter(adoptante=user, albergue=value).exists():
+            raise serializers.ValidationError("Ya existe una autorización para este albergue.")
+        return value
+
+    def create(self, validated_data):
+        validated_data["adoptante"] = self.context["request"].user
+        validated_data["estado"] = Autorizacion.Estado.VIGENTE
+        if not validated_data.get("campos_permitidos"):
+            validated_data["campos_permitidos"] = [
+                "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
+                "detalles_otras_mascotas", "experiencia_previa", "motivo_adopcion",
+                "preferencia_especie", "preferencia_tamanio", "preferencia_edad",
+                "horas_fuera", "presupuesto"
+            ]
+        return super().create(validated_data)
+
+
+class AutorizacionRevokeSerializer(serializers.Serializer):
+    """Serializador para revocar autorización."""
+    pass

@@ -14,6 +14,25 @@ class SpringBootJWTAuthentication(JWTAuthentication):
     Crea/actualiza User local para permisos Django sin duplicar contraseñas.
     """
     
+    def get_validated_token(self, raw_token):
+        """Validar token con clave de Spring Boot y verificar iss/aud."""
+        from django.conf import settings
+        jwt_secret = getattr(settings, 'JWT_SECRET', None) or getattr(settings, 'SIMPLE_JWT', {}).get('VERIFYING_KEY')
+        if not jwt_secret:
+            raise InvalidToken("Clave de verificación Spring Boot no configurada")
+        
+        # Usar la clave de Spring Boot para validar
+        from rest_framework_simplejwt.tokens import AccessToken
+        token = AccessToken(raw_token, verifying_key=jwt_secret)
+        
+        # Verificar issuer y audience de Spring Boot
+        if token.get("iss") != "petly-spring":
+            raise InvalidToken("Issuer inválido para token Spring Boot")
+        if token.get("aud") != "petly-django":
+            raise InvalidToken("Audience inválido para token Spring Boot")
+        
+        return token
+    
     def get_user(self, validated_token):
         """Obtener/crear usuario local desde claims de Spring Boot."""
         try:
@@ -48,22 +67,42 @@ class SpringBootJWTAuthentication(JWTAuthentication):
             raise InvalidToken(f"Error validando token: {str(e)}")
 
 
+class DjangoJWTAuthentication(JWTAuthentication):
+    """
+    Autenticación para tokens emitidos por Django (adoptante móvil).
+    Valida issuer=petly-django, audience=petly-mobile.
+    """
+    
+    def get_validated_token(self, raw_token):
+        token = super().get_validated_token(raw_token)
+        
+        # Verificar issuer y audience de Django
+        if token.get("iss") != "petly-django":
+            raise InvalidToken("Issuer inválido para token Django")
+        if token.get("aud") != "petly-mobile":
+            raise InvalidToken("Audience inválido para token Django")
+        
+        return token
+
+
 class DualJWTAuthentication(JWTAuthentication):
     """
-    Autenticación que intenta primero validar token Spring Boot,
-    si falla, valida token Django (para adoptante móvil).
+    Autenticación que intenta:
+    1. Token Django (adoptante móvil): iss=petly-django, aud=petly-mobile
+    2. Token Spring Boot (admin/albergue): iss=petly-spring, aud=petly-django
     """
     
     def authenticate(self, request):
-        # Intentar autenticación estándar (Django tokens para adoptante)
+        # 1. Intentar token Django (adoptante móvil)
         try:
-            return super().authenticate(request)
+            django_auth = DjangoJWTAuthentication()
+            return django_auth.authenticate(request)
         except (InvalidToken, TokenError):
             pass
         
-        # Si falla, intentar Spring Boot token
-        spring_auth = SpringBootJWTAuthentication()
+        # 2. Intentar token Spring Boot (admin/albergue)
         try:
+            spring_auth = SpringBootJWTAuthentication()
             return spring_auth.authenticate(request)
         except (InvalidToken, TokenError):
             return None

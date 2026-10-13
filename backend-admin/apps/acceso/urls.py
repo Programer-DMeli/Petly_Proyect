@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     PostulanteViewSet,
     SolicitudAdopcionViewSet,
+    AutorizacionViewSet,
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     LogoutView,
@@ -18,6 +19,7 @@ from .views import (
 router = DefaultRouter()
 router.register(r"postulantes", PostulanteViewSet, basename="postulante")
 router.register(r"solicitudes", SolicitudAdopcionViewSet, basename="solicitud")
+router.register(r"autorizaciones", AutorizacionViewSet, basename="autorizacion")
 
 urlpatterns = [
     path("", include(router.urls)),

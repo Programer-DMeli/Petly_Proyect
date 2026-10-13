@@ -247,13 +247,14 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
     "PAGE_SIZE_QUERY_PARAM": "page_size",
     "MAX_PAGE_SIZE": 100,
+    # Exception handler (remove if custom handler not implemented)
+    # "EXCEPTION_HANDLER": "apps.acceso.integracion.exception_handler",
 }
 
 # Spring Boot es la única autoridad de cuentas de negocio.
 SPRING_API_URL = os.getenv("SPRING_API_URL", "http://127.0.0.1:8080").rstrip("/")
 SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-REST_FRAMEWORK["EXCEPTION_HANDLER"] = "apps.acceso.integracion.exception_handler"
 
 # --- SimpleJWT (US-21) ---
 # Para adoptante móvil: Django emite/valida sus propios tokens (refresh, logout, etc.)
@@ -271,8 +272,9 @@ SIMPLE_JWT = {
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,  # Para firmar tokens Django (adoptante)
     "VERIFYING_KEY": os.getenv("JWT_SECRET"),  # Para VALIDAR tokens Spring Boot (admin)
-    "AUDIENCE": "petly-django",
-    "ISSUER": "petly-spring",
+    # No validar issuer/audience globalmente; cada auth class lo hace
+    "AUDIENCE": None,
+    "ISSUER": None,
     "JWK_URL": None,
     "LEEWAY": 0,
     "AUTH_HEADER_TYPES": ("Bearer",),
