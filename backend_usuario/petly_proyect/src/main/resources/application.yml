@@ -55,8 +55,10 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+    enabled: true
     operations-sorter: method
     tags-sorter: alpha
+    use-root-path: true
   packages-to-scan: com.petly
 
 petly:
