@@ -109,7 +109,8 @@ class MascotaAPITest(TestCase):
             {'estado': 'INVALIDO'}
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('error', response.data)
+        # DRF devuelve errores a nivel de campo para ChoiceField inválido
+        self.assertIn('estado', response.data)
 
     def test_cambiar_estado_adoptado_fecha_adopcion(self):
         """Al pasar a ADOPTADO, se setea fecha_adopcion."""

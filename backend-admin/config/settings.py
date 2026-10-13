@@ -253,7 +253,7 @@ REST_FRAMEWORK = {
 
 # Spring Boot es la única autoridad de cuentas de negocio.
 SPRING_API_URL = os.getenv("SPRING_API_URL", "http://127.0.0.1:8080").rstrip("/")
-SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "")
+SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "test-secret-key-for-development-only-change-in-production")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- SimpleJWT (US-21) ---

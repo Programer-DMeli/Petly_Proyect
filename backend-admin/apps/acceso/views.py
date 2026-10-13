@@ -37,6 +37,11 @@ from .serializers import (
     AutorizacionRevokeSerializer,
 )
 
+class RetiredEndpointView(APIView):
+    """Endpoint retirado (fuera de Sprint 1) — retorna 410 Gone."""
+    def dispatch(self, request, *args, **kwargs):
+        return Response({"detail": "Endpoint retirado del alcance actual."}, status=status.HTTP_410_GONE)
+
 User = get_user_model()
 
 

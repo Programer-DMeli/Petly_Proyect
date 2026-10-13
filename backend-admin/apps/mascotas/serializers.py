@@ -201,7 +201,7 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate_foto_principal(self, photo):
         if photo is None:
-            raise serializers.ValidationError("La fotografía es obligatoria.")
+            return None
         if photo.size > 5 * 1024 * 1024:
             raise serializers.ValidationError("Máximo 5 MB.")
         from PIL import Image
@@ -221,7 +221,7 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
         if years is not None and not 0 <= years <= 50:
             raise serializers.ValidationError({"edad_anos": "Entre 0 y 50."})
         if months is not None and not 0 <= months <= 11:
-            raise serializers.ValidationError({"edad_meses": "Resto de meses entre 0 y 11."})
+            raise serializers.ValidationError({"edad_anos": "Resto de meses entre 0 y 11."})
         if (years or 0) * 12 + (months or 0) > 600:
             raise serializers.ValidationError({"edad_anos": "Edad total máxima: 600 meses."})
         if self.instance is None and not attrs.get("foto_principal"):

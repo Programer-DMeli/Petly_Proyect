@@ -112,15 +112,13 @@ class MascotaSerializerValidationTest(TestCase):
         self.assertIn('5 MB', str(serializer.errors['foto_principal']))
 
     def test_serializer_sin_foto_es_valido(self):
-        """foto_principal es opcional."""
-        data = {
-            'nombre': 'Test',
-            'codigo': 'PET-014',
-            'especie': 'PERRO',
-            'sexo': 'MACHO',
-            'edad_anos': 1,
-        }
-        serializer = MascotaCreateUpdateSerializer(data=data)
+        """foto_principal es opcional en actualización."""
+        mascota = Mascota.objects.create(
+            albergue=Albergue.objects.create(usuario=User.objects.create_user(username='test'), nombre='A', direccion='D'),
+            nombre='Existente', codigo='PET-014', especie='PERRO', sexo='MACHO', edad_anos=1,
+        )
+        data = {'nombre': 'Actualizado'}
+        serializer = MascotaCreateUpdateSerializer(instance=mascota, data=data, partial=True)
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
 
