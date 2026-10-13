@@ -1,89 +1,211 @@
 package com.petly.auth;
+
 import com.petly.auth.dto.*;
-import com.petly.usuarios.*;
-import com.petly.common.exception.ApiException;
-import java.time.*;
-import java.util.*;
-import java.nio.charset.StandardCharsets;
-import java.security.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+
+import com.petly.usuarios.Usuario;
+import com.petly.usuarios.repository.UsuarioRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+/**
+ * Registro, login y recuperaci�n de contrase�a (US-21, US-24).
+ */
 @Service
 public class AuthService {
- private final UsuarioRepository usuarios;
- private final PasswordEncoder encoder;
- private final JwtService jwt;
- private final JavaMailSender mail;
- private final JdbcTemplate db;
- private final String mailFrom, resetBase;
- @Value("${petly.web-reset-link-base:http://localhost:5173/recuperacion}") private String webResetBase;
- public AuthService(UsuarioRepository usuarios, PasswordEncoder encoder, JwtService jwt,
-    JavaMailSender mail, JdbcTemplate db, @Value("${spring.mail.from}") String mailFrom,
-    @Value("${petly.reset-link-base}") String resetBase) {
-  this.usuarios=usuarios;this.encoder=encoder;this.jwt=jwt;this.mail=mail;this.db=db;
-  this.mailFrom=mailFrom;this.resetBase=resetBase;
- }
- @Transactional
- public AuthResponse registrar(RegistroRequest request) {
-  validarPassword(request.getPassword(),"password");
-  String correo=request.getCorreo().trim().toLowerCase(Locale.ROOT);
-  if(usuarios.existsByCorreo(correo)) throw new CorreoYaRegistradoException("correo ya registrado");
-  Usuario u=new Usuario("petly_"+UUID.randomUUID().toString().replace("-",""),correo,encoder.encode(request.getPassword()),Usuario.Rol.ADOPTANTE);
-  usuarios.save(u); return new AuthResponse(u.getId(),u.getCorreo(),u.getRol().name());
- }
- @Transactional(noRollbackFor={CredencialesInvalidasException.class,AuthCuentaBloqueadaException.class})
- public LoginResponse login(LoginRequest request) {
-  Usuario u=usuarios.bloquearPorCorreo(request.getCorreo().trim().toLowerCase(Locale.ROOT))
-    .orElseThrow(CredencialesInvalidasException::new);
-  LocalDateTime now=LocalDateTime.now();
-  if(u.getBloqueadoHasta()!=null && u.getBloqueadoHasta().isAfter(now)) throw new AuthCuentaBloqueadaException("bloqueada",Math.max(1,(Duration.between(now,u.getBloqueadoHasta()).toMillis()+999)/1000));
-  if(u.getBloqueadoHasta()!=null) {u.setIntentosFallidos(0);u.setBloqueadoHasta(null);}
-  if(!encoder.matches(request.getPassword(),u.getPasswordHash())) {
-   u.setIntentosFallidos(u.getIntentosFallidos()+1);
-   if(u.getIntentosFallidos()>=2) {u.setBloqueadoHasta(now.plusMinutes(1));usuarios.save(u);throw new AuthCuentaBloqueadaException("bloqueada");}
-   usuarios.save(u);throw new CredencialesInvalidasException();
-  }
-  u.setIntentosFallidos(0);u.setBloqueadoHasta(null);usuarios.save(u);
-  return new LoginResponse(jwt.generarToken(u),new AuthResponse(u.getId(),u.getCorreo(),u.getRol().name()));
- }
- private static void validarPassword(String password,String campo) {
-  if(password.length()<8 || password.getBytes(StandardCharsets.UTF_8).length>72)
-   throw new ApiException(400,"datos inválidos",Map.of(campo,"Usa al menos 8 caracteres y hasta 72 bytes UTF-8."));
- }
- public static String hash(String token) {
-  try {return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8)));}
-  catch(NoSuchAlgorithmException e) {throw new IllegalStateException(e);}
- }
- public void solicitarResetPassword(String correo) { solicitarResetPassword(correo, false); }
- public void solicitarResetPassword(String correo, boolean web) {
-  var optional=usuarios.findByCorreo(correo.trim().toLowerCase(Locale.ROOT));
-  if(optional.isEmpty()) return;
-  Usuario u=optional.get(); byte[] bytes=new byte[32];new SecureRandom().nextBytes(bytes);
-  String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-  db.update("INSERT INTO password_resets (token_hash,usuario_id,expires_at) VALUES (?,?,?)",hash(token),u.getId(),java.sql.Timestamp.from(Instant.now().plusSeconds(900)));
-  SimpleMailMessage msg=new SimpleMailMessage();msg.setFrom(mailFrom);msg.setTo(u.getCorreo());
-  msg.setSubject("Recuperación de contraseña - Petly");
-  msg.setText("Abre este enlace en Petly para cambiar tu contraseña (vence en 15 minutos y sirve una sola vez):\n"+(web ? webResetBase : resetBase)+"?token="+token);
-  try {mail.send(msg);} catch(org.springframework.mail.MailException e) {
-   org.slf4j.LoggerFactory.getLogger(getClass()).warn("Envío de recuperación no disponible; revisar SMTP.");
-  }
- }
- @Transactional
- public void confirmarResetPassword(String token,String password) {
-  validarPassword(password,"nuevaPassword");
-  String hash=hash(token);
-  var rows=db.queryForList("SELECT usuario_id FROM password_resets WHERE token_hash=? AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP",hash);
-  if(rows.isEmpty()) throw new ApiException(400,"enlace inválido, vencido o utilizado");
-  long id=((Number)rows.get(0).get("usuario_id")).longValue();
-  db.queryForObject("SELECT id FROM usuarios WHERE id=? FOR UPDATE",Long.class,id);
-  int changed=db.update("UPDATE password_resets SET used_at=CURRENT_TIMESTAMP WHERE token_hash=? AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP",hash);
-  if(changed!=1) throw new ApiException(400,"enlace inválido, vencido o utilizado");
-  db.update("UPDATE usuarios SET password_hash=?,token_version=token_version+1,intentos_fallidos=0,bloqueado_hasta=NULL WHERE id=?",encoder.encode(password),id);
-  db.update("UPDATE password_resets SET used_at=CURRENT_TIMESTAMP WHERE usuario_id=? AND used_at IS NULL",id);
- }
+
+    @Autowired
+    private UsuarioRepository usuarios;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
+    private JavaMailSender mailSender;
+
+    @Autowired
+    private RecuperacionTokenRepository tokens;
+
+    @Value("${spring.mail.from:noreply@petly.local}")
+    private String mailFrom;
+
+    @Value("${FRONTEND_URL:http://localhost:5173}")
+    private String frontendUrl;
+
+    public AuthResponse registrar(RegistroRequest request) {
+        String correo = request.getCorreo().trim().toLowerCase();
+        String username = request.getUsername().trim().toLowerCase();
+        
+        if (usuarios.existsByCorreo(correo)) {
+            throw new CorreoYaRegistradoException("correo ya registrado");
+        }
+        if (usuarios.existsByUsername(username)) {
+            throw new UsuarioYaRegistradoException("nombre de usuario ya existe");
+        }
+        
+        Usuario usuario = new Usuario(
+            username,
+            correo,
+            passwordEncoder.encode(request.getPassword()),
+            Usuario.Rol.ADOPTANTE
+        );
+        usuario.setFirstName(request.getFirstName());
+        usuario.setLastName(request.getLastName());
+        usuario.setTelefono(request.getTelefono());
+        if (request.getFechaNacimiento() != null) {
+            usuario.setFechaNacimiento(java.time.LocalDate.parse(request.getFechaNacimiento()));
+        }
+        
+        Usuario guardado = usuarios.save(usuario);
+        return new AuthResponse(guardado.getId(), guardado.getCorreo(), guardado.getRol().name());
+    }
+
+    public LoginResponse login(LoginRequest request) {
+        String correo = request.getCorreo().trim().toLowerCase();
+        Usuario usuario = usuarios.findByCorreo(correo)
+            .orElseThrow(() -> new CredencialesInvalidasException("credenciales inv�lidas"));
+        if (usuario.getBloqueadoHasta() != null) {
+            if (usuario.getBloqueadoHasta().isAfter(java.time.LocalDateTime.now())) {
+                throw new AuthCuentaBloqueadaException("cuenta bloqueada temporalmente");
+            }
+            // bloqueo vencido: los 2 intentos ya se usaron, empieza de 0
+            usuario.setIntentosFallidos(0);
+            usuario.setBloqueadoHasta(null);
+            usuarios.save(usuario);
+        }
+        if (!passwordEncoder.matches(request.getPassword(), usuario.getPasswordHash())) {
+            usuario.setIntentosFallidos(usuario.getIntentosFallidos() + 1);
+            if (usuario.getIntentosFallidos() >= 2) {
+                usuario.setBloqueadoHasta(java.time.LocalDateTime.now().plusMinutes(5));
+            }
+            usuarios.save(usuario);
+            throw new CredencialesInvalidasException("credenciales inv�lidas");
+        }
+        usuario.setIntentosFallidos(0);
+        usuario.setBloqueadoHasta(null);
+        usuarios.save(usuario);
+        String token = jwtService.generarToken(usuario);
+        AuthResponse user = new AuthResponse(usuario.getId(), usuario.getCorreo(), usuario.getRol().name());
+        return new LoginResponse(token, user);
+    }
+
+    /**
+     * Solicita recuperaci�n de contrase�a (US-24).
+     * Genera token JWT tipo "password_reset" con expiraci�n 15 min, guarda
+     * SOLO su hash en tokens_recuperacion (un solo uso) e invalida los
+     * enlaces pendientes anteriores. Env�a email con el enlace.
+     * Respuesta gen�rica para no revelar si el correo existe.
+     */
+    @Transactional
+    public void solicitarResetPassword(String correo) {
+        String email = correo.trim().toLowerCase();
+        Usuario usuario = usuarios.findByCorreo(email).orElse(null);
+
+        if (usuario == null) {
+            // Siempre respuesta gen�rica (no revelar si existe)
+            return;
+        }
+
+        // Un solo enlace activo por usuario: los pendientes quedan invalidados
+        tokens.invalidarPendientes(usuario.getId(), LocalDateTime.now());
+
+        String token = jwtService.generarTokenPasswordReset(usuario);
+        RecuperacionToken registro = new RecuperacionToken(
+                usuario.getId(),
+                hashSha256(token),
+                LocalDateTime.now().plusMinutes(15));
+        tokens.save(registro);
+
+        String resetUrl = frontendUrl + "/recuperacion?token=" + token;
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(mailFrom);
+            message.setTo(usuario.getCorreo());
+            message.setSubject("Recuperaci�n de contrase�a - Petly");
+            message.setText(
+                "Hola " + usuario.getUsername() + ",\n\n" +
+                "Para restablecer tu contrase�a, haz clic en el siguiente enlace:\n" +
+                resetUrl + "\n\n" +
+                "El enlace expira en 15 minutos y solo puede usarse una vez.\n\n" +
+                "Si no solicitaste esto, ignora este correo.\n\n" +
+                "Equipo Petly"
+            );
+            mailSender.send(message);
+        } catch (Exception e) {
+            // Log error pero no revelar si el email fall�
+            System.err.println("Error enviando email de recuperaci�n: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Confirma recuperaci�n de contrase�a (US-24).
+     * Valida que las contrase�as coincidan, que el token sea de tipo
+     * password_reset, no est� expirado y no haya sido usado; luego lo
+     * consume (un solo uso) y actualiza la contrase�a.
+     */
+    @Transactional
+    public void confirmarResetPassword(String token, String nuevaPassword, String confirmacion) {
+        if (!nuevaPassword.equals(confirmacion)) {
+            throw new IllegalArgumentException("Las contrase�as no coinciden");
+        }
+
+        Long userId;
+        try {
+            userId = jwtService.validarTokenPasswordReset(token);
+        } catch (IllegalArgumentException e) {
+            throw new TokenRecuperacionInvalidoException("Token de recuperaci�n inv�lido");
+        } catch (io.jsonwebtoken.JwtException e) {
+            throw new TokenRecuperacionInvalidoException("El enlace de recuperaci�n es inv�lido o expi�");
+        }
+
+        String hash = hashSha256(token);
+        RecuperacionToken registro = tokens.findByTokenHash(hash)
+            .orElseThrow(() -> new TokenRecuperacionInvalidoException("Token de recuperaci�n inv�lido"));
+
+        if (!registro.getUsuarioId().equals(userId)) {
+            throw new TokenRecuperacionInvalidoException("Token de recuperaci�n inv�lido");
+        }
+        if (registro.getExpiraEn().isBefore(LocalDateTime.now())) {
+            throw new TokenRecuperacionInvalidoException("El enlace de recuperaci�n expi�");
+        }
+
+        // Consumo at�mico: si ya fue usado, no se actualiza nada
+        int consumidos = tokens.marcarComoUsado(hash, LocalDateTime.now());
+        if (consumidos == 0) {
+            throw new TokenRecuperacionInvalidoException("El enlace de recuperaci�n ya fue usado");
+        }
+
+        Usuario usuario = usuarios.findById(userId)
+            .orElseThrow(() -> new TokenRecuperacionInvalidoException("Usuario no encontrado"));
+
+        usuario.setPasswordHash(passwordEncoder.encode(nuevaPassword));
+        usuarios.save(usuario);
+    }
+
+    private String hashSha256(String valor) {
+        try {
+            byte[] bytes = MessageDigest.getInstance("SHA-256")
+                    .digest(valor.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                hex.append(String.format("%02x", b & 0xff));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 no disponible", e);
+        }
+    }
 }

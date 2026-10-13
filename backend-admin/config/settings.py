@@ -29,6 +29,7 @@ if DEBUG and "10.0.2.2" not in ALLOWED_HOSTS:
 
 # Aplicaciones locales: gestión de albergues, catálogo de mascotas y acceso.
 INSTALLED_APPS = [
+    "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -112,6 +113,56 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Django Admin custom CSS (Verde Refugio) + Jazzmin
+JAZZMIN_SETTINGS = {
+    "custom_css": "css/admin-custom.css",
+    "show_ui_builder": False,
+    "site_title": "Petly Admin",
+    "site_header": "Petly",
+    "site_brand": "Petly Admin",
+    "site_logo": None,
+    "welcome_sign": "Bienvenido a Petly Admin",
+    "copyright": "Petly — Adopción responsable de mascotas",
+    "search_model": ["acceso.User", "mascotas.Mascota", "albergues.Albergue"],
+    "user_avatar": None,
+    "topmenu_links": [
+        {"name": "Inicio", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"model": "acceso.User"},
+        {"model": "albergues.Albergue"},
+        {"model": "mascotas.Mascota"},
+        {"model": "acceso.Postulante"},
+        {"model": "acceso.SolicitudAdopcion"},
+    ],
+    "usermenu_links": [
+        {"name": "Perfil", "url": "admin:acceso_user_change", "icon": "fas fa-user"},
+        {"model": "auth.user"},
+    ],
+    "icons": {
+        "acceso.User": "fas fa-user",
+        "acceso.AdoptanteProfile": "fas fa-id-card",
+        "acceso.Postulante": "fas fa-user-plus",
+        "acceso.SolicitudAdopcion": "fas fa-file-contract",
+        "albergues.Albergue": "fas fa-building",
+        "albergues.Infraestructura": "fas fa-warehouse",
+        "mascotas.Mascota": "fas fa-paw",
+        "auth.Group": "fas fa-users-cog",
+    },
+    "order_with_respect_to": [
+        "acceso",
+        "albergues",
+        "mascotas",
+    ],
+    "changeform_format": "horizontal_tabs",
+    "changeform_format_overrides": {
+        "acceso.user": "horizontal_tabs",
+        "acceso.adoptanteprofile": "horizontal_tabs",
+        "albergues.albergue": "horizontal_tabs",
+        "mascotas.mascota": "horizontal_tabs",
+    },
+    "related_modal_active": True,
+    "language_chooser": False,
+}
 
 # --- CORS: orígenes locales explícitos (PLANNING v2 §11) ---
 CORS_ALLOWED_ORIGINS = [

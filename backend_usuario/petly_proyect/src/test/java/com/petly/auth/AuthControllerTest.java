@@ -1,8 +1,10 @@
 package com.petly.auth;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.containsString;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.annotation.Import;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petly.auth.dto.LoginRequest;
@@ -28,6 +31,7 @@ import com.petly.auth.dto.RegistroRequest;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@Import(AuthTestConfig.class)
 class AuthControllerTest {
 
     @Autowired
@@ -45,6 +49,7 @@ class AuthControllerTest {
 
     private void registrar(String ip, String correo) throws Exception {
         RegistroRequest req = new RegistroRequest();
+        req.setUsername(correo.split("@")[0]);
         req.setCorreo(correo);
         req.setPassword("clave12345");
         mvc.perform(desde(ip, "/api/auth/registro")
@@ -56,6 +61,7 @@ class AuthControllerTest {
     @Test
     void registroCuentaNueva() throws Exception {
         RegistroRequest req = new RegistroRequest();
+        req.setUsername("nuevo");
         req.setCorreo("nuevo@petly.test");
         req.setPassword("clave12345");
 
@@ -72,6 +78,7 @@ class AuthControllerTest {
         registrar("10.0.0.2", "repetido@petly.test");
 
         RegistroRequest req = new RegistroRequest();
+        req.setUsername("repetido");
         req.setCorreo("repetido@petly.test");
         req.setPassword("clave12345");
 
@@ -79,6 +86,40 @@ class AuthControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(req)))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void registroUsuarioRepetido() throws Exception {
+        registrar("10.0.0.2", "dupuser@petly.test");
+
+        RegistroRequest req = new RegistroRequest();
+        req.setUsername("dupuser");
+        req.setCorreo("dupuser@petlyprueba.test");
+        req.setPassword("clave12345");
+
+        mvc.perform(desde("10.0.0.2", "/api/auth/registro")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(req)))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflicto"));
+    }
+
+    @Test
+    void registroIgnoraRolAdminDelCliente() throws Exception {
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("username", "roltest");
+        body.put("correo", "roltest@petly.test");
+        body.put("password", "clave12345");
+        body.put("rol", "ADMIN");
+
+        mvc.perform(desde("10.0.0.2", "/api/auth/registro")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.correo").value("roltest@petly.test"))
+                .andExpect(jsonPath("$.rol").value("ADOPTANTE"));
     }
 
     @Test
@@ -109,7 +150,9 @@ class AuthControllerTest {
         mvc.perform(desde("10.0.0.4", "/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(req)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(401));
     }
 
     @Test
@@ -136,6 +179,9 @@ class AuthControllerTest {
         mvc.perform(desde("10.0.0.5", "/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(buena)))
-                .andExpect(status().isLocked());
+                .andExpect(status().isLocked())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(423))
+                .andExpect(jsonPath("$.message", containsString("bloqueada")));
     }
 }
