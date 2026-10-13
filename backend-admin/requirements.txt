@@ -19,4 +19,5 @@ drf-spectacular==0.28.0
 # Filtros para API (US-12: filtros especie, tamaño, temperamento, edad).
 django-filter==23.5
 # Django Admin UI personalizado (Verde Refugio)
-jazzmin==3.0.1
+# Paquete PyPI: django-jazzmin (el nombre "jazzmin" no publica archivos).
+django-jazzmin==3.0.1

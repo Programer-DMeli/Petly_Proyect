@@ -4,21 +4,15 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.intent.LocaleList
 import androidx.compose.ui.unit.sp
 
 // Fuentes: Plus Jakarta Sans (headings) + Inter (body)
-// Se cargan desde Google Fonts o assets
-val PlusJakartaSans = FontFamily(
-    Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold),
-    Font(R.font.plus_jakarta_sans_bold, FontWeight.Bold)
-)
+// TODO(MOBILE): agregar los .ttf a app/src/main/res/font y mapearlos aqui
+// con Font(R.font.plus_jakarta_sans_semibold, ...) + import com.petly_app.R.
+// Mientras tanto se usa la fuente del sistema para no romper la compilacion.
+val PlusJakartaSans = FontFamily.Default
 
-val Inter = FontFamily(
-    Font(R.font.inter_regular, FontWeight.Normal),
-    Font(R.font.inter_medium, FontWeight.Medium)
-)
+val Inter = FontFamily.Default
 
 // Fallback a fuentes del sistema si no están las fuentes personalizadas
 val PlusJakartaSansFallback = FontFamily.Default
