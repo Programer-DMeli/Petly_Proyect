@@ -51,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = cabecera.substring(7);
         try {
             Claims claims = jwtService.validarToken(token);
-            Integer ver = claims.get("ver", Integer.class);
+            Integer ver = claims.get("version", Integer.class);
             var usuario = usuarios.findById(Long.parseLong(claims.getSubject())).orElse(null);
             if (ver == null || usuario == null || ver != usuario.getTokenVersion()) {
                 rechazar(response);

@@ -237,8 +237,8 @@ o
 
 ## Contrato JWT (HS256)
 
-- Secreto: variable de entorno JWT_SECRET (32+ caracteres, nunca en Git)
-- Claims: sub=id (long), email, rol=ADOPTANTE|ALBERGUE|ADMIN, iss=petly-spring, aud=petly-django, exp=1h (3600s)
+- Secreto: variable de entorno SPRING_JWT_SECRET (32+ caracteres, nunca en Git); algoritmo fijo HS256
+- Claims: sub=id (long), email, rol=ADOPTANTE|ALBERGUE|ADMIN, type=access, version (sesion, se incrementa al cambiar la clave), iss=petly-spring, aud=petly-django, exp=1h (3600s)
 - Cabecera: Authorization: Bearer <jwt>
 - Token invalido/vencido -> 401, rol sin permiso -> 403
 

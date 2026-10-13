@@ -33,12 +33,13 @@ public class JwtService {
                 .claim("email", usuario.getCorreo())
                 .claim("rol", usuario.getRol().name())
                 .claim("username", usuario.getUsername())
-                .claim("ver", usuario.getTokenVersion())
+                .claim("type", "access")
+                .claim("version", usuario.getTokenVersion())
                 .issuer("petly-spring")
                 .audience().add("petly-django").and()
                 .issuedAt(ahora)
                 .expiration(vence)
-                .signWith(key)
+                .signWith(key, Jwts.SIG.HS256)
                 .compact();
     }
 
@@ -59,7 +60,7 @@ public class JwtService {
                 .audience().add("petly-django").and()
                 .issuedAt(ahora)
                 .expiration(vence)
-                .signWith(key)
+                .signWith(key, Jwts.SIG.HS256)
                 .compact();
     }
 
