@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     # Petly
     "apps.acceso",
@@ -66,7 +67,9 @@ TEMPLATES = [
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
+                "django.template.context_processors.debug",
                 "django.template.context_processors.request",
+                "django.template.context_processors.csrf",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
@@ -76,6 +79,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
+
+# Redirección después de login/logout
+LOGIN_REDIRECT_URL = "panel_home"
+LOGOUT_REDIRECT_URL = "/"
 
 # Base de datos: MariaDB de XAMPP, base compartida `database_petly`.
 # Credenciales por variables de entorno; ver `.env.example`.
@@ -112,6 +119,65 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Media files (US-11: fotos de mascotas)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+# Django Admin custom CSS (Verde Refugio) + Jazzmin
+JAZZMIN_SETTINGS = {
+    "custom_css": "css/admin-custom.css",
+    "show_ui_builder": False,
+    "site_title": "Petly Admin",
+    "site_header": "Petly",
+    "site_brand": "Petly Admin",
+    "site_logo": None,
+    "welcome_sign": "Bienvenido a Petly Admin",
+    "copyright": "Petly — Adopción responsable de mascotas",
+    "search_model": ["acceso.User", "mascotas.Mascota", "albergues.Albergue", "acceso.Postulante", "acceso.SolicitudAdopcion", "acceso.AdoptanteProfile", "albergues.Infraestructura", "auth.Group"],
+    "user_avatar": None,
+    "topmenu_links": [
+        {"name": "Panel de control", "url": "admin:index", "icon": "fas fa-tachometer-alt", "permissions": ["auth.view_user"]},
+        {"name": "Acceso", "url": "admin:acceso_user_changelist", "icon": "fas fa-sign-in-alt", "permissions": ["acceso.view_user"]},
+        {"name": "Perfiles de Adoptantes", "url": "admin:acceso_adoptanteprofile_changelist", "icon": "fas fa-id-card", "permissions": ["acceso.view_adoptanteprofile"]},
+        {"name": "Postulantes", "url": "admin:acceso_postulante_changelist", "icon": "fas fa-user-plus", "permissions": ["acceso.view_postulante"]},
+        {"name": "Solicitudes de Adopción", "url": "admin:acceso_solicitudadopcion_changelist", "icon": "fas fa-file-contract", "permissions": ["acceso.view_solicitudadopcion"]},
+        {"name": "Usuarios", "url": "admin:acceso_user_changelist", "icon": "fas fa-users", "permissions": ["acceso.view_user"]},
+        {"name": "Albergues", "url": "admin:albergues_albergue_changelist", "icon": "fas fa-building", "permissions": ["albergues.view_albergue"]},
+        {"name": "Infraestructura", "url": "admin:albergues_infraestructura_changelist", "icon": "fas fa-warehouse", "permissions": ["albergues.view_infraestructura"]},
+        {"name": "Mascotas", "url": "admin:mascotas_mascota_changelist", "icon": "fas fa-paw", "permissions": ["mascotas.view_mascota"]},
+        {"name": "Autenticación y autorización", "url": "admin:auth_group_changelist", "icon": "fas fa-shield-alt", "permissions": ["auth.view_group"]},
+        {"name": "Grupos", "url": "admin:auth_group_changelist", "icon": "fas fa-users-cog", "permissions": ["auth.view_group"]},
+    ],
+    "usermenu_links": [
+        {"name": "Perfil", "url": "admin:acceso_user_change", "icon": "fas fa-user"},
+        {"model": "auth.user"},
+    ],
+    "icons": {
+        "acceso.User": "fas fa-user",
+        "acceso.AdoptanteProfile": "fas fa-id-card",
+        "acceso.Postulante": "fas fa-user-plus",
+        "acceso.SolicitudAdopcion": "fas fa-file-contract",
+        "albergues.Albergue": "fas fa-building",
+        "albergues.Infraestructura": "fas fa-warehouse",
+        "mascotas.Mascota": "fas fa-paw",
+        "auth.Group": "fas fa-users-cog",
+    },
+    "order_with_respect_to": [
+        "acceso",
+        "albergues",
+        "mascotas",
+    ],
+    "changeform_format": "horizontal_tabs",
+    "changeform_format_overrides": {
+        "acceso.user": "horizontal_tabs",
+        "acceso.adoptanteprofile": "horizontal_tabs",
+        "albergues.albergue": "horizontal_tabs",
+        "mascotas.mascota": "horizontal_tabs",
+    },
+    "related_modal_active": True,
+    "language_chooser": False,
+}
 
 # --- CORS: orígenes locales explícitos (PLANNING v2 §11) ---
 CORS_ALLOWED_ORIGINS = [
@@ -162,10 +228,56 @@ REST_FRAMEWORK = {
 # Spring Boot es la única autoridad de cuentas de negocio.
 SPRING_API_URL = os.getenv("SPRING_API_URL", "http://127.0.0.1:8080").rstrip("/")
 SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "")
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK["EXCEPTION_HANDLER"] = "apps.acceso.integracion.exception_handler"
+
+# --- SimpleJWT (US-21) ---
+# Para adoptante móvil: Django emite/valida sus propios tokens (refresh, logout, etc.)
+# Para admin/albergue: Django VALIDA tokens emitidos por Spring Boot
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    # Configuración para tokens Django (adoptante móvil)
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    # Configuración común
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,  # Para firmar tokens Django (adoptante)
+    "VERIFYING_KEY": os.getenv("JWT_SECRET"),  # Para VALIDAR tokens Spring Boot (admin)
+    "AUDIENCE": "petly-django",
+    "ISSUER": "petly-spring",
+    "JWK_URL": None,
+    "LEEWAY": 0,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    # Django usa 'user_id' como user_id claim
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    # Deshabilitar token_type claim (Spring Boot no lo envía)
+    "TOKEN_TYPE_CLAIM": None,
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
+    "JTI_CLAIM": "jti",
+    "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
+    "SLIDING_TOKEN_LIFETIME": timedelta(minutes=60),
+    "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=7),
+}
+
+from django.db.backends.base.base import BaseDatabaseWrapper
+BaseDatabaseWrapper.check_database_version_supported = lambda self: None
+
+
+from django.db.backends.base.base import BaseDatabaseWrapper
+BaseDatabaseWrapper.check_database_version_supported = lambda self: None
+
+# --- Parche de compatibilidad para MariaDB < 10.5 (XAMPP) ---
+from django.db.backends.mysql.features import DatabaseFeatures
+
+DatabaseFeatures.can_return_columns_from_insert = False
+DatabaseFeatures.can_return_rows_from_insert = False
 
 # --- Logging ---
 LOGGING = {
