@@ -12,6 +12,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.Map;
+
+import com.petly.common.exception.ApiException;
 
 import com.petly.usuarios.Usuario;
 import com.petly.usuarios.UsuarioRepository;
@@ -44,7 +47,21 @@ public class AuthService {
     @Value("${FRONTEND_URL:http://localhost:5173}")
     private String frontendUrl;
 
+    @Value("${petly.web-reset-link-base:http://localhost:5173/recuperacion}")
+    private String webResetLinkBase;
+
+    @Value("${petly.reset-link-base:petly://recuperacion}")
+    private String resetLinkBase;
+
+    private static void validarPassword(String password, String campo) {
+        if (password.length() < 8 || password.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new ApiException(400, "datos inválidos",
+                    Map.of(campo, "Usa al menos 8 caracteres y hasta 72 bytes UTF-8."));
+        }
+    }
+
     public AuthResponse registrar(RegistroRequest request) {
+        validarPassword(request.getPassword(), "password");
         String correo = request.getCorreo().trim().toLowerCase();
         String username = request.getUsername().trim().toLowerCase();
         
@@ -110,6 +127,15 @@ public class AuthService {
      */
     @Transactional
     public void solicitarResetPassword(String correo) {
+        solicitarResetPassword(correo, true);
+    }
+
+    /**
+     * Solicita recuperaci�n con canal: web usa WEB_RESET_LINK_BASE,
+     * android usa el esquema petly:// de la app m�vil.
+     */
+    @Transactional
+    public void solicitarResetPassword(String correo, boolean web) {
         String email = correo.trim().toLowerCase();
         Usuario usuario = usuarios.findByCorreo(email).orElse(null);
 
@@ -128,7 +154,8 @@ public class AuthService {
                 LocalDateTime.now().plusMinutes(15));
         tokens.save(registro);
 
-        String resetUrl = frontendUrl + "/recuperacion?token=" + token;
+        String base = web ? webResetLinkBase : resetLinkBase;
+        String resetUrl = base + "?token=" + token;
 
         try {
             SimpleMailMessage message = new SimpleMailMessage();
@@ -161,6 +188,7 @@ public class AuthService {
         if (!nuevaPassword.equals(confirmacion)) {
             throw new IllegalArgumentException("Las contrase�as no coinciden");
         }
+        validarPassword(nuevaPassword, "nuevaPassword");
 
         Long userId;
         try {
@@ -192,6 +220,7 @@ public class AuthService {
             .orElseThrow(() -> new TokenRecuperacionInvalidoException("Usuario no encontrado"));
 
         usuario.setPasswordHash(passwordEncoder.encode(nuevaPassword));
+        usuario.setTokenVersion(usuario.getTokenVersion() + 1);
         usuarios.save(usuario);
     }
 

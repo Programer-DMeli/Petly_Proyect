@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,7 +40,20 @@ public class GlobalExceptionHandler {
                         Instant.now(),
                         HttpStatus.BAD_REQUEST.value(),
                         "Error de validaci�n",
-                        errors.toString()
+                        "datos inv�lidos",
+                        errors
+                ));
+    }
+
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ErrorResponse> handleApiException(ApiException ex) {
+        return ResponseEntity.status(ex.status)
+                .body(new ErrorResponse(
+                        Instant.now(),
+                        ex.status,
+                        ex.getMessage(),
+                        ex.getMessage(),
+                        ex.fields.isEmpty() ? null : ex.fields
                 ));
     }
 
@@ -145,6 +160,11 @@ public class GlobalExceptionHandler {
             Instant timestamp,
             int status,
             String error,
-            String message
-    ) {}
+            String message,
+            @JsonInclude(JsonInclude.Include.NON_NULL) Map<String, String> campos
+    ) {
+        public ErrorResponse(Instant timestamp, int status, String error, String message) {
+            this(timestamp, status, error, message, null);
+        }
+    }
 }

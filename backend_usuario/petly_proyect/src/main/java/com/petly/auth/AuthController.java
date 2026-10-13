@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -54,8 +55,12 @@ public class AuthController {
     }
 
     @PostMapping("/password/reset")
-    public ResponseEntity<?> solicitarReset(@Valid @RequestBody PasswordResetRequest request) {
-        authService.solicitarResetPassword(request.getCorreo());
+    public ResponseEntity<?> solicitarReset(@Valid @RequestBody PasswordResetRequest request,
+            @RequestParam(defaultValue = "android") String canal) {
+        if (!canal.equals("android") && !canal.equals("web")) {
+            throw new com.petly.common.exception.ApiException(400, "canal inválido");
+        }
+        authService.solicitarResetPassword(request.getCorreo(), canal.equals("web"));
         return ResponseEntity.ok(Map.of("detail", "Si el correo existe, se enviaron instrucciones."));
     }
 

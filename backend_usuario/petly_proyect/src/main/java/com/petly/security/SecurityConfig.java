@@ -13,6 +13,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.petly.auth.JwtService;
+import com.petly.usuarios.UsuarioRepository;
 
 /**
  * Reglas de acceso de la API (US-21).
@@ -29,8 +30,8 @@ public class SecurityConfig {
     private String internalApiSecret;
 
     @Bean
-    JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService) {
-        return new JwtAuthenticationFilter(jwtService);
+    JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService, UsuarioRepository usuarios) {
+        return new JwtAuthenticationFilter(jwtService, usuarios);
     }
 
     @Bean

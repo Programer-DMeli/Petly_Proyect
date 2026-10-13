@@ -33,6 +33,7 @@ public class JwtService {
                 .claim("email", usuario.getCorreo())
                 .claim("rol", usuario.getRol().name())
                 .claim("username", usuario.getUsername())
+                .claim("ver", usuario.getTokenVersion())
                 .issuer("petly-spring")
                 .audience().add("petly-django").and()
                 .issuedAt(ahora)
