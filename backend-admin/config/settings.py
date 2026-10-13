@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     # Petly
     "apps.acceso",
@@ -85,7 +86,9 @@ TEMPLATES = [
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
+                "django.template.context_processors.debug",
                 "django.template.context_processors.request",
+                "django.template.context_processors.csrf",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
@@ -95,6 +98,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
+
+# Redirección después de login/logout
+LOGIN_REDIRECT_URL = "panel_home"
+LOGOUT_REDIRECT_URL = "/"
 
 # Base de datos: MariaDB de XAMPP, base compartida `database_petly`.
 # Credenciales por variables de entorno; ver `.env.example`.
@@ -133,6 +140,10 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Media files (US-11: fotos de mascotas)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # Django Admin custom CSS (Verde Refugio) + Jazzmin
 JAZZMIN_SETTINGS = {
@@ -237,6 +248,12 @@ REST_FRAMEWORK = {
     "PAGE_SIZE_QUERY_PARAM": "page_size",
     "MAX_PAGE_SIZE": 100,
 }
+
+# Spring Boot es la única autoridad de cuentas de negocio.
+SPRING_API_URL = os.getenv("SPRING_API_URL", "http://127.0.0.1:8080").rstrip("/")
+SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "")
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+REST_FRAMEWORK["EXCEPTION_HANDLER"] = "apps.acceso.integracion.exception_handler"
 
 # --- SimpleJWT (US-21) ---
 # Para adoptante móvil: Django emite/valida sus propios tokens (refresh, logout, etc.)

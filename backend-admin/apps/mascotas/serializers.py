@@ -4,6 +4,22 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Mascota
 
 
+def validate_image_file(value):
+    """Valida que el archivo sea JPEG/PNG y no supere 5 MB."""
+    max_size = 5 * 1024 * 1024  # 5 MB
+    if value.size > max_size:
+        raise serializers.ValidationError("La imagen no debe superar 5 MB.")
+    
+    content_type = getattr(value, 'content_type', '')
+    if content_type not in ['image/jpeg', 'image/png']:
+        # Fallback: verificar por extensión si no hay content_type
+        name = value.name.lower()
+        if not (name.endswith('.jpg') or name.endswith('.jpeg') or name.endswith('.png')):
+            raise serializers.ValidationError("Solo se permiten archivos JPEG o PNG.")
+    
+    return value
+
+
 class MascotaFilter(DjangoFilterBackend):
     """Filtros personalizados para Mascota (US-12)."""
     
@@ -142,6 +158,12 @@ class MascotaListSerializer(serializers.ModelSerializer):
 
 class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializador para crear/actualizar mascota."""
+
+    foto_principal = serializers.ImageField(
+        required=False,
+        allow_null=True,
+        validators=[validate_image_file]
+    )
 
     class Meta:
         model = Mascota
