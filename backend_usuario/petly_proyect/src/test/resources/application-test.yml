@@ -1,11 +1,17 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:petly;MODE=MariaDB;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;INIT=CREATE SCHEMA IF NOT EXISTS database_petly
+    url: jdbc:h2:mem:petly;MODE=MariaDB;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;INIT=CREATE SCHEMA IF NOT EXISTS database_petly\;SET SCHEMA database_petly
     driver-class-name: org.h2.Driver
     username: sa
     password:
 
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/test-schema.sql
+
   jpa:
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: update
     properties:

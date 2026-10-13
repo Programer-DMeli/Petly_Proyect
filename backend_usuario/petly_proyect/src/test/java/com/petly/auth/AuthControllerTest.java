@@ -163,12 +163,13 @@ class AuthControllerTest {
         mala.setCorreo("bloqueo@petly.test");
         mala.setPassword("claveMala123");
 
-        // dos fallos y la cuenta se bloquea 5 min
+        // dos fallos devuelven 401 y dejan la cuenta bloqueada 5 min;
+        // el bloqueo se reporta como 423 desde el siguiente intento
         for (int i = 0; i < 2; i++) {
             mvc.perform(desde("10.0.0.5", "/api/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(json.writeValueAsString(mala)))
-                    .andExpect(i == 0 ? status().isUnauthorized() : status().isLocked());
+                    .andExpect(status().isUnauthorized());
         }
 
         // tercer intento: ya no entra ni con la clave correcta

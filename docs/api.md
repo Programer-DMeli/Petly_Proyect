@@ -6,7 +6,7 @@ Actualizaci�n: 12 de octubre de 2026. Describe el c�digo de `feature/petly_p
 
 Propuestas nuevas para revisi�n de Mayra y Angie: perfil con PATCH; vivienda de texto libre de hasta 120 caracteres; horas diarias y presupuesto mensual en soles con dos decimales; edades de 0-600 meses; cat�logo visible para los tres estados; sesi�n Android en memoria (volver a iniciar tras cerrar el proceso); enlace de recuperaci�n `petly://recuperacion`. No se atribuye aprobaci�n previa a estas decisiones.
 
-Spring es due�o de `usuarios`, `perfiles_adoptantes`, `autorizaciones_perfil` y `password_resets`, mediante Flyway. Django conserva `acceso_user`, albergues y mascotas mediante sus migraciones. Spring solo consulta tablas Django con JDBC; no genera ni altera su esquema. Los IDs son enteros positivos de 64 bits. `acceso_user.spring_id` identifica la cuenta Spring; el ID Django local es independiente y no debe confundirse con �l. El consentimiento referencia albergue Django y adoptante Spring, sin cascadas sobre tablas ajenas.
+Spring es due�o de `usuarios`, `perfiles_adoptantes`, `autorizaciones_consulta` (US-18) y `tokens_recuperacion` (US-24), mediante Flyway. Django conserva `acceso_user`, albergues y mascotas mediante sus migraciones. Spring solo consulta tablas Django con JDBC; no genera ni altera su esquema. Los IDs son enteros positivos de 64 bits. `acceso_user.spring_id` identifica la cuenta Spring; el ID Django local es independiente y no debe confundirse con �l. El consentimiento referencia albergue Django y adoptante Spring, sin cascadas sobre tablas ajenas.
 
 ## Acceso y errores
 
@@ -39,7 +39,7 @@ Ejemplo de registro/login:
 {"correo":"adoptante@example.test","password":"<contrase�a privada>"}
 ```
 
-Correo v�lido, normalizado a min�sculas y sin espacios externos, �nico. Contrase�a: al menos ocho caracteres, m�ximo 72 bytes UTF-8 para BCrypt, sin recortarla. Recuperaci�n exige confirmaci�n id�ntica. El primer fallo devuelve 401; el segundo activa bloqueo persistido de un minuto y devuelve 423. Una contrase�a correcta no evita el bloqueo. Al vencer, el siguiente intento reinicia el contador; un acceso correcto tambi�n lo reinicia. Login, registro y recuperaci�n comparten l�mite de diez peticiones por minuto/IP; 429 incluye Retry-After con los segundos restantes reales de la ventana (1-60). La cuota est� en memoria de una instancia; no requiere Redis. `/me` no consume esa cuota.
+Correo v�lido, normalizado a min�sculas y sin espacios externos, �nico. Contrase�a: al menos ocho caracteres, m�ximo 72 bytes UTF-8 para BCrypt, sin recortarla. Recuperaci�n exige confirmaci�n id�ntica. Los dos primeros fallos devuelven 401 y dejan la cuenta bloqueada 5 minutos; el bloqueo se reporta como 423 desde el siguiente intento. Una contrase�a correcta no evita el bloqueo. Al vencer, el siguiente intento reinicia el contador; un acceso correcto tambi�n lo reinicia. Login, registro y recuperaci�n comparten l�mite de diez peticiones por minuto/IP; 429 incluye Retry-After con los segundos restantes reales de la ventana (1-60). La cuota est� en memoria de una instancia; no requiere Redis. `/me` no consume esa cuota.
 
 Recuperaci�n: token aleatorio opaco, distinto de un JWT de acceso; solo su hash SHA-256 se guarda. Expira a los 15 minutos, se consume una sola vez en transacci�n y el cambio invalida sesiones y dem�s enlaces pendientes de esa cuenta. No se entrega el token en la respuesta API. Un correo desconocido recibe el mismo mensaje p�blico. SMTP debe estar configurado: recibir 200 no prueba entrega de correo. Sin canal o con canal=android, el enlace abre Petly Android; con canal=web usa WEB_RESET_LINK_BASE (por defecto http://localhost:5173/recuperacion). No se acepta una URL arbitraria del cliente. Un canal distinto devuelve 400; la pantalla permite pegar el c�digo como alternativa. El custom scheme no es un Android App Link verificado; confirmar dominio propio antes de una publicaci�n futura.
 
@@ -110,9 +110,9 @@ Fotograf�a: una JPEG/PNG real, m�ximo 5 MiB, subida multipart a Django; se c
 
 ADOPTANTE:
 
-- GET `/api/autorizaciones` � `[{"albergueId":1,"nombre":"Refugio ejemplo"}]`.
-- PUT `/api/autorizaciones/{albergueId}` � `{"albergueId":1,"autorizado":true}`; idempotente, solo albergue activo existente.
-- DELETE misma ruta � `{"albergueId":1,"autorizado":false}`; idempotente, solo autorizaci�n de la cuenta actual.
+- POST `/api/autorizaciones` con `{"albergueId":1}` � 201 `{"id":1,"albergueId":1,"estado":"ACTIVA","fechaAutorizacion":"...","fechaRevocacion":null}`; idempotente (si ya existe se reactiva, no se duplica).
+- GET `/api/autorizaciones` � `[{"id":1,"albergueId":1,"estado":"ACTIVA","fechaAutorizacion":"...","fechaRevocacion":null}]`.
+- DELETE `/api/autorizaciones/{albergueId}` � `{"detail":"Autorizacion revocada."}`; 404 si no existe autorizaci�n de la cuenta actual.
 
 ALBERGUE:
 
@@ -151,11 +151,11 @@ En desarrollo DEBUG, Django admite expl�citamente Host 10.0.2.2 para servir la
 
 ## US-21: bloqueo visible y cuota en los clientes
 
-Dos contrase�as incorrectas consecutivas para una cuenta EXISTENTE producen 401 y luego 423. Los errores de formato/contrase�a vac�a se validan antes de enviar desde React/Kotlin y no incrementan el contador de la cuenta. Un correo v�lido pero inexistente devuelve 401; no hay cuenta que bloquear. Cada petici�n HTTP real de autenticaci�n s� consume cuota, incluso cuando termina en 400/401/423.
+Dos contrase�as incorrectas consecutivas para una cuenta EXISTENTE devuelven 401 y dejan la cuenta bloqueada 5 minutos; el bloqueo se reporta como 423 desde el siguiente intento. Los errores de formato/contrase�a vac�a se validan antes de enviar desde React/Kotlin y no incrementan el contador de la cuenta. Un correo v�lido pero inexistente devuelve 401; no hay cuenta que bloquear. Cada petici�n HTTP real de autenticaci�n s� consume cuota, incluso cuando termina en 400/401/423.
 
-423: error, campos, codigo=CUENTA_BLOQUEADA, reintentarEnSegundos y Retry-After con el tiempo restante; el primer bloqueo dura 60 segundos. Intentar desde otro cliente, recargar o utilizar la contrase�a correcta no evade ni reinicia el bloqueo. Tras vencer, un acceso correcto reinicia contador/vencimiento.
+423: status, error y message ("cuenta bloqueada"); el bloqueo dura 5 minutos. Intentar desde otro cliente, recargar o utilizar la contrase�a correcta no evade ni reinicia el bloqueo. Tras vencer, un acceso correcto reinicia contador/vencimiento.
 
-429: codigo=LIMITE_PETICIONES, reintentarEnSegundos y Retry-After (1-60); cuota global de diez peticiones/minuto/IP para las rutas p�blicas de autenticaci�n. No equivale a bloqueo de un minuto de una cuenta. CORS expone Retry-After a React.
+429: codigo=LIMITE_PETICIONES, reintentarEnSegundos y Retry-After (1-60); cuota global de diez peticiones/minuto/IP para las rutas p�blicas de autenticaci�n. CORS expone Retry-After a React.
 
 React y Kotlin muestran mm:ss y deshabilitan el bot�n mientras esperan. Los campos pueden editarse para acceder con otra cuenta cuando solo hay bloqueo de cuenta; la cuota por IP afecta a todas. El contador del cliente es UX, no autoridad de seguridad: el servidor persiste y aplica el bloqueo. React solo exige m�nimo ocho caracteres al REGISTRAR; al acceder env�a cualquier contrase�a no vac�a para que los errores de autenticaci�n lleguen al servidor. Kotlin aplica la misma distinci�n.
 
