@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /* Estilos base de Petly web — Verde Refugio identidad visual. */
 
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
@@ -23,26 +24,43 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
   --font-weight-extrabold: 800;
+=======
+/* Estilos base de Petly web. Paleta alineada con el tema de Android. */
+
+:root {
+  --petly-primary: #2f6f4f;
+  --petly-primary-dark: #245740;
+  --petly-accent: #f2a35c;
+  --petly-background: #f7f5f1;
+  --petly-surface: #ffffff;
+  --petly-text: #26302b;
+  --petly-muted: #6b7a72;
+  --petly-border: #e2ded6;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+>>>>>>> origin/main
 }
 
 * {
   box-sizing: border-box;
 }
 
-html {
-  font-size: 16px;
-}
-
 body {
   margin: 0;
   background: var(--petly-background);
   color: var(--petly-text);
+<<<<<<< HEAD
   font-family: var(--font-family);
   font-weight: var(--font-weight-regular);
   font-size: 1rem;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+=======
+>>>>>>> origin/main
 }
 
 .app {
@@ -61,16 +79,23 @@ body {
 }
 
 .app__logo {
+<<<<<<< HEAD
   font-family: var(--font-family);
   font-size: 1.5rem;
   font-weight: var(--font-weight-extrabold);
+=======
+  font-size: 1.5rem;
+  font-weight: 700;
+>>>>>>> origin/main
   letter-spacing: 0.02em;
 }
 
 .app__tagline {
+<<<<<<< HEAD
   font-family: var(--font-family);
+=======
+>>>>>>> origin/main
   font-size: 0.9rem;
-  font-weight: var(--font-weight-regular);
   opacity: 0.9;
 }
 
@@ -88,23 +113,26 @@ body {
   border-top: 1px solid var(--petly-border);
   color: var(--petly-muted);
   text-align: center;
+<<<<<<< HEAD
   font-family: var(--font-family);
   font-size: 0.875rem;
+=======
+>>>>>>> origin/main
 }
 
 .card {
   background: var(--petly-surface);
   border: 1px solid var(--petly-border);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.25rem;
-  box-shadow: 0 1px 3px rgba(24, 58, 48, 0.06);
 }
 
 .card h1,
 .card h2 {
   margin-top: 0;
   color: var(--petly-primary-dark);
+<<<<<<< HEAD
   font-family: var(--font-family);
   font-weight: var(--font-weight-bold);
 }
@@ -122,74 +150,65 @@ body {
   font-family: var(--font-family);
   font-weight: var(--font-weight-bold);
   color: var(--petly-text);
+=======
+>>>>>>> origin/main
 }
 
 .badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.75rem;
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
   border-radius: 999px;
+<<<<<<< HEAD
   font-family: var(--font-family);
   font-size: 0.75rem;
   font-weight: var(--font-weight-semibold);
   background: var(--petly-secondary);
   color: var(--petly-primary-dark);
+=======
+  font-size: 0.75rem;
+  background: var(--petly-accent);
+  color: #4a2c10;
+  font-weight: 600;
+>>>>>>> origin/main
 }
 
 .badge--pending {
-  background: var(--petly-secondary);
-  color: var(--petly-text-secondary);
-}
-
-.badge--success {
-  background: #D4EDDA;
-  color: #155724;
-}
-
-.badge--warning {
-  background: #FFF3CD;
-  color: #856404;
-}
-
-.badge--error {
-  background: #F8D7DA;
-  color: #721C24;
-}
-
-.badge--info {
-  background: #D1ECF1;
-  color: #0C5460;
+  background: #eceae4;
+  color: var(--petly-muted);
 }
 
 .hero {
   text-align: center;
-  padding: 3rem 2rem;
+  padding: 2.5rem 1.5rem;
   background: linear-gradient(160deg, var(--petly-primary) 0%, var(--petly-primary-dark) 100%);
   color: #fff;
-  border-radius: 20px;
-  margin-bottom: 2rem;
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
 }
 
 .hero h1 {
+<<<<<<< HEAD
   margin: 0 0 1rem;
   font-family: var(--font-family);
   font-size: 2.5rem;
   font-weight: var(--font-weight-extrabold);
   line-height: 1.2;
+=======
+  margin: 0 0 0.5rem;
+  font-size: 2.2rem;
+>>>>>>> origin/main
 }
 
 .hero p {
   margin: 0 auto;
   max-width: 42rem;
   opacity: 0.95;
-  font-size: 1.125rem;
-  font-weight: var(--font-weight-regular);
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
 }
 
 .status-list {
@@ -202,7 +221,7 @@ body {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.75rem 0;
+  padding: 0.5rem 0;
   border-bottom: 1px solid var(--petly-border);
 }
 
@@ -212,11 +231,12 @@ body {
 
 .muted {
   color: var(--petly-muted);
-  font-family: var(--font-body);
-  font-size: 0.875rem;
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
 .app__logo {
   color: inherit;
   text-decoration: none;
@@ -457,6 +477,7 @@ textarea:focus-visible {
 .shelter-card dd {
   overflow-wrap: anywhere;
 }
+<<<<<<< HEAD
 =======
 /* Botones */
 .btn {
@@ -724,3 +745,5 @@ textarea:focus-visible {
 
 .w-full { width: 100%; }
 >>>>>>> feature/django-shelter-pets
+=======
+>>>>>>> origin/main

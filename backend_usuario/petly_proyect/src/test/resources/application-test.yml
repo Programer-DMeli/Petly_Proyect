@@ -1,15 +1,36 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:petly;MODE=MariaDB;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:mem:petly;MODE=MariaDB;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;INIT=CREATE SCHEMA IF NOT EXISTS database_petly\;SET SCHEMA database_petly
     driver-class-name: org.h2.Driver
     username: sa
     password:
-  jwt:
-    secret: ${PETLY_TEST_SECRET}
+
   sql:
     init:
       mode: always
-      schema-locations: classpath:django-read-model.sql
+      schema-locations: classpath:sql/test-schema.sql
+
+  jpa:
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        default_schema: database_petly
+        dialect: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    enabled: false
+
   mail:
     host: localhost
     port: 1025
+    username:
+    password:
+    properties:
+      mail:
+        smtp:
+          auth: false
+
+interno:
+  api-secret: test-internal-secret

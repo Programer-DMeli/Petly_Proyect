@@ -48,6 +48,12 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
+		<!-- Lombok: genera getters/setters de los DTOs (US-24). -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
 
 		<!-- SpringDoc OpenAPI 3 / Swagger UI -->
 		<dependency>
@@ -71,10 +77,13 @@
 			<scope>runtime</scope>
 		</dependency>
 		<!-- Migraciones de Spring Boot (historial propio en db/migration/).
-		     Hibernate no crea tablas: ddl-auto queda en none. -->
+		     Hibernate no crea tablas: ddl-auto queda en none.
+		     En Spring Boot 4 la autoconfiguracion de Flyway vive en
+		     spring-boot-starter-flyway; flyway-core por si solo NO dispara
+		     las migraciones al arrancar. flyway-mysql aporta MariaDB. -->
 		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-core</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-flyway</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.flywaydb</groupId>
@@ -137,6 +146,14 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<excludes>
+						<exclude>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

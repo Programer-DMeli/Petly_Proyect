@@ -9,6 +9,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.petly.auth.JwtService;
+import com.petly.usuarios.UsuarioRepository;
 
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
@@ -19,14 +20,23 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * Lee el JWT de la cabecera Authorization y deja al usuario autenticado (US-21).
  * Sin cabecera sigue igual (Spring rechaza el recurso privado).
- * Token invalido o vencido: responde 401 y no deja pasar.
+ * Token invalido, vencido o de una sesion ya invalidada (cambio de clave):
+ * responde 401 y no deja pasar.
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final UsuarioRepository usuarios;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, UsuarioRepository usuarios) {
         this.jwtService = jwtService;
+        this.usuarios = usuarios;
+    }
+
+    private void rechazar(HttpServletResponse response) throws IOException {
+        response.setStatus(401);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\":\"token invalido o vencido\",\"campos\":{}}");
     }
 
     @Override
@@ -41,13 +51,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = cabecera.substring(7);
         try {
             Claims claims = jwtService.validarToken(token);
+            Integer ver = claims.get("version", Integer.class);
+            var usuario = usuarios.findById(Long.parseLong(claims.getSubject())).orElse(null);
+            if (ver == null || usuario == null || ver != usuario.getTokenVersion()) {
+                rechazar(response);
+                return;
+            }
             var autoridad = new SimpleGrantedAuthority("ROLE_" + claims.get("rol", String.class));
             var auth = new UsernamePasswordAuthenticationToken(claims, null, List.of(autoridad));
             SecurityContextHolder.getContext().setAuthentication(auth);
         } catch (Exception e) {
-            response.setStatus(401);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\":\"token invalido o vencido\",\"campos\":{}}");
+            rechazar(response);
             return;
         }
         chain.doFilter(request, response);

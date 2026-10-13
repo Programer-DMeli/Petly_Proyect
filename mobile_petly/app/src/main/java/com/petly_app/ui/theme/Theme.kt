@@ -6,21 +6,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val LightColors = lightColorScheme(
-    primary = Primary, onPrimary = Color.White,
-    primaryContainer = Secondary, onPrimaryContainer = TextPrimary,
-    secondary = TextSecondary, onSecondary = Color.White,
-    secondaryContainer = Secondary, onSecondaryContainer = TextPrimary,
-    tertiary = Accent, onTertiary = Color(0xFF4A2C10),
-    tertiaryContainer = Color(0xFFFFF3E0), onTertiaryContainer = Color(0xFF4A2C10),
-    background = Background, onBackground = TextPrimary,
-    surface = Surface, onSurface = TextPrimary,
-    surfaceVariant = Secondary, onSurfaceVariant = TextSecondary,
-    outline = Border,
-    error = Error, onError = Color.White,
-    errorContainer = ErrorContainer, onErrorContainer = Error
+    primary = Terracota, onPrimary = Color.White,
+    primaryContainer = RosaSuave, onPrimaryContainer = TextoCalido,
+    secondary = Color(0xFF65534B), onSecondary = Color.White,
+    secondaryContainer = RosaSuave, onSecondaryContainer = TextoCalido,
+    tertiary = Color(0xFF4B633B), onTertiary = Color.White,
+    tertiaryContainer = Salvia, onTertiaryContainer = TextoCalido,
+    background = FondoCalido, onBackground = TextoCalido,
+    surface = Color.White, onSurface = TextoCalido,
+    surfaceVariant = Color(0xFFF1E7E0), onSurfaceVariant = TextoSecundario,
+    outline = Color(0xFF81736B),
+    error = Color(0xFFB3261E), onError = Color.White
 )
 
 private val DarkColors = darkColorScheme(
+<<<<<<< HEAD
     primary = PrimaryLight, onPrimary = Color(0xFF0D3D2F),
     primaryContainer = PrimaryDark, onPrimaryContainer = Background,
     secondary = Secondary, onSecondary = TextPrimary,
@@ -33,14 +33,23 @@ private val DarkColors = darkColorScheme(
     outline = Border,
     error = Error, onError = Color.White,
     errorContainer = ErrorContainer, onErrorContainer = Error
+=======
+    primary = Color(0xFF8ED5BA), onPrimary = Color(0xFF003829),
+    primaryContainer = Color(0xFF00513D), onPrimaryContainer = Color(0xFFB0EFCE),
+    secondary = Color(0xFFDBC5BB), onSecondary = Color(0xFF3D2D26),
+    secondaryContainer = Color(0xFF554038), onSecondaryContainer = Color(0xFFF4DDD2),
+    tertiary = Color(0xFFB7C8A3), onTertiary = Color(0xFF243619),
+    tertiaryContainer = Color(0xFF3D5131), onTertiaryContainer = Color(0xFFD2E6BF),
+    background = Color(0xFF1F1713), onBackground = Color(0xFFF0DFD6),
+    surface = Color(0xFF241B17), onSurface = Color(0xFFF0DFD6),
+    surfaceVariant = Color(0xFF51443D), onSurfaceVariant = Color(0xFFD3C2B9),
+    outline = Color(0xFFA08F86)
+>>>>>>> origin/main
 )
 
 @Composable
 fun Petly_appTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     // Sin colores dinámicos para conservar la identidad elegida también en Android 12+.
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = Typography,
-        content = content
-    )
+    MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors,
+        typography = Typography, content = content)
 }

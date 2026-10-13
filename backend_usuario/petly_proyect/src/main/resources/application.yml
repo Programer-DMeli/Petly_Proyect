@@ -11,7 +11,7 @@ spring:
     password: ${DB_PASSWORD:}
 
   jpa:
-    # Hibernate no crea ni actualiza tablas (PLANNING v2 §6): las migraciones
+    # Hibernate no crea ni actualiza tablas (PLANNING v2 �6): las migraciones
     # de Spring Boot se aplican con Flyway desde db/migration/.
     # El dialecto (MariaDB) lo detecta Hibernate desde el driver.
     hibernate:
@@ -31,7 +31,7 @@ spring:
 
   auth:
     max-attempts: 2
-    block-duration-minutes: 1
+    block-duration-minutes: 5
 
   mail:
     host: ${MAIL_HOST:localhost}
@@ -66,3 +66,10 @@ petly:
   web-reset-link-base: ${WEB_RESET_LINK_BASE:http://localhost:5173/recuperacion}
   reset-link-base: ${RESET_LINK_BASE:petly://recuperacion}
   media-base-url: ${MEDIA_BASE_URL:http://10.0.2.2:8000/media/}
+
+# JWT Configuration (US-21)
+# Auth configuration (US-21)
+# Email configuration (US-24)
+# Secreto compartido con Django para el endpoint interno (US-18)
+interno:
+  api-secret: ${INTERNAL_API_SECRET:local-internal-secret-change-me}

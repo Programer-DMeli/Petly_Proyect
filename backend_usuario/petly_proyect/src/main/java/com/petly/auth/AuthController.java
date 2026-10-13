@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,8 +22,8 @@ import com.petly.auth.dto.PasswordResetConfirmRequest;
 import jakarta.validation.Valid;
 
 /**
- * Registro público de adoptantes (US-21).
- * Recuperación de contraseña por correo (US-24).
+ * Registro pĂşblico de adoptantes (US-21).
+ * RecuperaciĂłn de contraseĂąa por correo (US-24).
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -38,7 +39,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
@@ -55,18 +56,20 @@ public class AuthController {
 
     @PostMapping("/password/reset")
     public ResponseEntity<?> solicitarReset(@Valid @RequestBody PasswordResetRequest request,
-            @org.springframework.web.bind.annotation.RequestParam(defaultValue="android") String canal) {
-        if (!canal.equals("android") && !canal.equals("web"))
+            @RequestParam(defaultValue = "android") String canal) {
+        if (!canal.equals("android") && !canal.equals("web")) {
             throw new com.petly.common.exception.ApiException(400, "canal inválido");
+        }
         authService.solicitarResetPassword(request.getCorreo(), canal.equals("web"));
         return ResponseEntity.ok(Map.of("detail", "Si el correo existe, se enviaron instrucciones."));
     }
 
     @PostMapping("/password/reset/confirm")
     public ResponseEntity<?> confirmarReset(@Valid @RequestBody PasswordResetConfirmRequest request) {
-        if (!request.getNuevaPassword().equals(request.getNuevaPasswordConfirm()))
-            throw new com.petly.common.exception.ApiException(400, "las contraseñas no coinciden");
-        authService.confirmarResetPassword(request.getToken(), request.getNuevaPassword());
-        return ResponseEntity.ok(Map.of("detail", "Contraseña actualizada correctamente."));
+        authService.confirmarResetPassword(
+                request.getToken(),
+                request.getNuevaPassword(),
+                request.getNuevaPasswordConfirm());
+        return ResponseEntity.ok(Map.of("detail", "Contrase\u00f1a actualizada correctamente."));
     }
 }

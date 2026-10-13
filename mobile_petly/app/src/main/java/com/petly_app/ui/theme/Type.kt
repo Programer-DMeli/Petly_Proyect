@@ -6,8 +6,22 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
+<<<<<<< HEAD
 // Fallback a fuentes del sistema
 val NunitoFallback = FontFamily.Default
+=======
+// Fuentes: Plus Jakarta Sans (headings) + Inter (body)
+// TODO(MOBILE): agregar los .ttf a app/src/main/res/font y mapearlos aqui
+// con Font(R.font.plus_jakarta_sans_semibold, ...) + import com.petly_app.R.
+// Mientras tanto se usa la fuente del sistema para no romper la compilacion.
+val PlusJakartaSans = FontFamily.Default
+
+val Inter = FontFamily.Default
+
+// Fallback a fuentes del sistema si no están las fuentes personalizadas
+val PlusJakartaSansFallback = FontFamily.Default
+val InterFallback = FontFamily.Default
+>>>>>>> origin/main
 
 val Typography = Typography(
     // Display / Headings - Nunito ExtraBold/Bold
