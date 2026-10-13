@@ -224,8 +224,6 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"edad_meses": "Resto de meses entre 0 y 11."})
         if (years or 0) * 12 + (months or 0) > 600:
             raise serializers.ValidationError({"edad_anos": "Edad total máxima: 600 meses."})
-        if self.instance is None and not attrs.get("foto_principal"):
-            raise serializers.ValidationError({"foto_principal": "Una fotografía es obligatoria."})
         if attrs.get("fotos_adicionales"):
             raise serializers.ValidationError({"fotos_adicionales": "Sprint 1 admite una sola fotografía."})
         return attrs

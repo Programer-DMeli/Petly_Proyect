@@ -160,7 +160,9 @@ class MascotaAPITest(TestCase):
     def test_foto_y_edad_invalidas_rechazadas(self):
         self._auth(self.user)
         payload = {"nombre": "Luna", "especie": "PERRO", "sexo": "HEMBRA", "edad_anos": 2}
-        self.assertEqual(self.client.post('/api/mascotas/',payload).status_code,400)
+        # La foto es opcional al crear (se representa con null); el formato
+        # y el tamano si se validan cuando se envia.
+        self.assertEqual(self.client.post('/api/mascotas/',payload).status_code,201)
         payload["foto_principal"] = SimpleUploadedFile("fake.png",b"not an image",content_type="image/png")
         self.assertEqual(self.client.post('/api/mascotas/',payload).status_code,400)
         payload["foto_principal"] = foto_prueba(); payload["edad_meses"] = 12
