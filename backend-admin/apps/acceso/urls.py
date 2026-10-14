@@ -1,8 +1,15 @@
-from django.urls import path, re_path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import PostulanteViewSet, SolicitudAdopcionViewSet
 from .integracion import PerfilCompartidoView, PerfilesCompartidosListView, RetiredBusinessAccessView
+
+router = DefaultRouter()
+router.register("postulantes", PostulanteViewSet, basename="postulante")
+router.register("solicitudes", SolicitudAdopcionViewSet, basename="solicitud")
+
 urlpatterns = [
+    path("", include(router.urls)),
     path("perfiles-compartidos/", PerfilesCompartidosListView.as_view(), name="perfiles_compartidos"),
     path("perfiles-compartidos/<int:adoptante_id>/", PerfilCompartidoView.as_view(), name="perfil_compartido"),
-    # Rutas antiguas no exponen credenciales, postulantes ni solicitudes del siguiente sprint.
-    re_path(r"^.*$", RetiredBusinessAccessView.as_view()),
+    path("<path:unused>", RetiredBusinessAccessView.as_view()),
 ]

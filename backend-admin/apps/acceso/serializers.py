@@ -7,6 +7,7 @@ from django.db import models
 from django.utils import timezone
 from .models import Postulante, SolicitudAdopcion, User, AdoptanteProfile, Autorizacion
 from apps.mascotas.serializers import MascotaListSerializer
+from apps.mascotas.models import Mascota
 
 User = get_user_model()
 
@@ -199,10 +200,34 @@ class SolicitudCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = SolicitudAdopcion
         fields = [
+            "postulante",
             "mascota",
             "mensaje_postulante",
             "respuestas_cuestionario",
         ]
+
+    def validate_postulante(self, value):
+        if value.estado != Postulante.EstadoPostulante.ACTIVO:
+            raise serializers.ValidationError("El postulante no está activo.")
+        return value
+
+    def validate_mascota(self, value):
+        if value.estado != Mascota.Estado.DISPONIBLE:
+            raise serializers.ValidationError("La mascota no está disponible para adopción.")
+        return value
+
+    def validate(self, attrs):
+        postulante, mascota = attrs.get("postulante"), attrs.get("mascota")
+        if postulante and mascota and SolicitudAdopcion.objects.filter(
+            postulante=postulante,
+            mascota=mascota,
+            estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.EN_REVISION],
+        ).exists():
+            raise serializers.ValidationError({"non_field_errors": ["Ya existe una solicitud activa para esta mascota."]})
+        respuestas = attrs.get("respuestas_cuestionario", {})
+        if not isinstance(respuestas, dict):
+            raise serializers.ValidationError({"respuestas_cuestionario": "Debe ser un objeto JSON."})
+        return attrs
 
     def create(self, validated_data):
         # El postulante se asigna desde el usuario autenticado o sesión
