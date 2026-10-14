@@ -7,6 +7,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count
+from django.db import transaction
+from rest_framework.exceptions import ValidationError
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
@@ -173,6 +175,32 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             return qs.filter(albergue=albergue)
         except Albergue.DoesNotExist:
             return qs.none()
+
+    def perform_create(self, serializer):
+        # Recheck under a row lock so concurrent submissions cannot both pass validation.
+        mascota_id = serializer.validated_data["mascota"].pk
+        postulante = serializer.validated_data["postulante"]
+        with transaction.atomic():
+            mascota = Mascota.objects.select_for_update().filter(pk=mascota_id).first()
+            if mascota is None:
+                raise ValidationError({"mascota": "La mascota indicada no existe."})
+            if mascota.estado != Mascota.Estado.DISPONIBLE:
+                raise ValidationError({"mascota": "La mascota no está disponible para adopción."})
+            activa = SolicitudAdopcion.objects.filter(
+                postulante=postulante,
+                mascota=mascota,
+                estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.EN_REVISION],
+            ).exists()
+            if activa:
+                raise ValidationError({"non_field_errors": ["Ya existe una solicitud activa para esta mascota."]})
+            serializer.save(mascota=mascota, albergue=mascota.albergue)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        response_data = SolicitudAdopcionSerializer(serializer.instance, context=self.get_serializer_context()).data
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"], url_path="cambiar-estado")
     def cambiar_estado(self, request, pk=None):
