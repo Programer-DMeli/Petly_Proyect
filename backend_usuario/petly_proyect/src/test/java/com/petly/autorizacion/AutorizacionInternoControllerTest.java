@@ -26,6 +26,16 @@ import com.petly.usuarios.UsuarioRepository;
 class AutorizacionInternoControllerTest {
 
     @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate db;
+
+    @org.junit.jupiter.api.BeforeEach
+    void alberguesDePrueba() {
+        db.update("MERGE INTO albergues_albergue (id,nombre,direccion,activo) KEY(id) VALUES (5,'Refugio prueba','Dirección prueba',TRUE)");
+        db.update("MERGE INTO albergues_albergue (id,nombre,direccion,activo) KEY(id) VALUES (7,'Refugio prueba','Dirección prueba',TRUE)");
+        db.update("MERGE INTO albergues_albergue (id,nombre,direccion,activo) KEY(id) VALUES (9,'Refugio prueba','Dirección prueba',TRUE)");
+    }
+
+    @Autowired
     private MockMvc mvc;
 
     @Autowired

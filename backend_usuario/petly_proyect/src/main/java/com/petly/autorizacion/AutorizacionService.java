@@ -15,9 +15,11 @@ import com.petly.autorizacion.dto.AutorizacionResponse;
 public class AutorizacionService {
 
     private final AutorizacionRepository autorizaciones;
+    private final org.springframework.jdbc.core.JdbcTemplate db;
 
-    public AutorizacionService(AutorizacionRepository autorizaciones) {
+    public AutorizacionService(AutorizacionRepository autorizaciones, org.springframework.jdbc.core.JdbcTemplate db) {
         this.autorizaciones = autorizaciones;
+        this.db = db;
     }
 
     @Transactional
@@ -58,13 +60,20 @@ public class AutorizacionService {
         if (adoptanteId == null || albergueId == null) {
             throw new IllegalArgumentException("adoptanteId y albergueId son obligatorios");
         }
-        return autorizaciones.existsByAdoptanteIdAndAlbergueIdAndEstado(
+        return albergueActivo(albergueId) && autorizaciones.existsByAdoptanteIdAndAlbergueIdAndEstado(
                 adoptanteId, albergueId, EstadoAutorizacion.ACTIVA);
+    }
+
+    private boolean albergueActivo(Long albergueId) {
+        return db.queryForObject("SELECT COUNT(*) FROM albergues_albergue WHERE id=? AND activo=TRUE", Integer.class, albergueId) > 0;
     }
 
     private void validarAlbergue(Long albergueId) {
         if (albergueId == null || albergueId <= 0) {
             throw new IllegalArgumentException("albergueId invalido");
+        }
+        if (!albergueActivo(albergueId)) {
+            throw new com.petly.common.exception.ApiException(404, "Albergue no disponible.");
         }
     }
 }

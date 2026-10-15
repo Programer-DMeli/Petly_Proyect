@@ -33,6 +33,17 @@ import com.petly.autorizacion.dto.AutorizacionRequest;
 class AutorizacionControllerTest {
 
     @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate db;
+
+    @org.junit.jupiter.api.BeforeEach
+    void alberguesDePrueba() {
+        db.update("MERGE INTO albergues_albergue (id,nombre,direccion,activo) KEY(id) VALUES (1,'Refugio prueba','Dirección prueba',TRUE)");
+        db.update("MERGE INTO albergues_albergue (id,nombre,direccion,activo) KEY(id) VALUES (3,'Refugio prueba','Dirección prueba',TRUE)");
+        db.update("MERGE INTO albergues_albergue (id,nombre,direccion,activo) KEY(id) VALUES (5,'Refugio prueba','Dirección prueba',TRUE)");
+        db.update("MERGE INTO albergues_albergue (id,nombre,direccion,activo) KEY(id) VALUES (8,'Refugio prueba','Dirección prueba',TRUE)");
+    }
+
+    @Autowired
     private MockMvc mvc;
 
     // ObjectMapper no viene como bean, lo armamos nosotros

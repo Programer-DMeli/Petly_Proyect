@@ -31,7 +31,7 @@ spring:
 
   auth:
     max-attempts: 2
-    block-duration-minutes: 5
+    block-duration-minutes: 1
 
   mail:
     host: ${MAIL_HOST:localhost}

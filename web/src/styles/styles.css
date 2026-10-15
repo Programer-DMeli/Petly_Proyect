@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /* Estilos base de Petly web — Verde Refugio identidad visual. */
 
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
@@ -17,31 +16,13 @@
   --petly-muted: #6B7D73;
   --petly-border: #D4E4DB;
   --petly-focus: #166D56;
-  
+
   /* Tipografía Nunito - tierna, redondeada, acogedora */
   --font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-weight-regular: 400;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
   --font-weight-extrabold: 800;
-=======
-/* Estilos base de Petly web. Paleta alineada con el tema de Android. */
-
-:root {
-  --petly-primary: #2f6f4f;
-  --petly-primary-dark: #245740;
-  --petly-accent: #f2a35c;
-  --petly-background: #f7f5f1;
-  --petly-surface: #ffffff;
-  --petly-text: #26302b;
-  --petly-muted: #6b7a72;
-  --petly-border: #e2ded6;
-  font-family:
-    'Segoe UI',
-    system-ui,
-    -apple-system,
-    sans-serif;
->>>>>>> origin/main
 }
 
 * {
@@ -52,15 +33,12 @@ body {
   margin: 0;
   background: var(--petly-background);
   color: var(--petly-text);
-<<<<<<< HEAD
   font-family: var(--font-family);
   font-weight: var(--font-weight-regular);
   font-size: 1rem;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-=======
->>>>>>> origin/main
 }
 
 .app {
@@ -79,22 +57,14 @@ body {
 }
 
 .app__logo {
-<<<<<<< HEAD
   font-family: var(--font-family);
   font-size: 1.5rem;
   font-weight: var(--font-weight-extrabold);
-=======
-  font-size: 1.5rem;
-  font-weight: 700;
->>>>>>> origin/main
   letter-spacing: 0.02em;
 }
 
 .app__tagline {
-<<<<<<< HEAD
   font-family: var(--font-family);
-=======
->>>>>>> origin/main
   font-size: 0.9rem;
   opacity: 0.9;
 }
@@ -113,11 +83,8 @@ body {
   border-top: 1px solid var(--petly-border);
   color: var(--petly-muted);
   text-align: center;
-<<<<<<< HEAD
   font-family: var(--font-family);
   font-size: 0.875rem;
-=======
->>>>>>> origin/main
 }
 
 .card {
@@ -132,7 +99,6 @@ body {
 .card h2 {
   margin-top: 0;
   color: var(--petly-primary-dark);
-<<<<<<< HEAD
   font-family: var(--font-family);
   font-weight: var(--font-weight-bold);
 }
@@ -150,26 +116,17 @@ body {
   font-family: var(--font-family);
   font-weight: var(--font-weight-bold);
   color: var(--petly-text);
-=======
->>>>>>> origin/main
 }
 
 .badge {
   display: inline-block;
   padding: 0.15rem 0.6rem;
   border-radius: 999px;
-<<<<<<< HEAD
   font-family: var(--font-family);
   font-size: 0.75rem;
   font-weight: var(--font-weight-semibold);
   background: var(--petly-secondary);
   color: var(--petly-primary-dark);
-=======
-  font-size: 0.75rem;
-  background: var(--petly-accent);
-  color: #4a2c10;
-  font-weight: 600;
->>>>>>> origin/main
 }
 
 .badge--pending {
@@ -187,16 +144,11 @@ body {
 }
 
 .hero h1 {
-<<<<<<< HEAD
   margin: 0 0 1rem;
   font-family: var(--font-family);
   font-size: 2.5rem;
   font-weight: var(--font-weight-extrabold);
   line-height: 1.2;
-=======
-  margin: 0 0 0.5rem;
-  font-size: 2.2rem;
->>>>>>> origin/main
 }
 
 .hero p {
@@ -233,10 +185,6 @@ body {
   color: var(--petly-muted);
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> origin/main
 .app__logo {
   color: inherit;
   text-decoration: none;
@@ -477,8 +425,6 @@ textarea:focus-visible {
 .shelter-card dd {
   overflow-wrap: anywhere;
 }
-<<<<<<< HEAD
-=======
 /* Botones */
 .btn {
   display: inline-flex;
@@ -744,6 +690,3 @@ textarea:focus-visible {
 .gap-4 { gap: 1rem; }
 
 .w-full { width: 100%; }
->>>>>>> feature/django-shelter-pets
-=======
->>>>>>> origin/main

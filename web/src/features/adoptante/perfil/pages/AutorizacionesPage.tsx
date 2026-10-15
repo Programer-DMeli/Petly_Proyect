@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
-import { spring, errorMessage } from '../../../../services/http';
+import { spring, json, errorMessage } from '../../../../services/http';
 interface Shelter {
   id: number;
   nombre: string;
@@ -8,7 +8,7 @@ interface Shelter {
 }
 interface Consent {
   albergueId: number;
-  nombre: string;
+  estado: string;
 }
 export default function AutorizacionesPage() {
   const [shelters, setShelters] = useState<Shelter[]>([]);
@@ -25,7 +25,7 @@ export default function AutorizacionesPage() {
         spring<Consent[]>('/api/autorizaciones'),
       ]);
       setShelters(s);
-      setConsents(c);
+      setConsents(c.filter(item => item.estado === 'ACTIVA'));
       setLoaded(true);
     } catch (e) {
       setError(errorMessage(e));
@@ -38,7 +38,8 @@ export default function AutorizacionesPage() {
     setBusy(true);
     setError('');
     try {
-      await spring(`/api/autorizaciones/${id}`, { method: allow ? 'PUT' : 'DELETE' });
+      await spring(allow ? '/api/autorizaciones' : `/api/autorizaciones/${id}`,
+        allow ? { method: 'POST', body: json({ albergueId: id }) } : { method: 'DELETE' });
       setSelected(null);
       await load();
     } catch (e) {

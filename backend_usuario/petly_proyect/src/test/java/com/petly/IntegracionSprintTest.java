@@ -139,10 +139,10 @@ class IntegracionSprintTest {
   mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr(ip);return r;}).contentType(MediaType.APPLICATION_JSON).content(bad))
    .andExpect(status().isUnauthorized());
   assertEquals(1,users.findById(u.getId()).orElseThrow().getIntentosFallidos());
-  // El segundo fallo deja la cuenta bloqueada 5 min pero responde 401;
-  // el bloqueo se reporta como 423 desde el siguiente intento.
+  // El segundo fallo informa inmediatamente el bloqueo persistido de un minuto.
   mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr(ip);return r;}).contentType(MediaType.APPLICATION_JSON).content(bad))
-   .andExpect(status().isUnauthorized());
+   .andExpect(status().isLocked()).andExpect(header().string("Retry-After","60"))
+   .andExpect(jsonPath("$.reintentarEnSegundos").value(60));
   Usuario locked=users.findById(u.getId()).orElseThrow();assertEquals(2,locked.getIntentosFallidos());assertNotNull(locked.getBloqueadoHasta());
   // Otro cliente no evade el bloqueo: ni con la clave correcta entra.
   mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr("10.8.0.2");return r;}).contentType(MediaType.APPLICATION_JSON)
