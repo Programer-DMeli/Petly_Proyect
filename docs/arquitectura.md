@@ -1,15 +1,13 @@
 # Arquitectura — Petly
 
-Fuente: `PLANNING.md` v2, secciones 4, 6 y 11.
-
 ## Componentes
 
 | Componente | Carpeta | Tecnología | Puerto | Responsable |
 | --- | --- | --- | --- | --- |
-| Web | `web/` | React + TypeScript + Vite | 5173 | Persona B (portal adoptante), Persona A (panel albergue) |
-| Backend administrativo | `backend-admin/` | Django + Django REST Framework | 8000 | Persona A |
-| Backend de usuarios | `backend_usuario/petly_proyect/` | Spring Boot, Java 21, Maven | 8080 | Persona B |
-| Móvil | `mobile_petly/` | Kotlin + Jetpack Compose | n/a | Persona C |
+| Web | `web/` | React + TypeScript + Vite | 5173 | Angie (portal adoptante), Mayra (panel albergue y panel Admin) |
+| Backend administrativo | `backend-admin/` | Django + Django REST Framework | 8000 | Mayra |
+| Backend de usuarios | `backend_usuario/petly_proyect/` | Spring Boot, Java 21, Maven | 8080 | Angie |
+| Móvil | `mobile_petly/` | Kotlin + Jetpack Compose + MVVM + Repository (interface)| ... | Meliton |
 | Datos | XAMPP (MariaDB) | Base `database_petly` | 3306 | Equipo |
 
 ## Reglas de integración
@@ -52,4 +50,4 @@ Las carpetas `web/`, `backend-admin/`, `database/` y `docs/` sí coinciden con e
 
 ## Roles del Sprint 1
 
-ADMIN realiza CRUD de albergues y consulta responsables, conforme a la ampliación explícita US-46. ALBERGUE es el propietario responsable de sus recursos y consulta solo perfiles expresamente autorizados. ADOPTANTE gestiona su perfil, catálogo y consentimiento. No hay varios trabajadores con permisos diferentes dentro de un albergue en este sprint. ADMIN de negocio no equivale a is_staff/superuser Django; la cuenta técnica se conserva separada para mantenimiento.
+ADMIN realiza CRUD de albergues y consulta responsables, conforme a la ampliación explícita US-46. ALBERGUE es el propietario responsable de sus recursos y consulta solo perfiles expresamente autorizados. ADOPTANTE gestiona su perfil, catálogo y consentimiento. No hay varios trabajadores con permisos diferentes dentro de un albergue en este sprint. ADMIN de negocio no equivale a is_staff/superuser Django; la cuenta técnica se conserva separada para mantenimiento y futuras implementaciones
