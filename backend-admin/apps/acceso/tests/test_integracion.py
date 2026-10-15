@@ -40,8 +40,10 @@ class SpringIdentityTest(TestCase):
         profiles.side_effect = urllib.error.HTTPError("local", 403, "forbidden", {}, None)
         self.assertEqual(self.client.get("/api/acceso/perfiles-compartidos/202/").status_code, 403)
     def test_retired_business_auth_not_available(self):
-        for route in ["auth/registro/", "auth/login/", "postulantes/", "solicitudes/", "interno/autorizacion/"]:
+        for route in ["auth/registro/", "auth/login/", "interno/autorizacion/"]:
             self.assertEqual(self.client.post("/api/acceso/"+route, {}, format="json").status_code, 410)
+        for route in ["postulantes/", "solicitudes/"]:
+            self.assertEqual(self.client.post("/api/acceso/"+route, {}, format="json").status_code, 401)
 
     def test_business_staff_cannot_use_technical_login(self):
         from apps.acceso.forms import TechnicalAdminLoginForm
