@@ -21,6 +21,24 @@ export interface Pet {
   estado: string;
   fotografiaUrl: string | null;
 }
+
+/** Estados de una solicitud de adopción (US-06). */
+export type EstadoSolicitudAdopcion = 'PENDIENTE' | 'ACEPTADA' | 'RECHAZADA';
+
+/** Datos que el adoptante envía para solicitar una mascota. */
+export interface CrearSolicitudAdopcion {
+  mascotaId: number;
+  albergueId: number;
+}
+
+/** Solicitud persistida; adoptante, fecha y estado los determina el servidor. */
+export interface SolicitudAdopcion extends CrearSolicitudAdopcion {
+  id: number;
+  adoptanteId: number;
+  fecha: string;
+  estado: EstadoSolicitudAdopcion;
+}
+
 export interface Shelter {
   id: number;
   nombre: string;
