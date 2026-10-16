@@ -23,19 +23,28 @@ export interface Pet {
 }
 
 /** Estados de una solicitud de adopción (US-06). */
-export type EstadoSolicitudAdopcion = 'PENDIENTE' | 'ACEPTADA' | 'RECHAZADA';
+export type EstadoSolicitudAdopcion =
+  | 'PENDIENTE'
+  | 'EN_REVISION'
+  | 'APROBADA'
+  | 'RECHAZADA'
+  | 'CANCELADA'
+  | 'ENTREGADA';
 
 /** Datos que el adoptante envía para solicitar una mascota. */
 export interface CrearSolicitudAdopcion {
   mascotaId: number;
-  albergueId: number;
+  mensajePostulante?: string;
+  respuestasCuestionario?: Record<string, unknown>;
 }
 
-/** Solicitud persistida; adoptante, fecha y estado los determina el servidor. */
-export interface SolicitudAdopcion extends CrearSolicitudAdopcion {
+/** Respuesta Django de una solicitud persistida. */
+export interface SolicitudAdopcion {
   id: number;
-  adoptanteId: number;
-  fecha: string;
+  postulante: number;
+  mascota: number;
+  albergue: number;
+  fecha_solicitud: string;
   estado: EstadoSolicitudAdopcion;
 }
 
