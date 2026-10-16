@@ -76,6 +76,9 @@ public class SecurityConfig {
                         // la autorizacion de consulta es exclusiva del adoptante (US-18)
                         .requestMatchers("/api/autorizaciones/**")
                         .hasRole("ADOPTANTE")
+                        // El envío de solicitudes es exclusivo del adoptante (US-06).
+                        .requestMatchers("/api/solicitudes", "/api/solicitudes/**")
+                        .hasRole("ADOPTANTE")
                         // endpoint interno Django -> Spring: el secreto lo exige InternalApiFilter (US-18)
                         .requestMatchers("/api/interno/**")
                         .permitAll()
