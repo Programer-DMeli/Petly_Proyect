@@ -6,22 +6,22 @@ import jakarta.validation.constraints.Size;
 
 /**
  * Datos para crear una cuenta (US-21).
- * Requeridos: usuario, correo y contrase�a. El resto es opcional.
+ * Requeridos: correo y contraseña. El usuario es opcional para los clientes de registro con correo; el resto también es opcional.
  * El registro p�blico siempre crea cuentas ADOPTANTE; las cuentas
  * ALBERGUE/ADMIN se crean por procedimiento, nunca desde aqu�.
  */
 public class RegistroRequest {
 
-    @NotBlank(message = "usuario requerido")
     @Size(min = 3, max = 50, message = "el usuario debe tener entre 3 y 50 caracteres")
     private String username;
 
-    @Email(message = "correo inv�lido")
+    @Email(message = "correo inválido")
     @NotBlank(message = "correo requerido")
+    @jakarta.validation.constraints.Pattern(regexp = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", message = "correo inválido")
     private String correo;
 
-    @NotBlank(message = "contrase�a requerida")
-    @Size(min = 8, max = 72, message = "la contrase�a debe tener entre 8 y 72 caracteres")
+    @NotBlank(message = "contraseña requerida")
+    @Size(min = 8, max = 72, message = "la contraseña debe tener entre 8 y 72 caracteres")
     private String password;
 
     private String firstName;

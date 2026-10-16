@@ -1,4 +1,8 @@
 spring:
+  jwt:
+    secret: ${PETLY_TEST_SECRET}
+  auth:
+    block-duration-minutes: 1
   datasource:
     url: jdbc:h2:mem:petly;MODE=MariaDB;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;INIT=CREATE SCHEMA IF NOT EXISTS database_petly\;SET SCHEMA database_petly
     driver-class-name: org.h2.Driver

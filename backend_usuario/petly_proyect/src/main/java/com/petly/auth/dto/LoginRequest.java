@@ -11,6 +11,7 @@ public class LoginRequest {
     @jakarta.validation.constraints.Pattern(regexp = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", message = "correo inválido")
     @Email(message = "correo inválido")
     @NotBlank(message = "correo requerido")
+    @jakarta.validation.constraints.Pattern(regexp = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", message = "correo inválido")
     private String correo;
 
     @NotBlank(message = "contraseña requerida")

@@ -44,6 +44,7 @@ export async function request<T>(
     try {
       const data = (await response.json()) as {
         error?: string;
+        message?: string;
         detail?: string;
         campos?: Record<string, unknown>;
         reintentarEnSegundos?: number;
@@ -52,7 +53,7 @@ export async function request<T>(
       const fields = Object.entries(data.campos ?? {})
         .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`)
         .join(' · ');
-      message = [data.error ?? data.detail ?? message, fields].filter(Boolean).join(' · ');
+      message = [data.message ?? data.error ?? data.detail ?? message, fields].filter(Boolean).join(' · ');
     } catch {
       /* conservar mensaje sin divulgar respuesta HTML */
     }

@@ -77,7 +77,10 @@ class PasswordResetFlowTest {
 
         int inicio = cuerpo.indexOf("token=") + "token=".length();
         int fin = cuerpo.indexOf('\n', inicio);
-        return (fin >= 0) ? cuerpo.substring(inicio, fin) : cuerpo.substring(inicio);
+        String token = (fin >= 0) ? cuerpo.substring(inicio, fin) : cuerpo.substring(inicio);
+        org.junit.jupiter.api.Assertions.assertEquals(22, token.length());
+        org.junit.jupiter.api.Assertions.assertTrue(token.matches("[A-Za-z0-9_-]{22}"));
+        return token;
     }
 
     @Test
@@ -141,4 +144,24 @@ class PasswordResetFlowTest {
                 .content(json.writeValueAsString(req)))
                 .andExpect(status().isBadRequest());
     }
+    @Test
+    void solicitarOtroCodigoInvalidaElAnterior() throws Exception {
+        registrar("10.1.0.4", "renovar@petly.test", "renovar");
+        String old = solicitarYCapturarToken("10.1.0.4", "renovar@petly.test");
+        org.mockito.Mockito.clearInvocations(mailSender);
+        String current = solicitarYCapturarToken("10.1.0.4", "renovar@petly.test");
+        org.junit.jupiter.api.Assertions.assertNotEquals(old, current);
+        PasswordResetConfirmRequest req = new PasswordResetConfirmRequest();
+        req.setNuevaPassword("nuevaClave123");
+        req.setNuevaPasswordConfirm("nuevaClave123");
+        req.setToken(old);
+        mvc.perform(desde("10.1.0.4", "/api/auth/password/reset/confirm")
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+        req.setToken(current);
+        mvc.perform(desde("10.1.0.4", "/api/auth/password/reset/confirm")
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(req)))
+                .andExpect(status().isOk());
+    }
+
 }

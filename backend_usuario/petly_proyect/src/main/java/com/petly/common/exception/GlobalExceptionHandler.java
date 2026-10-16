@@ -91,14 +91,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AuthCuentaBloqueadaException.class)
-    public ResponseEntity<ErrorResponse> handleCuentaBloqueada(AuthCuentaBloqueadaException ex) {
+    public ResponseEntity<Map<String, Object>> handleCuentaBloqueada(AuthCuentaBloqueadaException ex) {
         return ResponseEntity.status(HttpStatus.LOCKED)
-                .body(new ErrorResponse(
-                        Instant.now(),
-                        HttpStatus.LOCKED.value(),
-                        "Cuenta bloqueada temporalmente",
-                        ex.getMessage()
-                ));
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(Map.of("error", "Cuenta bloqueada temporalmente", "message", ex.getMessage(), "status", 423, "campos", Map.of(),
+                        "codigo", "CUENTA_BLOQUEADA", "reintentarEnSegundos", ex.getRetryAfterSeconds()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -4,11 +4,15 @@
 import { chromium, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const account = JSON.parse(
-  fs.readFileSync(process.env['PETLY_DEMO_FILE'] ?? '/tmp/petly-demo-cuentas.json', 'utf8')
-).ALBERGUE;
+const permanentDemo = path.join(os.homedir(), '.local/share/petly/cuentas-demo.json');
+const demoFile = process.env['PETLY_DEMO_FILE'] ??
+  (fs.existsSync(permanentDemo) ? permanentDemo : '/tmp/petly-demo-cuentas.json');
+const publicationsFile = process.env['PETLY_PUBLICACIONES_FILE'] ??
+  path.join(path.dirname(demoFile), 'petly-publicaciones-img.json');
+const account = JSON.parse(fs.readFileSync(demoFile, 'utf8')).ALBERGUE;
 const animals = [
   [
     'luna_01.jpg',
@@ -179,7 +183,7 @@ try {
       .toBeGreaterThan(0);
     console.log('Publicado desde panel ALBERGUE: ' + name);
   }
-  fs.writeFileSync('/tmp/petly-publicaciones-img.json', JSON.stringify(published, null, 2), {
+  fs.writeFileSync(publicationsFile, JSON.stringify(published, null, 2), {
     mode: 0o600,
   });
   console.log('Publicaciones disponibles: ' + published.length);

@@ -20,7 +20,7 @@ import jakarta.servlet.http.HttpServletResponse;
  *
  * Si una misma IP hace más de 10 pedidos a /api/auth en un minuto, responde
  * 429 y ya. Sirve para que nadie fuerce el login desde una sola máquina.
- * El bloqueo de cuenta (2 fallos / 5 min) va aparte, en AuthService.
+ * El bloqueo de cuenta (2 fallos / 1 min) va aparte, en AuthService.
  */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {

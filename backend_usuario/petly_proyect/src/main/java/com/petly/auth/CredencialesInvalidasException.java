@@ -1,7 +1,7 @@
 package com.petly.auth;
 
 /**
- * Excepci�n cuando las credenciales de acceso son inv�lidas (US-21).
+ * Excepci�n cuando las credenciales de acceso son inválidas (US-21).
  */
 public class CredencialesInvalidasException extends RuntimeException {
 

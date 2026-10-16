@@ -25,7 +25,7 @@ public interface RecuperacionTokenRepository extends JpaRepository<RecuperacionT
      */
     @Modifying
     @Query("UPDATE RecuperacionToken t SET t.usadoEn = :usadoEn "
-            + "WHERE t.tokenHash = :tokenHash AND t.usadoEn IS NULL")
+            + "WHERE t.tokenHash = :tokenHash AND t.usadoEn IS NULL AND t.expiraEn > :usadoEn")
     int marcarComoUsado(@Param("tokenHash") String tokenHash, @Param("usadoEn") LocalDateTime usadoEn);
 
     /**
