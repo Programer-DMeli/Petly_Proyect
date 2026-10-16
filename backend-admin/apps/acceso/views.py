@@ -63,6 +63,17 @@ class IsAlbergueStaffOrReadOnly(permissions.BasePermission):
         return request.user.is_staff
 
 
+class SolicitudAdopcionPermission(IsAlbergueStaffOrReadOnly):
+    """El adoptante puede crear; el albergue/staff conserva permisos de gestión."""
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.method == "POST":
+            return request.user.rol == User.Rol.ADOPTANTE
+        return True
+
+
 class PostulanteViewSet(viewsets.ModelViewSet):
     """CRUD de postulantes + historial de solicitudes."""
 
@@ -143,7 +154,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
     queryset = SolicitudAdopcion.objects.select_related(
         "postulante", "mascota", "albergue", "revisado_por"
     ).all()
-    permission_classes = [permissions.IsAuthenticated, IsAlbergueStaffOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated, SolicitudAdopcionPermission]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["postulante__nombres", "postulante__apellidos", "postulante__documento_numero", "mascota__nombre"]
     ordering_fields = ["fecha_solicitud", "estado", "fecha_revision"]
@@ -181,6 +192,8 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
                 raise ValidationError({"mascota": "La mascota indicada no existe."})
             if mascota.estado != Mascota.Estado.DISPONIBLE:
                 raise ValidationError({"mascota": "La mascota no está disponible para adopción."})
+            if not mascota.albergue.activo:
+                raise ValidationError({"mascota": "El albergue de esta mascota no está activo."})
             activa = SolicitudAdopcion.objects.filter(
                 postulante=postulante,
                 mascota=mascota,
