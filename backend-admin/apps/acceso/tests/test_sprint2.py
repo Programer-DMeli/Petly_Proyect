@@ -1,9 +1,10 @@
 """Pruebas de los contratos Django para US-01 y US-06."""
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.acceso.models import Postulante, SolicitudAdopcion
+from apps.acceso.models import AdoptanteProfile, Autorizacion, Postulante, SolicitudAdopcion
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
 
@@ -49,6 +50,13 @@ class SolicitudAdopcionSprint2APITest(TestCase):
         self.postulante = Postulante.objects.create(
             documento_numero="12345678", nombres="Ana", apellidos="Pérez",
         )
+        AdoptanteProfile.objects.create(
+            user=self.user, documento_numero="12345678", nombres="Ana", apellidos="Pérez",
+            cuestionario_completado=True,
+        )
+        self.autorizacion = Autorizacion.objects.create(
+            adoptante=self.user, albergue=self.albergue,
+        )
         self.mascota = Mascota.objects.create(
             albergue=self.albergue, nombre="Luna", codigo="LUNA02",
             especie=Mascota.Especie.PERRO, sexo=Mascota.Sexo.HEMBRA,
@@ -58,8 +66,8 @@ class SolicitudAdopcionSprint2APITest(TestCase):
         self.client.force_authenticate(user=self.user)
 
     def _payload(self, **updates):
-        payload = {"postulante": self.postulante.id, "mascota": self.mascota.id,
-                   "mensaje_postulante": "Quiero adoptar", "respuestas_cuestionario": {}}
+        payload = {"mascota": self.mascota.id, "mensaje_postulante": "Quiero adoptar",
+                   "respuestas_cuestionario": {}}
         payload.update(updates)
         return payload
 
@@ -68,7 +76,10 @@ class SolicitudAdopcionSprint2APITest(TestCase):
         self.assertEqual(response.status_code, 201, response.data)
         self.assertEqual(response.data["estado"], SolicitudAdopcion.Estado.PENDIENTE)
         self.assertEqual(response.data["albergue"], self.albergue.id)
+        self.assertEqual(response.data["postulante"], self.postulante.id)
         self.assertEqual(SolicitudAdopcion.objects.count(), 1)
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.estado, Mascota.Estado.DISPONIBLE)
 
     def test_rechaza_solicitud_activa_duplicada(self):
         SolicitudAdopcion.objects.create(
@@ -85,6 +96,47 @@ class SolicitudAdopcionSprint2APITest(TestCase):
         response = self.client.post("/api/acceso/solicitudes/", self._payload(), format="json")
         self.assertEqual(response.status_code, 400)
         self.assertIn("no está disponible", str(response.data).lower())
+
+    def test_rechaza_albergue_inactivo(self):
+        self.albergue.activo = False
+        self.albergue.save(update_fields=["activo"])
+        response = self.client.post("/api/acceso/solicitudes/", self._payload(), format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("albergue", str(response.data).lower())
+
+    def test_rechaza_perfil_no_finalizado(self):
+        self.user.adoptante_profile.cuestionario_completado = False
+        self.user.adoptante_profile.save(update_fields=["cuestionario_completado"])
+        response = self.client.post("/api/acceso/solicitudes/", self._payload(), format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("perfil", str(response.data).lower())
+
+    def test_rechaza_sin_autorizacion_vigente(self):
+        self.autorizacion.estado = Autorizacion.Estado.REVOCADA
+        self.autorizacion.save(update_fields=["estado"])
+        response = self.client.post("/api/acceso/solicitudes/", self._payload(), format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("autorización", str(response.data).lower())
+
+    def test_rechaza_autorizacion_vencida(self):
+        self.autorizacion.fecha_expiracion = timezone.now() - timezone.timedelta(seconds=1)
+        self.autorizacion.save(update_fields=["fecha_expiracion"])
+        response = self.client.post("/api/acceso/solicitudes/", self._payload(), format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("vencida", str(response.data).lower())
+
+    def test_no_acepta_crear_solicitud_a_nombre_de_otra_persona(self):
+        otro = Postulante.objects.create(
+            documento_numero="87654321", nombres="Luis", apellidos="Rojas",
+        )
+        response = self.client.post(
+            "/api/acceso/solicitudes/",
+            self._payload(postulante=otro.id),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data["postulante"], self.postulante.id)
+        self.assertNotEqual(response.data["postulante"], otro.id)
 
     def test_rechaza_referencias_inexistentes_y_campos_faltantes(self):
         missing = self.client.post("/api/acceso/solicitudes/", {}, format="json")
