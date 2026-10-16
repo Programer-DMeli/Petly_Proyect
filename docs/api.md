@@ -8,6 +8,20 @@ Propuestas nuevas para revisi�n de Mayra y Angie: perfil con PATCH; vivienda d
 
 Spring es due�o de `usuarios`, `perfiles_adoptantes`, `autorizaciones_consulta` (US-18) y `tokens_recuperacion` (US-24), mediante Flyway. Django conserva `acceso_user`, albergues y mascotas mediante sus migraciones. Spring solo consulta tablas Django con JDBC; no genera ni altera su esquema. Los IDs son enteros positivos de 64 bits. `acceso_user.spring_id` identifica la cuenta Spring; el ID Django local es independiente y no debe confundirse con �l. El consentimiento referencia albergue Django y adoptante Spring, sin cascadas sobre tablas ajenas.
 
+## US-06: contrato propuesto (pendiente de revisión)
+
+Esta sección describe una propuesta para acordar entre Angie y Mayra antes de implementar. No habilita rutas: las rutas antiguas de solicitudes continúan retiradas hasta aprobar e implementar un contrato nuevo.
+
+- React solicita el envío a Spring con la sesión del adoptante. Spring obtiene la identidad del token; el cliente no elige ni envía el identificador del titular.
+- Spring comprueba que la cuenta sea ADOPTANTE, que su perfil esté finalizado y que exista autorización expresa vigente para el albergue de la mascota. Estas reglas también se validan en el servidor, no solo en React.
+- Spring coordina la creación con Django mediante una llamada interna autenticada. El nombre de las rutas, la forma exacta del payload y el mecanismo interno se acuerdan antes de codificar y documentar como contrato definitivo.
+- Django es responsable de la persistencia y migración de solicitudes. Al crear, valida que la mascota pertenezca a un albergue activo y siga disponible, y que el titular autenticado no tenga otra solicitud activa para esa mascota.
+- Si se crea, Django devuelve a Spring el identificador, la fecha y el estado inicial `PENDIENTE`; Spring entrega la confirmación a React. Los nombres y formatos de esos campos se fijan en el contrato definitivo.
+- No se acepta un titular arbitrario enviado por el cliente, una solicitud para un tercero, un albergue inactivo, una mascota no disponible ni una solicitud duplicada activa. El mapeo a códigos HTTP concretos reutiliza la convención de errores de esta API y se cierra junto con el contrato.
+- Enviar no reserva ni cambia el estado de la mascota. Las decisiones del albergue, el seguimiento, la cancelación y las fotos de vivienda corresponden a US-07, US-08, US-10 y US-19.
+
+Antes de habilitar el envío, Angie y Mayra deben acordar qué estados cuentan como solicitud activa y el contrato interno Spring-Django. Los tipos React de US-06 se ajustan a ese acuerdo; no son por sí mismos una API implementada.
+
 ## Acceso y errores
 
 Spring: puerto 8080; Django: 8000. Las rutas Spring no requieren barra final; las rutas Django s�. `Authorization: Bearer <token>` es obligatorio salvo salud, registro, login, recuperaci�n y documentaci�n OpenAPI.
