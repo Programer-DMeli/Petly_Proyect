@@ -21,6 +21,33 @@ export interface Pet {
   estado: string;
   fotografiaUrl: string | null;
 }
+
+/** Estados de una solicitud de adopción (US-06). */
+export type EstadoSolicitudAdopcion =
+  | 'PENDIENTE'
+  | 'EN_REVISION'
+  | 'APROBADA'
+  | 'RECHAZADA'
+  | 'CANCELADA'
+  | 'ENTREGADA';
+
+/** Datos que el adoptante envía para solicitar una mascota. */
+export interface CrearSolicitudAdopcion {
+  mascotaId: number;
+  mensajePostulante?: string;
+  respuestasCuestionario?: Record<string, unknown>;
+}
+
+/** Respuesta Django de una solicitud persistida. */
+export interface SolicitudAdopcion {
+  id: number;
+  postulante: number;
+  mascota: number;
+  albergue: number;
+  fecha_solicitud: string;
+  estado: EstadoSolicitudAdopcion;
+}
+
 export interface Shelter {
   id: number;
   nombre: string;

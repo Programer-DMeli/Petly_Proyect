@@ -7,6 +7,7 @@ from django.db import models
 from django.utils import timezone
 from .models import Postulante, SolicitudAdopcion, User, AdoptanteProfile, Autorizacion
 from apps.mascotas.serializers import MascotaListSerializer
+from apps.mascotas.models import Mascota
 
 User = get_user_model()
 
@@ -194,7 +195,7 @@ class SolicitudEstadoSerializer(serializers.Serializer):
 
 
 class SolicitudCreateSerializer(serializers.ModelSerializer):
-    """Serializador para crear solicitud (desde frontend público)."""
+    """Valida solicitud usando el adoptante identificado por la sesión autenticada."""
 
     class Meta:
         model = SolicitudAdopcion
@@ -203,6 +204,60 @@ class SolicitudCreateSerializer(serializers.ModelSerializer):
             "mensaje_postulante",
             "respuestas_cuestionario",
         ]
+
+    def validate_mascota(self, value):
+        if value.estado != Mascota.Estado.DISPONIBLE:
+            raise serializers.ValidationError("La mascota no está disponible para adopción.")
+        if not value.albergue.activo:
+            raise serializers.ValidationError("El albergue de esta mascota no está activo.")
+        return value
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        mascota = attrs.get("mascota")
+        if user is None or not user.is_authenticated or user.rol != User.Rol.ADOPTANTE:
+            raise serializers.ValidationError({"detail": "Solo un adoptante autenticado puede enviar una solicitud."})
+
+        try:
+            profile = user.adoptante_profile
+        except AdoptanteProfile.DoesNotExist:
+            raise serializers.ValidationError({"detail": "No se encontró el perfil del adoptante."})
+        if not profile.cuestionario_completado:
+            raise serializers.ValidationError({"detail": "Completa tu perfil de adopción antes de solicitar."})
+        if not profile.documento_numero:
+            raise serializers.ValidationError({"detail": "El perfil finalizado debe tener un documento registrado."})
+
+        try:
+            postulante = Postulante.objects.get(documento_numero=profile.documento_numero)
+        except Postulante.DoesNotExist:
+            raise serializers.ValidationError({"detail": "El perfil no está vinculado a un registro de postulante."})
+        if postulante.estado != Postulante.EstadoPostulante.ACTIVO:
+            raise serializers.ValidationError({"detail": "El postulante no está activo."})
+
+        autorizacion = None
+        if mascota:
+            autorizacion = Autorizacion.objects.filter(
+            adoptante=user, albergue=mascota.albergue,
+            estado=Autorizacion.Estado.VIGENTE,
+            ).first()
+        if mascota and autorizacion is None:
+            raise serializers.ValidationError({"detail": "Se requiere autorización vigente para este albergue."})
+        if autorizacion and not autorizacion.esta_vigente():
+            raise serializers.ValidationError({"detail": "La autorización para este albergue está vencida."})
+
+        if postulante and mascota and SolicitudAdopcion.objects.filter(
+            postulante=postulante,
+            mascota=mascota,
+            estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.EN_REVISION],
+        ).exists():
+            raise serializers.ValidationError({"non_field_errors": ["Ya existe una solicitud activa para esta mascota."]})
+        respuestas = attrs.get("respuestas_cuestionario", {})
+        if not isinstance(respuestas, dict):
+            raise serializers.ValidationError({"respuestas_cuestionario": "Debe ser un objeto JSON."})
+        attrs["postulante"] = postulante
+        attrs["albergue"] = mascota.albergue
+        return attrs
 
     def create(self, validated_data):
         # El postulante se asigna desde el usuario autenticado o sesión

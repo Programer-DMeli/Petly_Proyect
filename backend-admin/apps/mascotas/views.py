@@ -12,6 +12,7 @@ from .models import Mascota
 from .serializers import (
     MascotaSerializer,
     MascotaListSerializer,
+    MascotaCompatibilidadSerializer,
     MascotaCreateUpdateSerializer,
     MascotaEstadoSerializer,
     MascotaFilter,
@@ -45,6 +46,8 @@ class MascotaViewSet(viewsets.ModelViewSet):
     ordering = ["-creado_en"]
 
     def get_serializer_class(self):
+        if self.action == "compatibilidad":
+            return MascotaCompatibilidadSerializer
         if self.action == "list":
             return MascotaListSerializer
         if self.action in ["create", "update", "partial_update"]:
@@ -52,6 +55,15 @@ class MascotaViewSet(viewsets.ModelViewSet):
         if self.action == "cambiar_estado":
             return MascotaEstadoSerializer
         return MascotaSerializer
+
+    @action(detail=False, methods=["get"], url_path="compatibilidad")
+    def compatibilidad(self, request):
+        """Expone atributos de mascotas disponibles para el servicio Spring; no calcula puntajes."""
+        queryset = Mascota.objects.filter(estado=Mascota.Estado.DISPONIBLE).order_by("id")
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            return self.get_paginated_response(self.get_serializer(page, many=True).data)
+        return Response(self.get_serializer(queryset, many=True).data)
 
     def get_queryset(self):
         """Filtrar por albergue del usuario (excepto staff)."""

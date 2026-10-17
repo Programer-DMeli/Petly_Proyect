@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
-import { spring, mediaUrl, errorMessage } from '../../../../services/http';
-import type { Pet } from '../../../../services/types';
+import { spring, json, mediaUrl, errorMessage } from '../../../../services/http';
+import type {
+  CrearSolicitudAdopcion,
+  Pet,
+  Profile,
+  SolicitudAdopcion,
+} from '../../../../services/types';
 interface Filters {
   search: string;
   especie: string;
@@ -209,8 +214,21 @@ export function DetallePage() {
   const { id } = useParams();
   const [pet, setPet] = useState<Pet | null>(null);
   const [error, setError] = useState('');
+  const [eligibilityError, setEligibilityError] = useState('');
+  const [profileFinalizado, setProfileFinalizado] = useState<boolean | null>(null);
+  const [autorizacionActiva, setAutorizacionActiva] = useState<boolean | null>(null);
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+  const [mensajePostulante, setMensajePostulante] = useState('');
+  const [sending, setSending] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [success, setSuccess] = useState('');
   const load = useCallback(async () => {
     setError('');
+    setPet(null);
+    setProfileFinalizado(null);
+    setAutorizacionActiva(null);
+    setSubmitted(false);
+    setSuccess('');
     try {
       setPet(await spring<Pet>('/api/catalogo/' + String(id)));
     } catch (e) {
@@ -220,6 +238,57 @@ export function DetallePage() {
   useEffect(() => {
     void load();
   }, [load]);
+  const loadEligibility = useCallback(async () => {
+    if (!pet) return;
+    setCheckingEligibility(true);
+    setEligibilityError('');
+    try {
+      const [profile, consents] = await Promise.all([
+        spring<Profile>('/api/perfil'),
+        spring<{ albergueId: number; estado: string }[]>('/api/autorizaciones'),
+      ]);
+      setProfileFinalizado(profile.finalizado);
+      setAutorizacionActiva(
+        consents.some(consent => consent.albergueId === pet.albergueId && consent.estado === 'ACTIVA')
+      );
+    } catch (e) {
+      setEligibilityError(errorMessage(e));
+    } finally {
+      setCheckingEligibility(false);
+    }
+  }, [pet]);
+  useEffect(() => {
+    void loadEligibility();
+  }, [loadEligibility]);
+
+  const disponible = pet?.estado.trim().toLocaleLowerCase('es') === 'disponible';
+  const canApply = Boolean(
+    pet && disponible && profileFinalizado === true && autorizacionActiva === true
+  );
+
+  async function submitApplication() {
+    if (!pet || !canApply || sending || submitted) return;
+    setSending(true);
+    setError('');
+    setSuccess('');
+    const payload: CrearSolicitudAdopcion = {
+      mascotaId: pet.id,
+      mensajePostulante: mensajePostulante.trim(),
+      respuestasCuestionario: {},
+    };
+    try {
+      const created = await spring<SolicitudAdopcion>('/api/solicitudes', {
+        method: 'POST',
+        body: json(payload),
+      });
+      setSubmitted(true);
+      setSuccess(`Solicitud enviada. Estado: ${created.estado}.`);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setSending(false);
+    }
+  }
   return (
     <section className="card">
       <Link to="/adoptante/catalogo">Volver al catálogo</Link>
@@ -244,6 +313,51 @@ export function DetallePage() {
           <h2>{pet.albergue}</h2>
           <p>{pet.ubicacion}</p>
           <Link to="/adoptante/autorizaciones">Administrar autorizaciones de mi perfil</Link>
+          <hr />
+          <h2>Solicitar adopción</h2>
+          <Feedback error={eligibilityError} success={success} />
+          {!disponible && <p role="status">Esta mascota no está disponible para solicitudes.</p>}
+          {checkingEligibility && <p role="status">Comprobando los requisitos de solicitud…</p>}
+          {!checkingEligibility && profileFinalizado === false && (
+            <p>
+              Finaliza tu cuestionario antes de solicitar.{' '}
+              <Link to="/adoptante/cuestionario">Completar perfil</Link>
+            </p>
+          )}
+          {!checkingEligibility && profileFinalizado && autorizacionActiva === false && (
+            <p>
+              Necesitas una autorización vigente para este albergue.{' '}
+              <Link to="/adoptante/autorizaciones">Gestionar autorización</Link>
+            </p>
+          )}
+          {eligibilityError && (
+            <button className="secondary" onClick={() => void loadEligibility()}>
+              Reintentar comprobación
+            </button>
+          )}
+          {canApply && !submitted && (
+            <form
+              onSubmit={event => {
+                event.preventDefault();
+                void submitApplication();
+              }}
+            >
+              <label>
+                Mensaje para el albergue (opcional)
+                <textarea
+                  maxLength={2000}
+                  value={mensajePostulante}
+                  onChange={event => setMensajePostulante(event.target.value)}
+                />
+              </label>
+              <button disabled={sending}>{sending ? 'Enviando…' : 'Enviar solicitud'}</button>
+            </form>
+          )}
+          {submitted && (
+            <p role="status">
+              La solicitud quedó pendiente de revisión. La mascota no se reserva al enviarla.
+            </p>
+          )}
         </>
       ) : (
         <button onClick={() => void load()}>Cargar detalle</button>

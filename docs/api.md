@@ -8,6 +8,24 @@ Propuestas nuevas para revisi�n de Mayra y Angie: perfil con PATCH; vivienda d
 
 Spring es due�o de `usuarios`, `perfiles_adoptantes`, `autorizaciones_consulta` (US-18) y `tokens_recuperacion` (US-24), mediante Flyway. Django conserva `acceso_user`, albergues y mascotas mediante sus migraciones. Spring solo consulta tablas Django con JDBC; no genera ni altera su esquema. Los IDs son enteros positivos de 64 bits. `acceso_user.spring_id` identifica la cuenta Spring; el ID Django local es independiente y no debe confundirse con �l. El consentimiento referencia albergue Django y adoptante Spring, sin cascadas sobre tablas ajenas.
 
+## US-06: envío de solicitud de adopción
+
+React envía la solicitud a Spring con la sesión del adoptante. Spring expone `POST /api/solicitudes`, restringido al rol `ADOPTANTE`, y reenvía a Django el JWT validado como `Authorization: Bearer <token>`. Django es dueño de la persistencia y valida el perfil finalizado, el postulante activo, la autorización vigente para el albergue, la disponibilidad de la mascota, que el albergue esté activo y que no exista una solicitud activa duplicada.
+
+Entrada de Spring:
+
+```json
+{
+  "mascotaId": 12,
+  "mensajePostulante": "Tengo experiencia cuidando perros",
+  "respuestasCuestionario": {}
+}
+```
+
+Spring adapta los campos al endpoint Django `POST /api/acceso/solicitudes/` (`mascota`, `mensaje_postulante`, `respuestas_cuestionario`). No acepta un identificador de adoptante ni de albergue del cliente: Django obtiene al titular del token y deriva el albergue desde la mascota. Spring devuelve el estado y el cuerpo de Django, incluidos sus errores de validación. Si Django no está disponible, Spring responde `503`.
+
+Una solicitud creada queda `PENDIENTE`. Enviar no reserva ni cambia el estado de la mascota. Las decisiones del albergue, el seguimiento, la cancelación y las fotos de vivienda corresponden a US-07, US-08, US-10 y US-19.
+
 ## Acceso y errores
 
 Spring: puerto 8080; Django: 8000. Las rutas Spring no requieren barra final; las rutas Django s�. `Authorization: Bearer <token>` es obligatorio salvo salud, registro, login, recuperaci�n y documentaci�n OpenAPI.

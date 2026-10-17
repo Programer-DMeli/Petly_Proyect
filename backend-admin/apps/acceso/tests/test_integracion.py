@@ -43,6 +43,8 @@ class SpringIdentityTest(TestCase):
     def test_retired_business_auth_not_available(self):
         for route in ["negocio/auth/registro/", "negocio/auth/login/", "negocio/postulantes/", "negocio/solicitudes/", "negocio/interno/autorizacion/"]:
             self.assertEqual(self.client.post("/api/acceso/"+route, {}, format="json").status_code, 410)
+        for route in ["postulantes/", "solicitudes/"]:
+            self.assertEqual(self.client.post("/api/acceso/"+route, {}, format="json").status_code, 401)
 
     def test_business_staff_cannot_use_technical_login(self):
         from apps.acceso.forms import TechnicalAdminLoginForm
