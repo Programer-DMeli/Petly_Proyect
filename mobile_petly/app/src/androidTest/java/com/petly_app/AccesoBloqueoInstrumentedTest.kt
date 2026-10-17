@@ -28,21 +28,21 @@ class AccesoBloqueoInstrumentedTest {
         val email = "lock-android-${java.util.UUID.randomUUID()}@example.test"
         val password = java.util.UUID.randomUUID().toString()
         runBlocking { container.authRepository.register(email, password) }
-        compose.onNodeWithText("Correo", substring = false).performTextInput("nombre@gmail")
-        compose.onNodeWithText("Contraseña", substring = false).performTextInput("x")
-        compose.onNodeWithText("Ingresar", substring = false).performScrollTo().performClick()
+        compose.onNodeWithTag("login_email").performTextInput("nombre@gmail")
+        compose.onNodeWithTag("login_password").performTextInput("x")
+        compose.onNodeWithTag("login_submit").performScrollTo().performClick()
         compose.waitUntil(10000) { compose.onAllNodesWithText("Este error de formato no cuenta", substring = true).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Correo", substring = false).performTextClearance()
-        compose.onNodeWithText("Correo", substring = false).performTextInput(email)
-        compose.onNodeWithText("Ingresar", substring = false).performScrollTo().performClick()
+        compose.onNodeWithTag("login_email").performTextClearance()
+        compose.onNodeWithTag("login_email").performTextInput(email)
+        compose.onNodeWithTag("login_submit").performScrollTo().performClick()
         compose.waitUntil(10000) { compose.onAllNodesWithText("Credenciales inválidas o sesión vencida.").fetchSemanticsNodes().isNotEmpty() }
-        compose.waitUntil(10000) { compose.onAllNodesWithText("Ingresar", substring = false).filter(isEnabled()).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Ingresar", substring = false).performScrollTo().performClick()
+        compose.waitUntil(10000) { compose.onAllNodesWithTag("login_submit").filter(isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("login_submit").performScrollTo().performClick()
         compose.waitUntil(10000) { compose.onAllNodesWithText("Puedes volver a intentar en", substring = true).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Ingresar", substring = false).assertIsNotEnabled()
-        compose.onNodeWithText("Contraseña", substring = false).performTextClearance()
-        compose.onNodeWithText("Contraseña", substring = false).performTextInput(password)
-        compose.onNodeWithText("Ingresar", substring = false).assertIsNotEnabled()
+        compose.onNodeWithTag("login_submit").assertIsNotEnabled()
+        compose.onNodeWithTag("login_password").performTextClearance()
+        compose.onNodeWithTag("login_password").performTextInput(password)
+        compose.onNodeWithTag("login_submit").assertIsNotEnabled()
         assertFalse(container.session.authenticated.value)
     }
 
@@ -63,11 +63,11 @@ class AccesoBloqueoInstrumentedTest {
             }
         }
         assertTrue("La cuota debe aplicarse en Spring", limited)
-        compose.onNodeWithText("Correo", substring = false).performTextInput(email)
-        compose.onNodeWithText("Contraseña", substring = false).performTextInput("x")
-        compose.onNodeWithText("Ingresar", substring = false).performScrollTo().performClick()
+        compose.onNodeWithTag("login_email").performTextInput(email)
+        compose.onNodeWithTag("login_password").performTextInput("x")
+        compose.onNodeWithTag("login_submit").performScrollTo().performClick()
         compose.waitUntil(10000) { compose.onAllNodesWithText("Límite de peticiones alcanzado", substring = true).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Ingresar", substring = false).assertIsNotEnabled()
+        compose.onNodeWithTag("login_submit").assertIsNotEnabled()
         compose.waitUntil(5000) { compose.onAllNodesWithText("Puedes volver a intentar en", substring = true).fetchSemanticsNodes().isNotEmpty() }
     }
 }

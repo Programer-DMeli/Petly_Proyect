@@ -122,10 +122,10 @@ class FlujoComposeInstrumentedTest {
             try { connection.setRequestProperty("Authorization", "Bearer " + oldToken); assertEquals(401, connection.responseCode) }
             finally { connection.disconnect() }
             compose.onNodeWithText("Volver al acceso").performScrollTo().performClick()
-            compose.waitUntil(15000) { compose.onAllNodesWithText("Ingresar", substring = false).fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithText("Correo", substring = false).performTextInput(email)
-            compose.onNodeWithText("Contraseña", substring = false).performTextInput(newPassword)
-            compose.onNodeWithText("Ingresar", substring = false).performScrollTo().performClick()
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("login_submit").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("login_email").performTextInput(email)
+            compose.onNodeWithTag("login_password").performTextInput(newPassword)
+            compose.onNodeWithTag("login_submit").performScrollTo().performClick()
             compose.waitUntil(15000) { compose.onAllNodesWithText("Mi cuestionario").fetchSemanticsNodes().isNotEmpty() }
             assertTrue(container.session.authenticated.value)
         } finally {
