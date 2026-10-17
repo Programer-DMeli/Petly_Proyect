@@ -181,6 +181,14 @@ React y Kotlin muestran mm:ss y deshabilitan el bot�n mientras esperan. Los ca
 
 ### POST /api/auth/registro
 
+Campos opcionales usados por el registro mobile: `firstName` (hasta 50
+caracteres; conserva el nombre completo sin inferir apellidos) y
+`aceptoTerminos` (booleano). Si la aceptación es `true`, Spring guarda
+`acepto_terminos=true` y `fecha_aceptacion_terminos` con la hora del servidor.
+Omitirla o enviar `false` no registra aceptación y mantiene compatibles a
+los clientes anteriores. El formulario mobile exige marcar la casilla antes
+de enviar; crear la cuenta no inicia una sesión automáticamente.
+
 Registro p�blico de adoptante.
 
 **Request:**

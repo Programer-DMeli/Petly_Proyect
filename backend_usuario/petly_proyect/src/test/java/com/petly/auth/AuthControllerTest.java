@@ -37,6 +37,51 @@ class AuthControllerTest {
     @Autowired
     private MockMvc mvc;
 
+    @Autowired
+    private com.petly.usuarios.UsuarioRepository usuarios;
+
+    @Autowired
+    private jakarta.persistence.EntityManager entityManager;
+
+    @Test
+    void registroMobileGuardaNombreYAceptacion() throws Exception {
+        RegistroRequest req = new RegistroRequest();
+        req.setCorreo("camila-mobile@petly.test");
+        req.setPassword("clave12345");
+        req.setFirstName("Camila Morales");
+        req.setAceptoTerminos(true);
+        mvc.perform(desde("10.5.0.1", "/api/auth/registro")
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(req)))
+                .andExpect(status().isCreated());
+        usuarios.flush();
+        entityManager.clear();
+        var usuario = usuarios.findByCorreo("camila-mobile@petly.test").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals("Camila Morales", usuario.getFirstName());
+        org.junit.jupiter.api.Assertions.assertTrue(usuario.getAceptoTerminos());
+        org.junit.jupiter.api.Assertions.assertNotNull(usuario.getFechaAceptacionTerminos());
+    }
+
+    @Test
+    void registroAnteriorNoInventaAceptacion() throws Exception {
+        registrar("10.5.0.2", "sin-consentimiento@petly.test");
+        usuarios.flush();
+        entityManager.clear();
+        var usuario = usuarios.findByCorreo("sin-consentimiento@petly.test").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertFalse(usuario.getAceptoTerminos());
+        org.junit.jupiter.api.Assertions.assertNull(usuario.getFechaAceptacionTerminos());
+    }
+
+    @Test
+    void registroRechazaNombreQueNoCabeEnLaBase() throws Exception {
+        RegistroRequest req = new RegistroRequest();
+        req.setCorreo("nombre-largo@petly.test");
+        req.setPassword("clave12345");
+        req.setFirstName("a".repeat(51));
+        mvc.perform(desde("10.5.0.3", "/api/auth/registro")
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
     // ObjectMapper no viene como bean, lo armamos nosotros
     private final ObjectMapper json = new ObjectMapper();
 

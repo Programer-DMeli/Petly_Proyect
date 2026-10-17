@@ -12,8 +12,10 @@ class AuthRepository(
     private val api: AuthApi,
     private val session: SessionManager
 ) {
-    suspend fun register(email: String, password: String) {
-        val response = api.register(RegisterRequest(email.trim(), password))
+    suspend fun register(email: String, password: String, fullName: String = "", acceptedTerms: Boolean = false) {
+        // Preserve the supplied full name without guessing culturally dependent surname boundaries.
+        val response = api.register(RegisterRequest(email.trim(), password,
+            firstName = fullName.trim().takeIf { it.isNotEmpty() }, aceptoTerminos = acceptedTerms))
         if (!response.isSuccessful) throw HttpException(response)
     }
 

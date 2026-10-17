@@ -110,7 +110,7 @@ class AuthViewModel(
         execute(email) { authRepository.login(email, password) }
     }
 
-    fun register(email: String, password: String, confirmation: String) {
+    fun register(email: String, password: String, confirmation: String, fullName: String = "", acceptedTerms: Boolean = false) {
         if (_state.value.busy || _state.value.rateLimitRemainingSeconds > 0) return
         // Política propuesta de registro. Acordar el mínimo con Persona B.
         val error = validate(email, password) ?: when {
@@ -123,7 +123,7 @@ class AuthViewModel(
             return
         }
         execute {
-            authRepository.register(email, password)
+            authRepository.register(email, password, fullName, acceptedTerms)
             _state.update { it.copy(registered = true) }
         }
     }

@@ -24,7 +24,14 @@ public class RegistroRequest {
     @Size(min = 8, max = 72, message = "la contraseña debe tener entre 8 y 72 caracteres")
     private String password;
 
+    @Size(max = 50, message = "el nombre debe tener hasta 50 caracteres")
     private String firstName;
+
+    private Boolean aceptoTerminos = false;
+
+    public Boolean getAceptoTerminos() { return aceptoTerminos; }
+
+    public void setAceptoTerminos(Boolean aceptoTerminos) { this.aceptoTerminos = aceptoTerminos; }
 
     private String lastName;
 

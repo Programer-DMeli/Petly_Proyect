@@ -26,6 +26,42 @@ import androidx.compose.ui.unit.sp
 /** Small vector assets stay sharp at every Android density without another icon dependency. */
 internal object AccessIcons {
     private val line = SolidColor(Color.Black)
+    val Person = ImageVector.Builder("Person", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 1.8f, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(16f, 7f); curveTo(16f, 12f, 8f, 12f, 8f, 7f); curveTo(8f, 2f, 16f, 2f, 16f, 7f); close()
+            moveTo(4f, 21f); lineTo(4f, 18f); curveTo(4f, 12f, 20f, 12f, 20f, 18f); lineTo(20f, 21f); close()
+        }
+    }.build()
+    val Mail = ImageVector.Builder("Mail", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 1.8f, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(2f, 5f); lineTo(22f, 5f); lineTo(22f, 19f); lineTo(2f, 19f); close()
+            moveTo(2f, 5f); lineTo(12f, 13f); lineTo(22f, 5f)
+        }
+    }.build()
+    val Lock = ImageVector.Builder("Lock", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 1.8f, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(5f, 10f); lineTo(19f, 10f); lineTo(19f, 22f); lineTo(5f, 22f); close()
+            moveTo(8f, 10f); lineTo(8f, 6f); curveTo(8f, 0f, 16f, 0f, 16f, 6f); lineTo(16f, 10f)
+            moveTo(12f, 14f); lineTo(12f, 18f)
+        }
+    }.build()
+    val Check = ImageVector.Builder("CheckCircle", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 1.8f, strokeLineCap = StrokeCap.Round) {
+            moveTo(21f, 12f); curveTo(21f, 25f, 3f, 25f, 3f, 12f); curveTo(3f, 3f, 11f, 1f, 17f, 4f)
+            moveTo(7f, 11f); lineTo(11f, 15f); lineTo(21f, 4f)
+        }
+    }.build()
+    val Paw = ImageVector.Builder("Paw", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = line) {
+            moveTo(12f, 10f); curveTo(8f, 10f, 7f, 14f, 5f, 16f)
+            curveTo(1f, 22f, 9f, 23f, 12f, 20f); curveTo(15f, 23f, 23f, 22f, 19f, 16f)
+            curveTo(17f, 14f, 16f, 10f, 12f, 10f); close()
+            moveTo(10f, 5f); curveTo(10f, 10f, 4f, 9f, 5f, 4f); curveTo(6f, 0f, 10f, 1f, 10f, 5f); close()
+            moveTo(19f, 4f); curveTo(20f, 9f, 14f, 10f, 14f, 5f); curveTo(14f, 1f, 18f, 0f, 19f, 4f); close()
+            moveTo(5f, 10f); curveTo(7f, 15f, 1f, 16f, 0f, 11f); curveTo(-1f, 7f, 3f, 6f, 5f, 10f); close()
+            moveTo(24f, 11f); curveTo(23f, 16f, 17f, 15f, 19f, 10f); curveTo(21f, 6f, 25f, 7f, 24f, 11f); close()
+        }
+    }.build()
     val Eye = ImageVector.Builder("Visibility", 24.dp, 24.dp, 24f, 24f).apply {
         path(fill = null, stroke = line, strokeLineWidth = 1.8f, strokeLineCap = StrokeCap.Round) {
             moveTo(2f, 12f); curveTo(6f, 5f, 18f, 5f, 22f, 12f)

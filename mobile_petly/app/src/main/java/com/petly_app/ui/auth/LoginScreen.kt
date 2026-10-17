@@ -2,11 +2,9 @@ package com.petly_app.ui.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -19,22 +17,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-private val MintBackground = Color(0xFFE5FFF4)
-private val MintField = Color(0xFFD4FBED)
-private val MintContainer = Color(0xFFCEF5E7)
-private val Forest = Color(0xFF146E58)
-private val Ink = Color(0xFF062D24)
-private val WarmText = Color(0xFF5C5143)
-private val LoginType = TextStyle(fontFamily = FontFamily.Serif, fontSize = 15.sp, color = Ink)
 
 /** Reference access screen. Authentication and cooldowns remain owned by AuthViewModel. */
 @Composable
@@ -63,12 +51,7 @@ fun LoginScreen(
         }
     }
     // This screen has its own light palette to match the supplied artwork in either system mode.
-    MaterialTheme(colorScheme = lightColorScheme(
-        primary = Forest, onPrimary = Color.White,
-        surface = Color.White, onSurface = Ink,
-        background = MintBackground, onBackground = Ink,
-        secondaryContainer = MintContainer, onSecondaryContainer = Ink
-    )) {
+    AccessTheme {
         ProvideTextStyle(LoginType) {
             Column(
                 Modifier.fillMaxSize().background(MintBackground).imePadding()
@@ -76,33 +59,14 @@ fun LoginScreen(
                     .padding(top = 8.dp, bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                PetlyAccessLogo()
-                Spacer(Modifier.height(16.dp))
-                Text("Tu nuevo mejor amigo\nte está esperando", modifier = Modifier.fillMaxWidth(),
-                    style = LoginType.copy(fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold),
-                    textAlign = TextAlign.Center)
-                Spacer(Modifier.height(8.dp))
-                Text("Encuentra a tu compañero ideal", color = WarmText, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(24.dp))
+                AccessHeader()
                 Surface(
                     modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth(),
                     shape = RoundedCornerShape(44.dp), color = Color.White,
                     shadowElevation = 5.dp
                 ) {
                     Column(Modifier.padding(horizontal = 22.dp, vertical = 22.dp)) {
-                        Row(Modifier.fillMaxWidth().background(MintContainer, CircleShape).padding(4.dp)
-                            .selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-                            Button(onClick = {}, modifier = Modifier.weight(1f)
-                                .semantics { selected = true }, shape = CircleShape,
-                                contentPadding = PaddingValues(horizontal = 8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Forest)) {
-                                Text("Iniciar sesión", style = LoginType.copy(color = Color.White, fontWeight = FontWeight.Bold))
-                            }
-                            TextButton(onClick = onRegister, enabled = !state.busy,
-                                modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) {
-                                Text("Crear cuenta", style = LoginType.copy(color = Forest, fontWeight = FontWeight.Bold))
-                            }
-                        }
+                        AccessTabs(creatingAccount = false, busy = state.busy, onLogin = {}, onRegister = onRegister)
                         Spacer(Modifier.height(20.dp))
                         Text("Correo electrónico", fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(4.dp))
@@ -208,31 +172,6 @@ fun LoginScreen(
             }
         }
     }
-}
-
-@Composable
-private fun AccessField(
-    value: String, onValueChange: (String) -> Unit, placeholder: String, label: String,
-    tag: String, enabled: Boolean, keyboardOptions: KeyboardOptions,
-    keyboardActions: KeyboardActions = KeyboardActions.Default,
-    transformation: VisualTransformation = VisualTransformation.None,
-    trailing: (@Composable () -> Unit)? = null
-) {
-    BasicTextField(value, onValueChange, modifier = Modifier.fillMaxWidth().testTag(tag)
-        .semantics { contentDescription = label }, enabled = enabled, singleLine = true,
-        textStyle = LoginType.copy(fontSize = 16.sp), keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions, visualTransformation = transformation,
-        cursorBrush = androidx.compose.ui.graphics.SolidColor(Forest),
-        decorationBox = { inner ->
-            Row(Modifier.background(MintField, CircleShape).heightIn(min = 48.dp).padding(start = 15.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f).padding(vertical = 10.dp)) {
-                    if (value.isEmpty()) Text(placeholder, style = LoginType.copy(fontSize = 16.sp, color = Color(0xFF718C80)))
-                    inner()
-                }
-                trailing?.invoke()
-            }
-        })
 }
 
 @Composable

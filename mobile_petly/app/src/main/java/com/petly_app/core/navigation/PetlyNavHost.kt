@@ -60,7 +60,9 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     }
                     val vm: AuthViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    RegisterScreen(state, vm::register, onBack = { vm.clearFormState(); nav.popBackStack() })
+                    RegisterScreen(state, { name, email, password, confirmation, accepted ->
+                        vm.register(email, password, confirmation, name, accepted)
+                    }, onBack = { vm.clearFormState(); nav.popBackStack() })
                 }
             } else {
                 composable(Routes.CATALOG) {

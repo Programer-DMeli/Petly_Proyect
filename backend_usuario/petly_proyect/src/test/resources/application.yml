@@ -40,6 +40,7 @@ interno:
   api-secret: test-internal-secret
 
 petly:
+  django-api-base-url: http://127.0.0.1:8000
   web-reset-link-base: http://localhost:5173/recuperacion
   reset-link-base: petly://recuperacion
   media-base-url: http://localhost:8000/media/

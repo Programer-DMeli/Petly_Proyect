@@ -84,6 +84,10 @@ public class AuthService {
             Usuario.Rol.ADOPTANTE
         );
         usuario.setFirstName(request.getFirstName());
+        if (Boolean.TRUE.equals(request.getAceptoTerminos())) {
+            usuario.setAceptoTerminos(true);
+            usuario.setFechaAceptacionTerminos(LocalDateTime.now());
+        }
         usuario.setLastName(request.getLastName());
         usuario.setTelefono(request.getTelefono());
         if (request.getFechaNacimiento() != null) {
