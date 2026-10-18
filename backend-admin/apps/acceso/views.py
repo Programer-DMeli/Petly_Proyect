@@ -19,6 +19,7 @@ import time
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
 from .models import Postulante, SolicitudAdopcion, User, AdoptanteProfile, Autorizacion
+from .solicitudes import cambiar_estado_solicitud
 from .serializers import (
     PostulanteSerializer,
     PostulanteListSerializer,
@@ -226,63 +227,11 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         solicitud = self.get_object()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         nuevo_estado = serializer.validated_data["estado"]
-        actual = solicitud.estado
         observaciones = serializer.validated_data.get("observaciones_revision", "")
-
-        # Validar transiciones permitidas
-        transiciones_validas = {
-            SolicitudAdopcion.Estado.PENDIENTE: [
-                SolicitudAdopcion.Estado.EN_REVISION,
-                SolicitudAdopcion.Estado.RECHAZADA,
-                SolicitudAdopcion.Estado.CANCELADA,
-            ],
-            SolicitudAdopcion.Estado.EN_REVISION: [
-                SolicitudAdopcion.Estado.APROBADA,
-                SolicitudAdopcion.Estado.RECHAZADA,
-                SolicitudAdopcion.Estado.PENDIENTE,
-            ],
-            SolicitudAdopcion.Estado.APROBADA: [
-                SolicitudAdopcion.Estado.ENTREGADA,
-                SolicitudAdopcion.Estado.RECHAZADA,
-            ],
-            SolicitudAdopcion.Estado.RECHAZADA: [],
-            SolicitudAdopcion.Estado.CANCELADA: [],
-            SolicitudAdopcion.Estado.ENTREGADA: [],
-        }
-
-        if nuevo_estado not in transiciones_validas.get(actual, []):
-            return Response(
-                {
-                    "error": f"Transición no permitida: {actual} -> {nuevo_estado}",
-                    "transiciones_validas": transiciones_validas.get(actual, []),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Actualizar
-        solicitud.estado = nuevo_estado
-        solicitud.revisado_por = request.user
-        solicitud.fecha_revision = timezone.now()
-        if observaciones:
-            solicitud.observaciones_revision = observaciones
-        
-        # Si se entrega, actualizar mascota y fecha entrega
-        if nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA:
-            solicitud.fecha_entrega = timezone.now().date()
-            # Cambiar estado de mascota a ADOPTADO
-            mascota = solicitud.mascota
-            if mascota.estado != Mascota.Estado.ADOPTADO:
-                mascota.estado = Mascota.Estado.ADOPTADO
-                mascota.fecha_adopcion = timezone.now().date()
-                mascota.save(update_fields=["estado", "fecha_adopcion", "actualizado_en"])
-        
-        solicitud.save(update_fields=[
-            "estado", "revisado_por", "fecha_revision",
-            "observaciones_revision", "fecha_entrega", "actualizado_en"
-        ])
-
+        solicitud = cambiar_estado_solicitud(
+            solicitud.pk, nuevo_estado, request.user, observaciones
+        )
         return Response(SolicitudAdopcionSerializer(solicitud, context={"request": request}).data)
 
     @action(detail=False, methods=["get"], url_path="estadisticas")

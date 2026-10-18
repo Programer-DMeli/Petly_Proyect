@@ -89,6 +89,9 @@ urlpatterns = [
     # Panel web - Postulantes
     
     # Panel web - Solicitudes
+    path("panel/solicitudes/", login_required(solicitud_lista), name="solicitud_lista"),
+    path("panel/solicitudes/<int:solicitud_id>/detalle/", login_required(solicitud_detalle), name="solicitud_detalle"),
+    path("panel/solicitudes/<int:solicitud_id>/cambiar-estado/", login_required(solicitud_cambiar_estado), name="solicitud_cambiar_estado"),
 ]
 
 # Servir archivos estáticos en entorno de desarrollo
