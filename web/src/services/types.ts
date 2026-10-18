@@ -25,7 +25,7 @@ export interface Pet {
 /** Estados de una solicitud de adopción (US-06). */
 export type EstadoSolicitudAdopcion =
   | 'PENDIENTE'
-  | 'EN_REVISION'
+  | 'OBSERVADA'
   | 'APROBADA'
   | 'RECHAZADA'
   | 'CANCELADA'

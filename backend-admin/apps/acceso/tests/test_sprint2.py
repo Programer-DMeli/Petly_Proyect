@@ -12,8 +12,11 @@ from apps.mascotas.models import Mascota
 class CompatibilidadMascotaAPITest(TestCase):
     def setUp(self):
         User = get_user_model()
-        user = User.objects.create_user(username="albergue", password="pass", rol="ALBERGUE")
-        albergue = Albergue.objects.create(usuario=user, nombre="Hogar", direccion="Calle 1")
+        owner = User.objects.create_user(username="albergue", password="pass", rol="ALBERGUE")
+        user = User.objects.create_user(username="adoptante", password="pass", rol="ADOPTANTE")
+        AdoptanteProfile.objects.create(user=user, cuestionario_completado=True,
+            tipo_vivienda="Casa", tiene_patio=True, horas_fuera=4)
+        albergue = Albergue.objects.create(usuario=owner, nombre="Hogar", direccion="Calle 1")
         self.disponible = Mascota.objects.create(
             albergue=albergue, nombre="Luna", codigo="LUNA01",
             especie=Mascota.Especie.PERRO, sexo=Mascota.Sexo.HEMBRA,
@@ -39,14 +42,17 @@ class CompatibilidadMascotaAPITest(TestCase):
         self.assertEqual(item["temperamento"], "SOCIABLE")
         self.assertEqual(item["energia"], "MEDIA")
         self.assertEqual(item["estado"], "DISPONIBLE")
-        self.assertNotIn("compatibilidad", item)
+        self.assertEqual(item["compatibilidad"]["puntaje"], 100)
+        self.assertEqual(item["compatibilidad"]["cobertura"], 100)
+        self.assertFalse(item["compatibilidad"]["datosInsuficientes"])
 
 
 class SolicitudAdopcionSprint2APITest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="adoptante", password="pass")
-        self.albergue = Albergue.objects.create(usuario=self.user, nombre="Hogar", direccion="Calle 1")
+        self.owner = User.objects.create_user(username="albergue", password="pass", rol="ALBERGUE")
+        self.albergue = Albergue.objects.create(usuario=self.owner, nombre="Hogar", direccion="Calle 1")
         self.postulante = Postulante.objects.create(
             documento_numero="12345678", nombres="Ana", apellidos="Pérez",
         )
@@ -152,3 +158,30 @@ class SolicitudAdopcionSprint2APITest(TestCase):
         )
         response = self.client.post("/api/acceso/solicitudes/", self._payload(), format="json")
         self.assertEqual(response.status_code, 201, response.data)
+
+    def _decision_request(self):
+        return SolicitudAdopcion.objects.create(
+            postulante=self.postulante, mascota=self.mascota, albergue=self.albergue,
+        )
+
+    def test_albergue_observa_con_motivo_y_aprobacion_reserva_mascota(self):
+        solicitud = self._decision_request()
+        self.client.force_authenticate(user=self.owner)
+        path = f"/api/acceso/solicitudes/{solicitud.pk}/cambiar-estado/"
+        missing_reason = self.client.post(path, {"estado": "OBSERVADA"}, format="json")
+        self.assertEqual(missing_reason.status_code, 400)
+        observed = self.client.post(path, {
+            "estado": "OBSERVADA", "observaciones_revision": "Falta coordinar visita.",
+        }, format="json")
+        self.assertEqual(observed.status_code, 200, observed.data)
+        approved = self.client.post(path, {"estado": "APROBADA"}, format="json")
+        self.assertEqual(approved.status_code, 200, approved.data)
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.estado, Mascota.Estado.EN_PROCESO)
+
+    def test_albergue_no_puede_modificar_solicitud_por_put_patch_ni_delete(self):
+        solicitud = self._decision_request()
+        self.client.force_authenticate(user=self.owner)
+        path = f"/api/acceso/solicitudes/{solicitud.pk}/"
+        self.assertEqual(self.client.patch(path, {"estado": "APROBADA"}, format="json").status_code, 405)
+        self.assertEqual(self.client.delete(path).status_code, 405)

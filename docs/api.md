@@ -120,7 +120,7 @@ Orden estable por ID ascendente. Una p�gina fuera de resultados devuelve lista
 }
 ```
 
-Django guarda a�os y resto de meses (0-11); Spring devuelve `a�os*12+meses`. Si ambos son null, edad desconocida (null); se muestra Por evaluar y se excluye de filtros de edad. No se inventan edades ni temperamentos. Los tres estados son visibles para informar disponibilidad; no se implementan solicitudes. Solo albergues activos aparecen.
+Django guarda a�os y resto de meses (0-11); Spring devuelve `a�os*12+meses`. Si ambos son null, edad desconocida (null); se muestra Por evaluar y se excluye de filtros de edad. No se inventan edades ni temperamentos. Los tres estados son visibles para informar disponibilidad; las solicitudes se gestionan en Django y solo albergues activos aparecen.
 
 Fotograf�a: una JPEG/PNG real, m�ximo 5 MiB, subida multipart a Django; se comprueban formato y contenido. Archivos privados quedan fuera de Git. URL p�blica de la foto de cat�logo se construye desde `MEDIA_BASE_URL`, accesible desde el cliente. En tel�fono f�sico usar IP LAN, no 10.0.2.2. Django sirve `/media/` con DEBUG; el servidor definitivo de medios queda fuera de esta entrega local. Fotos existentes ausentes se representan con null.
 
@@ -286,3 +286,6 @@ Endpoints: `POST /api/auth/password/reset` (campo `correo`) y `POST /api/auth/pa
 - Errores **400** con mensaje claro si el token es invalido, expiro, ya fue usado, o si `nuevaPassword` no coincide con `nuevaPasswordConfirm`.
 
 Pendiente de verificaci�n en el entorno: envio real del correo (SMTP/MailHog).
+
+
+GET /api/mascotas/compatibilidad/ requiere un perfil adoptante y ordena mascotas disponibles por compatibilidad. El albergue propietario decide solicitudes mediante POST /api/acceso/solicitudes/{id}/cambiar-estado/; observar o rechazar requiere motivo y aprobar requiere autorización vigente. Ver [reglas de compatibilidad y solicitudes](compatibilidad-y-solicitudes.md).

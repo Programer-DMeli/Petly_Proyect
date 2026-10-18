@@ -104,20 +104,20 @@ class SolicitudAdopcionAPITest(TestCase):
         self.assertEqual(len(data), 1)
 
     def test_cambiar_estado_pendiente_a_en_revision(self):
-        """PENDIENTE -> EN_REVISION permitido."""
+        """PENDIENTE -> OBSERVADA permitido."""
         self._auth(self.user)
         response = self.client.post(
             f'/api/acceso/solicitudes/{self.solicitud.id}/cambiar-estado/',
-            {'estado': SolicitudAdopcion.Estado.EN_REVISION}
+            {'estado': SolicitudAdopcion.Estado.OBSERVADA}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['estado'], SolicitudAdopcion.Estado.EN_REVISION)
+        self.assertEqual(response.data['estado'], SolicitudAdopcion.Estado.OBSERVADA)
         self.assertIsNotNone(response.data['fecha_revision'])
         self.assertEqual(response.data['revisado_por'], self.user.id)
 
     def test_cambiar_estado_en_revision_a_aprobada(self):
-        """EN_REVISION -> APROBADA permitido."""
-        self.solicitud.estado = SolicitudAdopcion.Estado.EN_REVISION
+        """OBSERVADA -> APROBADA permitido."""
+        self.solicitud.estado = SolicitudAdopcion.Estado.OBSERVADA
         self.solicitud.save()
         
         self._auth(self.user)
@@ -195,7 +195,7 @@ class SolicitudAdopcionAPITest(TestCase):
         self._auth(self.user)
         response = self.client.post(
             f'/api/acceso/solicitudes/{solicitud_ajena.id}/cambiar-estado/',
-            {'estado': SolicitudAdopcion.Estado.EN_REVISION}
+            {'estado': SolicitudAdopcion.Estado.OBSERVADA}
         )
         # get_queryset filtra por albergue -> 404
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

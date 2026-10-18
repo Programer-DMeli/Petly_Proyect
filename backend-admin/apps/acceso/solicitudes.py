@@ -4,24 +4,20 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.mascotas.models import Mascota
-from .models import SolicitudAdopcion
+from .models import AdoptanteProfile, Autorizacion, SolicitudAdopcion
 
 
 TRANSICIONES = {
     SolicitudAdopcion.Estado.PENDIENTE: [
-        SolicitudAdopcion.Estado.EN_REVISION,
-        SolicitudAdopcion.Estado.RECHAZADA,
-        SolicitudAdopcion.Estado.CANCELADA,
-    ],
-    SolicitudAdopcion.Estado.EN_REVISION: [
+        SolicitudAdopcion.Estado.OBSERVADA,
         SolicitudAdopcion.Estado.APROBADA,
         SolicitudAdopcion.Estado.RECHAZADA,
-        SolicitudAdopcion.Estado.PENDIENTE,
     ],
-    SolicitudAdopcion.Estado.APROBADA: [
-        SolicitudAdopcion.Estado.ENTREGADA,
+    SolicitudAdopcion.Estado.OBSERVADA: [
+        SolicitudAdopcion.Estado.APROBADA,
         SolicitudAdopcion.Estado.RECHAZADA,
     ],
+    SolicitudAdopcion.Estado.APROBADA: [],
     SolicitudAdopcion.Estado.RECHAZADA: [],
     SolicitudAdopcion.Estado.CANCELADA: [],
     SolicitudAdopcion.Estado.ENTREGADA: [],
@@ -43,9 +39,17 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
             "transiciones_validas": TRANSICIONES.get(actual, []),
         })
 
+    requiere_motivo = nuevo_estado in (
+        SolicitudAdopcion.Estado.OBSERVADA,
+        SolicitudAdopcion.Estado.RECHAZADA,
+    )
+    motivo = (observaciones or "").strip()
+    if requiere_motivo and not motivo:
+        raise ValidationError({"observaciones_revision": "Indica el motivo de la observación o el rechazo."})
+
     ahora = timezone.now()
     if nuevo_estado == SolicitudAdopcion.Estado.APROBADA:
-        if mascota.estado not in (Mascota.Estado.DISPONIBLE, Mascota.Estado.EN_PROCESO):
+        if mascota.estado != Mascota.Estado.DISPONIBLE:
             raise ValidationError({"estado": "La mascota ya no está disponible para aprobación."})
         otra_aprobada = SolicitudAdopcion.objects.filter(
             mascota=mascota,
@@ -54,11 +58,25 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         if otra_aprobada:
             raise ValidationError({"estado": "Ya existe otra solicitud aprobada para esta mascota."})
 
+        perfil = AdoptanteProfile.objects.filter(
+            documento_numero=solicitud.postulante.documento_numero,
+            cuestionario_completado=True,
+        ).first()
+        if perfil is None:
+            raise ValidationError({"autorizacion": "El perfil del adoptante ya no está finalizado."})
+        autorizacion = Autorizacion.objects.select_for_update().filter(
+            adoptante=perfil.user,
+            albergue=solicitud.albergue,
+            estado=Autorizacion.Estado.VIGENTE,
+        ).first()
+        if autorizacion is None or not autorizacion.esta_vigente():
+            raise ValidationError({"autorizacion": "Se requiere autorización vigente para aprobar esta solicitud."})
+
     solicitud.estado = nuevo_estado
     solicitud.revisado_por = usuario
     solicitud.fecha_revision = ahora
     if observaciones is not None:
-        solicitud.observaciones_revision = observaciones
+        solicitud.observaciones_revision = motivo
 
     if nuevo_estado == SolicitudAdopcion.Estado.APROBADA:
         # La mascota queda reservada mientras se coordina la entrega.

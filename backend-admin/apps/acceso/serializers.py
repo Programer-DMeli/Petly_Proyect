@@ -118,7 +118,6 @@ class SolicitudAdopcionSerializer(serializers.ModelSerializer):
     """Serializador completo para solicitud de adopción."""
 
     postulante_nombre = serializers.CharField(source="postulante.nombre_completo", read_only=True)
-    postulante_documento = serializers.CharField(source="postulante.documento_numero", read_only=True)
     mascota_nombre = serializers.CharField(source="mascota.nombre", read_only=True)
     mascota_codigo = serializers.CharField(source="mascota.codigo", read_only=True)
     mascota_especie = serializers.CharField(source="mascota.get_especie_display", read_only=True)
@@ -131,7 +130,6 @@ class SolicitudAdopcionSerializer(serializers.ModelSerializer):
             "id",
             "postulante",
             "postulante_nombre",
-            "postulante_documento",
             "mascota",
             "mascota_nombre",
             "mascota_codigo",
@@ -140,7 +138,6 @@ class SolicitudAdopcionSerializer(serializers.ModelSerializer):
             "estado",
             "estado_display",
             "mensaje_postulante",
-            "respuestas_cuestionario",
             "revisado_por",
             "revisado_por_nombre",
             "fecha_revision",
@@ -151,7 +148,7 @@ class SolicitudAdopcionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id", "albergue", "fecha_solicitud", "actualizado_en",
-            "postulante_nombre", "postulante_documento",
+            "postulante_nombre",
             "mascota_nombre", "mascota_codigo", "mascota_especie",
             "revisado_por_nombre", "estado_display",
         ]
@@ -161,7 +158,6 @@ class SolicitudAdopcionListSerializer(serializers.ModelSerializer):
     """Serializador ligero para listados."""
 
     postulante_nombre = serializers.CharField(source="postulante.nombre_completo", read_only=True)
-    postulante_documento = serializers.CharField(source="postulante.documento_numero", read_only=True)
     mascota_nombre = serializers.CharField(source="mascota.nombre", read_only=True)
     mascota_codigo = serializers.CharField(source="mascota.codigo", read_only=True)
     estado_display = serializers.CharField(source="get_estado_display", read_only=True)
@@ -172,7 +168,6 @@ class SolicitudAdopcionListSerializer(serializers.ModelSerializer):
             "id",
             "postulante",
             "postulante_nombre",
-            "postulante_documento",
             "mascota",
             "mascota_nombre",
             "mascota_codigo",
@@ -180,6 +175,8 @@ class SolicitudAdopcionListSerializer(serializers.ModelSerializer):
             "estado_display",
             "fecha_solicitud",
             "fecha_revision",
+            "mensaje_postulante",
+            "observaciones_revision",
         ]
 
 
@@ -249,7 +246,7 @@ class SolicitudCreateSerializer(serializers.ModelSerializer):
         if postulante and mascota and SolicitudAdopcion.objects.filter(
             postulante=postulante,
             mascota=mascota,
-            estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.EN_REVISION],
+            estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.OBSERVADA],
         ).exists():
             raise serializers.ValidationError({"non_field_errors": ["Ya existe una solicitud activa para esta mascota."]})
         respuestas = attrs.get("respuestas_cuestionario", {})
@@ -400,7 +397,7 @@ class AdoptanteProfileSerializer(serializers.ModelSerializer):
             "id", "user", "nombre_completo",
             "documento_tipo", "documento_numero", "nombres", "apellidos",
             "direccion", "distrito", "provincia", "departamento",
-            "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
+            "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas", "horas_fuera",
             "detalles_otras_mascotas", "experiencia_previa",
             "motivo_adopcion", "preferencia_especie", "preferencia_tamanio",
             "preferencia_edad", "cuestionario_completado", "fecha_cuestionario",
@@ -417,7 +414,7 @@ class AdoptanteProfileCreateUpdateSerializer(serializers.ModelSerializer):
         fields = [
             "documento_tipo", "documento_numero", "nombres", "apellidos",
             "direccion", "distrito", "provincia", "departamento",
-            "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
+            "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas", "horas_fuera",
             "detalles_otras_mascotas", "experiencia_previa",
             "motivo_adopcion", "preferencia_especie", "preferencia_tamanio",
             "preferencia_edad",
@@ -428,6 +425,11 @@ class AdoptanteProfileCreateUpdateSerializer(serializers.ModelSerializer):
             pk=self.instance.pk if self.instance else None
         ).exists():
             raise serializers.ValidationError("El número de documento ya está registrado.")
+        return value
+
+    def validate_horas_fuera(self, value):
+        if value is not None and value > 24:
+            raise serializers.ValidationError("Las horas fuera de casa deben estar entre 0 y 24.")
         return value
 
 

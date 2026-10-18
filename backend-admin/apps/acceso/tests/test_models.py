@@ -83,7 +83,7 @@ class SolicitudAdopcionModelTest(TestCase):
         self.assertEqual(solicitud.albergue, self.albergue)
 
     def test_get_valid_transitions_pendiente(self):
-        """PENDIENTE -> EN_REVISION, RECHAZADA, CANCELADA."""
+        """PENDIENTE -> OBSERVADA, APROBADA, RECHAZADA."""
         solicitud = SolicitudAdopcion.objects.create(
             postulante=self.postulante,
             mascota=self.mascota,
@@ -91,23 +91,23 @@ class SolicitudAdopcionModelTest(TestCase):
             estado=SolicitudAdopcion.Estado.PENDIENTE,
         )
         transiciones = solicitud.get_valid_transitions
-        self.assertIn(SolicitudAdopcion.Estado.EN_REVISION, transiciones)
+        self.assertIn(SolicitudAdopcion.Estado.OBSERVADA, transiciones)
+        self.assertIn(SolicitudAdopcion.Estado.APROBADA, transiciones)
         self.assertIn(SolicitudAdopcion.Estado.RECHAZADA, transiciones)
-        self.assertIn(SolicitudAdopcion.Estado.CANCELADA, transiciones)
         self.assertEqual(len(transiciones), 3)
 
     def test_get_valid_transitions_en_revision(self):
-        """EN_REVISION -> APROBADA, RECHAZADA, PENDIENTE."""
+        """OBSERVADA -> APROBADA, RECHAZADA."""
         solicitud = SolicitudAdopcion.objects.create(
             postulante=self.postulante,
             mascota=self.mascota,
             albergue=self.albergue,
-            estado=SolicitudAdopcion.Estado.EN_REVISION,
+            estado=SolicitudAdopcion.Estado.OBSERVADA,
         )
         transiciones = solicitud.get_valid_transitions
         self.assertIn(SolicitudAdopcion.Estado.APROBADA, transiciones)
         self.assertIn(SolicitudAdopcion.Estado.RECHAZADA, transiciones)
-        self.assertIn(SolicitudAdopcion.Estado.PENDIENTE, transiciones)
+        self.assertNotIn(SolicitudAdopcion.Estado.PENDIENTE, transiciones)
 
     def test_get_valid_transitions_aprobada(self):
         """APROBADA -> ENTREGADA, RECHAZADA."""
@@ -118,8 +118,7 @@ class SolicitudAdopcionModelTest(TestCase):
             estado=SolicitudAdopcion.Estado.APROBADA,
         )
         transiciones = solicitud.get_valid_transitions
-        self.assertIn(SolicitudAdopcion.Estado.ENTREGADA, transiciones)
-        self.assertIn(SolicitudAdopcion.Estado.RECHAZADA, transiciones)
+        self.assertEqual(transiciones, [])
 
     def test_estados_terminales_sin_transiciones(self):
         """RECHAZADA, CANCELADA, ENTREGADA no tienen transiciones."""

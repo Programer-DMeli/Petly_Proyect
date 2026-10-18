@@ -80,6 +80,7 @@ class AdoptanteProfile(models.Model):
     tiene_patio = models.BooleanField("Tiene patio/área exterior", default=False)
     tiene_ninos = models.BooleanField("Viven niños en el hogar", default=False)
     tiene_otras_mascotas = models.BooleanField("Tiene otras mascotas", default=False)
+    horas_fuera = models.PositiveSmallIntegerField("Horas fuera de casa al día", null=True, blank=True)
     detalles_otras_mascotas = models.TextField("Detalle otras mascotas", blank=True)
     experiencia_previa = models.TextField("Experiencia previa con mascotas", blank=True)
 
@@ -270,7 +271,7 @@ class SolicitudAdopcion(models.Model):
 
     class Estado(models.TextChoices):
         PENDIENTE = "PENDIENTE", "Pendiente"
-        EN_REVISION = "EN_REVISION", "En Revisión"
+        OBSERVADA = "OBSERVADA", "Observada"
         APROBADA = "APROBADA", "Aprobada"
         RECHAZADA = "RECHAZADA", "Rechazada"
         CANCELADA = "CANCELADA", "Cancelada por postulante"
@@ -336,7 +337,7 @@ class SolicitudAdopcion(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["postulante", "mascota"],
-                condition=models.Q(estado__in=["PENDIENTE", "EN_REVISION"]),
+                condition=models.Q(estado__in=["PENDIENTE", "OBSERVADA"]),
                 name="unique_pending_solicitud_per_mascota"
             ),
         ]
@@ -348,9 +349,9 @@ class SolicitudAdopcion(models.Model):
     def get_valid_transitions(self):
         """Retorna lista de estados válidos para transición desde el actual."""
         transiciones = {
-            self.Estado.PENDIENTE: [self.Estado.EN_REVISION, self.Estado.RECHAZADA, self.Estado.CANCELADA],
-            self.Estado.EN_REVISION: [self.Estado.APROBADA, self.Estado.RECHAZADA, self.Estado.PENDIENTE],
-            self.Estado.APROBADA: [self.Estado.ENTREGADA, self.Estado.RECHAZADA],
+            self.Estado.PENDIENTE: [self.Estado.OBSERVADA, self.Estado.APROBADA, self.Estado.RECHAZADA],
+            self.Estado.OBSERVADA: [self.Estado.APROBADA, self.Estado.RECHAZADA],
+            self.Estado.APROBADA: [],
             self.Estado.RECHAZADA: [],
             self.Estado.CANCELADA: [],
             self.Estado.ENTREGADA: [],
