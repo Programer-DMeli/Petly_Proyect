@@ -26,6 +26,25 @@ Spring adapta los campos al endpoint Django `POST /api/acceso/solicitudes/` (`ma
 
 Una solicitud creada queda `PENDIENTE`. Enviar no reserva ni cambia el estado de la mascota. Las decisiones del albergue, el seguimiento, la cancelación y las fotos de vivienda corresponden a US-07, US-08, US-10 y US-19.
 
+## US-08: consulta de seguimiento de solicitudes
+
+El adoptante autenticado consulta `GET /api/solicitudes/{solicitudId}/seguimiento` en Spring. Spring reenvia el JWT validado a Django, que obtiene la identidad del titular desde el token y solo devuelve el historial si la solicitud pertenece a ese adoptante. Una solicitud inexistente o ajena responde `404` para no revelar su existencia.
+
+Spring utiliza `GET /api/acceso/solicitudes/{solicitudId}/seguimiento/` en Django. La respuesta acordada contiene el estado actual y los eventos persistidos de la solicitud, ordenados del mas antiguo al mas reciente:
+
+```json
+{
+  "solicitudId": 12,
+  "estadoActual": "OBSERVADA",
+  "eventos": [
+    {"estado": "PENDIENTE", "fecha": "2026-10-17T10:00:00Z", "motivo": null},
+    {"estado": "OBSERVADA", "fecha": "2026-10-18T15:30:00Z", "motivo": "Agregar informacion sobre el hogar"}
+  ]
+}
+```
+
+Cada envio o decision agrega un evento sin sobrescribir los anteriores; la fecha se entrega en formato ISO 8601 y el motivo es nulo cuando no corresponde. El historial se obtiene al abrir o actualizar la vista; no requiere actualizacion automatica. La ruta Django y el formato son una propuesta de integracion para coordinar con Mayra antes de considerarlos contrato definitivo.
+
 ## Acceso y errores
 
 Spring: puerto 8080; Django: 8000. Las rutas Spring no requieren barra final; las rutas Django s�. `Authorization: Bearer <token>` es obligatorio salvo salud, registro, login, recuperaci�n y documentaci�n OpenAPI.
