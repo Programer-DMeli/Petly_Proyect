@@ -26,6 +26,23 @@ Spring adapta los campos al endpoint Django `POST /api/acceso/solicitudes/` (`ma
 
 Una solicitud creada queda `PENDIENTE`. Enviar no reserva ni cambia el estado de la mascota. Las decisiones del albergue, el seguimiento, la cancelación y las fotos de vivienda corresponden a US-07, US-08, US-10 y US-19.
 
+## US-07: integración Spring-Django para decisiones del albergue
+
+El panel del albergue envía sus decisiones a Spring mediante `POST /api/albergue/solicitudes/{solicitudId}/decision`. La ruta requiere el rol `ALBERGUE`; Spring reenvía a Django el JWT de la sesión y adapta el cuerpo al endpoint `POST /api/acceso/solicitudes/{solicitudId}/cambiar-estado/`.
+
+Entrada de Spring:
+
+```json
+{
+  "estado": "OBSERVADA",
+  "observacionesRevision": "Agregar información sobre el hogar"
+}
+```
+
+Spring envía a Django `estado` y `observaciones_revision`. Los estados admitidos son `OBSERVADA`, `APROBADA` y `RECHAZADA`; observar o rechazar requiere motivo. Django conserva la responsabilidad de comprobar que el usuario pertenece al albergue dueño de la solicitud, aplicar transiciones y proteger la aprobación atómica. Spring devuelve la respuesta y los errores de Django; si Django no está disponible, responde `503`.
+
+Para usar los datos cuya autoridad pertenece a Spring, Django debe consultar `GET /api/interno/adopciones/elegibilidad?adoptanteId={springUserId}&albergueId={djangoShelterId}` antes de aprobar. La ruta requiere la cabecera `X-Internal-Secret` y devuelve `perfilFinalizado` y `autorizacionVigente`. El `adoptanteId` debe ser el ID de usuario Spring (el valor `spring_id` de la cuenta Django), no el ID local de Django. La aprobación debe rechazarse si alguno de esos valores es falso.
+
 ## US-08: consulta de seguimiento de solicitudes
 
 El adoptante autenticado consulta `GET /api/solicitudes/{solicitudId}/seguimiento` en Spring. Spring reenvia el JWT validado a Django, que obtiene la identidad del titular desde el token y solo devuelve el historial si la solicitud pertenece a ese adoptante. Una solicitud inexistente o ajena responde `404` para no revelar su existencia.
