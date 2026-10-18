@@ -21,6 +21,30 @@ export interface Pet {
   estado: string;
   fotografiaUrl: string | null;
 }
+
+/** Estados y datos mínimos de las solicitudes de adopción (US-06/US-07). */
+export type EstadoSolicitudAdopcion =
+  | 'PENDIENTE'
+  | 'OBSERVADA'
+  | 'APROBADA'
+  | 'RECHAZADA'
+  | 'CANCELADA'
+  | 'ENTREGADA';
+
+export interface CrearSolicitudAdopcion {
+  mascotaId: number;
+  mensajePostulante?: string;
+  respuestasCuestionario?: Record<string, unknown>;
+}
+
+export interface SolicitudAdopcion {
+  id: number;
+  postulante: number;
+  mascota: number;
+  albergue: number;
+  fecha_solicitud: string;
+  estado: EstadoSolicitudAdopcion;
+}
 export interface Shelter {
   id: number;
   nombre: string;

@@ -11,6 +11,7 @@ import AutorizacionesPage from '../features/adoptante/perfil/pages/Autorizacione
 import CatalogoPage, { DetallePage } from '../features/adoptante/catalogo/pages/CatalogoPage';
 import CuestionarioPage from '../features/adoptante/perfil/pages/CuestionarioPage';
 import PanelAlberguePage from '../features/albergue/perfil/pages/PanelAlberguePage';
+import SolicitudesPage from '../features/albergue/perfil/pages/SolicitudesPage';
 import AlberguesAdminPage from '../features/administracion/albergues/pages/AlberguesAdminPage';
 
 /**
@@ -52,7 +53,10 @@ export const router = createBrowserRouter([
             <AlbergueLayout />
           </ProtectedRoute>
         ),
-        children: [{ index: true, element: <PanelAlberguePage /> }],
+        children: [
+          { index: true, element: <PanelAlberguePage /> },
+          { path: 'solicitudes', element: <SolicitudesPage /> },
+        ],
       },
       {
         path: 'administracion',

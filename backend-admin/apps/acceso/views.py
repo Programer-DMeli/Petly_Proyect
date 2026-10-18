@@ -70,9 +70,14 @@ class SolicitudAdopcionPermission(IsAlbergueStaffOrReadOnly):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
-        if request.method == "POST":
+        action = getattr(view, "action", None)
+        if action == "create":
             return request.user.rol == User.Rol.ADOPTANTE
-        return True
+        if action == "cambiar_estado":
+            return request.user.is_staff or (
+                request.user.rol == User.Rol.ALBERGUE and hasattr(request.user, "albergue")
+            )
+        return request.method in permissions.SAFE_METHODS
 
 
 class PostulanteViewSet(viewsets.ModelViewSet):
@@ -120,7 +125,7 @@ class PostulanteViewSet(viewsets.ModelViewSet):
         resumen = {
             "total": solicitudes.count(),
             "pendientes": solicitudes.filter(estado=SolicitudAdopcion.Estado.PENDIENTE).count(),
-            "en_revision": solicitudes.filter(estado=SolicitudAdopcion.Estado.EN_REVISION).count(),
+            "en_revision": solicitudes.filter(estado=SolicitudAdopcion.Estado.OBSERVADA).count(),
             "aprobadas": solicitudes.filter(estado=SolicitudAdopcion.Estado.APROBADA).count(),
             "rechazadas": solicitudes.filter(estado=SolicitudAdopcion.Estado.RECHAZADA).count(),
             "canceladas": solicitudes.filter(estado=SolicitudAdopcion.Estado.CANCELADA).count(),
@@ -156,6 +161,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         "postulante", "mascota", "albergue", "revisado_por"
     ).all()
     permission_classes = [permissions.IsAuthenticated, SolicitudAdopcionPermission]
+    http_method_names = ["get", "post", "head", "options"]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["postulante__nombres", "postulante__apellidos", "postulante__documento_numero", "mascota__nombre"]
     ordering_fields = ["fecha_solicitud", "estado", "fecha_revision"]
@@ -198,7 +204,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             activa = SolicitudAdopcion.objects.filter(
                 postulante=postulante,
                 mascota=mascota,
-                estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.EN_REVISION],
+                estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.OBSERVADA],
             ).exists()
             if activa:
                 raise ValidationError({"non_field_errors": ["Ya existe una solicitud activa para esta mascota."]})
@@ -217,9 +223,9 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         Cambia el estado de la solicitud.
         
         Transiciones válidas:
-        - PENDIENTE -> EN_REVISION, RECHAZADA, CANCELADA
-        - EN_REVISION -> APROBADA, RECHAZADA, PENDIENTE
-        - APROBADA -> ENTREGADA, RECHAZADA (si hay problema)
+        - PENDIENTE -> OBSERVADA, APROBADA, RECHAZADA
+        - OBSERVADA -> APROBADA, RECHAZADA
+        - APROBADA -> (terminal)
         - RECHAZADA -> (terminal)
         - CANCELADA -> (terminal)
         - ENTREGADA -> (terminal)
@@ -241,7 +247,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         stats = {
             "total": qs.count(),
             "pendientes": qs.filter(estado=SolicitudAdopcion.Estado.PENDIENTE).count(),
-            "en_revision": qs.filter(estado=SolicitudAdopcion.Estado.EN_REVISION).count(),
+            "en_revision": qs.filter(estado=SolicitudAdopcion.Estado.OBSERVADA).count(),
             "aprobadas": qs.filter(estado=SolicitudAdopcion.Estado.APROBADA).count(),
             "rechazadas": qs.filter(estado=SolicitudAdopcion.Estado.RECHAZADA).count(),
             "canceladas": qs.filter(estado=SolicitudAdopcion.Estado.CANCELADA).count(),

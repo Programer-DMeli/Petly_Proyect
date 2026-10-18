@@ -158,3 +158,7 @@ Dos contraseñas incorrectas consecutivas para una cuenta EXISTENTE producen 401
 429: codigo=LIMITE_PETICIONES, reintentarEnSegundos y Retry-After (1–60); cuota global de diez peticiones/minuto/IP para las rutas públicas de autenticación. No equivale a bloqueo de un minuto de una cuenta. CORS expone Retry-After a React.
 
 React y Kotlin muestran mm:ss y deshabilitan el botón mientras esperan. Los campos pueden editarse para acceder con otra cuenta cuando solo hay bloqueo de cuenta; la cuota por IP afecta a todas. El contador del cliente es UX, no autoridad de seguridad: el servidor persiste y aplica el bloqueo. React solo exige mínimo ocho caracteres al REGISTRAR; al acceder envía cualquier contraseña no vacía para que los errores de autenticación lleguen al servidor. Kotlin aplica la misma distinción.
+
+## US-07 y US-02: decisiones y compatibilidad
+
+GET `/api/mascotas/compatibilidad/` requiere un perfil adoptante y ordena mascotas disponibles por puntaje, con cobertura explícita y desempate por ID. El albergue propietario decide solicitudes mediante POST `/api/acceso/solicitudes/{id}/cambiar-estado/`; observar o rechazar requiere motivo y aprobar requiere autorización vigente. La mascota queda reservada al aprobar. Ver [reglas de compatibilidad y solicitudes](compatibilidad-y-solicitudes.md).
