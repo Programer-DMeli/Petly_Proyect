@@ -6,10 +6,14 @@ from django.http import HttpResponse
 from django.urls import reverse
 from django.db.models import Q, Count
 from django.utils import timezone
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 from apps.albergues.models import Albergue, Infraestructura
 from apps.mascotas.models import Mascota
+from apps.mascotas.estados import cambiar_estado_mascota
 from apps.acceso.models import Postulante, SolicitudAdopcion
+from apps.acceso.solicitudes import cambiar_estado_solicitud
+from rest_framework.exceptions import ValidationError
 
 
 @login_required
@@ -288,11 +292,13 @@ def mascota_cambiar_estado(request, mascota_id):
             messages.error(request, f'Transición no permitida: {mascota.get_estado_display()} -> {dict(Mascota.Estado.choices).get(nuevo_estado, nuevo_estado)}')
             return render(request, 'mascotas/partials/mascota_fila.html', {'mascota': mascota})
         
-        mascota.estado = nuevo_estado
-        if nuevo_estado == Mascota.Estado.ADOPTADO and not mascota.fecha_adopcion:
-            from django.utils import timezone
-            mascota.fecha_adopcion = timezone.now().date()
-        mascota.save(update_fields=['estado', 'fecha_adopcion', 'actualizado_en'])
+        try:
+            mascota = cambiar_estado_mascota(mascota.pk, nuevo_estado)
+        except DjangoValidationError as exc:
+            if isinstance(exc, DjangoValidationError):
+                messages.error(request, " ".join(exc.messages))
+                return render(request, 'mascotas/partials/mascota_fila.html', {'mascota': mascota})
+            raise
         
         messages.success(request, f'Estado cambiado a {mascota.get_estado_display()}')
         return render(request, 'mascotas/partials/mascota_fila.html', {'mascota': mascota})
@@ -367,7 +373,7 @@ def postulante_detalle(request, postulante_id):
     resumen = {
         'total': solicitudes.count(),
         'pendientes': solicitudes.filter(estado=SolicitudAdopcion.Estado.PENDIENTE).count(),
-        'en_revision': solicitudes.filter(estado=SolicitudAdopcion.Estado.EN_REVISION).count(),
+        'en_revision': solicitudes.filter(estado=SolicitudAdopcion.Estado.OBSERVADA).count(),
         'aprobadas': solicitudes.filter(estado=SolicitudAdopcion.Estado.APROBADA).count(),
         'rechazadas': solicitudes.filter(estado=SolicitudAdopcion.Estado.RECHAZADA).count(),
         'canceladas': solicitudes.filter(estado=SolicitudAdopcion.Estado.CANCELADA).count(),
@@ -444,50 +450,13 @@ def solicitud_cambiar_estado(request, solicitud_id):
         nuevo_estado = request.POST.get('estado')
         observaciones = request.POST.get('observaciones_revision', '')
         
-        # Validar transiciones permitidas
-        transiciones_validas = {
-            SolicitudAdopcion.Estado.PENDIENTE: [
-                SolicitudAdopcion.Estado.EN_REVISION,
-                SolicitudAdopcion.Estado.RECHAZADA,
-                SolicitudAdopcion.Estado.CANCELADA,
-            ],
-            SolicitudAdopcion.Estado.EN_REVISION: [
-                SolicitudAdopcion.Estado.APROBADA,
-                SolicitudAdopcion.Estado.RECHAZADA,
-                SolicitudAdopcion.Estado.PENDIENTE,
-            ],
-            SolicitudAdopcion.Estado.APROBADA: [
-                SolicitudAdopcion.Estado.ENTREGADA,
-                SolicitudAdopcion.Estado.RECHAZADA,
-            ],
-            SolicitudAdopcion.Estado.RECHAZADA: [],
-            SolicitudAdopcion.Estado.CANCELADA: [],
-            SolicitudAdopcion.Estado.ENTREGADA: [],
-        }
-        
-        if nuevo_estado not in transiciones_validas.get(solicitud.estado, []):
-            messages.error(request, f'Transición no permitida: {solicitud.get_estado_display()} -> {dict(SolicitudAdopcion.Estado.choices).get(nuevo_estado, nuevo_estado)}')
+        try:
+            solicitud = cambiar_estado_solicitud(
+                solicitud.pk, nuevo_estado, request.user, observaciones
+            )
+        except (ValidationError, ValueError) as exc:
+            messages.error(request, str(exc))
             return render(request, 'solicitudes/partials/solicitud_fila.html', {'solicitud': solicitud})
-        
-        solicitud.estado = nuevo_estado
-        solicitud.revisado_por = request.user
-        solicitud.fecha_revision = timezone.now()
-        if observaciones:
-            solicitud.observaciones_revision = observaciones
-        
-        # Si se entrega, actualizar mascota a ADOPTADO
-        if nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA:
-            solicitud.fecha_entrega = timezone.now().date()
-            mascota = solicitud.mascota
-            if mascota.estado != Mascota.Estado.ADOPTADO:
-                mascota.estado = Mascota.Estado.ADOPTADO
-                mascota.fecha_adopcion = timezone.now().date()
-                mascota.save(update_fields=['estado', 'fecha_adopcion', 'actualizado_en'])
-        
-        solicitud.save(update_fields=[
-            'estado', 'revisado_por', 'fecha_revision',
-            'observaciones_revision', 'fecha_entrega', 'actualizado_en'
-        ])
         
         messages.success(request, f'Estado cambiado a {solicitud.get_estado_display()}')
         return render(request, 'solicitudes/partials/solicitud_fila.html', {'solicitud': solicitud})

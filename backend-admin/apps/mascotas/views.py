@@ -1,5 +1,7 @@
 """Vistas de mascotas (US-11, US-12, US-13)."""
 from rest_framework import viewsets, permissions, status, filters
+from rest_framework.exceptions import ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -9,6 +11,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.albergues.models import Albergue
 from .models import Mascota
+from .estados import cambiar_estado_mascota
 from .serializers import (
     MascotaSerializer,
     MascotaListSerializer,
@@ -58,12 +61,25 @@ class MascotaViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="compatibilidad")
     def compatibilidad(self, request):
-        """Expone atributos de mascotas disponibles para el servicio Spring; no calcula puntajes."""
-        queryset = Mascota.objects.filter(estado=Mascota.Estado.DISPONIBLE).order_by("id")
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            return self.get_paginated_response(self.get_serializer(page, many=True).data)
-        return Response(self.get_serializer(queryset, many=True).data)
+        """Devuelve mascotas disponibles ordenadas por compatibilidad del adoptante."""
+        from .compatibilidad import puntuar_compatibilidad
+        if request.user.rol != "ADOPTANTE":
+            return Response({"detail": "Este orden requiere una cuenta de adoptante."}, status=status.HTTP_403_FORBIDDEN)
+        perfil = getattr(request.user, "adoptante_profile", None)
+        if perfil is None:
+            return Response({"detail": "Completa tu perfil de adopción para calcular compatibilidad."}, status=status.HTTP_400_BAD_REQUEST)
+        mascotas = list(Mascota.objects.filter(
+            estado=Mascota.Estado.DISPONIBLE, albergue__activo=True
+        ).select_related("albergue").order_by("id"))
+        resultado = []
+        for mascota in mascotas:
+            puntaje = puntuar_compatibilidad(perfil, mascota)
+            datos = MascotaCompatibilidadSerializer(mascota, context={"request": request}).data
+            datos["compatibilidad"] = puntaje
+            resultado.append(datos)
+        resultado.sort(key=lambda item: (item["compatibilidad"]["puntaje"] is None,
+                                         -(item["compatibilidad"]["puntaje"] or 0), item["id"]))
+        return Response(resultado)
 
     def get_queryset(self):
         """Filtrar por albergue del usuario (excepto staff)."""
@@ -122,16 +138,10 @@ class MascotaViewSet(viewsets.ModelViewSet):
 
         nuevo_estado = serializer.validated_data["estado"]
 
-        # Sprint 1: corrección manual entre cualquiera de los tres estados.
-        # No crea solicitudes ni expedientes de adopción.
-        mascota.estado = nuevo_estado
-        if nuevo_estado == Mascota.Estado.ADOPTADO:
-            if not mascota.fecha_adopcion:
-                from django.utils import timezone
-                mascota.fecha_adopcion = timezone.now().date()
-        else:
-            mascota.fecha_adopcion = None
-        mascota.save(update_fields=["estado", "fecha_adopcion", "actualizado_en"])
+        try:
+            mascota = cambiar_estado_mascota(mascota.pk, nuevo_estado)
+        except DjangoValidationError as exc:
+            raise ValidationError({"estado": exc.messages})
 
         return Response(MascotaSerializer(mascota, context={"request": request}).data)
 

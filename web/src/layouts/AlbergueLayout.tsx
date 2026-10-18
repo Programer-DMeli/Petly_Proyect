@@ -11,6 +11,7 @@ export default function AlbergueLayout() {
         <NavLink to="/albergue" end>
           Panel
         </NavLink>
+        <NavLink to="/albergue/solicitudes">Solicitudes</NavLink>
       </nav>
       <Outlet />
     </div>

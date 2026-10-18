@@ -11,7 +11,7 @@
     </td>
     <td>{{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}</td>
     <td class="text-center">
-        <span class="badge bg-{% if solicitud.estado == 'PENDIENTE' %}warning{% elif solicitud.estado == 'EN_REVISION' %}info{% elif solicitud.estado == 'APROBADA' %}success{% elif solicitud.estado == 'RECHAZADA' %}danger{% elif solicitud.estado == 'CANCELADA' %}secondary{% else %}primary{% endif %} fs-6">
+        <span class="badge bg-{% if solicitud.estado == 'PENDIENTE' %}warning{% elif solicitud.estado == 'OBSERVADA' %}info{% elif solicitud.estado == 'APROBADA' %}success{% elif solicitud.estado == 'RECHAZADA' %}danger{% elif solicitud.estado == 'CANCELADA' %}secondary{% else %}primary{% endif %} fs-6">
             {{ solicitud.get_estado_display }}
         </span>
     </td>
@@ -33,8 +33,9 @@
                                 <form hx-post="{% url 'solicitud_cambiar_estado' solicitud.id %}" hx-target="#solicitud-{{ solicitud.id }}" hx-swap="outerHTML">
                                     {% csrf_token %}
                                     <input type="hidden" name="estado" value="{{ value }}">
+                                    <textarea class="form-control form-control-sm mx-2 my-1" name="observaciones_revision" rows="2" placeholder="Observación (opcional)" style="width: calc(100% - 1rem);"></textarea>
                                     <button type="submit" class="dropdown-item" hx-confirm="¿Cambiar estado a {{ label }}?">
-                                        <i class="bi bi-{% if value == 'EN_REVISION' %}clipboard-check{% elif value == 'APROBADA' %}check-circle{% elif value == 'RECHAZADA' %}x-circle{% elif value == 'CANCELADA' %}x-octagon{% else %}house-heart{% endif %} me-2"></i>{{ label }}
+                                        <i class="bi bi-{% if value == 'OBSERVADA' %}clipboard-check{% elif value == 'APROBADA' %}check-circle{% elif value == 'RECHAZADA' %}x-circle{% elif value == 'CANCELADA' %}x-octagon{% else %}house-heart{% endif %} me-2"></i>{{ label }}
                                     </button>
                                 </form>
                             </li>

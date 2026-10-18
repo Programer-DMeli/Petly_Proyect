@@ -19,6 +19,7 @@ import time
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
 from .models import Postulante, SolicitudAdopcion, User, AdoptanteProfile, Autorizacion
+from .solicitudes import cambiar_estado_solicitud
 from .serializers import (
     PostulanteSerializer,
     PostulanteListSerializer,
@@ -74,9 +75,14 @@ class SolicitudAdopcionPermission(IsAlbergueStaffOrReadOnly):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
-        if request.method == "POST":
+        action = getattr(view, "action", None)
+        if action == "create":
             return request.user.rol == User.Rol.ADOPTANTE
-        return True
+        if action == "cambiar_estado":
+            return request.user.is_staff or (
+                request.user.rol == User.Rol.ALBERGUE and hasattr(request.user, "albergue")
+            )
+        return request.method in permissions.SAFE_METHODS
 
 
 class PostulanteViewSet(viewsets.ModelViewSet):
@@ -124,7 +130,7 @@ class PostulanteViewSet(viewsets.ModelViewSet):
         resumen = {
             "total": solicitudes.count(),
             "pendientes": solicitudes.filter(estado=SolicitudAdopcion.Estado.PENDIENTE).count(),
-            "en_revision": solicitudes.filter(estado=SolicitudAdopcion.Estado.EN_REVISION).count(),
+            "en_revision": solicitudes.filter(estado=SolicitudAdopcion.Estado.OBSERVADA).count(),
             "aprobadas": solicitudes.filter(estado=SolicitudAdopcion.Estado.APROBADA).count(),
             "rechazadas": solicitudes.filter(estado=SolicitudAdopcion.Estado.RECHAZADA).count(),
             "canceladas": solicitudes.filter(estado=SolicitudAdopcion.Estado.CANCELADA).count(),
@@ -160,6 +166,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         "postulante", "mascota", "albergue", "revisado_por"
     ).all()
     permission_classes = [permissions.IsAuthenticated, SolicitudAdopcionPermission]
+    http_method_names = ["get", "post", "head", "options"]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["postulante__nombres", "postulante__apellidos", "postulante__documento_numero", "mascota__nombre"]
     ordering_fields = ["fecha_solicitud", "estado", "fecha_revision"]
@@ -202,7 +209,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             activa = SolicitudAdopcion.objects.filter(
                 postulante=postulante,
                 mascota=mascota,
-                estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.EN_REVISION],
+                estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.OBSERVADA],
             ).exists()
             if activa:
                 raise ValidationError({"non_field_errors": ["Ya existe una solicitud activa para esta mascota."]})
@@ -221,9 +228,9 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         Cambia el estado de la solicitud.
         
         Transiciones válidas:
-        - PENDIENTE -> EN_REVISION, RECHAZADA, CANCELADA
-        - EN_REVISION -> APROBADA, RECHAZADA, PENDIENTE
-        - APROBADA -> ENTREGADA, RECHAZADA (si hay problema)
+        - PENDIENTE -> OBSERVADA, APROBADA, RECHAZADA
+        - OBSERVADA -> APROBADA, RECHAZADA
+        - APROBADA -> (terminal)
         - RECHAZADA -> (terminal)
         - CANCELADA -> (terminal)
         - ENTREGADA -> (terminal)
@@ -231,63 +238,11 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         solicitud = self.get_object()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         nuevo_estado = serializer.validated_data["estado"]
-        actual = solicitud.estado
         observaciones = serializer.validated_data.get("observaciones_revision", "")
-
-        # Validar transiciones permitidas
-        transiciones_validas = {
-            SolicitudAdopcion.Estado.PENDIENTE: [
-                SolicitudAdopcion.Estado.EN_REVISION,
-                SolicitudAdopcion.Estado.RECHAZADA,
-                SolicitudAdopcion.Estado.CANCELADA,
-            ],
-            SolicitudAdopcion.Estado.EN_REVISION: [
-                SolicitudAdopcion.Estado.APROBADA,
-                SolicitudAdopcion.Estado.RECHAZADA,
-                SolicitudAdopcion.Estado.PENDIENTE,
-            ],
-            SolicitudAdopcion.Estado.APROBADA: [
-                SolicitudAdopcion.Estado.ENTREGADA,
-                SolicitudAdopcion.Estado.RECHAZADA,
-            ],
-            SolicitudAdopcion.Estado.RECHAZADA: [],
-            SolicitudAdopcion.Estado.CANCELADA: [],
-            SolicitudAdopcion.Estado.ENTREGADA: [],
-        }
-
-        if nuevo_estado not in transiciones_validas.get(actual, []):
-            return Response(
-                {
-                    "error": f"Transición no permitida: {actual} -> {nuevo_estado}",
-                    "transiciones_validas": transiciones_validas.get(actual, []),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Actualizar
-        solicitud.estado = nuevo_estado
-        solicitud.revisado_por = request.user
-        solicitud.fecha_revision = timezone.now()
-        if observaciones:
-            solicitud.observaciones_revision = observaciones
-        
-        # Si se entrega, actualizar mascota y fecha entrega
-        if nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA:
-            solicitud.fecha_entrega = timezone.now().date()
-            # Cambiar estado de mascota a ADOPTADO
-            mascota = solicitud.mascota
-            if mascota.estado != Mascota.Estado.ADOPTADO:
-                mascota.estado = Mascota.Estado.ADOPTADO
-                mascota.fecha_adopcion = timezone.now().date()
-                mascota.save(update_fields=["estado", "fecha_adopcion", "actualizado_en"])
-        
-        solicitud.save(update_fields=[
-            "estado", "revisado_por", "fecha_revision",
-            "observaciones_revision", "fecha_entrega", "actualizado_en"
-        ])
-
+        solicitud = cambiar_estado_solicitud(
+            solicitud.pk, nuevo_estado, request.user, observaciones
+        )
         return Response(SolicitudAdopcionSerializer(solicitud, context={"request": request}).data)
 
     @action(detail=False, methods=["get"], url_path="estadisticas")
@@ -297,7 +252,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         stats = {
             "total": qs.count(),
             "pendientes": qs.filter(estado=SolicitudAdopcion.Estado.PENDIENTE).count(),
-            "en_revision": qs.filter(estado=SolicitudAdopcion.Estado.EN_REVISION).count(),
+            "en_revision": qs.filter(estado=SolicitudAdopcion.Estado.OBSERVADA).count(),
             "aprobadas": qs.filter(estado=SolicitudAdopcion.Estado.APROBADA).count(),
             "rechazadas": qs.filter(estado=SolicitudAdopcion.Estado.RECHAZADA).count(),
             "canceladas": qs.filter(estado=SolicitudAdopcion.Estado.CANCELADA).count(),
