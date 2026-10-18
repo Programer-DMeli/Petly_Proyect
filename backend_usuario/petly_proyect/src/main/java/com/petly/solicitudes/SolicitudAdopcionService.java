@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -58,6 +59,30 @@ public class SolicitudAdopcionService {
                     .body(ex.getResponseBodyAsString());
         } catch (ResourceAccessException ex) {
             throw new ApiException(503, "El servicio de solicitudes no está disponible.");
+        }
+    }
+
+    public ResponseEntity<String> obtenerSeguimiento(Long solicitudId, String authorization) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+        headers.set(HttpHeaders.AUTHORIZATION, authorization);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    djangoApiBaseUrl + "/api/acceso/solicitudes/{solicitudId}/seguimiento/",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    String.class,
+                    solicitudId);
+            return ResponseEntity.status(response.getStatusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(response.getBody());
+        } catch (HttpStatusCodeException ex) {
+            return ResponseEntity.status(ex.getStatusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(ex.getResponseBodyAsString());
+        } catch (ResourceAccessException ex) {
+            throw new ApiException(503, "El servicio de seguimiento no está disponible.");
         }
     }
 }
