@@ -48,6 +48,20 @@ export interface SolicitudAdopcion {
   estado: EstadoSolicitudAdopcion;
 }
 
+/** Evento persistido que registra un cambio en el estado de una solicitud (US-08). */
+export interface EventoSeguimientoSolicitud {
+  estado: EstadoSolicitudAdopcion;
+  fecha: string;
+  motivo: string | null;
+}
+
+/** Historial de estados devuelto por Spring para el adoptante titular. */
+export interface SeguimientoSolicitud {
+  solicitudId: number;
+  estadoActual: EstadoSolicitudAdopcion;
+  eventos: EventoSeguimientoSolicitud[];
+}
+
 export interface Shelter {
   id: number;
   nombre: string;
