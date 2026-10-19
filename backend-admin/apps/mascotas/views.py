@@ -1,9 +1,16 @@
 """Vistas de mascotas (US-11, US-12, US-13)."""
+import hashlib
+import json
+import secrets
+
+from django.conf import settings
+from django.utils.http import http_date
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.exceptions import ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
@@ -172,3 +179,35 @@ class MascotaViewSet(viewsets.ModelViewSet):
             },
         }
         return Response(stats)
+
+
+class DatosCompatibilidadView(APIView):
+    """Feed interno de mascotas vigentes usado por el motor de compatibilidad (US-03)."""
+
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        clave_configurada = getattr(settings, "PET_COMPATIBILITY_SERVICE_TOKEN", "")
+        clave_recibida = request.headers.get("X-Service-Token", "")
+        if not clave_configurada:
+            return Response({"detail": "La integración de compatibilidad no está configurada."}, status=503)
+        if not secrets.compare_digest(clave_recibida, clave_configurada):
+            return Response({"detail": "Credenciales de servicio inválidas."}, status=401)
+
+        mascotas = Mascota.objects.filter(
+            estado=Mascota.Estado.DISPONIBLE,
+            albergue__activo=True,
+        ).order_by("id")
+        items = MascotaCompatibilidadSerializer(mascotas, many=True).data
+        contenido = json.dumps(items, sort_keys=True, separators=(",", ":"), default=str)
+        revision = hashlib.sha256(contenido.encode("utf-8")).hexdigest()
+        etag = f'"{revision}"'
+        headers = {"ETag": etag, "Cache-Control": "private, no-cache"}
+        ultima_actualizacion = mascotas.order_by("-actualizado_en").values_list("actualizado_en", flat=True).first()
+        if ultima_actualizacion:
+            headers["Last-Modified"] = http_date(ultima_actualizacion.timestamp())
+        etags_cliente = {valor.strip() for valor in request.headers.get("If-None-Match", "").split(",")}
+        if etag in etags_cliente or "*" in etags_cliente:
+            return Response(status=304, headers=headers)
+        return Response({"catalogVersion": revision, "items": items}, headers=headers)

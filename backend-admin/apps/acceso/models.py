@@ -2,6 +2,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
@@ -96,6 +97,10 @@ class AdoptanteProfile(models.Model):
     # Cuestionario completado (US-16)
     cuestionario_completado = models.BooleanField("Cuestionario completado", default=False)
     fecha_cuestionario = models.DateTimeField("Fecha cuestionario", null=True, blank=True)
+    compatibilidad_revision = models.PositiveIntegerField(
+        "Revisión de compatibilidad", default=1,
+        help_text="Aumenta cuando cambia un dato usado por el motor de compatibilidad.",
+    )
 
     # Auditoría
     creado_en = models.DateTimeField(auto_now_add=True)
@@ -105,6 +110,24 @@ class AdoptanteProfile(models.Model):
         verbose_name = "Perfil de Adoptante"
         verbose_name_plural = "Perfiles de Adoptantes"
         ordering = ["-creado_en"]
+
+    CAMPOS_COMPATIBILIDAD = (
+        "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
+        "horas_fuera", "preferencia_especie", "preferencia_tamanio", "preferencia_edad",
+    )
+
+    def save(self, *args, **kwargs):
+        """Versiona cualquier cambio de datos que pueda alterar un puntaje."""
+        if self.pk and not self._state.adding:
+            previos = type(self).objects.filter(pk=self.pk).values(
+                *self.CAMPOS_COMPATIBILIDAD, "compatibilidad_revision"
+            ).first()
+            if previos and any(getattr(self, campo) != previos[campo] for campo in self.CAMPOS_COMPATIBILIDAD):
+                self.compatibilidad_revision = previos["compatibilidad_revision"] + 1
+                update_fields = kwargs.get("update_fields")
+                if update_fields is not None:
+                    kwargs["update_fields"] = set(update_fields) | {"compatibilidad_revision"}
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.nombres} {self.apellidos} ({self.user.username})"
@@ -296,6 +319,14 @@ class SolicitudAdopcion(models.Model):
         related_name="solicitudes",
         verbose_name="Albergue",
     )
+    adoptante = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="solicitudes_adopcion",
+        verbose_name="Cuenta adoptante",
+    )
 
     # Estado del proceso
     estado = models.CharField("Estado", max_length=15,
@@ -357,3 +388,50 @@ class SolicitudAdopcion(models.Model):
             self.Estado.ENTREGADA: [],
         }
         return transiciones.get(self.estado, [])
+
+
+class SolicitudEvento(models.Model):
+    """Evento inmutable del seguimiento cronológico de una solicitud (US-08)."""
+
+    class Tipo(models.TextChoices):
+        REGISTRO_HISTORICO = "REGISTRO_HISTORICO", "Registro histórico"
+        SOLICITUD_CREADA = "SOLICITUD_CREADA", "Solicitud creada"
+        OBSERVADA = "OBSERVADA", "Solicitud observada"
+        APROBADA = "APROBADA", "Solicitud aprobada"
+        RECHAZADA = "RECHAZADA", "Solicitud rechazada"
+        CANCELADA = "CANCELADA", "Solicitud cancelada"
+        CONTRATO_GENERADO = "CONTRATO_GENERADO", "Contrato generado"
+        CONTRATO_ENVIADO = "CONTRATO_ENVIADO", "Contrato enviado a firma"
+        CONTRATO_FIRMADO = "CONTRATO_FIRMADO", "Contrato firmado"
+        CONTRATO_RECHAZADO = "CONTRATO_RECHAZADO", "Contrato rechazado"
+        CONTRATO_EXPIRADO = "CONTRATO_EXPIRADO", "Contrato expirado"
+        ENTREGADA = "ENTREGADA", "Mascota entregada"
+
+    solicitud = models.ForeignKey(
+        SolicitudAdopcion,
+        on_delete=models.CASCADE,
+        related_name="eventos",
+        verbose_name="Solicitud",
+    )
+    tipo = models.CharField(max_length=24, choices=Tipo.choices, db_index=True)
+    estado_anterior = models.CharField(max_length=15, blank=True)
+    estado_nuevo = models.CharField(max_length=15, blank=True)
+    descripcion = models.TextField(blank=True)
+    ocurrido_en = models.DateTimeField(default=timezone.now, db_index=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="eventos_solicitud_registrados",
+    )
+    visible_adoptante = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Evento de solicitud"
+        verbose_name_plural = "Eventos de solicitudes"
+        ordering = ["ocurrido_en", "id"]
+        indexes = [models.Index(fields=["solicitud", "ocurrido_en"])]
+
+    def __str__(self):
+        return f"{self.solicitud_id}: {self.get_tipo_display()} ({self.ocurrido_en:%Y-%m-%d %H:%M})"

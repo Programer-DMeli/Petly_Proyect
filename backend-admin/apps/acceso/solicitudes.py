@@ -4,7 +4,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.mascotas.models import Mascota
-from .models import AdoptanteProfile, Autorizacion, SolicitudAdopcion
+from .models import AdoptanteProfile, Autorizacion, SolicitudAdopcion, SolicitudEvento
 
 
 TRANSICIONES = {
@@ -101,4 +101,21 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         "estado", "revisado_por", "fecha_revision", "observaciones_revision",
         "fecha_entrega", "actualizado_en",
     ])
+    tipo_evento = {
+        SolicitudAdopcion.Estado.OBSERVADA: SolicitudEvento.Tipo.OBSERVADA,
+        SolicitudAdopcion.Estado.APROBADA: SolicitudEvento.Tipo.APROBADA,
+        SolicitudAdopcion.Estado.RECHAZADA: SolicitudEvento.Tipo.RECHAZADA,
+        SolicitudAdopcion.Estado.CANCELADA: SolicitudEvento.Tipo.CANCELADA,
+        SolicitudAdopcion.Estado.ENTREGADA: SolicitudEvento.Tipo.ENTREGADA,
+    }[nuevo_estado]
+    SolicitudEvento.objects.create(
+        solicitud=solicitud,
+        tipo=tipo_evento,
+        estado_anterior=actual,
+        estado_nuevo=nuevo_estado,
+        descripcion=motivo,
+        ocurrido_en=ahora,
+        actor=usuario,
+        visible_adoptante=True,
+    )
     return solicitud
