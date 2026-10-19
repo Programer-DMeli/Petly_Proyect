@@ -221,6 +221,7 @@ export function DetallePage() {
   const [mensajePostulante, setMensajePostulante] = useState('');
   const [sending, setSending] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedRequestId, setSubmittedRequestId] = useState<number | null>(null);
   const [success, setSuccess] = useState('');
   const load = useCallback(async () => {
     setError('');
@@ -228,6 +229,7 @@ export function DetallePage() {
     setProfileFinalizado(null);
     setAutorizacionActiva(null);
     setSubmitted(false);
+    setSubmittedRequestId(null);
     setSuccess('');
     try {
       setPet(await spring<Pet>('/api/catalogo/' + String(id)));
@@ -282,6 +284,7 @@ export function DetallePage() {
         body: json(payload),
       });
       setSubmitted(true);
+      setSubmittedRequestId(created.id);
       setSuccess(`Solicitud enviada. Estado: ${created.estado}.`);
     } catch (e) {
       setError(errorMessage(e));
@@ -354,8 +357,11 @@ export function DetallePage() {
             </form>
           )}
           {submitted && (
-            <p role="status">
-              La solicitud quedó pendiente de revisión. La mascota no se reserva al enviarla.
+            <p className="feedback success" role="status">
+              La solicitud quedó pendiente de revisión. La mascota no se reserva al enviarla.{' '}
+              {submittedRequestId !== null && (
+                <Link to={`/adoptante/solicitudes/${submittedRequestId}`}>Ver seguimiento</Link>
+              )}
             </p>
           )}
         </>

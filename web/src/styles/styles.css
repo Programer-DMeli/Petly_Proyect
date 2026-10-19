@@ -484,6 +484,10 @@ textarea:focus-visible {
   margin: 0.25rem 0 0;
   overflow-wrap: anywhere;
 }
+.tracking-empty {
+  background: #f1f7f3;
+  color: var(--petly-text-secondary);
+}
 /* Botones */
 .btn {
   display: inline-flex;
