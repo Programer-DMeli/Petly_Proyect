@@ -45,6 +45,13 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: #faf9f0;
+  background-image:
+    linear-gradient(rgba(250, 249, 240, 0.72), rgba(250, 249, 240, 0.72)),
+    url('/images/portada-pattern.webp');
+  background-repeat: no-repeat, repeat;
+  background-position: center, top left;
+  background-size: auto, 760px auto;
 }
 
 .app__header {
@@ -253,16 +260,6 @@ body {
   object-fit: contain;
   object-position: bottom right;
   mix-blend-mode: lighten;
-}
-
-.app--landing {
-  background-color: #faf9f0;
-  background-image:
-    linear-gradient(rgba(250, 249, 240, 0.72), rgba(250, 249, 240, 0.72)),
-    url('/images/portada-pattern.webp');
-  background-repeat: no-repeat, repeat;
-  background-position: center, top left;
-  background-size: auto, 760px auto;
 }
 
 .app--landing .app__logo img {
