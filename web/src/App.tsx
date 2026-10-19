@@ -82,6 +82,7 @@ export default function App() {
                 </nav>
               )}
             </div>
+            <span className="header-account-divider" aria-hidden="true" />
             <div className="header-popover-wrap">
               <button
                 className="header-action header-action--user"
@@ -91,11 +92,16 @@ export default function App() {
                 aria-controls={openPanel === 'profile' ? 'petly-user-menu' : undefined}
                 onClick={() => setOpenPanel(openPanel === 'profile' ? null : 'profile')}
               >
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8" />
-                  <path d="M5 20c.5-3.4 3.2-5.3 7-5.3s6.5 1.9 7 5.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
+                <span className="header-avatar" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="8" r="3.5" fill="currentColor" />
+                    <path d="M5 20c.5-3.4 3.2-5.3 7-5.3s6.5 1.9 7 5.3" fill="currentColor" />
+                  </svg>
+                </span>
                 <span className="header-action__user-label">Mi cuenta</span>
+                <svg className="header-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                  <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </button>
               {openPanel === 'profile' && (
                 <div className="header-popover header-popover--profile" id="petly-user-menu" aria-label="Cuenta de usuario">
