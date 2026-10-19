@@ -1,6 +1,6 @@
 /* Estilos base de Petly web — Verde Refugio identidad visual. */
 
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
 
 :root {
   /* Paleta Verde Refugio */
@@ -73,10 +73,24 @@ body {
 }
 
 .app__tagline {
-  font-family: var(--font-family);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.38rem 0.9rem;
+  border: 1px solid #f7d8d1;
+  border-radius: 999px;
+  background: #fff3ef;
+  font-family: 'Baloo 2', var(--font-family);
   font-size: 1rem;
-  color: var(--petly-primary-dark);
-  font-weight: var(--font-weight-semibold);
+  color: #a9474d;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.app__tagline-heart {
+  color: #e87578;
+  font-size: 1.1em;
+  line-height: 1;
 }
 
 .app__main {

@@ -17,7 +17,10 @@ export default function App() {
         <Link className="app__logo" to="/">
           <img src="/images/petly-logo.png" alt="Petly" />
         </Link>
-        <span className="app__tagline">Encuentra a tu compañero</span>
+        <span className="app__tagline">
+          <span className="app__tagline-heart" aria-hidden="true">♥</span>
+          Encuentra a tu compañero
+        </span>
         {session && (
           <>
             <span className="account">
