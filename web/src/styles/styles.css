@@ -261,9 +261,7 @@ body {
 }
 
 .app--landing .app__logo {
-  padding: 0.2rem 0.35rem;
-  border-radius: 12px;
-  background: #fff;
+  padding: 0;
 }
 
 .app--landing .app__logo img {
