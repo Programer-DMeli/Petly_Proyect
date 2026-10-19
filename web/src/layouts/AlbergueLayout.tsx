@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 
 /**
  * Panel del albergue: perfil institucional, registro de mascotas,
@@ -7,12 +7,6 @@ import { NavLink, Outlet } from 'react-router-dom';
 export default function AlbergueLayout() {
   return (
     <div className="layout">
-      <nav className="layout__nav">
-        <NavLink to="/albergue" end>
-          Panel
-        </NavLink>
-        <NavLink to="/albergue/solicitudes">Solicitudes</NavLink>
-      </nav>
       <Outlet />
     </div>
   );
