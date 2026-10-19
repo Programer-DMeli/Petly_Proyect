@@ -226,6 +226,18 @@ body {
   font-size: 1rem;
 }
 
+.hero .actions .button:first-child {
+  background: var(--petly-accent);
+  border-color: var(--petly-accent);
+  color: var(--petly-text);
+  box-shadow: 0 4px 12px rgba(12, 58, 45, 0.18);
+}
+
+.hero .actions .button:first-child:hover {
+  background: #e9a947;
+  border-color: #e9a947;
+}
+
 .hero .button.secondary {
   background: rgba(255, 255, 255, 0.95);
   border-color: rgba(255, 255, 255, 0.95);
