@@ -425,6 +425,65 @@ textarea:focus-visible {
 .shelter-card dd {
   overflow-wrap: anywhere;
 }
+.tracking-current {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.tracking-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: var(--petly-secondary);
+  color: var(--petly-primary-dark);
+  font-weight: var(--font-weight-bold);
+}
+.tracking-timeline {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+}
+.tracking-timeline__event {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.25rem 1fr;
+  gap: 0.75rem;
+  min-height: 5rem;
+  padding-bottom: 1.25rem;
+}
+.tracking-timeline__event:not(:last-child)::after {
+  position: absolute;
+  top: 1rem;
+  bottom: 0;
+  left: 0.48rem;
+  width: 2px;
+  background: var(--petly-border);
+  content: '';
+}
+.tracking-timeline__marker {
+  z-index: 1;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.15rem;
+  border: 3px solid var(--petly-muted);
+  border-radius: 50%;
+  background: var(--petly-surface);
+}
+.tracking-timeline__event--latest .tracking-timeline__marker {
+  border-color: var(--petly-primary);
+  background: var(--petly-primary);
+  box-shadow: 0 0 0 4px var(--petly-secondary);
+}
+.tracking-timeline__date {
+  margin: 0 0 0.15rem;
+  color: var(--petly-muted);
+  font-size: 0.9rem;
+}
+.tracking-timeline__reason {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
 /* Botones */
 .btn {
   display: inline-flex;
