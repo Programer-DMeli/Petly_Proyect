@@ -187,8 +187,8 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializador para crear/actualizar mascota."""
 
     foto_principal = serializers.ImageField(
-        required=False,
-        allow_null=True,
+        required=True,
+        allow_null=False,
         validators=[validate_image_file]
     )
 

@@ -158,12 +158,26 @@ class MascotaAPITest(TestCase):
         self._auth(self.user)
         response = self.client.get(f'/api/mascotas/{mascota_ajena.id}/')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_otro_albergue_no_puede_modificar_ni_eliminar_mascota(self):
+        Albergue.objects.create(usuario=self.other_user, nombre='A2', direccion='D2')
+        self._auth(self.other_user)
+        path = f'/api/mascotas/{self.mascota.id}/'
+        self.assertEqual(
+            self.client.patch(path, {'nombre': 'Tomada'}, format='json').status_code,
+            status.HTTP_404_NOT_FOUND,
+        )
+        self.assertEqual(self.client.delete(path).status_code, status.HTTP_404_NOT_FOUND)
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.nombre, 'Firulais')
+
     def test_foto_y_edad_invalidas_rechazadas(self):
         self._auth(self.user)
         payload = {"nombre": "Luna", "especie": "PERRO", "sexo": "HEMBRA", "edad_anos": 2}
-        # La foto es opcional al crear (se representa con null); el formato
-        # y el tamano si se validan cuando se envia.
-        self.assertEqual(self.client.post('/api/mascotas/',payload).status_code,201)
+        # La foto válida es obligatoria al crear y las edades respetan el rango.
+        self.assertEqual(self.client.post('/api/mascotas/', payload).status_code, 400)
+        payload["foto_principal"] = foto_prueba()
+        self.assertEqual(self.client.post('/api/mascotas/', payload).status_code, 201)
         payload["foto_principal"] = SimpleUploadedFile("fake.png",b"not an image",content_type="image/png")
         self.assertEqual(self.client.post('/api/mascotas/',payload).status_code,400)
         payload["foto_principal"] = foto_prueba(); payload["edad_meses"] = 12
