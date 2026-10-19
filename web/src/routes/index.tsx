@@ -12,6 +12,7 @@ import CatalogoPage, { DetallePage } from '../features/adoptante/catalogo/pages/
 import CuestionarioPage from '../features/adoptante/perfil/pages/CuestionarioPage';
 import SeguimientoSolicitudPage from '../features/adoptante/solicitudes/pages/SeguimientoSolicitudPage';
 import PanelAlberguePage from '../features/albergue/perfil/pages/PanelAlberguePage';
+import MascotasPanel from '../features/albergue/perfil/pages/MascotasPanel';
 import SolicitudesPage from '../features/albergue/perfil/pages/SolicitudesPage';
 import AlberguesAdminPage from '../features/administracion/albergues/pages/AlberguesAdminPage';
 
@@ -57,6 +58,16 @@ export const router = createBrowserRouter([
         ),
         children: [
           { index: true, element: <PanelAlberguePage /> },
+          {
+            path: 'mascotas',
+            element: (
+              <section className="card">
+                <h1>Mascotas registradas</h1>
+                <p className="muted">Consulta y administra las mascotas de tu albergue.</p>
+                <MascotasPanel />
+              </section>
+            ),
+          },
           { path: 'solicitudes', element: <SolicitudesPage /> },
         ],
       },

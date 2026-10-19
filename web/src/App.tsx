@@ -30,20 +30,22 @@ export default function App() {
     };
   }, []);
 
-  const menuItems = session?.identity.rol === 'ADOPTANTE'
-    ? [
-        { label: 'Catálogo de mascotas', to: '/adoptante/catalogo' },
-        { label: 'Mi cuestionario', to: '/adoptante/cuestionario' },
-        { label: 'Autorizaciones', to: '/adoptante/autorizaciones' },
-      ]
-    : session?.identity.rol === 'ALBERGUE'
+  const menuItems =
+    session?.identity.rol === 'ADOPTANTE'
       ? [
-          { label: 'Panel del albergue', to: '/albergue' },
-          { label: 'Solicitudes', to: '/albergue/solicitudes' },
+          { label: 'Catálogo de mascotas', to: '/adoptante/catalogo' },
+          { label: 'Mi cuestionario', to: '/adoptante/cuestionario' },
+          { label: 'Autorizaciones', to: '/adoptante/autorizaciones' },
         ]
-      : session?.identity.rol === 'ADMIN'
-        ? [{ label: 'Administración de albergues', to: '/administracion/albergues' }]
-        : [];
+      : session?.identity.rol === 'ALBERGUE'
+        ? [
+            { label: 'Panel del albergue', to: '/albergue' },
+            { label: 'Mascotas registradas', to: '/albergue/mascotas' },
+            { label: 'Solicitudes', to: '/albergue/solicitudes' },
+          ]
+        : session?.identity.rol === 'ADMIN'
+          ? [{ label: 'Administración de albergues', to: '/administracion/albergues' }]
+          : [];
 
   return (
     <div className={`app${isLanding ? ' app--landing' : ''}`}>
@@ -52,7 +54,9 @@ export default function App() {
           <img src="/images/petly-logo.png" alt="Petly" />
         </Link>
         <span className="app__tagline">
-          <span className="app__tagline-heart" aria-hidden="true">♥</span>
+          <span className="app__tagline-heart" aria-hidden="true">
+            ♥
+          </span>
           Encuentra a tu compañero
         </span>
         {session && (
@@ -67,12 +71,21 @@ export default function App() {
                 onClick={() => setOpenPanel(openPanel === 'navigation' ? null : 'navigation')}
               >
                 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
-                  <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path
+                    d="M4 6h16M4 12h16M4 18h16"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                 </svg>
                 <span>Menú</span>
               </button>
               {openPanel === 'navigation' && (
-                <nav className="header-popover header-popover--navigation" id="petly-navigation-menu" aria-label="Navegación principal">
+                <nav
+                  className="header-popover header-popover--navigation"
+                  id="petly-navigation-menu"
+                  aria-label="Navegación principal"
+                >
                   <p className="header-popover__eyebrow">Ir a</p>
                   {menuItems.map(item => (
                     <NavLink key={item.to} to={item.to} onClick={() => setOpenPanel(null)}>
@@ -100,11 +113,21 @@ export default function App() {
                 </span>
                 <span className="header-action__user-label">Mi cuenta</span>
                 <svg className="header-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none">
-                  <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="m6 9 6 6 6-6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </button>
               {openPanel === 'profile' && (
-                <div className="header-popover header-popover--profile" id="petly-user-menu" aria-label="Cuenta de usuario">
+                <div
+                  className="header-popover header-popover--profile"
+                  id="petly-user-menu"
+                  aria-label="Cuenta de usuario"
+                >
                   <p className="header-popover__eyebrow">Sesión iniciada como</p>
                   <p className="header-popover__email">{session.identity.correo}</p>
                   <span className="header-popover__role">{session.identity.rol}</span>
