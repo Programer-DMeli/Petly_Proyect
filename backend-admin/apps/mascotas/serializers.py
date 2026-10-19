@@ -175,10 +175,10 @@ class MascotaCompatibilidadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mascota
         fields = [
-            "id", "especie", "raza", "sexo", "tamanio", "edad_anos",
+            "id", "nombre", "especie", "raza", "sexo", "tamanio", "edad_anos",
             "edad_meses", "temperamento", "energia", "estado",
             "esterilizado", "vacunas_al_dia", "desparasitado",
-            "necesidades_especiales",
+            "necesidades_especiales", "actualizado_en",
         ]
         read_only_fields = fields
 

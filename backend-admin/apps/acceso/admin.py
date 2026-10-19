@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, AdoptanteProfile, Postulante, SolicitudAdopcion
+from .models import User, AdoptanteProfile, Postulante, SolicitudAdopcion, SolicitudEvento
 
 
 @admin.register(User)
@@ -167,3 +167,21 @@ class SolicitudAdopcionAdmin(admin.ModelAdmin):
     def cambiar_a_entregada(self, request, queryset):
         self._cambiar_estado_masivo(request, queryset, 'ENTREGADA', 'Entregada')
     cambiar_a_entregada.short_description = 'Cambiar a Entregada (Adopción finalizada)'
+
+
+@admin.register(SolicitudEvento)
+class SolicitudEventoAdmin(admin.ModelAdmin):
+    list_display = ("solicitud", "tipo", "estado_anterior", "estado_nuevo", "ocurrido_en", "actor")
+    list_filter = ("tipo", "visible_adoptante", "ocurrido_en")
+    search_fields = ("solicitud__postulante__documento_numero", "descripcion")
+    readonly_fields = tuple(field.name for field in SolicitudEvento._meta.fields)
+    ordering = ("-ocurrido_en",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

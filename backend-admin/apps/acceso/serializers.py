@@ -3,9 +3,9 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
-from .models import Postulante, SolicitudAdopcion, User, AdoptanteProfile, Autorizacion
+from .models import Postulante, SolicitudAdopcion, SolicitudEvento, User, AdoptanteProfile, Autorizacion
 from apps.mascotas.serializers import MascotaListSerializer
 from apps.mascotas.models import Mascota
 
@@ -189,6 +189,19 @@ class SolicitudEstadoSerializer(serializers.Serializer):
     def validate_estado(self, value):
         # Validación de transiciones se hace en la vista
         return value
+
+
+class SolicitudEventoSerializer(serializers.ModelSerializer):
+    tipo_display = serializers.CharField(source="get_tipo_display", read_only=True)
+    actor_nombre = serializers.CharField(source="actor.get_full_name", read_only=True, allow_null=True)
+
+    class Meta:
+        model = SolicitudEvento
+        fields = [
+            "id", "tipo", "tipo_display", "estado_anterior", "estado_nuevo",
+            "descripcion", "ocurrido_en", "actor_nombre",
+        ]
+        read_only_fields = fields
 
 
 class SolicitudCreateSerializer(serializers.ModelSerializer):
@@ -401,6 +414,7 @@ class AdoptanteProfileSerializer(serializers.ModelSerializer):
             "detalles_otras_mascotas", "experiencia_previa",
             "motivo_adopcion", "preferencia_especie", "preferencia_tamanio",
             "preferencia_edad", "cuestionario_completado", "fecha_cuestionario",
+            "compatibilidad_revision",
             "creado_en", "actualizado_en",
         ]
         read_only_fields = ["id", "user", "nombre_completo", "creado_en", "actualizado_en"]
@@ -431,6 +445,11 @@ class AdoptanteProfileCreateUpdateSerializer(serializers.ModelSerializer):
         if value is not None and value > 24:
             raise serializers.ValidationError("Las horas fuera de casa deben estar entre 0 y 24.")
         return value
+
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            bloqueado = AdoptanteProfile.objects.select_for_update().get(pk=instance.pk)
+            return super().update(bloqueado, validated_data)
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):

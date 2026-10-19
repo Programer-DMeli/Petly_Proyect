@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "apps.acceso",
     "apps.albergues",
     "apps.mascotas",
+    "apps.contratos",
 ]
 
 MIDDLEWARE = [
@@ -254,6 +255,21 @@ REST_FRAMEWORK = {
 # Spring Boot es la única autoridad de cuentas de negocio.
 SPRING_API_URL = os.getenv("SPRING_API_URL", "http://127.0.0.1:8080").rstrip("/")
 SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "test-secret-key-for-development-only-change-in-production")
+
+# US-03: secreto de servicio para el feed de datos vigentes de mascotas.
+PET_COMPATIBILITY_SERVICE_TOKEN = os.getenv("PET_COMPATIBILITY_SERVICE_TOKEN", "")
+
+# US-09: proveedor REST de firma electrónica (el proveedor concreto se configura por entorno).
+CONTRACT_SIGNATURE_API_URL = os.getenv("CONTRACT_SIGNATURE_API_URL", "")
+CONTRACT_SIGNATURE_API_TOKEN = os.getenv("CONTRACT_SIGNATURE_API_TOKEN", "")
+CONTRACT_SIGNATURE_WEBHOOK_SECRET = os.getenv("CONTRACT_SIGNATURE_WEBHOOK_SECRET", "")
+CONTRACT_SIGNATURE_TIMEOUT_SECONDS = int(os.getenv("CONTRACT_SIGNATURE_TIMEOUT_SECONDS", "10"))
+CONTRACT_SIGNATURE_PROVIDER = os.getenv("CONTRACT_SIGNATURE_PROVIDER", "generic-rest")
+CONTRACT_SIGNATURE_ADAPTER_CLASS = os.getenv(
+    "CONTRACT_SIGNATURE_ADAPTER_CLASS", "apps.contratos.providers.ProveedorFirmaREST"
+)
+ADOPTION_CONTRACT_TERMS = os.getenv("ADOPTION_CONTRACT_TERMS", "")
+PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", "http://localhost:8000")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- SimpleJWT (US-21) ---
