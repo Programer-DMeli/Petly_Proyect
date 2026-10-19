@@ -256,7 +256,14 @@ body {
 .app--landing .app__header {
   gap: 1rem;
   padding: 0.45rem clamp(1rem, 3.5vw, 3.5rem);
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--petly-primary);
+  border-bottom-color: var(--petly-primary-dark);
+}
+
+.app--landing .app__logo {
+  padding: 0.2rem 0.35rem;
+  border-radius: 12px;
+  background: #fff;
 }
 
 .app--landing .app__logo img {
