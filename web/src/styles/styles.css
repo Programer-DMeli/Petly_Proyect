@@ -49,24 +49,34 @@ body {
 
 .app__header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.75rem;
-  padding: 1rem 1.5rem;
-  background: var(--petly-primary);
-  color: #fff;
+  padding: 0.4rem 1.5rem;
+  background: var(--petly-surface);
+  color: var(--petly-primary-dark);
+  border-bottom: 1px solid var(--petly-border);
 }
 
 .app__logo {
-  font-family: var(--font-family);
-  font-size: 1.5rem;
-  font-weight: var(--font-weight-extrabold);
-  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+.app__logo img {
+  display: block;
+  width: auto;
+  height: 5.1rem;
+  max-width: 8.5rem;
+  object-fit: contain;
 }
 
 .app__tagline {
   font-family: var(--font-family);
-  font-size: 0.9rem;
-  opacity: 0.9;
+  font-size: 1rem;
+  color: var(--petly-primary-dark);
+  font-weight: var(--font-weight-semibold);
 }
 
 .app__main {
@@ -135,26 +145,121 @@ body {
 }
 
 .hero {
-  text-align: center;
-  padding: 2.5rem 1.5rem;
-  background: linear-gradient(160deg, var(--petly-primary) 0%, var(--petly-primary-dark) 100%);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
+  align-items: center;
+  text-align: left;
+  overflow: hidden;
+  min-height: clamp(27rem, 68vh, 43rem);
+  padding: clamp(2rem, 5vw, 5rem) clamp(1.5rem, 7vw, 7rem);
+  background: linear-gradient(140deg, rgba(22, 109, 86, 0.96), rgba(18, 86, 67, 0.94));
   color: #fff;
-  border-radius: 16px;
-  margin-bottom: 1.5rem;
+  border-radius: 24px;
+  margin-bottom: 2rem;
+  box-shadow: 0 1.25rem 3rem rgba(18, 86, 67, 0.16);
+}
+
+.hero__content {
+  position: relative;
+  z-index: 1;
+  max-width: 42rem;
+}
+
+.hero__eyebrow {
+  display: inline-flex;
+  margin-bottom: 1rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .hero h1 {
   margin: 0 0 1rem;
   font-family: var(--font-family);
-  font-size: 2.5rem;
+  font-size: clamp(2.4rem, 5vw, 4.8rem);
   font-weight: var(--font-weight-extrabold);
   line-height: 1.2;
 }
 
+.hero h1 span {
+  color: var(--petly-secondary);
+  white-space: nowrap;
+}
+
 .hero p {
-  margin: 0 auto;
+  margin: 0;
   max-width: 42rem;
   opacity: 0.95;
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+}
+
+.hero .actions {
+  gap: 0.9rem;
+  margin-top: 2rem;
+}
+
+.hero .button {
+  border-radius: 999px;
+  padding: 0.9rem 1.45rem;
+  font-size: 1rem;
+}
+
+.hero .button.secondary {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.95);
+}
+
+.hero__pets {
+  position: absolute;
+  z-index: 0;
+  right: -1%;
+  bottom: 0;
+  width: 56%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom right;
+  mix-blend-mode: lighten;
+}
+
+.app--landing {
+  background-color: #faf9f0;
+  background-image:
+    linear-gradient(rgba(250, 249, 240, 0.72), rgba(250, 249, 240, 0.72)),
+    url('/images/portada-pattern.webp');
+  background-repeat: no-repeat, repeat;
+  background-position: center, top left;
+  background-size: auto, 760px auto;
+}
+
+.app--landing .app__header {
+  gap: 1rem;
+  padding: 0.45rem clamp(1rem, 3.5vw, 3.5rem);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.app--landing .app__logo img {
+  height: clamp(5.2rem, 8vw, 6.5rem);
+}
+
+.app--landing .app__tagline {
+  font-size: clamp(1rem, 1.8vw, 1.4rem);
+}
+
+.app--landing .app__main {
+  max-width: 1600px;
+  padding: clamp(1.25rem, 3vw, 3rem);
+}
+
+.app--landing .app__footer {
+  background: rgba(255, 255, 255, 0.88);
 }
 
 .grid {
@@ -358,7 +463,66 @@ textarea:focus-visible {
     margin-left: 0;
   }
   .hero h1 {
-    font-size: 1.8rem;
+    font-size: clamp(2.1rem, 9vw, 2.8rem);
+  }
+  .app--landing .app__header {
+    gap: 0.65rem;
+    padding: 0.35rem 0.85rem;
+  }
+  .app--landing .app__logo img {
+    height: 4.5rem;
+  }
+  .app--landing .app__main {
+    padding: 1rem;
+  }
+  .hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+    min-height: 37rem;
+    padding: 2rem 1.35rem 14rem;
+  }
+  .hero__eyebrow {
+    margin-bottom: 0.8rem;
+    font-size: 0.72rem;
+  }
+  .hero p {
+    font-size: 1rem;
+  }
+  .hero .actions {
+    gap: 0.65rem;
+    margin-top: 1.35rem;
+  }
+  .hero .button {
+    padding: 0.75rem 1rem;
+    font-size: 0.88rem;
+  }
+  .hero__pets {
+    right: -7%;
+    width: 100%;
+    height: 58%;
+  }
+}
+
+@media (min-width: 601px) and (max-width: 1100px) {
+  .app--landing .app__main {
+    padding: 1.5rem;
+  }
+  .hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+    min-height: 39rem;
+    padding: 2.5rem 3rem 16rem;
+  }
+  .hero__content {
+    max-width: 62%;
+  }
+  .hero h1 {
+    font-size: clamp(2.6rem, 5.5vw, 3.8rem);
+  }
+  .hero__pets {
+    right: -2%;
+    width: 72%;
+    height: 65%;
   }
 }
 

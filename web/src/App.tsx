@@ -1,19 +1,21 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { getSession, subscribe, setSession } from './services/session';
 export default function App() {
   const session = useSyncExternalStore(subscribe, getSession);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isLanding = location.pathname === '/' && !session;
   useEffect(() => {
     if (!session) return;
     const timer = setTimeout(() => setSession(null), Math.max(0, session.expires - Date.now()));
     return () => clearTimeout(timer);
   }, [session]);
   return (
-    <div className="app">
+    <div className={`app${isLanding ? ' app--landing' : ''}`}>
       <header className="app__header">
         <Link className="app__logo" to="/">
-          ♧ Petly
+          <img src="/images/petly-logo.png" alt="Petly" />
         </Link>
         <span className="app__tagline">Encuentra a tu compañero</span>
         {session && (
