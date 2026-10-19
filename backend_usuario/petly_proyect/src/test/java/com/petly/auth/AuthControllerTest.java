@@ -119,6 +119,16 @@ class AuthControllerTest {
     }
 
     @Test
+    void registroPublicoNoPermiteAsignarRolesElevados() throws Exception {
+        mvc.perform(desde("10.0.0.9", "/api/auth/registro")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\":\"sin-admin\",\"correo\":\"sin-admin@petly.test\","
+                        + "\"password\":\"clave12345\",\"rol\":\"ADMIN\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.rol").value("ADOPTANTE"));
+    }
+
+    @Test
     void registroCorreoRepetido() throws Exception {
         registrar("10.0.0.2", "repetido@petly.test");
 

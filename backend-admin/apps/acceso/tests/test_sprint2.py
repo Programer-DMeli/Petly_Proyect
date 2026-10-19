@@ -15,7 +15,7 @@ class CompatibilidadMascotaAPITest(TestCase):
         owner = User.objects.create_user(username="albergue", password="pass", rol="ALBERGUE")
         user = User.objects.create_user(username="adoptante", password="pass", rol="ADOPTANTE")
         AdoptanteProfile.objects.create(user=user, cuestionario_completado=True,
-            tipo_vivienda="Casa", tiene_patio=True, horas_fuera=4)
+            tipo_vivienda="Casa", tiene_patio=True, horas_fuera=6)
         albergue = Albergue.objects.create(usuario=owner, nombre="Hogar", direccion="Calle 1")
         self.disponible = Mascota.objects.create(
             albergue=albergue, nombre="Luna", codigo="LUNA01",
@@ -183,5 +183,6 @@ class SolicitudAdopcionSprint2APITest(TestCase):
         solicitud = self._decision_request()
         self.client.force_authenticate(user=self.owner)
         path = f"/api/acceso/solicitudes/{solicitud.pk}/"
-        self.assertEqual(self.client.patch(path, {"estado": "APROBADA"}, format="json").status_code, 405)
-        self.assertEqual(self.client.delete(path).status_code, 405)
+        # La política de rol bloquea antes de resolver el método del ViewSet.
+        self.assertEqual(self.client.patch(path, {"estado": "APROBADA"}, format="json").status_code, 403)
+        self.assertEqual(self.client.delete(path).status_code, 403)
