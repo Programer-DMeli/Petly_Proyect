@@ -20,15 +20,15 @@ class PreviewPerfilRepository : PerfilRepository {
     fun reset() { saved = null }
 }
 class PreviewCatalogoRepository : CatalogoRepository {
-    // Datos ficticios. Las categorías son provisionales hasta el acuerdo con A y B.
     private val mascotas = listOf(
-        Mascota(1, "Luna", "Perro", "Mediano", 24, "Tranquilo", "Media", "Le gusta pasear y descansar acompañada.", "Refugio de prueba", "Lima", "Disponible"),
-        Mascota(2, "Milo", "Gato", "Pequeño", 8, "Por evaluar", "Por evaluar", "Su temperamento está pendiente de evaluación.", "Refugio de prueba", "Lima", "Disponible"),
-        Mascota(3, "Rocky", "Perro", "Grande", 48, "Activo", "Alta", "Disfruta de los paseos y el juego.", "Hogar de prueba", "Callao", "En Proceso"),
-        Mascota(4, "Nina", "Gato", "Pequeño", 36, "Tranquilo", "Baja", "Prefiere espacios tranquilos.", "Hogar de prueba", "Callao", "Disponible"),
-        Mascota(5, "Toby", "Perro", "Pequeño", 12, "Sociable", "Media", "Descripción ficticia para revisar la interfaz.", "Refugio de prueba", "Lima", "Adoptado"),
-        Mascota(6, "Kira", "Perro", "Mediano", 60, "Por evaluar", "Por evaluar", "Evaluación de comportamiento pendiente.", "Refugio de prueba", "Lima", "Disponible"),
-        Mascota(7, "Simba", "Gato", "Mediano", 18, "Sociable", "Media", "Información de muestra, sin una mascota real asociada.", "Hogar de prueba", "Callao", "Disponible")
+        Mascota(1, "Luna", "Perro", "Mediano", 24, "Tranquilo", "Media", "Le gusta pasear y descansar acompañada.", "Refugio Patitas Felices", "Lima", "Disponible", "https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=1000"),
+        Mascota(2, "Rocky", "Perro", "Grande", 36, "Activo", "Alta", "Fuerte, activo y muy juguetón.", "Refugio Patitas Felices", "Guadalajara", "Disponible", "https://images.unsplash.com/photo-1589941013453-ec89f33b5e95?q=80&w=1000"),
+        Mascota(3, "Milo", "Gato", "Pequeño", 8, "Tranquilo", "Baja", "Tierno gatito al que le encanta dormir.", "Hogar de prueba", "Lima", "Adoptado", "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=1000"),
+        Mascota(4, "Canela", "Perro", "Pequeño", 18, "Sociable", "Media", "Perrita alegre e ideal para familias.", "Refugio Patitas Felices", "Guadalajara", "Disponible", "https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=1000"),
+        Mascota(5, "Simba", "Gato", "Mediano", 18, "Sociable", "Media", "Gato curioso y amigable.", "Hogar de prueba", "Lima", "Disponible", "https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=1000"),
+        Mascota(6, "Bella", "Perro", "Grande", 48, "Tranquilo", "Baja", "Labradora noble y amorosa.", "Hogar de prueba", "Guadalajara", "Adoptado", "https://images.unsplash.com/photo-1534361960057-19889db9621e?q=80&w=1000"),
+        Mascota(7, "Thor", "Perro", "Mediano", 30, "Activo", "Alta", "Le encanta correr al aire libre.", "Refugio Patitas Felices", "Lima", "Disponible", "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?q=80&w=1000"),
+        Mascota(8, "Nala", "Gato", "Pequeño", 12, "Tranquilo", "Media", "Gatita siamesa muy cariñosa.", "Hogar de prueba", "Guadalajara", "Disponible", "https://images.unsplash.com/photo-1513245543132-31f507417b26?q=80&w=1000")
     )
     override suspend fun options() = CatalogoOptions(listOf("Perro", "Gato"), listOf("Pequeño", "Mediano", "Grande"), listOf("Tranquilo", "Activo", "Sociable", "Por evaluar"))
     override suspend fun search(filters: CatalogoFilters, page: Int, pageSize: Int): MascotaPage {

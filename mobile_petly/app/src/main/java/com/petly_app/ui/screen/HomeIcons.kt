@@ -11,6 +11,19 @@ import androidx.compose.ui.unit.dp
 internal object HomeIcons {
     private val line = SolidColor(Color.Black)
 
+    val Search = ImageVector.Builder("Search", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(11f, 19f)
+            curveTo(15.4183f, 19f, 19f, 15.4183f, 19f, 11f)
+            curveTo(19f, 6.58172f, 15.4183f, 3f, 11f, 3f)
+            curveTo(6.58172f, 3f, 3f, 6.58172f, 3f, 11f)
+            curveTo(3f, 15.4183f, 6.58172f, 19f, 11f, 19f)
+            close()
+            moveTo(21f, 21f)
+            lineTo(16.65f, 16.65f)
+        }
+    }.build()
+
     val Dog = ImageVector.Builder("DogIcon", 28.dp, 28.dp, 28f, 28f).apply {
         path(fill = null, stroke = line, strokeLineWidth = 2.2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
             moveTo(6f, 7f)
