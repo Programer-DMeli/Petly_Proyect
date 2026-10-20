@@ -4,7 +4,18 @@ data class Mascota(
     val id: Long, val nombre: String, val especie: String, val tamano: String,
     val edadMeses: Int?, val temperamento: String, val energia: String,
     val descripcion: String, val albergue: String, val ubicacion: String,
-    val estado: String, val fotografiaUrl: String? = null
+    val estado: String, val fotografiaUrl: String? = null,
+    val compatibilidad: Compatibilidad? = null
+)
+
+data class Compatibilidad(
+    val porcentaje: Int?, val puntaje: Int?, val cobertura: Int,
+    val datosInsuficientes: Boolean, val mensaje: String,
+    val versionReglas: String, val criterios: List<CriterioCompatibilidad>
+)
+data class CriterioCompatibilidad(
+    val id: String, val nombre: String, val peso: Int,
+    val puntaje: Int?, val aporte: Double?, val explicacion: String
 )
 
 data class CatalogoFilters(

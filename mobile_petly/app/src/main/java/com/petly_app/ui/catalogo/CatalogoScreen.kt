@@ -75,6 +75,12 @@ fun CatalogoScreen(
                                 SuggestionChip(onClick = {}, label = { Text(mascota.estado) })
                             }
                             Text("${mascota.especie} · ${mascota.edadMeses?.let { "$it meses" } ?: "Edad por evaluar"} · ${mascota.tamano}")
+                            mascota.compatibilidad?.let { score ->
+                                SuggestionChip(
+                                    onClick = {},
+                                    label = { Text(score.porcentaje?.let { "$it% compatible" } ?: "Información insuficiente") }
+                                )
+                            }
                             Text(mascota.albergue, color = MaterialTheme.colorScheme.primary)
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Button(onClick = { onDetail(mascota.id) }) { Text("Ver detalle") }
