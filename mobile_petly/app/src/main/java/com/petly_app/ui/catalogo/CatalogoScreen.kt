@@ -24,10 +24,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.petly_app.data.model.CatalogoFilters
 import com.petly_app.data.model.CatalogoOptions
 import com.petly_app.data.model.Mascota
+import com.petly_app.data.repository.FavoritosManager
 import com.petly_app.ui.auth.AccessIcons
 import com.petly_app.ui.common.PreviewNotice
 import com.petly_app.ui.screen.HomeIcons
@@ -51,6 +53,9 @@ fun CatalogoScreen(
     onProfile: () -> Unit,
     onExit: () -> Unit
 ) {
+    val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
+    var showFavoritesDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -59,7 +64,11 @@ fun CatalogoScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // 1. Header Superior
-        CatalogoHeaderBar(onProfile = onProfile, onExit = onExit, preview = preview)
+        CatalogoHeaderBar(
+            onProfile = onProfile,
+            onOpenFavorites = { showFavoritesDialog = true },
+            favoritesCount = favorites.size
+        )
 
         if (preview) {
             PreviewNotice(preview = true)
@@ -133,6 +142,8 @@ fun CatalogoScreen(
                     items(state.items, key = { it.id }) { mascota ->
                         PetCard(
                             mascota = mascota,
+                            isFavorite = favorites.any { it.id == mascota.id },
+                            onToggleFavorite = { FavoritosManager.toggleFavorite(mascota) },
                             onClick = { onDetail(mascota.id) }
                         )
                     }
@@ -140,13 +151,22 @@ fun CatalogoScreen(
             }
         }
     }
+
+    if (showFavoritesDialog) {
+        FavoritosDialog(
+            favorites = favorites,
+            onDismiss = { showFavoritesDialog = false },
+            onRemoveFavorite = { FavoritosManager.removeFavorite(it) },
+            onDetailPet = onDetail
+        )
+    }
 }
 
 @Composable
 private fun CatalogoHeaderBar(
     onProfile: () -> Unit,
-    onExit: () -> Unit,
-    preview: Boolean
+    onOpenFavorites: () -> Unit,
+    favoritesCount: Int
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -192,14 +212,28 @@ private fun CatalogoHeaderBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            IconButton(onClick = { }) {
-                Icon(
-                    imageVector = HomeIcons.HeartOutlined,
-                    contentDescription = "Favoritos",
-                    tint = CatalogDarkGreen,
-                    modifier = Modifier.size(24.dp)
-                )
+            BadgedBox(
+                badge = {
+                    if (favoritesCount > 0) {
+                        Badge(
+                            containerColor = Color(0xFFE53935),
+                            contentColor = Color.White
+                        ) {
+                            Text("$favoritesCount")
+                        }
+                    }
+                }
+            ) {
+                IconButton(onClick = onOpenFavorites) {
+                    Icon(
+                        imageVector = if (favoritesCount > 0) HomeIcons.HeartFilled else HomeIcons.HeartOutlined,
+                        contentDescription = "Favoritos",
+                        tint = if (favoritesCount > 0) Color(0xFFE53935) else CatalogDarkGreen,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
+
             Surface(
                 shape = CircleShape,
                 color = Color(0xFFE4F5ED),
@@ -291,7 +325,7 @@ private fun FilterSection(
             }
         }
 
-        // Fila 2: Tamaño (si hay opciones disponibles)
+        // Fila 2: Tamaño
         options?.tamanos?.let { tamanos ->
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -326,7 +360,7 @@ private fun FilterSection(
             }
         }
 
-        // Fila 3: Temperamento (si hay opciones disponibles)
+        // Fila 3: Temperamento
         options?.temperamentos?.let { temperamentos ->
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -393,7 +427,9 @@ private fun FilterPill(
 @Composable
 fun PetCard(
     mascota: Mascota,
-    onClick: () -> Unit
+    isFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
+    onClick: () -> Unit = {}
 ) {
     Card(
         shape = RoundedCornerShape(20.dp),
@@ -420,6 +456,26 @@ fun PetCard(
                         .fillMaxSize()
                         .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                 )
+
+                // Icono Favorito superior izquierda (US-14)
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.88f),
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                        .size(32.dp)
+                        .clickable { onToggleFavorite() }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (isFavorite) HomeIcons.HeartFilled else HomeIcons.HeartOutlined,
+                            contentDescription = if (isFavorite) "Quitar de favoritos" else "Guardar en favoritos",
+                            tint = if (isFavorite) Color(0xFFE53935) else CatalogDarkGreen,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
 
                 // Badge Flotante superior derecha
                 val (badgeBg, badgeText) = when (mascota.estado.lowercase()) {

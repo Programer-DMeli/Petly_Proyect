@@ -21,8 +21,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.petly_app.data.repository.FavoritosManager
 import com.petly_app.ui.auth.AccessIcons
+import com.petly_app.ui.catalogo.FavoritosDialog
 
 val ScreenMintBackground = Color(0xFFEAFAF1)
 val PetlyDarkGreen = Color(0xFF13614B)
@@ -36,6 +39,9 @@ fun HomeScreen(
     onNavigateProfile: () -> Unit = {},
     onNavigateDetail: (Long) -> Unit = {}
 ) {
+    val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
+    var showFavoritesDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -45,7 +51,11 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         // TOP HEADER BAR
-        HomeHeaderBar(onNavigateProfile = onNavigateProfile)
+        HomeHeaderBar(
+            onNavigateProfile = onNavigateProfile,
+            onOpenFavorites = { showFavoritesDialog = true },
+            favoritesCount = favorites.size
+        )
 
         // GREETING SECTION
         GreetingSection()
@@ -61,10 +71,23 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
     }
+
+    if (showFavoritesDialog) {
+        FavoritosDialog(
+            favorites = favorites,
+            onDismiss = { showFavoritesDialog = false },
+            onRemoveFavorite = { FavoritosManager.removeFavorite(it) },
+            onDetailPet = onNavigateDetail
+        )
+    }
 }
 
 @Composable
-private fun HomeHeaderBar(onNavigateProfile: () -> Unit) {
+private fun HomeHeaderBar(
+    onNavigateProfile: () -> Unit,
+    onOpenFavorites: () -> Unit,
+    favoritesCount: Int
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -109,14 +132,28 @@ private fun HomeHeaderBar(onNavigateProfile: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            IconButton(onClick = { }) {
-                Icon(
-                    imageVector = HomeIcons.HeartOutlined,
-                    contentDescription = "Favoritos",
-                    tint = PetlyDarkGreen,
-                    modifier = Modifier.size(24.dp)
-                )
+            BadgedBox(
+                badge = {
+                    if (favoritesCount > 0) {
+                        Badge(
+                            containerColor = Color(0xFFE53935),
+                            contentColor = Color.White
+                        ) {
+                            Text("$favoritesCount")
+                        }
+                    }
+                }
+            ) {
+                IconButton(onClick = onOpenFavorites) {
+                    Icon(
+                        imageVector = if (favoritesCount > 0) HomeIcons.HeartFilled else HomeIcons.HeartOutlined,
+                        contentDescription = "Favoritos",
+                        tint = if (favoritesCount > 0) Color(0xFFE53935) else PetlyDarkGreen,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
+
             // Profile badge / avatar
             Surface(
                 shape = CircleShape,

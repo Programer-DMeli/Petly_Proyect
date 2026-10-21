@@ -166,4 +166,18 @@ internal object HomeIcons {
             close()
         }
     }.build()
+
+    val HeartFilled = ImageVector.Builder("HeartFilled", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = SolidColor(Color(0xFFE53935))) {
+            moveTo(12f, 21.35f)
+            lineTo(10.55f, 20.03f)
+            curveTo(5.4f, 15.36f, 2f, 12.28f, 2f, 8.5f)
+            curveTo(2f, 5.42f, 4.42f, 3f, 7.5f, 3f)
+            curveTo(9.24f, 3f, 10.91f, 3.81f, 12f, 5.09f)
+            curveTo(13.09f, 3.81f, 14.76f, 3f, 16.5f, 3f)
+            curveTo(19.58f, 3f, 22f, 5.42f, 22f, 8.5f)
+            curveTo(22f, 12.28f, 18.6f, 15.36f, 13.45f, 20.04f)
+            close()
+        }
+    }.build()
 }
