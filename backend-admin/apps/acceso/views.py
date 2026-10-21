@@ -18,7 +18,7 @@ import time
 
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
-from .models import Postulante, SolicitudAdopcion, User, AdoptanteProfile, Autorizacion
+from .models import Postulante, SolicitudAdopcion, SolicitudEvento, User, AdoptanteProfile, Autorizacion
 from .solicitudes import cambiar_estado_solicitud
 from .serializers import (
     PostulanteSerializer,
@@ -70,8 +70,12 @@ class SolicitudAdopcionPermission(IsAlbergueStaffOrReadOnly):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
-        if request.method == "POST":
+        if getattr(view, "action", None) == "create":
             return request.user.rol == User.Rol.ADOPTANTE
+        if getattr(view, "action", None) in {"cambiar_estado"}:
+            return request.user.rol == User.Rol.ALBERGUE or request.user.is_staff
+        if request.method not in permissions.SAFE_METHODS:
+            return False
         return True
 
 
@@ -99,6 +103,9 @@ class PostulanteViewSet(viewsets.ModelViewSet):
 
         if user.is_staff:
             return qs
+
+        if user.rol == User.Rol.ADOPTANTE:
+            return qs.filter(adoptante=user)
 
         try:
             albergue = user.albergue
@@ -153,7 +160,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
     """CRUD de solicitudes de adopción + cambio de estado."""
 
     queryset = SolicitudAdopcion.objects.select_related(
-        "postulante", "mascota", "albergue", "revisado_por"
+        "postulante", "adoptante", "mascota", "albergue", "revisado_por"
     ).all()
     permission_classes = [permissions.IsAuthenticated, SolicitudAdopcionPermission]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -186,7 +193,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Recheck under a row lock so concurrent submissions cannot both pass validation.
         mascota_id = serializer.validated_data["mascota"].pk
-        postulante = serializer.validated_data["postulante"]
+        adoptante = self.request.user
         with transaction.atomic():
             mascota = Mascota.objects.select_for_update().filter(pk=mascota_id).first()
             if mascota is None:
@@ -196,13 +203,20 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             if not mascota.albergue.activo:
                 raise ValidationError({"mascota": "El albergue de esta mascota no está activo."})
             activa = SolicitudAdopcion.objects.filter(
-                postulante=postulante,
+                adoptante=adoptante,
                 mascota=mascota,
-                estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.EN_REVISION],
+                estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.OBSERVADA, SolicitudAdopcion.Estado.EN_REVISION],
             ).exists()
             if activa:
                 raise ValidationError({"non_field_errors": ["Ya existe una solicitud activa para esta mascota."]})
-            serializer.save(mascota=mascota, albergue=mascota.albergue)
+            solicitud = serializer.save(mascota=mascota, albergue=mascota.albergue, adoptante=adoptante)
+            SolicitudEvento.objects.create(
+                solicitud=solicitud,
+                tipo=SolicitudEvento.Tipo.SOLICITUD_CREADA,
+                estado_nuevo=solicitud.estado,
+                descripcion="Solicitud enviada por el adoptante.",
+                actor=adoptante,
+            )
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -229,10 +243,38 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         nuevo_estado = serializer.validated_data["estado"]
         observaciones = serializer.validated_data.get("observaciones_revision", "")
+        if nuevo_estado == SolicitudAdopcion.Estado.APROBADA:
+            if solicitud.adoptante_id is None:
+                raise ValidationError({"estado": "La solicitud no tiene una identidad de adoptante verificable."})
+            from .authentication import spring_get
+            try:
+                perfil = spring_get(f"/api/albergue/perfiles/{solicitud.adoptante.spring_id}", request.auth)
+            except Exception as error:
+                raise ValidationError({"estado": "No se pudo comprobar el consentimiento vigente del adoptante."}) from error
+            if not perfil.get("finalizado"):
+                raise ValidationError({"estado": "El perfil del adoptante no está finalizado."})
         solicitud = cambiar_estado_solicitud(
             solicitud.pk, nuevo_estado, request.user, observaciones
         )
         return Response(SolicitudAdopcionSerializer(solicitud, context={"request": request}).data)
+
+    @action(detail=True, methods=["get"], url_path="seguimiento")
+    def seguimiento(self, request, pk=None):
+        solicitud = self.get_object()
+        eventos = solicitud.eventos.all()
+        if request.user.rol == User.Rol.ADOPTANTE:
+            eventos = eventos.filter(visible_adoptante=True)
+        return Response({
+            "solicitudId": solicitud.pk,
+            "estadoActual": solicitud.estado,
+            "eventos": [{
+                "tipo": event.tipo,
+                "estadoAnterior": event.estado_anterior or None,
+                "estadoNuevo": event.estado_nuevo,
+                "descripcion": event.descripcion,
+                "ocurridoEn": event.ocurrido_en,
+            } for event in eventos],
+        })
 
     @action(detail=False, methods=["get"], url_path="estadisticas")
     def estadisticas(self, request):
@@ -241,7 +283,8 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         stats = {
             "total": qs.count(),
             "pendientes": qs.filter(estado=SolicitudAdopcion.Estado.PENDIENTE).count(),
-            "en_revision": qs.filter(estado=SolicitudAdopcion.Estado.EN_REVISION).count(),
+            "en_revision": qs.filter(estado__in=[SolicitudAdopcion.Estado.OBSERVADA, SolicitudAdopcion.Estado.EN_REVISION]).count(),
+            "observadas": qs.filter(estado=SolicitudAdopcion.Estado.OBSERVADA).count(),
             "aprobadas": qs.filter(estado=SolicitudAdopcion.Estado.APROBADA).count(),
             "rechazadas": qs.filter(estado=SolicitudAdopcion.Estado.RECHAZADA).count(),
             "canceladas": qs.filter(estado=SolicitudAdopcion.Estado.CANCELADA).count(),

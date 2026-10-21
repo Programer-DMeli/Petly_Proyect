@@ -4,15 +4,18 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.mascotas.models import Mascota
-from .models import SolicitudAdopcion
+from .models import SolicitudAdopcion, SolicitudEvento
 
 
 TRANSICIONES = {
     SolicitudAdopcion.Estado.PENDIENTE: [
-        SolicitudAdopcion.Estado.EN_REVISION,
+        SolicitudAdopcion.Estado.OBSERVADA,
+        SolicitudAdopcion.Estado.APROBADA,
         SolicitudAdopcion.Estado.RECHAZADA,
+        SolicitudAdopcion.Estado.EN_REVISION,
         SolicitudAdopcion.Estado.CANCELADA,
     ],
+    SolicitudAdopcion.Estado.OBSERVADA: [SolicitudAdopcion.Estado.APROBADA, SolicitudAdopcion.Estado.RECHAZADA],
     SolicitudAdopcion.Estado.EN_REVISION: [
         SolicitudAdopcion.Estado.APROBADA,
         SolicitudAdopcion.Estado.RECHAZADA,
@@ -44,8 +47,10 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         })
 
     ahora = timezone.now()
+    if nuevo_estado in (SolicitudAdopcion.Estado.OBSERVADA, SolicitudAdopcion.Estado.RECHAZADA) and not (observaciones or "").strip():
+        raise ValidationError({"observaciones_revision": "Indica el motivo de la observación o el rechazo."})
     if nuevo_estado == SolicitudAdopcion.Estado.APROBADA:
-        if mascota.estado not in (Mascota.Estado.DISPONIBLE, Mascota.Estado.EN_PROCESO):
+        if mascota.estado != Mascota.Estado.DISPONIBLE:
             raise ValidationError({"estado": "La mascota ya no está disponible para aprobación."})
         otra_aprobada = SolicitudAdopcion.objects.filter(
             mascota=mascota,
@@ -54,6 +59,7 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         if otra_aprobada:
             raise ValidationError({"estado": "Ya existe otra solicitud aprobada para esta mascota."})
 
+    estado_anterior = solicitud.estado
     solicitud.estado = nuevo_estado
     solicitud.revisado_por = usuario
     solicitud.fecha_revision = ahora
@@ -83,4 +89,19 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         "estado", "revisado_por", "fecha_revision", "observaciones_revision",
         "fecha_entrega", "actualizado_en",
     ])
+    SolicitudEvento.objects.create(
+        solicitud=solicitud,
+        tipo={
+            SolicitudAdopcion.Estado.OBSERVADA: SolicitudEvento.Tipo.OBSERVADA,
+            SolicitudAdopcion.Estado.EN_REVISION: SolicitudEvento.Tipo.OBSERVADA,
+            SolicitudAdopcion.Estado.APROBADA: SolicitudEvento.Tipo.APROBADA,
+            SolicitudAdopcion.Estado.RECHAZADA: SolicitudEvento.Tipo.RECHAZADA,
+            SolicitudAdopcion.Estado.CANCELADA: SolicitudEvento.Tipo.CANCELADA,
+            SolicitudAdopcion.Estado.ENTREGADA: SolicitudEvento.Tipo.ENTREGADA,
+        }.get(nuevo_estado, SolicitudEvento.Tipo.SOLICITUD_CREADA),
+        estado_anterior=estado_anterior,
+        estado_nuevo=nuevo_estado,
+        descripcion=(observaciones or "").strip(),
+        actor=usuario,
+    )
     return solicitud

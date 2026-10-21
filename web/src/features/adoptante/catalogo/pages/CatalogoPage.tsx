@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
-import { spring, mediaUrl, errorMessage } from '../../../../services/http';
+import { spring, mediaUrl, errorMessage, json } from '../../../../services/http';
 import type { Pet } from '../../../../services/types';
 interface Filters {
   search: string;
@@ -180,6 +180,11 @@ export default function CatalogoPage() {
                 <p>
                   {p.temperamento} · {p.albergue}
                 </p>
+                {p.compatibilidad && <p className="badge" aria-label="Compatibilidad">
+                  {p.compatibilidad.porcentaje === null
+                    ? 'Información insuficiente'
+                    : `${p.compatibilidad.porcentaje}% compatible`}
+                </p>}
                 <Link className="button" to={`/adoptante/catalogo/${p.id}`}>
                   Ver detalle
                 </Link>
@@ -209,6 +214,9 @@ export function DetallePage() {
   const { id } = useParams();
   const [pet, setPet] = useState<Pet | null>(null);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [requestId, setRequestId] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     setError('');
     try {
@@ -220,6 +228,19 @@ export function DetallePage() {
   useEffect(() => {
     void load();
   }, [load]);
+  async function sendRequest(form: HTMLFormElement) {
+    if (!pet) return;
+    setBusy(true); setError(''); setMessage('');
+    const data = new FormData(form);
+    try {
+      const result = await spring<{ id: number }>('/api/solicitudes', {
+        method: 'POST', body: json({ mascota: pet.id, mensaje_postulante: String(data.get('mensaje') ?? ''), respuestas_cuestionario: {} }),
+      });
+      setRequestId(result.id);
+      setMessage(`Solicitud #${result.id} enviada. El envío no reserva la mascota.`);
+    } catch (e) { setError(errorMessage(e)); }
+    finally { setBusy(false); }
+  }
   return (
     <section className="card">
       <Link to="/adoptante/catalogo">Volver al catálogo</Link>
@@ -244,6 +265,16 @@ export function DetallePage() {
           <h2>{pet.albergue}</h2>
           <p>{pet.ubicacion}</p>
           <Link to="/adoptante/autorizaciones">Administrar autorizaciones de mi perfil</Link>
+          <h2>Enviar solicitud de adopción</h2>
+          <p className="muted">Necesitas un perfil finalizado y autorización vigente para este albergue. Enviar la solicitud no reserva la mascota.</p>
+          <Feedback error={error} success={message} />
+          {requestId !== null && <Link to={`/adoptante/solicitudes/${requestId}`}>Consultar línea de tiempo</Link>}
+          <form onSubmit={event => { event.preventDefault(); void sendRequest(event.currentTarget); }}>
+            <label>Mensaje para el albergue<textarea name="mensaje" maxLength={2000} /></label>
+            <button disabled={busy || pet.estado !== 'Disponible'}>
+              {busy ? 'Enviando…' : 'Enviar solicitud'}
+            </button>
+          </form>
         </>
       ) : (
         <button onClick={() => void load()}>Cargar detalle</button>

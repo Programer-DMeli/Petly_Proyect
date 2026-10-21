@@ -63,6 +63,7 @@ springdoc:
   packages-to-scan: com.petly
 
 petly:
+  django-api-base-url: ${DJANGO_API_BASE_URL:http://localhost:8000}
   web-reset-link-base: ${WEB_RESET_LINK_BASE:http://localhost:5173/recuperacion}
   reset-link-base: ${RESET_LINK_BASE:petly://recuperacion}
   media-base-url: ${MEDIA_BASE_URL:http://10.0.2.2:8000/media/}

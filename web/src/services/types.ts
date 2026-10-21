@@ -20,6 +20,37 @@ export interface Pet {
   ubicacion: string;
   estado: string;
   fotografiaUrl: string | null;
+  compatibilidad?: {
+    porcentaje: number | null;
+    puntaje: number | null;
+    cobertura: number;
+    datosInsuficientes: boolean;
+    mensaje: string;
+    versionReglas: string;
+    criterios: Array<{ id: string; nombre: string; peso: number; puntaje: number | null; aporte: number | null; explicacion: string }>;
+  };
+}
+export interface SolicitudAdopcion {
+  id: number;
+  estado: string;
+  fecha_solicitud: string;
+  mascota_nombre: string;
+}
+export interface SeguimientoSolicitud {
+  solicitudId: number;
+  estadoActual: string;
+  eventos: Array<{ estadoAnterior: string | null; estadoNuevo: string; descripcion: string; ocurridoEn: string }>;
+}
+export interface ContratoAdopcion {
+  public_id: string;
+  solicitud_id: number;
+  estado: string;
+  estado_display: string;
+  url_firma: string;
+  documento_disponible: boolean;
+  generado_en: string;
+  firmado_en: string | null;
+  error_integracion: string;
 }
 export interface Shelter {
   id: number;

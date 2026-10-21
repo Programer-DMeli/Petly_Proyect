@@ -10,6 +10,7 @@ export default function AdoptanteLayout() {
         <NavLink to="/adoptante/catalogo">Catálogo</NavLink>
         <NavLink to="/adoptante/cuestionario">Cuestionario</NavLink>
         <NavLink to="/adoptante/autorizaciones">Autorizaciones</NavLink>
+        <NavLink to="/adoptante/solicitudes">Mis solicitudes</NavLink>
       </nav>
       <Outlet />
     </div>

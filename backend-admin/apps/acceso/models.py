@@ -270,6 +270,7 @@ class SolicitudAdopcion(models.Model):
 
     class Estado(models.TextChoices):
         PENDIENTE = "PENDIENTE", "Pendiente"
+        OBSERVADA = "OBSERVADA", "Observada"
         EN_REVISION = "EN_REVISION", "En Revisión"
         APROBADA = "APROBADA", "Aprobada"
         RECHAZADA = "RECHAZADA", "Rechazada"
@@ -282,6 +283,16 @@ class SolicitudAdopcion(models.Model):
         on_delete=models.CASCADE,
         related_name="solicitudes",
         verbose_name="Postulante",
+        null=True,
+        blank=True,
+    )
+    adoptante = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="solicitudes_adopcion",
+        verbose_name="Cuenta adoptante",
+        null=True,
+        blank=True,
     )
     mascota = models.ForeignKey(
         "mascotas.Mascota",
@@ -336,23 +347,59 @@ class SolicitudAdopcion(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["postulante", "mascota"],
-                condition=models.Q(estado__in=["PENDIENTE", "EN_REVISION"]),
+                condition=models.Q(estado__in=["PENDIENTE", "OBSERVADA", "EN_REVISION"]),
                 name="unique_pending_solicitud_per_mascota"
+            ),
+            models.UniqueConstraint(
+                fields=["adoptante", "mascota"],
+                condition=models.Q(estado__in=["PENDIENTE", "OBSERVADA", "EN_REVISION"]),
+                name="unique_active_adoptante_mascota",
             ),
         ]
 
     def __str__(self):
-        return f"Solicitud #{self.id} - {self.postulante.nombre_completo} -> {self.mascota.nombre} ({self.get_estado_display()})"
+        titular = self.postulante.nombre_completo if self.postulante_id else (self.adoptante.email if self.adoptante_id else "Adoptante")
+        return f"Solicitud #{self.id} - {titular} -> {self.mascota.nombre} ({self.get_estado_display()})"
 
     @property
     def get_valid_transitions(self):
         """Retorna lista de estados válidos para transición desde el actual."""
         transiciones = {
-            self.Estado.PENDIENTE: [self.Estado.EN_REVISION, self.Estado.RECHAZADA, self.Estado.CANCELADA],
+            self.Estado.PENDIENTE: [self.Estado.OBSERVADA, self.Estado.EN_REVISION, self.Estado.APROBADA, self.Estado.RECHAZADA, self.Estado.CANCELADA],
+            self.Estado.OBSERVADA: [self.Estado.APROBADA, self.Estado.RECHAZADA, self.Estado.CANCELADA],
             self.Estado.EN_REVISION: [self.Estado.APROBADA, self.Estado.RECHAZADA, self.Estado.PENDIENTE],
-            self.Estado.APROBADA: [self.Estado.ENTREGADA, self.Estado.RECHAZADA],
+            self.Estado.APROBADA: [],
             self.Estado.RECHAZADA: [],
             self.Estado.CANCELADA: [],
             self.Estado.ENTREGADA: [],
         }
         return transiciones.get(self.estado, [])
+
+
+class SolicitudEvento(models.Model):
+    """Append-only audit trail used by the applicant timeline."""
+
+    class Tipo(models.TextChoices):
+        SOLICITUD_CREADA = "SOLICITUD_CREADA", "Solicitud creada"
+        OBSERVADA = "OBSERVADA", "Solicitud observada"
+        APROBADA = "APROBADA", "Solicitud aprobada"
+        RECHAZADA = "RECHAZADA", "Solicitud rechazada"
+        CANCELADA = "CANCELADA", "Solicitud cancelada"
+        CONTRATO_GENERADO = "CONTRATO_GENERADO", "Contrato generado"
+        CONTRATO_ENVIADO = "CONTRATO_ENVIADO", "Contrato enviado a firma"
+        CONTRATO_FIRMADO = "CONTRATO_FIRMADO", "Contrato firmado"
+        CONTRATO_RECHAZADO = "CONTRATO_RECHAZADO", "Contrato rechazado"
+        CONTRATO_EXPIRADO = "CONTRATO_EXPIRADO", "Contrato expirado"
+        ENTREGADA = "ENTREGADA", "Mascota entregada"
+
+    solicitud = models.ForeignKey(SolicitudAdopcion, on_delete=models.CASCADE, related_name="eventos")
+    tipo = models.CharField(max_length=24, choices=Tipo.choices)
+    estado_anterior = models.CharField(max_length=20, blank=True)
+    estado_nuevo = models.CharField(max_length=20)
+    descripcion = models.TextField(blank=True)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    visible_adoptante = models.BooleanField(default=True)
+    ocurrido_en = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["ocurrido_en", "id"]
