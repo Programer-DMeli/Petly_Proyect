@@ -102,7 +102,7 @@ Orden estable por ID ascendente. Una página fuera de resultados devuelve lista 
 }
 ```
 
-Django guarda años y resto de meses (0–11); Spring devuelve `años*12+meses`. Si ambos son null, edad desconocida (null); se muestra Por evaluar y se excluye de filtros de edad. No se inventan edades ni temperamentos. Los tres estados son visibles para informar disponibilidad; no se implementan solicitudes. Solo albergues activos aparecen.
+Django guarda años y resto de meses (0–11); Spring devuelve `años*12+meses`. Si ambos son null, edad desconocida (null); se muestra Por evaluar y se excluye de filtros de edad. No se inventan edades ni temperamentos. Las recomendaciones solo incluyen mascotas disponibles de albergues activos.
 
 Fotografía: una JPEG/PNG real, máximo 5 MiB, subida multipart a Django; se comprueban formato y contenido. Archivos privados quedan fuera de Git. URL pública de la foto de catálogo se construye desde `MEDIA_BASE_URL`, accesible desde el cliente. En teléfono físico usar IP LAN, no 10.0.2.2. Django sirve `/media/` con DEBUG; el servidor definitivo de medios queda fuera de esta entrega local. Fotos existentes ausentes se representan con null.
 
@@ -122,13 +122,41 @@ ALBERGUE:
 
 Spring comprueba relación `acceso_user.spring_id → albergue.usuario_id` y consentimiento vigente. Sin autorización, otro albergue o tras revocación: 403. Solo devuelve las respuestas del cuestionario; no incluye correo, contraseñas, token ni historial. Revocar impide consultas futuras; no puede retirar información que el albergue ya haya visto. Android y React piden confirmación expresa antes de autorizar. React no conserva el perfil consultado al actualizar la lista; cada consulta vuelve a comprobar el consentimiento. Esto no crea una solicitud.
 
-Las rutas antiguas `/api/acceso/auth/**`, postulantes, solicitudes y autorización provisional responden 410; se conserva código previo fuera del enrutamiento para revisión del equipo. El admin Django mantiene acceso técnico interno, separado de cuentas Petly.
+Las rutas antiguas `/api/acceso/auth/**`, postulantes y autorización provisional responden 410; el flujo de solicitudes Sprint 2 se describe abajo. El admin Django mantiene acceso técnico interno, separado de cuentas Petly.
 
 ## Django: administración e integración
 
 API existente: `/api/albergues/` (perfil/infrastructura del propietario) y `/api/mascotas/` (CRUD del propietario), con JWT Spring y control de rol. Crear una mascota genera un código interno y asigna su albergue desde la identidad, no desde datos del cliente. POST `/api/mascotas/{id}/cambiar-estado/`, JSON `{"estado":"EN_PROCESO"}`: permite corrección manual entre los tres estados. Adoptado registra fecha si no existía; cambiar a otro estado limpia esa fecha. Repetir el mismo estado es idempotente. Otro propietario recibe 404. El catálogo refleja el cambio al consultar de nuevo; no utiliza push.
 
 React integra US-46/US-11/US-13 por estas APIs. Por solicitud posterior del usuario, ADMIN realiza CRUD de albergues y gestión institucional/infraestructura sin is_staff. Las cuentas se crean mediante el procedimiento del equipo. ADMIN no utiliza el CRUD de mascotas del propietario. ALBERGUE consulta y modifica sus propios recursos. ADOPTANTE no accede a estas APIs administrativas. Los filtros de edad Django edad_min_meses/edad_max_meses usan años*12+meses y rechazan valores/rangos inválidos. La revisión cruzada sigue pendiente. OpenAPI: Spring `/v3/api-docs` y `/swagger-ui.html`; Django `/api/schema/` y `/api/docs/`. Este contrato escrito cubre también las validaciones de perfil que dependen del contenido PATCH.
+
+## Sprint 2: compatibilidad, solicitudes y adopción
+
+### Compatibilidad y clasificación — US-01, US-02 y US-03
+
+- `GET /api/catalogo` conserva los filtros y la paginación; para `ADOPTANTE` usa el adoptante autenticado, calcula el puntaje en Spring y ordena por puntaje descendente. En empate, `id` ascendente. El objeto `compatibilidad` contiene `porcentaje` (null cuando faltan datos), `cobertura`, `datosInsuficientes`, `mensaje` y `versionReglas`; la lista también incluye `orden` y `versionReglas`.
+- Solo se consideran mascotas `Disponible` de albergues activos. No se expone el perfil del adoptante en la respuesta.
+- Reglas actuales (`petly-compat-v1`): vivienda 30%, rutina 35%, convivencia 35%. Una respuesta faltante en el perfil o en atributos requeridos produce información insuficiente; no se redistribuye el peso faltante. Los criterios y ejemplos están en `docs/sprint-02-us01-us29.md`.
+- El servicio recalcula en cada consulta. Guardar el perfil invalida naturalmente el resultado anterior; un perfil incompleto no genera recomendación numérica. El puntaje orienta y no decide una solicitud.
+
+### Solicitudes, decisiones y eventos — US-06, US-07 y US-08
+
+- `POST /api/solicitudes` (Spring, solo `ADOPTANTE`) recibe `{"mascota":1,"mensaje_postulante":"...","respuestas_cuestionario":{}}`. Spring verifica perfil finalizado, mascota disponible, albergue activo y consentimiento vigente para ese albergue; deriva el titular del JWT. Django persiste solicitud `PENDIENTE` con identificador, titular, mascota y fecha, y añade evento de envío. La respuesta confirma la creación; enviar no reserva la mascota.
+- Se rechazan duplicados activos (`PENDIENTE`, `OBSERVADA`, `EN_REVISION`), identidad de otra persona, perfil no finalizado, consentimiento ausente/revocado, albergue inactivo o mascota no disponible. Django aplica restricciones de unicidad y vuelve a verificar disponibilidad bajo bloqueo.
+- `GET /api/solicitudes` limita resultados al titular adoptante o al albergue propietario. `GET /api/solicitudes/{id}/seguimiento` devuelve eventos persistidos, del más antiguo al más reciente; cada evento incluye tipo, fecha, motivo y estado. Otro adoptante obtiene 404.
+- El albergue propietario evalúa mediante `POST /api/acceso/solicitudes/{id}/cambiar-estado/` con `{"estado":"OBSERVADA|RECHAZADA|APROBADA","observaciones_revision":"..."}`. Observación y rechazo requieren motivo. La aprobación vuelve a validar consentimiento y disponibilidad, bloquea solicitud/mascota en transacción y cambia la mascota a `EN_PROCESO`; aprobaciones activas simultáneas para una mascota se rechazan. Cada decisión agrega un evento con fecha y responsable. Aprobar no significa adopción finalizada.
+- Cambiar manualmente a `Disponible` se rechaza si hay aprobación/entrega activa. La adopción solo se finaliza por entrega del contrato firmado.
+
+### Firma de contrato — US-09
+
+- El albergue puede crear/enviar contrato desde una solicitud aprobada en `POST /api/contratos/solicitudes/{id}/generar/`; el adoptante y el albergue participantes pueden consultar `GET /api/contratos/`, `GET /api/contratos/{public_id}/` y descargar desde `/api/contratos/{public_id}/descargar/`.
+- El envío requiere el adaptador externo configurado en `CONTRACT_SIGNATURE_API_URL` y sus credenciales. El adaptador recibe documento y hash, ambas partes firmantes y clave de idempotencia. Webhook firmado se recibe en `/api/contratos/webhooks/firma/`; eventos duplicados se ignoran. El PDF final se valida y almacena fuera de `MEDIA_ROOT`, accesible solo a las partes.
+- Solo el albergue propietario registra entrega en `POST /api/contratos/solicitudes/{id}/entrega/`. Se exige estado de firma confirmado y documento final disponible; entonces se registra entrega, solicitud `ENTREGADA` y mascota `ADOPTADO`. Un proveedor sin configurar da error explícito; no se simula una firma.
+
+### Borrador de descripción desde foto — US-29
+
+- El albergue propietario solicita un borrador con `POST /api/mascotas/{id}/generar-descripcion/`. La mascota debe tener foto JPEG/PNG válida de hasta 5 MiB. El proveedor se configura con `PET_DESCRIPTION_API_URL` y `PET_DESCRIPTION_API_TOKEN`.
+- La salida es texto editable, máximo 500 caracteres; se omiten rasgos no visibles y no se afirman salud, edad exacta, raza confirmada o conducta. Generar no modifica ni publica la descripción guardada. El albergue confirma el texto guardándolo desde el formulario. Ante error se conserva el texto anterior y se permite reintentar.
 
 ## Sesión React
 

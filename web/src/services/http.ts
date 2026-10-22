@@ -66,6 +66,22 @@ export async function request<T>(
 export const spring = <T>(path: string, init?: RequestInit, auth = true) =>
   request<T>(springBase, path, init, auth);
 export const django = <T>(path: string, init?: RequestInit) => request<T>(djangoBase, path, init);
+export async function downloadDjango(path: string, filename: string) {
+  const session = getSession();
+  if (!session || Date.now() >= session.expires) {
+    setSession(null);
+    throw new ApiError(401, 'Tu sesión venció. Inicia sesión nuevamente.');
+  }
+  const response = await fetch(djangoBase + path, { headers: { Authorization: `Bearer ${session.token}` } });
+  if (!response.ok) {
+    let message = `No se pudo descargar el documento (${response.status}).`;
+    try { const body = (await response.json()) as { detail?: string }; message = body.detail ?? message; } catch { /* conservar mensaje */ }
+    throw new ApiError(response.status, message);
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename;
+  document.body.append(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
+}
 export const json = (value: unknown) => JSON.stringify(value);
 export function mediaUrl(value: string | null | undefined) {
   if (!value) return undefined;

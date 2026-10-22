@@ -94,6 +94,17 @@ export default function MascotasPanel() {
       setBusy(false);
     }
   }
+  async function generateDescription() {
+    if (!id) { setError('Guarda primero la mascota y su foto para pedir un borrador.'); return; }
+    if (file) { setError('Guarda primero la nueva foto; el proveedor usa la foto almacenada.'); return; }
+    setBusy(true); setError(''); setSuccess('');
+    try {
+      const result = await django<{ borrador: string }>(`/api/mascotas/${id}/generar-descripcion/`, { method: 'POST', body: json({}) });
+      setDraft(old => ({ ...old, descripcion: result.borrador }));
+      setSuccess('Borrador generado. Revísalo y edítalo antes de guardar.');
+    } catch (e) { setError(errorMessage(e)); }
+    finally { setBusy(false); }
+  }
   async function show(value: number, edit: boolean) {
     setBusy(true);
     setError('');
@@ -226,6 +237,12 @@ export default function MascotasPanel() {
               onChange={e => setDraft({ ...draft, descripcion: e.target.value })}
             />
           </label>
+          {id && <div className="actions">
+            <button type="button" className="secondary" onClick={() => void generateDescription()}>
+              Generar borrador desde la foto
+            </button>
+            <span className="muted">La IA propone texto; no modifica la descripción guardada hasta que confirmes Guardar cambios.</span>
+          </div>}
           <label>
             {id ? 'Reemplazar fotografía (opcional)' : 'Fotografía JPEG/PNG, máximo 5 MB'}
             <input

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Contrato de adopción {{ contrato_numero }}</title></head>
+  <body>
+    <h1>Contrato de adopción responsable</h1>
+    <p><strong>Número:</strong> {{ contrato_numero }}</p>
+    <h2>Partes</h2>
+    <p><strong>Adoptante:</strong> {{ adoptante_nombre }} · Documento: {{ adoptante_documento }}</p>
+    <p><strong>Albergue:</strong> {{ albergue_nombre }} · Responsable: {{ albergue_responsable }}</p>
+    <h2>Mascota</h2>
+    <p>{{ mascota_nombre }} · {{ mascota_especie }} · Código: {{ mascota_codigo }}</p>
+    <h2>Condiciones acordadas</h2>
+    {% if terminos %}
+      <div>{{ terminos|linebreaks }}</div>
+    {% else %}
+      <p><strong>BORRADOR:</strong> la organización debe configurar y revisar las condiciones antes de solicitar una firma.</p>
+    {% endif %}
+    <p>Generado el {{ generado_en }}. La versión firmada y el registro del proveedor se vinculan a la solicitud indicada.</p>
+  </body>
+</html>

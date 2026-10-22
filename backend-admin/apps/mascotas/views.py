@@ -59,11 +59,26 @@ class MascotaViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="compatibilidad")
     def compatibilidad(self, request):
         """Expone atributos de mascotas disponibles para el servicio Spring; no calcula puntajes."""
-        queryset = Mascota.objects.filter(estado=Mascota.Estado.DISPONIBLE).order_by("id")
+        queryset = Mascota.objects.filter(
+            estado=Mascota.Estado.DISPONIBLE, albergue__activo=True
+        ).order_by("id")
         page = self.paginate_queryset(queryset)
         if page is not None:
             return self.get_paginated_response(self.get_serializer(page, many=True).data)
         return Response(self.get_serializer(queryset, many=True).data)
+
+    @action(detail=True, methods=["post"], url_path="generar-descripcion")
+    def generar_descripcion(self, request, pk=None):
+        """Return an editable AI draft; this endpoint never changes the saved description."""
+        mascota = self.get_object()
+        from .descripcion_ia import DescripcionIAError, ProveedorDescripcionNoConfigurado, generar_borrador
+        try:
+            draft = generar_borrador(mascota)
+        except ProveedorDescripcionNoConfigurado as error:
+            return Response({"detail": str(error)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except DescripcionIAError as error:
+            return Response({"detail": str(error)}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response({"borrador": draft, "guardado": False})
 
     def get_queryset(self):
         """Filtrar por albergue del usuario (excepto staff)."""
@@ -121,6 +136,14 @@ class MascotaViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         nuevo_estado = serializer.validated_data["estado"]
+
+        if nuevo_estado == Mascota.Estado.DISPONIBLE and mascota.solicitudes.filter(
+            estado__in=["APROBADA", "ENTREGADA"]
+        ).exists():
+            return Response(
+                {"estado": "No se puede liberar una mascota con una solicitud aprobada activa."},
+                status=status.HTTP_409_CONFLICT,
+            )
 
         # Sprint 1: corrección manual entre cualquiera de los tres estados.
         # No crea solicitudes ni expedientes de adopción.

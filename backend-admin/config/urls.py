@@ -62,6 +62,7 @@ urlpatterns = [
     path("api/albergues/", include("apps.albergues.urls")),
     path("api/mascotas/", include("apps.mascotas.urls")),
     path("api/acceso/", include("apps.acceso.urls")),
+    path("api/contratos/", include("apps.contratos.urls")),
     
     # OpenAPI 3 / Swagger UI (drf-spectacular)
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

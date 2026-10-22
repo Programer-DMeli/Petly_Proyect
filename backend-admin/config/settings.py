@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "apps.acceso",
     "apps.albergues",
     "apps.mascotas",
+    "apps.contratos",
 ]
 
 MIDDLEWARE = [
@@ -162,6 +163,22 @@ REST_FRAMEWORK = {
 # Spring Boot es la única autoridad de cuentas de negocio.
 SPRING_API_URL = os.getenv("SPRING_API_URL", "http://127.0.0.1:8080").rstrip("/")
 SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "")
+
+# Proveedor de firma REST configurable; requiere contrato API y credenciales del proveedor.
+CONTRACT_SIGNATURE_API_URL = os.getenv("CONTRACT_SIGNATURE_API_URL", "")
+CONTRACT_SIGNATURE_API_TOKEN = os.getenv("CONTRACT_SIGNATURE_API_TOKEN", "")
+CONTRACT_SIGNATURE_WEBHOOK_SECRET = os.getenv("CONTRACT_SIGNATURE_WEBHOOK_SECRET", "")
+CONTRACT_SIGNATURE_TIMEOUT_SECONDS = int(os.getenv("CONTRACT_SIGNATURE_TIMEOUT_SECONDS", "10"))
+CONTRACT_SIGNATURE_PROVIDER = os.getenv("CONTRACT_SIGNATURE_PROVIDER", "generic-rest")
+CONTRACT_SIGNATURE_ADAPTER_CLASS = os.getenv("CONTRACT_SIGNATURE_ADAPTER_CLASS", "apps.contratos.providers.ProveedorFirmaREST")
+ADOPTION_CONTRACT_TERMS = os.getenv("ADOPTION_CONTRACT_TERMS", "")
+PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", "http://localhost:8000")
+PRIVATE_FILES_ROOT = Path(os.getenv("PRIVATE_FILES_ROOT", str(BASE_DIR / "private-media")))
+
+# US-29: proveedor REST de visión. Su salida siempre queda como borrador revisable.
+PET_DESCRIPTION_API_URL = os.getenv("PET_DESCRIPTION_API_URL", "")
+PET_DESCRIPTION_API_TOKEN = os.getenv("PET_DESCRIPTION_API_TOKEN", "")
+PET_DESCRIPTION_TIMEOUT_SECONDS = int(os.getenv("PET_DESCRIPTION_TIMEOUT_SECONDS", "20"))
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
