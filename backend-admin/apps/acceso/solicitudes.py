@@ -35,6 +35,14 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
     mascota = Mascota.objects.select_for_update().get(pk=solicitud.mascota_id)
     actual = solicitud.estado
 
+    if nuevo_estado == SolicitudAdopcion.Estado.CANCELADA and (
+        getattr(usuario, "rol", None) != "ADOPTANTE"
+        or solicitud.adoptante_id != usuario.pk
+    ):
+        raise ValidationError({
+            "estado": "Solo el adoptante titular puede cancelar esta solicitud.",
+        })
+
     if nuevo_estado not in TRANSICIONES.get(actual, []):
         raise ValidationError({
             "estado": f"Transición no permitida: {actual} -> {nuevo_estado}.",
