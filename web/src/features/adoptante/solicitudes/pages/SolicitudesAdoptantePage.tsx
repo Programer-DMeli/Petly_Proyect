@@ -12,6 +12,7 @@ export default function SolicitudesAdoptantePage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(true);
   const [refresh, setRefresh] = useState(0);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
   const load = useCallback(async () => {
     setBusy(true); setError('');
     try {
@@ -28,6 +29,15 @@ export default function SolicitudesAdoptantePage() {
     try { await downloadDjango(`/api/contratos/${contract.public_id}/descargar/`, `contrato-adopcion-${contract.solicitud_id}.pdf`); }
     catch (e) { setError(errorMessage(e)); }
   }
+  async function cancelRequest(item: SolicitudAdopcion) {
+    if (!window.confirm(`¿Quieres cancelar la solicitud de ${item.mascota_nombre || 'esta mascota'}? Esta acción no se puede deshacer.`)) return;
+    setCancellingId(item.id); setError('');
+    try {
+      await spring(`/api/solicitudes/${item.id}/cancelar`, { method: 'POST' });
+      await load();
+    } catch (e) { setError(errorMessage(e)); }
+    finally { setCancellingId(null); }
+  }
   return <section className="card">
     <h1>Mis solicitudes</h1>
     <Feedback error={error} />
@@ -37,6 +47,10 @@ export default function SolicitudesAdoptantePage() {
       : items.map(item => <article className="card" key={item.id}>
         <h2>{item.mascota_nombre || `Solicitud #${item.id}`}</h2>
         <p>Estado: {item.estado} · {new Date(item.fecha_solicitud).toLocaleString('es-PE')}</p>
+        {['PENDIENTE', 'OBSERVADA'].includes(item.estado) && <button
+          type="button" className="danger" disabled={cancellingId !== null}
+          onClick={() => void cancelRequest(item)}
+        >{cancellingId === item.id ? 'Cancelando…' : 'Cancelar solicitud'}</button>}
         {contracts.filter(contract => contract.solicitud_id === item.id).map(contract => <div key={contract.public_id}>
           <p>Contrato: {contract.estado_display}</p>
           {contract.url_firma && <a href={contract.url_firma} target="_blank" rel="noreferrer">Abrir firma electrónica</a>}

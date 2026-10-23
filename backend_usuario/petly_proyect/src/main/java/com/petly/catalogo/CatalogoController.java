@@ -18,6 +18,10 @@ public class CatalogoController {
   return compatibilidad.listar(Long.parseLong(claims.getSubject()),search,especie,tamano,temperamento,edadMinimaMeses,edadMaximaMeses,page,pageSize);
  }
  return service.search(search,especie,tamano,temperamento,edadMinimaMeses,edadMaximaMeses,page,pageSize);}
- @GetMapping("/{id}") public Map<String,Object> detail(@PathVariable long id){return service.detail(id);}
+ @GetMapping("/{id}") public Map<String,Object> detail(@PathVariable long id, Authentication auth){
+  if(auth != null && auth.getPrincipal() instanceof Claims claims && "ADOPTANTE".equals(claims.get("rol", String.class)))
+   return compatibilidad.detalle(Long.parseLong(claims.getSubject()), id);
+  return service.detail(id);
+ }
  @GetMapping("/albergues") public List<Map<String,Object>> shelters(){return service.shelters();}
 }

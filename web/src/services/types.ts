@@ -142,6 +142,7 @@ export interface AdminPet {
   descripcion: string;
   estado: string;
   foto_principal: string | null;
+  edad_texto?: string;
 }
 export interface Page<T> {
   results: T[];

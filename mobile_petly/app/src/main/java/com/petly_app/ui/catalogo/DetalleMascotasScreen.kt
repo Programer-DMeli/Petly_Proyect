@@ -31,6 +31,28 @@ fun DetalleMascotaScreen(state: DetalleMascotaUiState, preview: Boolean, onRetry
                 Text("Temperamento: ${mascota.temperamento}")
                 Text("Energía: ${mascota.energia}")
                 Text(mascota.descripcion)
+                mascota.compatibilidad?.let { compatibilidad ->
+                    HorizontalDivider()
+                    Text("Tu compatibilidad", style = MaterialTheme.typography.titleLarge)
+                    Text(compatibilidad.mensaje)
+                    Text(compatibilidad.porcentaje?.let { "Puntaje: $it%" }
+                        ?: "Información insuficiente para calcular el puntaje")
+                    Text("Cobertura de datos: ${compatibilidad.cobertura}%")
+                    compatibilidad.criterios.forEach { criterio ->
+                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(criterio.nombre, style = MaterialTheme.typography.titleMedium)
+                                Text("Peso: ${criterio.peso}%")
+                                Text(criterio.aporte?.let {
+                                    "Aporte ponderado: ${String.format(java.util.Locale.getDefault(), "%.2f", it)} puntos"
+                                } ?: "Aporte no calculable: faltan datos de compatibilidad")
+                                Text(criterio.explicacion, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                    Text("El total ponderado se redondea al entero más cercano. Es una orientación; el albergue decide cada adopción.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
                 HorizontalDivider()
                 Text("Albergue", style = MaterialTheme.typography.titleLarge)
                 Text(mascota.albergue)

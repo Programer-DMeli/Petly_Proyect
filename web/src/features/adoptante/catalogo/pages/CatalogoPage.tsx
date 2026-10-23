@@ -318,6 +318,32 @@ export function DetallePage() {
             Temperamento: {pet.temperamento} · Energía: {pet.energia}
           </p>
           <p>{pet.descripcion}</p>
+          {pet.compatibilidad && (
+            <section className="card compatibility-breakdown" aria-labelledby="compatibility-heading">
+              <h2 id="compatibility-heading">¿Cómo se calcula tu compatibilidad?</h2>
+              <p>{pet.compatibilidad.mensaje}</p>
+              <p>
+                Puntaje: <strong>{pet.compatibilidad.porcentaje === null
+                  ? 'Información insuficiente'
+                  : `${pet.compatibilidad.porcentaje}%`}</strong>
+                {' · '}Cobertura de datos: {pet.compatibilidad.cobertura}%
+              </p>
+              <ul>
+                {pet.compatibilidad.criterios.map(criterion => (
+                  <li key={criterion.id}>
+                    <strong>{criterion.nombre}</strong> · peso {criterion.peso}% ·{' '}
+                    {criterion.aporte === null
+                      ? 'aporte no calculable por falta de datos'
+                      : `aporta ${criterion.aporte.toFixed(2)} puntos`}
+                    <p>{criterion.explicacion}</p>
+                  </li>
+                ))}
+              </ul>
+              <p className="muted">
+                El total ponderado se redondea al entero más cercano. Es una orientación; el albergue decide cada adopción.
+              </p>
+            </section>
+          )}
           <h2>{pet.albergue}</h2>
           <p>{pet.ubicacion}</p>
           <Link to="/adoptante/autorizaciones">Administrar autorizaciones de mi perfil</Link>

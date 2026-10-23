@@ -161,8 +161,39 @@ class SolicitudAdopcionSprint2APITest(TestCase):
 
     def _decision_request(self):
         return SolicitudAdopcion.objects.create(
-            postulante=self.postulante, mascota=self.mascota, albergue=self.albergue,
+            postulante=self.postulante, adoptante=self.user,
+            mascota=self.mascota, albergue=self.albergue,
         )
+
+    def test_titular_cancela_y_se_conserva_evento_fecha(self):
+        solicitud = self._decision_request()
+        response = self.client.post(f"/api/acceso/solicitudes/{solicitud.pk}/cancelar/")
+        self.assertEqual(response.status_code, 200, response.data)
+        solicitud.refresh_from_db()
+        self.assertEqual(solicitud.estado, SolicitudAdopcion.Estado.CANCELADA)
+        evento = solicitud.eventos.get(tipo="CANCELADA")
+        self.assertEqual(evento.actor_id, self.user.pk)
+        self.assertIsNotNone(evento.ocurrido_en)
+        repeated = self.client.post(f"/api/acceso/solicitudes/{solicitud.pk}/cancelar/")
+        self.assertEqual(repeated.status_code, 400)
+
+    def test_adoptante_ajeno_no_puede_cancelar(self):
+        solicitud = self._decision_request()
+        stranger = get_user_model().objects.create_user(username="otro-adoptante", password="pass")
+        self.client.force_authenticate(user=stranger)
+        response = self.client.post(f"/api/acceso/solicitudes/{solicitud.pk}/cancelar/")
+        self.assertEqual(response.status_code, 404)
+        solicitud.refresh_from_db()
+        self.assertEqual(solicitud.estado, SolicitudAdopcion.Estado.PENDIENTE)
+
+    def test_no_se_cancela_una_solicitud_aprobada(self):
+        solicitud = self._decision_request()
+        solicitud.estado = SolicitudAdopcion.Estado.APROBADA
+        solicitud.save(update_fields=["estado"])
+        response = self.client.post(f"/api/acceso/solicitudes/{solicitud.pk}/cancelar/")
+        self.assertEqual(response.status_code, 400)
+        solicitud.refresh_from_db()
+        self.assertEqual(solicitud.estado, SolicitudAdopcion.Estado.APROBADA)
 
     def test_albergue_observa_con_motivo_y_aprobacion_reserva_mascota(self):
         solicitud = self._decision_request()

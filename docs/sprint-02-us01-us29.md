@@ -1,4 +1,4 @@
-# Sprint 2: US-01, US-02, US-03, US-06, US-07, US-08, US-09 y US-29
+# Sprint 2: US-01, US-02, US-03, US-04, US-06, US-07, US-08, US-09, US-10, US-28 y US-29
 
 ## Compatibilidad (US-01, US-02 y US-03)
 
@@ -16,12 +16,24 @@ Los tres criterios se calculan solo con perfil finalizado y datos requeridos con
 
 React y Android usan el orden y puntaje de Spring. No se almacena resultado previo, así que una consulta posterior a guardar el perfil usa los valores vigentes.
 
+## Desglose explicativo (US-04)
+
+El detalle `GET /api/catalogo/{id}` aplica las mismas reglas y versión que la lista cuando el titular autenticado es ADOPTANTE. React y Android muestran vivienda, rutina y convivencia con peso, aporte ponderado y explicación. El detalle marca los aportes no calculables, presenta la cobertura y explica que el total se redondea al entero más cercano; no decide adopciones.
+
 ## Solicitudes y decisiones (US-06, US-07 y US-08)
 
 - `POST /api/solicitudes` en Spring comprueba rol, perfil finalizado, disponibilidad, albergue activo y consentimiento; remite el JWT original a Django para validar nuevamente y persistir.
 - Django asigna el adoptante desde la identidad autenticada, registra titular, mascota, albergue, fecha y estado `PENDIENTE`. No cambia la disponibilidad al enviar. La restricción de base de datos y el bloqueo de mascota rechazan solicitudes activas duplicadas.
 - `GET /api/solicitudes` y `GET /api/solicitudes/{id}/seguimiento` son del titular. La API Django limita las decisiones al albergue propietario. Observar/rechazar exigen motivo; aprobar comprueba de nuevo el consentimiento con Spring, bloquea la solicitud y mascota en transacción y cambia la mascota a `EN_PROCESO`.
 - Cada envío y transición agrega un `SolicitudEvento`; la consulta del titular devuelve únicamente su historial persistido, en orden cronológico. La mascota no se puede liberar manualmente mientras tenga una solicitud aprobada o entregada.
+
+## Cancelación por el adoptante (US-10)
+
+`POST /api/solicitudes/{id}/cancelar` confirma la operación en React y Spring la delega a Django. Solo el titular puede cancelar solicitudes `PENDIENTE` u `OBSERVADA`; Django bloquea la fila y aplica la transición en la misma transacción que registra actor y fecha en `SolicitudEvento`. Una solicitud ajena devuelve no encontrada y los estados terminales no admiten una segunda cancelación. La UI oculta la acción después del cambio. La cancelación compite con aprobar sobre la misma fila bloqueada; solo una transición puede completarse.
+
+## Afiche social (US-28)
+
+Desde el panel del albergue propietario, React prepara una vista previa descargable como PNG de 1080 × 1350 px con foto, nombre, datos básicos y contacto público. La foto se encaja sin deformarse y el texto se ajusta a la plantilla; hace falta una foto y un teléfono o correo público. Si faltan, la descarga queda desactivada y se indica qué completar. El PNG es un borrador local: Petly no lo publica en redes ni genera una nueva imagen.
 
 ## Contrato firmado (US-09)
 

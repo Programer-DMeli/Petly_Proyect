@@ -837,6 +837,23 @@ textarea:focus-visible {
   width: 100%;
   max-height: 460px;
 }
+.compatibility-breakdown { margin-block: 1.5rem; }
+.compatibility-breakdown li + li { margin-top: 1rem; }
+.poster-preview {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--petly-border);
+  border-radius: 1rem;
+  background: #fbfdfb;
+}
+.poster-preview canvas {
+  display: block;
+  width: min(100%, 420px);
+  height: auto;
+  margin: 1rem auto;
+  border-radius: .75rem;
+  box-shadow: 0 8px 28px rgb(16 51 37 / 14%);
+}
 .thumbnail {
   width: 180px;
   height: 160px;

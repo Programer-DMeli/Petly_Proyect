@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count
 from django.db import transaction
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
@@ -88,7 +88,14 @@ class SolicitudAdopcionPermission(IsAlbergueStaffOrReadOnly):
             return request.user.is_staff or (
                 request.user.rol == User.Rol.ALBERGUE and hasattr(request.user, "albergue")
             )
+        if action == "cancelar":
+            return request.user.rol == User.Rol.ADOPTANTE
         return request.method in permissions.SAFE_METHODS
+
+    def has_object_permission(self, request, view, obj):
+        if getattr(view, "action", None) == "cancelar":
+            return request.user.rol == User.Rol.ADOPTANTE and obj.adoptante_id == request.user.pk
+        return super().has_object_permission(request, view, obj)
 
 
 class PostulanteViewSet(viewsets.ModelViewSet):
@@ -268,6 +275,16 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             raise ValidationError({"estado": "Registra la entrega desde el contrato firmado."})
         solicitud = cambiar_estado_solicitud(
             solicitud.pk, nuevo_estado, request.user, observaciones
+        )
+        return Response(SolicitudAdopcionSerializer(solicitud, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"], url_path="cancelar")
+    def cancelar(self, request, pk=None):
+        if request.user.rol != User.Rol.ADOPTANTE:
+            raise PermissionDenied("Solo el adoptante titular puede cancelar esta solicitud.")
+        solicitud = self.get_object()
+        solicitud = cambiar_estado_solicitud(
+            solicitud.pk, SolicitudAdopcion.Estado.CANCELADA, request.user
         )
         return Response(SolicitudAdopcionSerializer(solicitud, context={"request": request}).data)
 

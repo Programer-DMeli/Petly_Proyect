@@ -52,6 +52,10 @@ public class CompatibilidadService {
                 "orden", "compatibilidad_desc_id_asc", "versionReglas", VERSION);
     }
 
+    public Map<String, Object> detalle(long userId, long mascotaId) {
+        return withScore(catalogo.detail(mascotaId), perfiles.get(userId));
+    }
+
     static Map<String, Object> withScore(Map<String, Object> pet, Map<String, Object> profile) {
         Map<String, Object> item = new LinkedHashMap<>(pet);
         List<Map<String, Object>> criteria = new ArrayList<>();

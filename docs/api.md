@@ -26,6 +26,8 @@ Spring adapta los campos al endpoint Django `POST /api/acceso/solicitudes/` (`ma
 
 Una solicitud creada queda `PENDIENTE`. Enviar no reserva ni cambia el estado de la mascota. Las decisiones del albergue, el seguimiento, la cancelación y las fotos de vivienda corresponden a US-07, US-08, US-10 y US-19.
 
+El titular consulta sus solicitudes con `GET /api/solicitudes`. Para cancelar una solicitud `PENDIENTE` u `OBSERVADA`, React solicita confirmación y envía `POST /api/solicitudes/{solicitudId}/cancelar`; Spring reenvía el JWT a `POST /api/acceso/solicitudes/{solicitudId}/cancelar/`. Django comprueba titularidad y transición dentro de una transacción, conserva el estado `CANCELADA` y registra actor y fecha como evento. Una solicitud ajena no se revela y estados aprobados o terminales no se pueden cancelar.
+
 ## US-07: integración Spring-Django para decisiones del albergue
 
 El panel del albergue envía sus decisiones a Spring mediante `POST /api/albergue/solicitudes/{solicitudId}/decision`. La ruta requiere el rol `ALBERGUE`; Spring reenvía a Django el JWT de la sesión y adapta el cuerpo al endpoint `POST /api/acceso/solicitudes/{solicitudId}/cambiar-estado/`.

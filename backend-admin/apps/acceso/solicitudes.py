@@ -12,10 +12,12 @@ TRANSICIONES = {
         SolicitudAdopcion.Estado.OBSERVADA,
         SolicitudAdopcion.Estado.APROBADA,
         SolicitudAdopcion.Estado.RECHAZADA,
+        SolicitudAdopcion.Estado.CANCELADA,
     ],
     SolicitudAdopcion.Estado.OBSERVADA: [
         SolicitudAdopcion.Estado.APROBADA,
         SolicitudAdopcion.Estado.RECHAZADA,
+        SolicitudAdopcion.Estado.CANCELADA,
     ],
     SolicitudAdopcion.Estado.APROBADA: [SolicitudAdopcion.Estado.ENTREGADA],
     SolicitudAdopcion.Estado.RECHAZADA: [],

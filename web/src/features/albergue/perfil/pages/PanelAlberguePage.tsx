@@ -196,7 +196,7 @@ export default function PanelAlberguePage() {
       )}
       {shelter && step === 2 && (
         <>
-          <MascotasPanel />
+          <MascotasPanel shelter={shelter} />
           <div className="shelter-wizard__actions">
             <button type="button" className="secondary" onClick={() => setStep(1)}>
               Anterior

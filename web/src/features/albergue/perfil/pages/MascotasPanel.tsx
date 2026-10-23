@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
 import { django, json, errorMessage, mediaUrl } from '../../../../services/http';
-import type { AdminPet, Page } from '../../../../services/types';
+import type { AdminPet, Page, Shelter } from '../../../../services/types';
+import PosterMascota from './PosterMascota';
 const initial = {
   nombre: '',
   especie: 'PERRO',
@@ -35,7 +36,7 @@ const labels = {
   temperamento: 'Temperamento',
   energia: 'Energía',
 };
-export default function MascotasPanel() {
+export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: Shelter }) {
   const [items, setItems] = useState<AdminPet[]>([]);
   const [draft, setDraft] = useState(initial);
   const [id, setId] = useState<number | null>(null);
@@ -47,6 +48,9 @@ export default function MascotasPanel() {
   const [page, setPage] = useState(1);
   const [next, setNext] = useState(false);
   const [detail, setDetail] = useState<AdminPet | null>(null);
+  const [posterPet, setPosterPet] = useState<AdminPet | null>(null);
+  const [loadedShelter, setLoadedShelter] = useState<Shelter | null>(suppliedShelter ?? null);
+  const shelter = suppliedShelter ?? loadedShelter;
   const load = useCallback(async () => {
     setError('');
     try {
@@ -60,6 +64,12 @@ export default function MascotasPanel() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    if (suppliedShelter) { setLoadedShelter(suppliedShelter); return; }
+    void django<Shelter>('/api/albergues/mi-perfil/')
+      .then(setLoadedShelter)
+      .catch(e => setError(errorMessage(e)));
+  }, [suppliedShelter]);
   function reset() {
     setId(null);
     setDraft(initial);
@@ -131,6 +141,12 @@ export default function MascotasPanel() {
     } finally {
       setBusy(false);
     }
+  }
+  async function showPoster(value: number) {
+    setBusy(true); setError(''); setPosterPet(null);
+    try { setPosterPet(await django<AdminPet>(`/api/mascotas/${value}/`)); }
+    catch (e) { setError(errorMessage(e)); }
+    finally { setBusy(false); }
   }
   async function remove(pet: AdminPet) {
     if (!window.confirm(`¿Eliminar a ${pet.nombre}? Esta operación no se puede deshacer.`)) return;
@@ -280,6 +296,12 @@ export default function MascotasPanel() {
             <button disabled={busy} className="secondary" onClick={() => void show(p.id, true)}>
               Editar mascota
             </button>
+            <button disabled={busy || !p.foto_principal || !shelter || !shelter.nombre.trim() || !(shelter.telefono.trim() || shelter.email.trim())}
+              className="secondary" onClick={() => void showPoster(p.id)}>
+              Preparar afiche
+            </button>
+            {!p.foto_principal && <span className="muted">Añade una foto para generar el afiche.</span>}
+            {shelter && !(shelter.telefono.trim() || shelter.email.trim()) && <span className="muted">Completa un teléfono o correo público del albergue.</span>}
             <button disabled={busy} className="danger" onClick={() => void remove(p)}>
               Eliminar mascota
             </button>
@@ -327,6 +349,7 @@ export default function MascotasPanel() {
           <button onClick={() => setDetail(null)}>Cerrar detalle</button>
         </article>
       )}
+      {posterPet && shelter && <PosterMascota pet={posterPet} shelter={shelter} onClose={() => setPosterPet(null)} />}
     </section>
   );
 }
