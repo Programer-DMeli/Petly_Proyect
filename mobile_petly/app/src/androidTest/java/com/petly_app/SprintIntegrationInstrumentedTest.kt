@@ -47,7 +47,7 @@ class SprintIntegrationInstrumentedTest {
         val email = "photos-${java.util.UUID.randomUUID()}@example.test"
         auth.register(email, password); auth.login(email, password)
         val catalog = RemoteCatalogoRepository(ApiClient.authenticatedApi(session).create(CatalogoApi::class.java))
-        for (name in listOf("Luna", "Toby", "Bruno", "Miel", "Copito", "Simba", "Nube")) {
+        for (name in listOf("Luna", "Toby", "Bruno", "Miel", "Copito", "Simba", "Nube", "Domi")) {
             val pet = catalog.search(CatalogoFilters(search = name), 1, 100).items.first {
                 it.nombre == name && it.descripcion.contains("Publicación de demostración de Petly")
             }

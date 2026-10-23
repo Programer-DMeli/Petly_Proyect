@@ -12,7 +12,8 @@ class SpringIdentityTest(TestCase):
         self.client = APIClient()
         self.identity = {"id": "101", "correo": "shelter@example.test", "rol": "ALBERGUE"}
         self.claims = {"sub": "101", "rol": "ALBERGUE", "type": "access", "version": 0,
-            "iss": "petly-spring", "aud": ["petly-django", "petly-api"], "iat": int(time.time()), "exp": int(time.time())+3600}
+            "iss": "petly-spring", "aud": ["petly-django", "petly-api"], "iat": int(time.time()), "exp": int(time.time())+3600,
+            "jti": "test-jti-123"}
     def token(self, **changes):
         return jwt.encode(dict(self.claims, **changes), settings.SPRING_JWT_SECRET, algorithm="HS256")
     @patch("apps.acceso.authentication.spring_get")
@@ -40,7 +41,7 @@ class SpringIdentityTest(TestCase):
         profiles.side_effect = urllib.error.HTTPError("local", 403, "forbidden", {}, None)
         self.assertEqual(self.client.get("/api/acceso/perfiles-compartidos/202/").status_code, 403)
     def test_retired_business_auth_not_available(self):
-        for route in ["auth/registro/", "auth/login/", "interno/autorizacion/"]:
+        for route in ["negocio/auth/registro/", "negocio/auth/login/", "negocio/postulantes/", "negocio/solicitudes/", "negocio/interno/autorizacion/"]:
             self.assertEqual(self.client.post("/api/acceso/"+route, {}, format="json").status_code, 410)
         for route in ["postulantes/", "solicitudes/"]:
             self.assertEqual(self.client.post("/api/acceso/"+route, {}, format="json").status_code, 401)

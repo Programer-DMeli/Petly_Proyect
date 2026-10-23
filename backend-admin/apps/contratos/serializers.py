@@ -16,8 +16,8 @@ class ContratoAdopcionSerializer(serializers.ModelSerializer):
         fields = [
             "public_id", "solicitud_id", "estado", "estado_display", "proveedor",
             "proveedor_documento_id", "url_firma", "contenido_html", "contenido_sha256",
-            "snapshot", "documento_disponible", "generado_en", "enviado_en", "firmado_en", "expira_en",
-            "error_integracion", "actualizado_en",
+            "snapshot", "generado_en", "enviado_en", "firmado_en", "expira_en",
+            "error_integracion", "actualizado_en", "documento_disponible",
         ]
         read_only_fields = fields
 

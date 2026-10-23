@@ -1,7 +1,16 @@
 """Vistas de mascotas (US-11, US-12, US-13)."""
+import hashlib
+import json
+import secrets
+
+from django.conf import settings
+from django.utils.http import http_date
 from rest_framework import viewsets, permissions, status, filters
+from rest_framework.exceptions import ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
@@ -9,6 +18,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.albergues.models import Albergue
 from .models import Mascota
+from .estados import cambiar_estado_mascota
 from .serializers import (
     MascotaSerializer,
     MascotaListSerializer,
@@ -58,27 +68,25 @@ class MascotaViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="compatibilidad")
     def compatibilidad(self, request):
-        """Expone atributos de mascotas disponibles para el servicio Spring; no calcula puntajes."""
-        queryset = Mascota.objects.filter(
+        """Devuelve mascotas disponibles ordenadas por compatibilidad del adoptante."""
+        from .compatibilidad import puntuar_compatibilidad
+        if request.user.rol != "ADOPTANTE":
+            return Response({"detail": "Este orden requiere una cuenta de adoptante."}, status=status.HTTP_403_FORBIDDEN)
+        perfil = getattr(request.user, "adoptante_profile", None)
+        if perfil is None:
+            return Response({"detail": "Completa tu perfil de adopción para calcular compatibilidad."}, status=status.HTTP_400_BAD_REQUEST)
+        mascotas = list(Mascota.objects.filter(
             estado=Mascota.Estado.DISPONIBLE, albergue__activo=True
-        ).order_by("id")
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            return self.get_paginated_response(self.get_serializer(page, many=True).data)
-        return Response(self.get_serializer(queryset, many=True).data)
-
-    @action(detail=True, methods=["post"], url_path="generar-descripcion")
-    def generar_descripcion(self, request, pk=None):
-        """Return an editable AI draft; this endpoint never changes the saved description."""
-        mascota = self.get_object()
-        from .descripcion_ia import DescripcionIAError, ProveedorDescripcionNoConfigurado, generar_borrador
-        try:
-            draft = generar_borrador(mascota)
-        except ProveedorDescripcionNoConfigurado as error:
-            return Response({"detail": str(error)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        except DescripcionIAError as error:
-            return Response({"detail": str(error)}, status=status.HTTP_502_BAD_GATEWAY)
-        return Response({"borrador": draft, "guardado": False})
+        ).select_related("albergue").order_by("id"))
+        resultado = []
+        for mascota in mascotas:
+            puntaje = puntuar_compatibilidad(perfil, mascota)
+            datos = MascotaCompatibilidadSerializer(mascota, context={"request": request}).data
+            datos["compatibilidad"] = puntaje
+            resultado.append(datos)
+        resultado.sort(key=lambda item: (item["compatibilidad"]["puntaje"] is None,
+                                         -(item["compatibilidad"]["puntaje"] or 0), item["id"]))
+        return Response(resultado)
 
     def get_queryset(self):
         """Filtrar por albergue del usuario (excepto staff)."""
@@ -137,24 +145,10 @@ class MascotaViewSet(viewsets.ModelViewSet):
 
         nuevo_estado = serializer.validated_data["estado"]
 
-        if nuevo_estado == Mascota.Estado.DISPONIBLE and mascota.solicitudes.filter(
-            estado__in=["APROBADA", "ENTREGADA"]
-        ).exists():
-            return Response(
-                {"estado": "No se puede liberar una mascota con una solicitud aprobada activa."},
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        # Sprint 1: corrección manual entre cualquiera de los tres estados.
-        # No crea solicitudes ni expedientes de adopción.
-        mascota.estado = nuevo_estado
-        if nuevo_estado == Mascota.Estado.ADOPTADO:
-            if not mascota.fecha_adopcion:
-                from django.utils import timezone
-                mascota.fecha_adopcion = timezone.now().date()
-        else:
-            mascota.fecha_adopcion = None
-        mascota.save(update_fields=["estado", "fecha_adopcion", "actualizado_en"])
+        try:
+            mascota = cambiar_estado_mascota(mascota.pk, nuevo_estado)
+        except DjangoValidationError as exc:
+            raise ValidationError({"estado": exc.messages})
 
         return Response(MascotaSerializer(mascota, context={"request": request}).data)
 
@@ -185,3 +179,35 @@ class MascotaViewSet(viewsets.ModelViewSet):
             },
         }
         return Response(stats)
+
+
+class DatosCompatibilidadView(APIView):
+    """Feed interno de mascotas vigentes usado por el motor de compatibilidad (US-03)."""
+
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        clave_configurada = getattr(settings, "PET_COMPATIBILITY_SERVICE_TOKEN", "")
+        clave_recibida = request.headers.get("X-Service-Token", "")
+        if not clave_configurada:
+            return Response({"detail": "La integración de compatibilidad no está configurada."}, status=503)
+        if not secrets.compare_digest(clave_recibida, clave_configurada):
+            return Response({"detail": "Credenciales de servicio inválidas."}, status=401)
+
+        mascotas = Mascota.objects.filter(
+            estado=Mascota.Estado.DISPONIBLE,
+            albergue__activo=True,
+        ).order_by("id")
+        items = MascotaCompatibilidadSerializer(mascotas, many=True).data
+        contenido = json.dumps(items, sort_keys=True, separators=(",", ":"), default=str)
+        revision = hashlib.sha256(contenido.encode("utf-8")).hexdigest()
+        etag = f'"{revision}"'
+        headers = {"ETag": etag, "Cache-Control": "private, no-cache"}
+        ultima_actualizacion = mascotas.order_by("-actualizado_en").values_list("actualizado_en", flat=True).first()
+        if ultima_actualizacion:
+            headers["Last-Modified"] = http_date(ultima_actualizacion.timestamp())
+        etags_cliente = {valor.strip() for valor in request.headers.get("If-None-Match", "").split(",")}
+        if etag in etags_cliente or "*" in etags_cliente:
+            return Response(status=304, headers=headers)
+        return Response({"catalogVersion": revision, "items": items}, headers=headers)

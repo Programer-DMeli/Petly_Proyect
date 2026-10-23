@@ -6,18 +6,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val LightColors = lightColorScheme(
-    primary = Primary, onPrimary = Color.White,
-    primaryContainer = Secondary, onPrimaryContainer = TextPrimary,
-    secondary = TextSecondary, onSecondary = Color.White,
-    secondaryContainer = Secondary, onSecondaryContainer = TextPrimary,
-    tertiary = Accent, onTertiary = Color(0xFF4A2C10),
-    tertiaryContainer = Color(0xFFFFF3E0), onTertiaryContainer = Color(0xFF4A2C10),
-    background = Background, onBackground = TextPrimary,
-    surface = Surface, onSurface = TextPrimary,
-    surfaceVariant = Secondary, onSurfaceVariant = TextSecondary,
-    outline = Border,
-    error = Error, onError = Color.White,
-    errorContainer = ErrorContainer, onErrorContainer = Error
+    primary = Terracota, onPrimary = Color.White,
+    primaryContainer = RosaSuave, onPrimaryContainer = TextoCalido,
+    secondary = Color(0xFF65534B), onSecondary = Color.White,
+    secondaryContainer = RosaSuave, onSecondaryContainer = TextoCalido,
+    tertiary = Color(0xFF4B633B), onTertiary = Color.White,
+    tertiaryContainer = Salvia, onTertiaryContainer = TextoCalido,
+    background = FondoCalido, onBackground = TextoCalido,
+    surface = Color.White, onSurface = TextoCalido,
+    surfaceVariant = Color(0xFFF1E7E0), onSurfaceVariant = TextoSecundario,
+    outline = Color(0xFF81736B),
+    error = Color(0xFFB3261E), onError = Color.White
 )
 
 private val DarkColors = darkColorScheme(
@@ -38,9 +37,6 @@ private val DarkColors = darkColorScheme(
 @Composable
 fun Petly_appTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     // Sin colores dinámicos para conservar la identidad elegida también en Android 12+.
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = Typography,
-        content = content
-    )
+    MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors,
+        typography = Typography, content = content)
 }

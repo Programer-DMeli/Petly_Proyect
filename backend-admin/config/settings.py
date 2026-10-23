@@ -162,27 +162,78 @@ REST_FRAMEWORK = {
 
 # Spring Boot es la única autoridad de cuentas de negocio.
 SPRING_API_URL = os.getenv("SPRING_API_URL", "http://127.0.0.1:8080").rstrip("/")
-SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "")
+SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "test-secret-key-for-development-only-change-in-production")
 
-# Proveedor de firma REST configurable; requiere contrato API y credenciales del proveedor.
+# US-03: secreto de servicio para el feed de datos vigentes de mascotas.
+PET_COMPATIBILITY_SERVICE_TOKEN = os.getenv("PET_COMPATIBILITY_SERVICE_TOKEN", "")
+
+# US-09: proveedor REST de firma electrónica (el proveedor concreto se configura por entorno).
 CONTRACT_SIGNATURE_API_URL = os.getenv("CONTRACT_SIGNATURE_API_URL", "")
 CONTRACT_SIGNATURE_API_TOKEN = os.getenv("CONTRACT_SIGNATURE_API_TOKEN", "")
 CONTRACT_SIGNATURE_WEBHOOK_SECRET = os.getenv("CONTRACT_SIGNATURE_WEBHOOK_SECRET", "")
 CONTRACT_SIGNATURE_TIMEOUT_SECONDS = int(os.getenv("CONTRACT_SIGNATURE_TIMEOUT_SECONDS", "10"))
 CONTRACT_SIGNATURE_PROVIDER = os.getenv("CONTRACT_SIGNATURE_PROVIDER", "generic-rest")
-CONTRACT_SIGNATURE_ADAPTER_CLASS = os.getenv("CONTRACT_SIGNATURE_ADAPTER_CLASS", "apps.contratos.providers.ProveedorFirmaREST")
+CONTRACT_SIGNATURE_ADAPTER_CLASS = os.getenv(
+    "CONTRACT_SIGNATURE_ADAPTER_CLASS", "apps.contratos.providers.ProveedorFirmaREST"
+)
 ADOPTION_CONTRACT_TERMS = os.getenv("ADOPTION_CONTRACT_TERMS", "")
 PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", "http://localhost:8000")
 PRIVATE_FILES_ROOT = Path(os.getenv("PRIVATE_FILES_ROOT", str(BASE_DIR / "private-media")))
 
-# US-29: proveedor REST de visión. Su salida siempre queda como borrador revisable.
+# US-29: el servicio devuelve un borrador editable; nunca publica por sí solo.
 PET_DESCRIPTION_API_URL = os.getenv("PET_DESCRIPTION_API_URL", "")
 PET_DESCRIPTION_API_TOKEN = os.getenv("PET_DESCRIPTION_API_TOKEN", "")
 PET_DESCRIPTION_TIMEOUT_SECONDS = int(os.getenv("PET_DESCRIPTION_TIMEOUT_SECONDS", "20"))
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-REST_FRAMEWORK["EXCEPTION_HANDLER"] = "apps.acceso.integracion.exception_handler"
+
+# --- SimpleJWT (US-21) ---
+# Para adoptante móvil: Django emite/valida sus propios tokens (refresh, logout, etc.)
+# Para admin/albergue: Django VALIDA tokens emitidos por Spring Boot
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    # Configuración para tokens Django (adoptante móvil)
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    # Configuración común
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,  # Para firmar tokens Django (adoptante)
+    "VERIFYING_KEY": os.getenv("JWT_SECRET"),  # Para VALIDAR tokens Spring Boot (admin)
+    # No validar issuer/audience globalmente; cada auth class lo hace
+    "AUDIENCE": None,
+    "ISSUER": None,
+    "JWK_URL": None,
+    "LEEWAY": 0,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    # Spring Boot usa 'sub' como user_id
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "sub",
+    # Deshabilitar token_type claim (Spring Boot no lo envía)
+    "TOKEN_TYPE_CLAIM": None,
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
+    "JTI_CLAIM": "jti",
+    "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
+    "SLIDING_TOKEN_LIFETIME": timedelta(minutes=60),
+    "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=7),
+}
+
+from django.db.backends.base.base import BaseDatabaseWrapper
+BaseDatabaseWrapper.check_database_version_supported = lambda self: None
+
+
+from django.db.backends.base.base import BaseDatabaseWrapper
+BaseDatabaseWrapper.check_database_version_supported = lambda self: None
+
+# --- Parche de compatibilidad para MariaDB < 10.5 (XAMPP) ---
+from django.db.backends.mysql.features import DatabaseFeatures
+
+DatabaseFeatures.can_return_columns_from_insert = False
+DatabaseFeatures.can_return_rows_from_insert = False
 
 # --- Logging ---
 LOGGING = {

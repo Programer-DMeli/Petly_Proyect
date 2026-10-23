@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 
 from apps.acceso.models import SolicitudAdopcion, User
 from .models import ContratoAdopcion
-from .providers import ErrorProveedorFirma, ProveedorNoConfigurado
+from .providers import ErrorProveedorFirma, ProveedorNoConfigurado, obtener_adaptador_firma
 from .serializers import ContratoAdopcionSerializer, EventoProveedorSerializer
 from .services import (
     TerminosContratoNoConfigurados,
@@ -52,8 +52,10 @@ class ContratoViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"detail": "El contrato aún no está firmado por ambas partes."}, status=409)
         if not contrato.documento_firmado:
             return Response({"detail": "El documento firmado todavía no está disponible."}, status=503)
-        return FileResponse(contrato.documento_firmado.open("rb"), as_attachment=True,
-                            filename=f"contrato-adopcion-{contrato.solicitud_id}.pdf", content_type="application/pdf")
+        return FileResponse(
+            contrato.documento_firmado.open("rb"), as_attachment=True,
+            filename=f"contrato-adopcion-{contrato.solicitud_id}.pdf", content_type="application/pdf",
+        )
 
 
 class GenerarContratoView(APIView):
@@ -146,14 +148,14 @@ class WebhookFirmaView(APIView):
         except ContratoAdopcion.DoesNotExist:
             return Response({"detail": "Documento de firma desconocido."}, status=404)
         if contrato.estado == ContratoAdopcion.Estado.FIRMADO and not contrato.documento_firmado:
-            adaptador = obtener_adaptador_firma()
-            descargar = getattr(adaptador, "descargar", None)
-            if not callable(descargar):
-                return Response({"detail": "El adaptador no implementa la descarga del documento firmado."}, status=503)
             try:
+                adaptador = obtener_adaptador_firma()
+                descargar = getattr(adaptador, "descargar", None)
+                if not callable(descargar):
+                    return Response({"detail": "El adaptador no permite descargar el contrato firmado."}, status=503)
                 pdf = descargar(contrato)
                 contrato.documento_firmado.save(f"{contrato.public_id}.pdf", ContentFile(pdf), save=True)
-            except ErrorProveedorFirma as exc:
+            except (ErrorProveedorFirma, ProveedorNoConfigurado) as exc:
                 return Response({"detail": str(exc)}, status=502)
         return Response({
             "accepted": True,
@@ -164,21 +166,29 @@ class WebhookFirmaView(APIView):
 
 
 class RegistrarEntregaContratoView(APIView):
-    """Only the owning shelter can mark physical handover after both signatures."""
+    """Finaliza la adopción solo tras firmas confirmadas y PDF firmado persistido."""
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, solicitud_id):
-        try:
-            contrato = ContratoAdopcion.objects.select_related("solicitud__albergue").get(solicitud_id=solicitud_id)
-        except ContratoAdopcion.DoesNotExist:
-            return Response({"detail": "Contrato no encontrado."}, status=404)
-        if request.user.rol != User.Rol.ALBERGUE or contrato.solicitud.albergue.usuario_id != request.user.pk:
-            return Response({"detail": "Solo el albergue propietario registra la entrega."}, status=403)
-        if contrato.estado != ContratoAdopcion.Estado.FIRMADO or not contrato.documento_firmado:
-            return Response({"detail": "La entrega requiere firmas confirmadas y el documento final."}, status=409)
+        from django.db import transaction
         from apps.acceso.solicitudes import cambiar_estado_solicitud
-        try:
-            solicitud = cambiar_estado_solicitud(solicitud_id, SolicitudAdopcion.Estado.ENTREGADA, request.user)
-        except DjangoValidationError as exc:
-            raise ValidationError({"detail": exc.messages}) from exc
+
+        with transaction.atomic():
+            contrato = ContratoAdopcion.objects.select_for_update().select_related(
+                "solicitud__albergue"
+            ).filter(solicitud_id=solicitud_id).first()
+            if contrato is None:
+                return Response({"detail": "Contrato no encontrado."}, status=404)
+            solicitud = contrato.solicitud
+            if request.user.rol != User.Rol.ALBERGUE or solicitud.albergue.usuario_id != request.user.pk:
+                return Response({"detail": "Solo el albergue propietario registra la entrega."}, status=403)
+            if contrato.estado != ContratoAdopcion.Estado.FIRMADO or not contrato.documento_firmado:
+                return Response({"detail": "Se requieren ambas firmas y el documento final antes de la entrega."}, status=409)
+            try:
+                solicitud = cambiar_estado_solicitud(
+                    solicitud.pk, SolicitudAdopcion.Estado.ENTREGADA, request.user
+                )
+            except DjangoValidationError as exc:
+                raise ValidationError({"detail": exc.messages}) from exc
         return Response({"solicitudId": solicitud.pk, "estado": solicitud.estado, "fechaEntrega": solicitud.fecha_entrega})

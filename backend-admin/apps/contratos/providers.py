@@ -30,7 +30,7 @@ class ProveedorFirmaREST:
             raise ProveedorNoConfigurado("El endpoint del proveedor debe usar HTTPS (HTTP solo en DEBUG).")
 
         solicitud = contrato.solicitud
-        email_adoptante = (contrato.snapshot.get("adoptanteCorreo") or "").strip()
+        email_adoptante = (contrato.snapshot.get("adoptanteCorreo") or solicitud.postulante.email).strip()
         email_albergue = contrato.snapshot.get("albergueCorreo", "").strip()
         if not email_adoptante or not email_albergue:
             raise ErrorProveedorFirma("El adoptante y el albergue deben tener correo para iniciar la firma.")
@@ -43,7 +43,6 @@ class ProveedorFirmaREST:
                 {"role": "adoptante", "name": contrato.snapshot["adoptanteNombre"], "email": email_adoptante},
                 {"role": "albergue", "name": contrato.snapshot["albergueNombre"], "email": email_albergue},
             ],
-            "signaturePolicy": "all_signers",
             "webhookUrl": callback_url,
         }
         req = Request(
@@ -85,11 +84,13 @@ class ProveedorFirmaREST:
         }
 
     def descargar(self, contrato):
-        """Fetch the final PDF after the provider reports both signatures complete."""
+        """Descarga el PDF final únicamente después de la confirmación de firmas."""
+        if not settings.CONTRACT_SIGNATURE_API_URL or not settings.CONTRACT_SIGNATURE_API_TOKEN:
+            raise ProveedorNoConfigurado("Configura el proveedor de firma antes de descargar el contrato.")
         endpoint = settings.CONTRACT_SIGNATURE_API_URL.rstrip("/") + "/" + str(contrato.proveedor_documento_id) + "/download"
         parts = urlsplit(endpoint)
-        allowed = {"https"} | ({"http"} if settings.DEBUG else set())
-        if parts.scheme not in allowed or not parts.netloc:
+        esquemas = {"https"} | ({"http"} if settings.DEBUG else set())
+        if parts.scheme not in esquemas or not parts.netloc:
             raise ProveedorNoConfigurado("La descarga del contrato debe usar HTTPS (HTTP solo en DEBUG).")
         req = Request(endpoint, headers={
             "Authorization": f"Bearer {settings.CONTRACT_SIGNATURE_API_TOKEN}",
@@ -98,13 +99,13 @@ class ProveedorFirmaREST:
         try:
             with urlopen(req, timeout=settings.CONTRACT_SIGNATURE_TIMEOUT_SECONDS) as response:
                 data = response.read(20 * 1024 * 1024 + 1)
-                if len(data) > 20 * 1024 * 1024 or not data.startswith(b"%PDF-"):
-                    raise ErrorProveedorFirma("El proveedor no devolvió un PDF firmado válido.")
-                return data
         except HTTPError as exc:
             raise ErrorProveedorFirma(f"No se pudo descargar el contrato firmado (HTTP {exc.code}).") from exc
         except (URLError, TimeoutError, OSError) as exc:
             raise ErrorProveedorFirma("No fue posible descargar el contrato firmado.") from exc
+        if len(data) > 20 * 1024 * 1024 or not data.startswith(b"%PDF-"):
+            raise ErrorProveedorFirma("El proveedor no devolvió un PDF firmado válido.")
+        return data
 
 
 def obtener_adaptador_firma():

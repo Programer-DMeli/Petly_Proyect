@@ -9,7 +9,9 @@ data class LoginRequest(
 
 data class RegisterRequest(
     @SerializedName("correo") val email: String,
-    val password: String
+    val password: String,
+    val firstName: String? = null,
+    val aceptoTerminos: Boolean = false
 )
 
 data class LoginResponse(

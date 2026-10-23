@@ -1,93 +1,193 @@
 package com.petly_app.ui.auth
 
+import android.util.Patterns
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.*
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun RegisterScreen(
     state: AuthUiState,
-    onRegister: (String, String, String) -> Unit,
+    onRegister: (String, String, String, String, Boolean) -> Unit,
     onBack: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
-
-    BackHandler(enabled = state.busy) { /* Bloquear navegación mientras está procesando la solicitud. */ }
-
-    LaunchedEffect(state.registered) {
-        if (state.registered) {
-            password = ""
-            confirmation = ""
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var confirmationVisible by rememberSaveable { mutableStateOf(false) }
+    var accepted by rememberSaveable { mutableStateOf(false) }
+    var policyOpen by rememberSaveable { mutableStateOf(false) }
+    var attempted by remember { mutableStateOf(false) }
+    val focus = LocalFocusManager.current
+    val errors = buildMap {
+        if (name.trim().length !in 2..50) put("name", "Escribe tu nombre completo, entre 2 y 50 caracteres.")
+        if (!Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() || email.trim().length > 100)
+            put("email", "Ingresa un correo válido, por ejemplo camila@adopta.org.")
+        if (password.length < 8 || password.toByteArray(Charsets.UTF_8).size > 72)
+            put("password", "Usa al menos 8 caracteres y hasta 72 bytes UTF-8.")
+        if (confirmation != password) put("confirmation", "Las contraseñas no coinciden.")
+    }
+    val canSubmit = !state.busy && !state.registered && state.rateLimitRemainingSeconds == 0 && accepted &&
+        name.isNotBlank() && email.isNotBlank() && password.isNotBlank() && confirmation.isNotBlank()
+    val submit = {
+        if (canSubmit) {
+            attempted = true
+            if (errors.isEmpty()) {
+                focus.clearFocus()
+                onRegister(name.trim(), email.trim(), password, confirmation, accepted)
+            }
         }
     }
+    BackHandler(enabled = state.busy) { /* Prevent leaving during account creation. */ }
+    LaunchedEffect(state.registered) {
+        if (state.registered) { password = ""; confirmation = ""; focus.clearFocus() }
+    }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text("Crear cuenta", style = MaterialTheme.typography.headlineMedium)
-
-        if (state.registered) {
-            Text(
-                "¡Cuenta creada con éxito!",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text("Tu registro se ha completado correctamente. Ya puedes iniciar sesión con tu correo y contraseña.")
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = onBack,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Iniciar sesión")
-            }
-        } else {
-            Text("Ingresa tus datos para registrarte en Petly.")
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Correo electrónico") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                singleLine = true,
-                enabled = !state.busy,
-                modifier = Modifier.fillMaxWidth()
-            )
-            PasswordField(password, { password = it }, "Contraseña", !state.busy)
-            PasswordField(confirmation, { confirmation = it }, "Repetir contraseña", !state.busy)
-
-            state.error?.let {
-                Text(it, color = MaterialTheme.colorScheme.error)
-            }
-
-            if (state.rateLimitRemainingSeconds > 0) Text("Límite de peticiones. Vuelve a intentar en ${state.rateLimitRemainingSeconds} segundos.", color = MaterialTheme.colorScheme.error)
-            Button(
-                onClick = { onRegister(email, password, confirmation) },
-                enabled = !state.busy && state.rateLimitRemainingSeconds == 0 && email.isNotBlank() && password.isNotBlank() && confirmation.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (state.busy) "Creando cuenta…" else "Registrarme")
-            }
-
-            TextButton(
-                onClick = onBack,
-                enabled = !state.busy,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("¿Ya tienes una cuenta? Iniciar sesión")
+    AccessTheme {
+        Column(Modifier.fillMaxSize().background(MintBackground).imePadding()
+            .verticalScroll(rememberScrollState()).padding(horizontal = 10.dp)
+            .padding(top = 8.dp, bottom = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            AccessHeader()
+            Surface(Modifier.widthIn(max = 420.dp).fillMaxWidth(), shape = RoundedCornerShape(44.dp),
+                color = Color.White, shadowElevation = 5.dp) {
+                Column(Modifier.padding(horizontal = 22.dp, vertical = 22.dp)) {
+                    AccessTabs(creatingAccount = true, busy = state.busy, onLogin = onBack, onRegister = {})
+                    Spacer(Modifier.height(20.dp))
+                    if (state.registered) {
+                        Icon(AccessIcons.Check, null, tint = Forest, modifier = Modifier.size(36.dp).align(Alignment.CenterHorizontally))
+                        Text("¡Cuenta creada con éxito!", color = Forest, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(vertical = 12.dp).semantics { liveRegion = LiveRegionMode.Polite })
+                        Text("Tu perfil Petly ya está listo. Inicia sesión con tu correo y contraseña para comenzar.")
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), shape = CircleShape) { Text("Iniciar sesión") }
+                    } else {
+                        RegistrationLabel("Nombre completo", AccessIcons.Person)
+                        AccessField(name, { name = it }, "Ej. Camila Morales", "Nombre completo", "register_name", !state.busy,
+                            KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next))
+                        RegistrationError(if (attempted) errors["name"] else null)
+                        Spacer(Modifier.height(10.dp))
+                        RegistrationLabel("Correo electrónico", AccessIcons.Mail)
+                        AccessField(email, { email = it }, "camila@adopta.org", "Correo electrónico", "register_email", !state.busy,
+                            KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next))
+                        RegistrationError(if (attempted) errors["email"] else null)
+                        Spacer(Modifier.height(10.dp))
+                        RegistrationLabel("Crea tu contraseña", AccessIcons.Lock)
+                        RegistrationPassword(password, { password = it }, "Mínimo 8 caracteres", "Crea tu contraseña",
+                            "register_password", !state.busy, passwordVisible, { passwordVisible = !passwordVisible }, ImeAction.Next)
+                        RegistrationError(if (attempted) errors["password"] else null)
+                        Spacer(Modifier.height(10.dp))
+                        RegistrationLabel("Confirmar contraseña", AccessIcons.Check)
+                        RegistrationPassword(confirmation, { confirmation = it }, "Repite tu contraseña", "Confirmar contraseña",
+                            "register_confirmation", !state.busy, confirmationVisible, { confirmationVisible = !confirmationVisible },
+                            ImeAction.Done, KeyboardActions(onDone = { submit() }))
+                        RegistrationError(if (attempted) errors["confirmation"] else null)
+                        Spacer(Modifier.height(12.dp))
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = accepted, onCheckedChange = { accepted = it }, enabled = !state.busy,
+                                modifier = Modifier.testTag("register_terms").semantics {
+                                    contentDescription = "Acepto los términos de adopción responsable y la política de bienestar animal"
+                                }, colors = CheckboxDefaults.colors(checkedColor = Forest))
+                            Text(buildAnnotatedString {
+                                append("Acepto los ")
+                                withLink(LinkAnnotation.Clickable("adoption_policy",
+                                    styles = TextLinkStyles(SpanStyle(color = Forest, textDecoration = TextDecoration.Underline)),
+                                    linkInteractionListener = { policyOpen = true })) {
+                                    append("Términos de Adopción Responsable")
+                                }
+                                append(" y la política de bienestar animal.")
+                            }, style = LoginType.copy(fontSize = 12.sp, lineHeight = 16.sp, color = WarmText),
+                                modifier = Modifier.weight(1f).testTag("register_policy"))
+                        }
+                        state.error?.let { RegistrationError(it) }
+                        if (state.rateLimitRemainingSeconds > 0) RegistrationError(
+                            "Límite de peticiones. Vuelve a intentar en ${state.rateLimitRemainingSeconds} segundos.")
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = { submit() }, enabled = canSubmit, shape = CircleShape,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("register_submit"),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFBC5E), contentColor = Color(0xFF744B0A),
+                                disabledContainerColor = Color(0xFFFFD18D), disabledContentColor = Color(0xFF775C31))) {
+                            if (state.busy) CircularProgressIndicator(Modifier.size(18.dp), color = Color(0xFF744B0A), strokeWidth = 2.dp)
+                            else Icon(AccessIcons.Paw, null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (state.busy) "Creando cuenta…" else "Crear mi perfil Petly",
+                                style = LoginType.copy(fontWeight = FontWeight.Bold, color = Color(0xFF744B0A)))
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                            Text("¿Ya tienes una cuenta?", style = LoginType.copy(fontSize = 12.sp, color = WarmText),
+                                modifier = Modifier.align(Alignment.CenterVertically))
+                            TextButton(onClick = onBack, enabled = !state.busy, contentPadding = PaddingValues(horizontal = 6.dp)) {
+                                Text("Inicia sesión", style = LoginType.copy(fontSize = 12.sp, color = Forest))
+                            }
+                        }
+                    }
+                }
             }
         }
+        if (policyOpen) AdoptionPolicyDialog(onDismiss = { policyOpen = false })
     }
 }
+
+@Composable
+private fun RegistrationLabel(text: String, icon: ImageVector) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
+        Icon(icon, null, tint = Forest, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(text, style = LoginType.copy(fontSize = 13.sp, color = WarmText))
+    }
+}
+
+@Composable
+private fun RegistrationError(error: String?) {
+    error?.let {
+        Text(it, color = MaterialTheme.colorScheme.error, style = LoginType.copy(fontSize = 12.sp),
+            modifier = Modifier.padding(top = 6.dp).semantics { liveRegion = LiveRegionMode.Polite })
+    }
+}
+
+@Composable
+private fun RegistrationPassword(value: String, onChange: (String) -> Unit, placeholder: String, label: String,
+    tag: String, enabled: Boolean, visible: Boolean, onToggle: () -> Unit, imeAction: ImeAction,
+    keyboardActions: KeyboardActions = KeyboardActions.Default) {
+    AccessField(value, onChange, placeholder, label, tag, enabled,
+        KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = imeAction), keyboardActions,
+        if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailing = {
+            IconButton(onClick = onToggle, enabled = enabled) {
+                Icon(AccessIcons.Eye, if (visible) "Ocultar $label" else "Mostrar $label", tint = WarmText, modifier = Modifier.size(20.dp))
+            }
+        })
+}
+
+@Preview(showBackground = true, widthDp = 352, heightDp = 796)
+@Composable
+private fun RegisterReferencePreview() { RegisterScreen(AuthUiState(), { _, _, _, _, _ -> }, {}) }

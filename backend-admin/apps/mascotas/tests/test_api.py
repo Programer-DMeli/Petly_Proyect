@@ -109,19 +109,20 @@ class MascotaAPITest(TestCase):
             {'estado': 'INVALIDO'}
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('error', response.data)
+        # DRF devuelve errores a nivel de campo para ChoiceField inválido
+        self.assertIn('estado', response.data)
 
     def test_cambiar_estado_adoptado_fecha_adopcion(self):
-        """Al pasar a ADOPTADO, se setea fecha_adopcion."""
+        """No se puede finalizar una adopción sin registrar entrega de contrato firmado."""
         self._auth(self.user)
         response = self.client.post(
             f'/api/mascotas/{self.mascota.id}/cambiar-estado/',
             {'estado': Mascota.Estado.ADOPTADO}
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIsNotNone(response.data['fecha_adopcion'])
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.mascota.refresh_from_db()
-        self.assertIsNotNone(self.mascota.fecha_adopcion)
+        self.assertEqual(self.mascota.estado, Mascota.Estado.DISPONIBLE)
+        self.assertIsNone(self.mascota.fecha_adopcion)
 
     def test_estadisticas_endpoint(self):
         """Endpoint estadísticas retorna conteos correctos."""
@@ -157,10 +158,26 @@ class MascotaAPITest(TestCase):
         self._auth(self.user)
         response = self.client.get(f'/api/mascotas/{mascota_ajena.id}/')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_otro_albergue_no_puede_modificar_ni_eliminar_mascota(self):
+        Albergue.objects.create(usuario=self.other_user, nombre='A2', direccion='D2')
+        self._auth(self.other_user)
+        path = f'/api/mascotas/{self.mascota.id}/'
+        self.assertEqual(
+            self.client.patch(path, {'nombre': 'Tomada'}, format='json').status_code,
+            status.HTTP_404_NOT_FOUND,
+        )
+        self.assertEqual(self.client.delete(path).status_code, status.HTTP_404_NOT_FOUND)
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.nombre, 'Firulais')
+
     def test_foto_y_edad_invalidas_rechazadas(self):
         self._auth(self.user)
         payload = {"nombre": "Luna", "especie": "PERRO", "sexo": "HEMBRA", "edad_anos": 2}
-        self.assertEqual(self.client.post('/api/mascotas/',payload).status_code,400)
+        # La foto válida es obligatoria al crear y las edades respetan el rango.
+        self.assertEqual(self.client.post('/api/mascotas/', payload).status_code, 400)
+        payload["foto_principal"] = foto_prueba()
+        self.assertEqual(self.client.post('/api/mascotas/', payload).status_code, 201)
         payload["foto_principal"] = SimpleUploadedFile("fake.png",b"not an image",content_type="image/png")
         self.assertEqual(self.client.post('/api/mascotas/',payload).status_code,400)
         payload["foto_principal"] = foto_prueba(); payload["edad_meses"] = 12

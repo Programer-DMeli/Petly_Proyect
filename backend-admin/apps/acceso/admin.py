@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, AdoptanteProfile, Postulante, SolicitudAdopcion
+from .models import User, AdoptanteProfile, Postulante, SolicitudAdopcion, SolicitudEvento
 
 
 @admin.register(User)
@@ -57,9 +57,11 @@ class SolicitudAdopcionAdmin(admin.ModelAdmin):
     list_display = ('id', 'postulante_link', 'mascota_link', 'albergue_link', 'estado_badge', 'fecha_solicitud', 'fecha_revision')
     list_filter = ('estado', 'albergue', 'mascota__especie', 'fecha_solicitud')
     search_fields = ('postulante__nombres', 'postulante__apellidos', 'postulante__documento_numero', 'mascota__nombre')
-    readonly_fields = ('fecha_solicitud', 'actualizado_en', 'postulante_detalle', 'mascota_detalle')
+    readonly_fields = ('estado', 'fecha_solicitud', 'actualizado_en', 'postulante_detalle', 'mascota_detalle')
     ordering = ('-fecha_solicitud',)
-    actions = ['cambiar_a_en_revision', 'cambiar_a_aprobada', 'cambiar_a_rechazada', 'cambiar_a_entregada']
+    # Las decisiones deben pasar por cambiar_estado_solicitud para validar motivo,
+    # autorización vigente y bloqueo de la mascota en una única transacción.
+    actions = []
     
     fieldsets = (
         ('Información básica', {'fields': ('postulante', 'mascota', 'albergue', 'estado')}),
@@ -94,7 +96,7 @@ class SolicitudAdopcionAdmin(admin.ModelAdmin):
         from django.utils.html import format_html
         colors = {
             'PENDIENTE': '#ffc107',
-            'EN_REVISION': '#17a2b8',
+            'OBSERVADA': '#17a2b8',
             'APROBADA': '#28a745',
             'RECHAZADA': '#dc3545',
             'CANCELADA': '#6c757d',
@@ -128,8 +130,8 @@ class SolicitudAdopcionAdmin(admin.ModelAdmin):
         count = 0
         for obj in queryset:
             transiciones_validas = {
-                'PENDIENTE': ['EN_REVISION', 'RECHAZADA', 'CANCELADA'],
-                'EN_REVISION': ['APROBADA', 'RECHAZADA', 'PENDIENTE'],
+                'PENDIENTE': ['OBSERVADA', 'RECHAZADA', 'CANCELADA'],
+                'OBSERVADA': ['APROBADA', 'RECHAZADA', 'PENDIENTE'],
                 'APROBADA': ['ENTREGADA', 'RECHAZADA'],
                 'RECHAZADA': [],
                 'CANCELADA': [],
@@ -151,8 +153,8 @@ class SolicitudAdopcionAdmin(admin.ModelAdmin):
         self.message_user(request, f'{count} solicitudes cambiadas a {mensaje}.')
     
     def cambiar_a_en_revision(self, request, queryset):
-        self._cambiar_estado_masivo(request, queryset, 'EN_REVISION', 'En Revisión')
-    cambiar_a_en_revision.short_description = 'Cambiar a En Revisión'
+        self._cambiar_estado_masivo(request, queryset, 'OBSERVADA', 'Observada')
+    cambiar_a_en_revision.short_description = 'Cambiar a Observada'
     
     def cambiar_a_aprobada(self, request, queryset):
         self._cambiar_estado_masivo(request, queryset, 'APROBADA', 'Aprobada')
@@ -165,3 +167,21 @@ class SolicitudAdopcionAdmin(admin.ModelAdmin):
     def cambiar_a_entregada(self, request, queryset):
         self._cambiar_estado_masivo(request, queryset, 'ENTREGADA', 'Entregada')
     cambiar_a_entregada.short_description = 'Cambiar a Entregada (Adopción finalizada)'
+
+
+@admin.register(SolicitudEvento)
+class SolicitudEventoAdmin(admin.ModelAdmin):
+    list_display = ("solicitud", "tipo", "estado_anterior", "estado_nuevo", "ocurrido_en", "actor")
+    list_filter = ("tipo", "visible_adoptante", "ocurrido_en")
+    search_fields = ("solicitud__postulante__documento_numero", "descripcion")
+    readonly_fields = tuple(field.name for field in SolicitudEvento._meta.fields)
+    ordering = ("-ocurrido_en",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

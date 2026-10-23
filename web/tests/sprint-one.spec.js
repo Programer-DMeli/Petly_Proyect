@@ -141,22 +141,16 @@ test('Sprint 1 integrado: tres roles, CRUD, perfil, consentimiento, catálogo y 
   await expect(
     adopt.getByText('Si el correo existe, recibirás instrucciones.', { exact: false })
   ).toBeVisible();
-  const mail = fs
-    .readFileSync('/tmp/petly-correo-prueba.eml', 'utf8')
-    .replace(/=\r?\n/g, '')
-    .replace(/=3D/g, '=');
-  let url = mail.match(/http:\/\/localhost:5173\/recuperacion\?token=[A-Za-z0-9_-]+/)?.[0];
-  if (!url) {
-    // JavaMail puede codificar el cuerpo como base64.
-    const content = Buffer.from(
-      mail
-        .split(/\r?\n\r?\n/)
-        .slice(1)
-        .join('\n')
-        .replace(/\s/g, ''),
-      'base64'
-    ).toString();
-    url = content.match(/http:\/\/localhost:5173\/recuperacion\?token=[A-Za-z0-9_-]+/)?.[0];
+  let url;
+  for (let attempt = 0; attempt < 20 && !url; attempt++) {
+    const messages = await adopt.request.get('http://localhost:8025/api/v1/messages?limit=100');
+    const body = await messages.json();
+    const message = body.messages.find(m => m.To.some(to => to.Address === accounts.ADOPTANTE.correo));
+    if (message) {
+      const content = await (await adopt.request.get(`http://localhost:8025/api/v1/message/${message.ID}`)).json();
+      url = content.Text.match(/http:\/\/localhost:5173\/recuperacion\?token=[A-Za-z0-9_.-]+/)?.[0];
+    }
+    if (!url) await adopt.waitForTimeout(500);
   }
   expect(Boolean(url)).toBe(true);
   await adopt.goto(url);

@@ -1,5 +1,6 @@
 package com.petly.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -12,6 +13,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.petly.auth.JwtService;
+import com.petly.usuarios.UsuarioRepository;
 
 /**
  * Reglas de acceso de la API (US-21).
@@ -24,19 +26,31 @@ import com.petly.auth.JwtService;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    @Value("${interno.api-secret}")
+    private String internalApiSecret;
+
     @Bean
-    JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService) {
-        return new JwtAuthenticationFilter(jwtService);
+    JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService, UsuarioRepository usuarios) {
+        return new JwtAuthenticationFilter(jwtService, usuarios);
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+    InternalApiFilter internalApiFilter() {
+        return new InternalApiFilter(internalApiSecret);
+    }
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                            JwtAuthenticationFilter jwtAuthenticationFilter,
+                                            InternalApiFilter internalApiFilter) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 // sin cookies no hay nada que proteger contra CSRF
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // el secreto de servicio protege el endpoint interno (US-18)
+                .addFilterBefore(internalApiFilter, UsernamePasswordAuthenticationFilter.class)
                 // el filtro JWT corre antes de la autenticacion estandar
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 // sin token o token malo: 401 con JSON en vez del 403 por defecto
@@ -59,6 +73,16 @@ public class SecurityConfig {
                         // registro y login son publicos, recien ahi sale el token
 .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**")
                         .permitAll()
+                        // la autorizacion de consulta es exclusiva del adoptante (US-18)
+                        .requestMatchers("/api/autorizaciones/**")
+                        .hasRole("ADOPTANTE")
+                        // El envío de solicitudes es exclusivo del adoptante (US-06).
+                        .requestMatchers("/api/solicitudes", "/api/solicitudes/**")
+                        .hasRole("ADOPTANTE")
+                        // endpoint interno Django -> Spring: el secreto lo exige InternalApiFilter (US-18)
+                        .requestMatchers("/api/interno/**")
+                        .permitAll()
+                        // roles existentes en main
                         .requestMatchers("/api/perfil/**", "/api/autorizaciones/**").hasRole("ADOPTANTE")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/albergue/**").hasRole("ALBERGUE")

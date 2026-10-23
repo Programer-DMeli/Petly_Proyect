@@ -2,7 +2,7 @@
 <div class="modal-header">
     <h5 class="modal-title">
         <i class="bi bi-file-earmark-text me-2"></i>Solicitud #{{ solicitud.id }}
-        <span class="badge bg-{% if solicitud.estado == 'PENDIENTE' %}warning{% elif solicitud.estado == 'EN_REVISION' %}info{% elif solicitud.estado == 'APROBADA' %}success{% elif solicitud.estado == 'RECHAZADA' %}danger{% elif solicitud.estado == 'CANCELADA' %}secondary{% else %}primary{% endif %} ms-2">
+        <span class="badge bg-{% if solicitud.estado == 'PENDIENTE' %}warning{% elif solicitud.estado == 'OBSERVADA' %}info{% elif solicitud.estado == 'APROBADA' %}success{% elif solicitud.estado == 'RECHAZADA' %}danger{% elif solicitud.estado == 'CANCELADA' %}secondary{% else %}primary{% endif %} ms-2">
             {{ solicitud.get_estado_display }}
         </span>
     </h5>
@@ -20,7 +20,7 @@
                         <dd class="col-8">{{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}</dd>
                         <dt class="col-4">Estado</dt>
                         <dd class="col-8">
-                            <span class="badge bg-{% if solicitud.estado == 'PENDIENTE' %}warning{% elif solicitud.estado == 'EN_REVISION' %}info{% elif solicitud.estado == 'APROBADA' %}success{% elif solicitud.estado == 'RECHAZADA' %}danger{% elif solicitud.estado == 'CANCELADA' %}secondary{% else %}primary{% endif %}">
+                            <span class="badge bg-{% if solicitud.estado == 'PENDIENTE' %}warning{% elif solicitud.estado == 'OBSERVADA' %}info{% elif solicitud.estado == 'APROBADA' %}success{% elif solicitud.estado == 'RECHAZADA' %}danger{% elif solicitud.estado == 'CANCELADA' %}secondary{% else %}primary{% endif %}">
                                 {{ solicitud.get_estado_display }}
                             </span>
                         </dd>

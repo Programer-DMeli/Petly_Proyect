@@ -32,7 +32,7 @@ val Typography = Typography(
         lineHeight = 32.sp,
         letterSpacing = 0.sp
     ),
-    
+
     // Headlines - Nunito Bold
     headlineLarge = TextStyle(
         fontFamily = NunitoFallback,
@@ -55,7 +55,7 @@ val Typography = Typography(
         lineHeight = 24.sp,
         letterSpacing = 0.sp
     ),
-    
+
     // Titles - Nunito SemiBold
     titleLarge = TextStyle(
         fontFamily = NunitoFallback,
@@ -78,7 +78,7 @@ val Typography = Typography(
         lineHeight = 18.sp,
         letterSpacing = 0.1.sp
     ),
-    
+
     // Body - Nunito Regular
     bodyLarge = TextStyle(
         fontFamily = NunitoFallback,
@@ -101,7 +101,7 @@ val Typography = Typography(
         lineHeight = 16.sp,
         letterSpacing = 0.4.sp
     ),
-    
+
     // Labels - Nunito SemiBold
     labelLarge = TextStyle(
         fontFamily = NunitoFallback,

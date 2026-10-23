@@ -1,0 +1,40 @@
+{
+  "fecha": "2026-10-13",
+  "base": "database_petly permanente, puerto 13306",
+  "arquitectura": "React ADMIN/ALBERGUE usa Django; React ADOPTANTE y Kotlin usan Spring; autenticación única Spring",
+  "spring": {
+    "pruebas": 43,
+    "fallos": 0,
+    "errores": 0
+  },
+  "django": {
+    "pruebas": 78,
+    "activas_aprobadas": 68,
+    "omitidas": 10,
+    "entorno": "SQLite aislado, confirmado antes de la pausa"
+  },
+  "react": {
+    "pruebas_reales": 6,
+    "aprobadas": 6,
+    "entorno": "APIs reales y Mailpit, confirmado antes de la pausa"
+  },
+  "android": {
+    "unitarias": 19,
+    "casos_instrumentados_distintos": 8,
+    "detalle": "La ejecución completa tuvo seis aprobados y dos fallos de preparación. Tras respetar Retry-After en el acceso y restaurar el intent en finally, se repitió el grupo Compose: tres pruebas aprobadas, cero fallos; quedaron resueltos ambos fallos previos.",
+    "verificado": [
+      "bloqueo y cuota",
+      "cuestionario desde Compose",
+      "enlace inválido rechazado",
+      "recuperación real Mailpit, uso único y revocación de sesión",
+      "registro y acceso",
+      "catálogo, perfil y autorizaciones/revocación desde emulador",
+      "ocho fotografías descargadas y decodificadas"
+    ]
+  },
+  "limitaciones": [
+    "Mailpit verifica recepción local, no entrega SMTP externa",
+    "No se creó una cuenta técnica de Django Admin; administración de negocio en React",
+    "Sin commit ni push en esta sesión"
+  ]
+}

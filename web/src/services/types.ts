@@ -32,14 +32,17 @@ export interface Pet {
 }
 export interface SolicitudAdopcion {
   id: number;
-  estado: string;
+  estado: EstadoSolicitudAdopcion;
   fecha_solicitud: string;
   mascota_nombre: string;
+  postulante?: number;
+  mascota?: number;
+  albergue?: number;
 }
 export interface SeguimientoSolicitud {
   solicitudId: number;
-  estadoActual: string;
-  eventos: Array<{ estadoAnterior: string | null; estadoNuevo: string; descripcion: string; ocurridoEn: string }>;
+  estadoActual: EstadoSolicitudAdopcion;
+  eventos: EventoSeguimientoSolicitud[];
 }
 export interface ContratoAdopcion {
   public_id: string;
@@ -52,6 +55,52 @@ export interface ContratoAdopcion {
   firmado_en: string | null;
   error_integracion: string;
 }
+
+/** Estados de una solicitud de adopción (US-06). */
+export type EstadoSolicitudAdopcion =
+  | 'PENDIENTE'
+  | 'OBSERVADA'
+  | 'APROBADA'
+  | 'RECHAZADA'
+  | 'CANCELADA'
+  | 'ENTREGADA';
+
+/** Datos que el adoptante envía para solicitar una mascota. */
+export interface CrearSolicitudAdopcion {
+  mascotaId: number;
+  mensajePostulante?: string;
+  respuestasCuestionario?: Record<string, unknown>;
+}
+
+/** Respuesta Django de una solicitud persistida. */
+export interface SolicitudAdopcion {
+  id: number;
+  postulante?: number;
+  mascota?: number;
+  albergue?: number;
+  fecha_solicitud: string;
+  estado: EstadoSolicitudAdopcion;
+}
+
+/** Evento persistido que registra un cambio en el estado de una solicitud (US-08). */
+export interface EventoSeguimientoSolicitud {
+  id: number;
+  tipo: string;
+  tipo_display: string;
+  estado_anterior: EstadoSolicitudAdopcion | null;
+  estado_nuevo: EstadoSolicitudAdopcion | null;
+  descripcion: string;
+  ocurrido_en: string;
+  actor_nombre?: string;
+}
+
+/** Historial de estados devuelto por Spring para el adoptante titular. */
+export interface SeguimientoSolicitud {
+  solicitudId: number;
+  estadoActual: EstadoSolicitudAdopcion;
+  eventos: EventoSeguimientoSolicitud[];
+}
+
 export interface Shelter {
   id: number;
   nombre: string;

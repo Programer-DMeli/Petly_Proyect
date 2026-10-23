@@ -28,6 +28,7 @@ const initial: ShelterDraft = {
   responsable_telefono: '',
 };
 export default function PanelAlberguePage() {
+  const [step, setStep] = useState(0);
   const [shelter, setShelter] = useState<Shelter | null>(null);
   const [draft, setDraft] = useState(initial);
   const [loaded, setLoaded] = useState(false);
@@ -76,88 +77,147 @@ export default function PanelAlberguePage() {
       setBusy(false);
     }
   }
+  const steps = ['Datos del albergue', 'Infraestructura', 'Mascotas', 'Perfiles autorizados'];
   return (
-    <>
-      <section className="card">
-        <h1>Mi albergue</h1>
-        <Feedback error={error} success={success} />
-        {!loaded ? (
-          <button onClick={() => void load()}>Cargar información</button>
-        ) : (
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              void save();
-            }}
-          >
-            <fieldset disabled={busy}>
-              <div className="grid">
-                {(
-                  [
-                    'nombre',
-                    'direccion',
-                    'telefono',
-                    'email',
-                    'responsable_nombre',
-                    'responsable_telefono',
-                    'responsable_email',
-                  ] as const
-                ).map(key => (
-                  <label key={key}>
-                    {
+    <section className="card shelter-wizard">
+      <h1>Panel del albergue</h1>
+      <p className="muted">Completa cada paso para organizar la información de tu albergue.</p>
+      {shelter && (
+        <nav className="shelter-steps" aria-label="Pasos del panel del albergue">
+          {steps.map((label, index) => (
+            <button
+              key={label}
+              type="button"
+              className={`shelter-step${step === index ? ' shelter-step--active' : ''}`}
+              aria-current={step === index ? 'step' : undefined}
+              onClick={() => setStep(index)}
+            >
+              <span className="shelter-step__number">{index + 1}</span>
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
+      {step === 0 && (
+        <>
+          <h2>Mi albergue</h2>
+          <Feedback error={error} success={success} />
+          {!loaded ? (
+            <button onClick={() => void load()}>Cargar información</button>
+          ) : (
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                void save();
+              }}
+            >
+              <fieldset disabled={busy}>
+                <div className="grid">
+                  {(
+                    [
+                      'nombre',
+                      'direccion',
+                      'telefono',
+                      'email',
+                      'responsable_nombre',
+                      'responsable_telefono',
+                      'responsable_email',
+                    ] as const
+                  ).map(key => (
+                    <label key={key}>
                       {
-                        nombre: 'Nombre del albergue',
-                        direccion: 'Dirección',
-                        telefono: 'Teléfono',
-                        email: 'Correo de contacto',
-                        responsable_nombre: 'Nombre del responsable',
-                        responsable_telefono: 'Teléfono del responsable',
-                        responsable_email: 'Correo del responsable',
-                      }[key]
-                    }
+                        {
+                          nombre: 'Nombre del albergue',
+                          direccion: 'Dirección',
+                          telefono: 'Teléfono',
+                          email: 'Correo de contacto',
+                          responsable_nombre: 'Nombre del responsable',
+                          responsable_telefono: 'Teléfono del responsable',
+                          responsable_email: 'Correo del responsable',
+                        }[key]
+                      }
+                      <input
+                        type={key.includes('email') ? 'email' : 'text'}
+                        required={key === 'nombre' || key === 'direccion'}
+                        maxLength={key === 'direccion' ? 255 : key.includes('telefono') ? 20 : 150}
+                        value={draft[key]}
+                        onChange={e => setDraft({ ...draft, [key]: e.target.value })}
+                      />
+                    </label>
+                  ))}
+                  <label>
+                    Capacidad máxima
                     <input
-                      type={key.includes('email') ? 'email' : 'text'}
-                      required={key === 'nombre' || key === 'direccion'}
-                      maxLength={key === 'direccion' ? 255 : key.includes('telefono') ? 20 : 150}
-                      value={draft[key]}
-                      onChange={e => setDraft({ ...draft, [key]: e.target.value })}
+                      type="number"
+                      required
+                      min={0}
+                      step={1}
+                      value={draft.capacidad_maxima}
+                      onChange={e =>
+                        setDraft({ ...draft, capacidad_maxima: Number(e.target.value) })
+                      }
                     />
                   </label>
-                ))}
+                </div>
                 <label>
-                  Capacidad máxima
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    step={1}
-                    value={draft.capacidad_maxima}
-                    onChange={e => setDraft({ ...draft, capacidad_maxima: Number(e.target.value) })}
+                  Descripción
+                  <textarea
+                    value={draft.descripcion}
+                    onChange={e => setDraft({ ...draft, descripcion: e.target.value })}
                   />
                 </label>
-              </div>
-              <label>
-                Descripción
-                <textarea
-                  value={draft.descripcion}
-                  onChange={e => setDraft({ ...draft, descripcion: e.target.value })}
-                />
-              </label>
-              <button>
-                {busy ? 'Guardando…' : shelter ? 'Actualizar albergue' : 'Registrar albergue'}
+                <button>
+                  {busy ? 'Guardando…' : shelter ? 'Actualizar albergue' : 'Registrar albergue'}
+                </button>
+              </fieldset>
+            </form>
+          )}
+          {shelter && (
+            <div className="shelter-wizard__actions">
+              <button type="button" onClick={() => setStep(1)}>
+                Siguiente: Infraestructura
               </button>
-            </fieldset>
-          </form>
-        )}
-      </section>
-      {shelter && (
-        <>
-          <InfraestructuraPanel shelterId={shelter.id} />
-          <MascotasPanel />
-          <PerfilesCompartidos />
+            </div>
+          )}
         </>
       )}
-    </>
+      {shelter && step === 1 && (
+        <>
+          <InfraestructuraPanel shelterId={shelter.id} />
+          <div className="shelter-wizard__actions">
+            <button type="button" className="secondary" onClick={() => setStep(0)}>
+              Anterior
+            </button>
+            <button type="button" onClick={() => setStep(2)}>
+              Siguiente: Mascotas
+            </button>
+          </div>
+        </>
+      )}
+      {shelter && step === 2 && (
+        <>
+          <MascotasPanel />
+          <div className="shelter-wizard__actions">
+            <button type="button" className="secondary" onClick={() => setStep(1)}>
+              Anterior
+            </button>
+            <button type="button" onClick={() => setStep(3)}>
+              Siguiente: Perfiles autorizados
+            </button>
+          </div>
+        </>
+      )}
+      {shelter && step === 3 && (
+        <>
+          <PerfilesCompartidos />
+          <div className="shelter-wizard__actions">
+            <button type="button" className="secondary" onClick={() => setStep(2)}>
+              Anterior
+            </button>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 function PerfilesCompartidos() {

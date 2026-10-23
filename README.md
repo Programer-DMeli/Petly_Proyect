@@ -105,3 +105,5 @@ Ver [`docs/entrega-sprint-01.md`](docs/entrega-sprint-01.md) para resultados y l
 - Sin secretos en Git: `.env` (y `local.properties`) están excluidos; solo se versionan `.env.example`.
 - Sin Docker ni microservicios adicionales.
 - Los commits/push se realizan cuando el usuario los solicita.
+
+Para esta máquina, la base y los respaldos permanentes se describen en [docs/base-permanente.md](docs/base-permanente.md). El arranque local utiliza `backend-admin/.venv/bin/python scripts/servicios-locales.py`; los datos MariaDB están fuera de `/tmp`, en `~/.local/share/petly/mariadb`.

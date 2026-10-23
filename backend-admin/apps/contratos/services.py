@@ -45,13 +45,11 @@ def crear_borrador(solicitud_id, actor):
     if existente:
         return existente, False
 
-    adoptante_nombre = (solicitud.adoptante.get_full_name().strip() if solicitud.adoptante else "")
-    if not adoptante_nombre and solicitud.postulante_id:
-        adoptante_nombre = solicitud.postulante.nombre_completo.strip()
-    if not adoptante_nombre:
-        adoptante_nombre = (solicitud.adoptante.email if solicitud.adoptante else "Adoptante")
-    documento = solicitud.postulante.documento_numero if solicitud.postulante_id else ""
-    adoptante_email = solicitud.adoptante.email if solicitud.adoptante_id else (solicitud.postulante.email if solicitud.postulante_id else "")
+    adoptante_nombre = (
+        solicitud.adoptante.get_full_name().strip()
+        if solicitud.adoptante and solicitud.adoptante.get_full_name().strip()
+        else solicitud.postulante.nombre_completo.strip()
+    )
     albergue = solicitud.albergue
     contrato_numero = f"PETLY-{solicitud.pk}-{uuid.uuid4().hex[:8].upper()}"
     terminos = settings.ADOPTION_CONTRACT_TERMS.strip()
@@ -59,8 +57,8 @@ def crear_borrador(solicitud_id, actor):
         "contratoNumero": contrato_numero,
         "solicitudId": solicitud.pk,
         "adoptanteNombre": adoptante_nombre,
-        "adoptanteDocumento": documento,
-        "adoptanteCorreo": adoptante_email,
+        "adoptanteDocumento": solicitud.postulante.documento_numero,
+        "adoptanteCorreo": (solicitud.adoptante.email if solicitud.adoptante else solicitud.postulante.email),
         "albergueNombre": albergue.nombre,
         "albergueResponsable": albergue.responsable_nombre or albergue.nombre,
         "albergueCorreo": albergue.responsable_email or albergue.email or albergue.usuario.email,

@@ -27,6 +27,7 @@ from .serializers import (
     SolicitudAdopcionSerializer,
     SolicitudAdopcionListSerializer,
     SolicitudEstadoSerializer,
+    SolicitudEventoSerializer,
     SolicitudCreateSerializer,
     CustomTokenObtainPairSerializer,
     UserRegistrationSerializer,
@@ -39,6 +40,11 @@ from .serializers import (
     AutorizacionCreateSerializer,
     AutorizacionRevokeSerializer,
 )
+
+class RetiredEndpointView(APIView):
+    """Endpoint retirado (fuera de Sprint 1) — retorna 410 Gone."""
+    def dispatch(self, request, *args, **kwargs):
+        return Response({"detail": "Endpoint retirado del alcance actual."}, status=status.HTTP_410_GONE)
 
 User = get_user_model()
 
@@ -64,19 +70,25 @@ class IsAlbergueStaffOrReadOnly(permissions.BasePermission):
         return request.user.is_staff
 
 
+class IsAdoptante(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.rol == User.Rol.ADOPTANTE)
+
+
 class SolicitudAdopcionPermission(IsAlbergueStaffOrReadOnly):
     """El adoptante puede crear; el albergue/staff conserva permisos de gestión."""
 
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
-        if getattr(view, "action", None) == "create":
+        action = getattr(view, "action", None)
+        if action == "create":
             return request.user.rol == User.Rol.ADOPTANTE
-        if getattr(view, "action", None) in {"cambiar_estado"}:
-            return request.user.rol == User.Rol.ALBERGUE or request.user.is_staff
-        if request.method not in permissions.SAFE_METHODS:
-            return False
-        return True
+        if action == "cambiar_estado":
+            return request.user.is_staff or (
+                request.user.rol == User.Rol.ALBERGUE and hasattr(request.user, "albergue")
+            )
+        return request.method in permissions.SAFE_METHODS
 
 
 class PostulanteViewSet(viewsets.ModelViewSet):
@@ -127,7 +139,7 @@ class PostulanteViewSet(viewsets.ModelViewSet):
         resumen = {
             "total": solicitudes.count(),
             "pendientes": solicitudes.filter(estado=SolicitudAdopcion.Estado.PENDIENTE).count(),
-            "en_revision": solicitudes.filter(estado=SolicitudAdopcion.Estado.EN_REVISION).count(),
+            "en_revision": solicitudes.filter(estado=SolicitudAdopcion.Estado.OBSERVADA).count(),
             "aprobadas": solicitudes.filter(estado=SolicitudAdopcion.Estado.APROBADA).count(),
             "rechazadas": solicitudes.filter(estado=SolicitudAdopcion.Estado.RECHAZADA).count(),
             "canceladas": solicitudes.filter(estado=SolicitudAdopcion.Estado.CANCELADA).count(),
@@ -160,9 +172,10 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
     """CRUD de solicitudes de adopción + cambio de estado."""
 
     queryset = SolicitudAdopcion.objects.select_related(
-        "postulante", "adoptante", "mascota", "albergue", "revisado_por"
+        "postulante", "mascota", "albergue", "revisado_por", "adoptante"
     ).all()
     permission_classes = [permissions.IsAuthenticated, SolicitudAdopcionPermission]
+    http_method_names = ["get", "post", "head", "options"]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["postulante__nombres", "postulante__apellidos", "postulante__documento_numero", "mascota__nombre"]
     ordering_fields = ["fecha_solicitud", "estado", "fecha_revision"]
@@ -184,6 +197,9 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         if user.is_staff:
             return qs
 
+        if user.rol == User.Rol.ADOPTANTE:
+            return qs.filter(adoptante=user)
+
         try:
             albergue = user.albergue
             return qs.filter(albergue=albergue)
@@ -193,7 +209,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Recheck under a row lock so concurrent submissions cannot both pass validation.
         mascota_id = serializer.validated_data["mascota"].pk
-        adoptante = self.request.user
+        postulante = serializer.validated_data["postulante"]
         with transaction.atomic():
             mascota = Mascota.objects.select_for_update().filter(pk=mascota_id).first()
             if mascota is None:
@@ -203,19 +219,24 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             if not mascota.albergue.activo:
                 raise ValidationError({"mascota": "El albergue de esta mascota no está activo."})
             activa = SolicitudAdopcion.objects.filter(
-                adoptante=adoptante,
+                postulante=postulante,
                 mascota=mascota,
-                estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.OBSERVADA, SolicitudAdopcion.Estado.EN_REVISION],
+                estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.OBSERVADA],
             ).exists()
             if activa:
                 raise ValidationError({"non_field_errors": ["Ya existe una solicitud activa para esta mascota."]})
-            solicitud = serializer.save(mascota=mascota, albergue=mascota.albergue, adoptante=adoptante)
+            solicitud = serializer.save(
+                mascota=mascota,
+                albergue=mascota.albergue,
+                adoptante=self.request.user,
+            )
             SolicitudEvento.objects.create(
                 solicitud=solicitud,
                 tipo=SolicitudEvento.Tipo.SOLICITUD_CREADA,
                 estado_nuevo=solicitud.estado,
                 descripcion="Solicitud enviada por el adoptante.",
-                actor=adoptante,
+                ocurrido_en=solicitud.fecha_solicitud,
+                actor=self.request.user,
             )
 
     def create(self, request, *args, **kwargs):
@@ -231,9 +252,9 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         Cambia el estado de la solicitud.
         
         Transiciones válidas:
-        - PENDIENTE -> EN_REVISION, RECHAZADA, CANCELADA
-        - EN_REVISION -> APROBADA, RECHAZADA, PENDIENTE
-        - APROBADA -> ENTREGADA, RECHAZADA (si hay problema)
+        - PENDIENTE -> OBSERVADA, APROBADA, RECHAZADA
+        - OBSERVADA -> APROBADA, RECHAZADA
+        - APROBADA -> (terminal)
         - RECHAZADA -> (terminal)
         - CANCELADA -> (terminal)
         - ENTREGADA -> (terminal)
@@ -243,37 +264,44 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         nuevo_estado = serializer.validated_data["estado"]
         observaciones = serializer.validated_data.get("observaciones_revision", "")
-        if nuevo_estado == SolicitudAdopcion.Estado.APROBADA:
-            if solicitud.adoptante_id is None:
-                raise ValidationError({"estado": "La solicitud no tiene una identidad de adoptante verificable."})
-            from .authentication import spring_get
-            try:
-                perfil = spring_get(f"/api/albergue/perfiles/{solicitud.adoptante.spring_id}", request.auth)
-            except Exception as error:
-                raise ValidationError({"estado": "No se pudo comprobar el consentimiento vigente del adoptante."}) from error
-            if not perfil.get("finalizado"):
-                raise ValidationError({"estado": "El perfil del adoptante no está finalizado."})
+        if nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA:
+            raise ValidationError({"estado": "Registra la entrega desde el contrato firmado."})
         solicitud = cambiar_estado_solicitud(
             solicitud.pk, nuevo_estado, request.user, observaciones
         )
         return Response(SolicitudAdopcionSerializer(solicitud, context={"request": request}).data)
 
-    @action(detail=True, methods=["get"], url_path="seguimiento")
-    def seguimiento(self, request, pk=None):
+    @action(detail=True, methods=["get"], url_path="historial-seguimiento")
+    def historial_seguimiento(self, request, pk=None):
+        """Entrega eventos y fechas clave solo al adoptante o albergue involucrado."""
         solicitud = self.get_object()
         eventos = solicitud.eventos.all()
         if request.user.rol == User.Rol.ADOPTANTE:
             eventos = eventos.filter(visible_adoptante=True)
+        serialized = SolicitudEventoSerializer(eventos, many=True).data
+        fecha_por_tipo = {}
+        tipo_fecha = {
+            SolicitudEvento.Tipo.REGISTRO_HISTORICO: "solicitudCreada",
+            SolicitudEvento.Tipo.SOLICITUD_CREADA: "solicitudCreada",
+            SolicitudEvento.Tipo.OBSERVADA: "observada",
+            SolicitudEvento.Tipo.APROBADA: "aprobada",
+            SolicitudEvento.Tipo.RECHAZADA: "rechazada",
+            SolicitudEvento.Tipo.CANCELADA: "cancelada",
+            SolicitudEvento.Tipo.CONTRATO_GENERADO: "contratoGenerado",
+            SolicitudEvento.Tipo.CONTRATO_ENVIADO: "contratoEnviadoAFirma",
+            SolicitudEvento.Tipo.CONTRATO_FIRMADO: "contratoFirmado",
+            SolicitudEvento.Tipo.CONTRATO_EXPIRADO: "contratoExpirado",
+            SolicitudEvento.Tipo.ENTREGADA: "entregada",
+        }
+        for evento in eventos:
+            campo = tipo_fecha.get(evento.tipo)
+            if campo and campo not in fecha_por_tipo:
+                fecha_por_tipo[campo] = evento.ocurrido_en
         return Response({
             "solicitudId": solicitud.pk,
             "estadoActual": solicitud.estado,
-            "eventos": [{
-                "tipo": event.tipo,
-                "estadoAnterior": event.estado_anterior or None,
-                "estadoNuevo": event.estado_nuevo,
-                "descripcion": event.descripcion,
-                "ocurridoEn": event.ocurrido_en,
-            } for event in eventos],
+            "eventos": serialized,
+            "fechasClave": fecha_por_tipo,
         })
 
     @action(detail=False, methods=["get"], url_path="estadisticas")
@@ -283,8 +311,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         stats = {
             "total": qs.count(),
             "pendientes": qs.filter(estado=SolicitudAdopcion.Estado.PENDIENTE).count(),
-            "en_revision": qs.filter(estado__in=[SolicitudAdopcion.Estado.OBSERVADA, SolicitudAdopcion.Estado.EN_REVISION]).count(),
-            "observadas": qs.filter(estado=SolicitudAdopcion.Estado.OBSERVADA).count(),
+            "en_revision": qs.filter(estado=SolicitudAdopcion.Estado.OBSERVADA).count(),
             "aprobadas": qs.filter(estado=SolicitudAdopcion.Estado.APROBADA).count(),
             "rechazadas": qs.filter(estado=SolicitudAdopcion.Estado.RECHAZADA).count(),
             "canceladas": qs.filter(estado=SolicitudAdopcion.Estado.CANCELADA).count(),
@@ -387,16 +414,16 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 class AdoptanteProfileView(generics.RetrieveUpdateAPIView):
     """Perfil extendido del adoptante para móvil (US-21, US-16, US-17)."""
     serializer_class = AdoptanteProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsAdoptante]
+
+    def get_object(self):
+        profile, created = AdoptanteProfile.objects.get_or_create(user=self.request.user)
+        return profile
 
     def get_serializer_class(self):
         if self.request.method in ["PUT", "PATCH"]:
             return AdoptanteProfileCreateUpdateSerializer
         return AdoptanteProfileSerializer
-
-    def get_object(self):
-        profile, created = AdoptanteProfile.objects.get_or_create(user=self.request.user)
-        return profile
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)

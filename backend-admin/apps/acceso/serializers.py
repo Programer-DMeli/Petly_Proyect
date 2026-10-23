@@ -4,7 +4,7 @@ from rest_framework.exceptions import APIException
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from .models import Postulante, SolicitudAdopcion, SolicitudEvento, User, AdoptanteProfile, Autorizacion
 from apps.mascotas.serializers import MascotaListSerializer
@@ -118,8 +118,7 @@ class PostulanteCreateUpdateSerializer(serializers.ModelSerializer):
 class SolicitudAdopcionSerializer(serializers.ModelSerializer):
     """Serializador completo para solicitud de adopción."""
 
-    postulante_nombre = serializers.SerializerMethodField()
-    postulante_documento = serializers.SerializerMethodField()
+    postulante_nombre = serializers.CharField(source="postulante.nombre_completo", read_only=True)
     mascota_nombre = serializers.CharField(source="mascota.nombre", read_only=True)
     mascota_codigo = serializers.CharField(source="mascota.codigo", read_only=True)
     mascota_especie = serializers.CharField(source="mascota.get_especie_display", read_only=True)
@@ -139,7 +138,6 @@ class SolicitudAdopcionSerializer(serializers.ModelSerializer):
             "postulante",
             "adoptante",
             "postulante_nombre",
-            "postulante_documento",
             "mascota",
             "mascota_nombre",
             "mascota_codigo",
@@ -148,7 +146,6 @@ class SolicitudAdopcionSerializer(serializers.ModelSerializer):
             "estado",
             "estado_display",
             "mensaje_postulante",
-            "respuestas_cuestionario",
             "revisado_por",
             "revisado_por_nombre",
             "fecha_revision",
@@ -158,8 +155,8 @@ class SolicitudAdopcionSerializer(serializers.ModelSerializer):
             "actualizado_en",
         ]
         read_only_fields = [
-            "id", "albergue", "adoptante", "fecha_solicitud", "actualizado_en",
-            "postulante_nombre", "postulante_documento",
+            "id", "albergue", "fecha_solicitud", "actualizado_en",
+            "postulante_nombre",
             "mascota_nombre", "mascota_codigo", "mascota_especie",
             "revisado_por_nombre", "estado_display",
         ]
@@ -168,8 +165,7 @@ class SolicitudAdopcionSerializer(serializers.ModelSerializer):
 class SolicitudAdopcionListSerializer(serializers.ModelSerializer):
     """Serializador ligero para listados."""
 
-    postulante_nombre = serializers.SerializerMethodField()
-    postulante_documento = serializers.SerializerMethodField()
+    postulante_nombre = serializers.CharField(source="postulante.nombre_completo", read_only=True)
     mascota_nombre = serializers.CharField(source="mascota.nombre", read_only=True)
     mascota_codigo = serializers.CharField(source="mascota.codigo", read_only=True)
     estado_display = serializers.CharField(source="get_estado_display", read_only=True)
@@ -187,7 +183,6 @@ class SolicitudAdopcionListSerializer(serializers.ModelSerializer):
             "postulante",
             "adoptante",
             "postulante_nombre",
-            "postulante_documento",
             "mascota",
             "mascota_nombre",
             "mascota_codigo",
@@ -195,6 +190,8 @@ class SolicitudAdopcionListSerializer(serializers.ModelSerializer):
             "estado_display",
             "fecha_solicitud",
             "fecha_revision",
+            "mensaje_postulante",
+            "observaciones_revision",
         ]
 
 
@@ -207,6 +204,19 @@ class SolicitudEstadoSerializer(serializers.Serializer):
     def validate_estado(self, value):
         # Validación de transiciones se hace en la vista
         return value
+
+
+class SolicitudEventoSerializer(serializers.ModelSerializer):
+    tipo_display = serializers.CharField(source="get_tipo_display", read_only=True)
+    actor_nombre = serializers.CharField(source="actor.get_full_name", read_only=True, allow_null=True)
+
+    class Meta:
+        model = SolicitudEvento
+        fields = [
+            "id", "tipo", "tipo_display", "estado_anterior", "estado_nuevo",
+            "descripcion", "ocurrido_en", "actor_nombre",
+        ]
+        read_only_fields = fields
 
 
 class SolicitudCreateSerializer(serializers.ModelSerializer):
@@ -234,32 +244,43 @@ class SolicitudCreateSerializer(serializers.ModelSerializer):
         if user is None or not user.is_authenticated or user.rol != User.Rol.ADOPTANTE:
             raise serializers.ValidationError({"detail": "Solo un adoptante autenticado puede enviar una solicitud."})
 
-        # Spring es la autoridad del perfil y el consentimiento; Django solo persiste
-        # las solicitudes. Consultar ambos con el JWT original evita perfiles espejo obsoletos.
-        from .authentication import spring_get
         try:
-            profile = spring_get("/api/perfil", request.auth)
-            if not profile.get("finalizado"):
-                raise serializers.ValidationError({"detail": "Completa tu perfil de adopción antes de solicitar."})
-            autorizaciones = spring_get("/api/autorizaciones", request.auth)
-        except APIException:
-            raise
-        except Exception as error:
-            raise serializers.ValidationError({"detail": "No se pudo verificar el perfil y el consentimiento."}) from error
-        if mascota and not any(int(item.get("albergueId", -1)) == mascota.albergue_id for item in autorizaciones):
-            raise serializers.ValidationError({"detail": "Se requiere autorización vigente para este albergue."})
+            profile = user.adoptante_profile
+        except AdoptanteProfile.DoesNotExist:
+            raise serializers.ValidationError({"detail": "No se encontró el perfil del adoptante."})
+        if not profile.cuestionario_completado:
+            raise serializers.ValidationError({"detail": "Completa tu perfil de adopción antes de solicitar."})
+        if not profile.documento_numero:
+            raise serializers.ValidationError({"detail": "El perfil finalizado debe tener un documento registrado."})
 
-        if mascota and SolicitudAdopcion.objects.filter(
-            adoptante=user,
+        try:
+            postulante = Postulante.objects.get(documento_numero=profile.documento_numero)
+        except Postulante.DoesNotExist:
+            raise serializers.ValidationError({"detail": "El perfil no está vinculado a un registro de postulante."})
+        if postulante.estado != Postulante.EstadoPostulante.ACTIVO:
+            raise serializers.ValidationError({"detail": "El postulante no está activo."})
+
+        autorizacion = None
+        if mascota:
+            autorizacion = Autorizacion.objects.filter(
+            adoptante=user, albergue=mascota.albergue,
+            estado=Autorizacion.Estado.VIGENTE,
+            ).first()
+        if mascota and autorizacion is None:
+            raise serializers.ValidationError({"detail": "Se requiere autorización vigente para este albergue."})
+        if autorizacion and not autorizacion.esta_vigente():
+            raise serializers.ValidationError({"detail": "La autorización para este albergue está vencida."})
+
+        if postulante and mascota and SolicitudAdopcion.objects.filter(
+            postulante=postulante,
             mascota=mascota,
-            estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.OBSERVADA, SolicitudAdopcion.Estado.EN_REVISION],
+            estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.OBSERVADA],
         ).exists():
             raise serializers.ValidationError({"non_field_errors": ["Ya existe una solicitud activa para esta mascota."]})
         respuestas = attrs.get("respuestas_cuestionario", {})
         if not isinstance(respuestas, dict):
             raise serializers.ValidationError({"respuestas_cuestionario": "Debe ser un objeto JSON."})
-        attrs["adoptante"] = user
-        attrs["postulante"] = None
+        attrs["postulante"] = postulante
         attrs["albergue"] = mascota.albergue
         return attrs
 
@@ -404,10 +425,11 @@ class AdoptanteProfileSerializer(serializers.ModelSerializer):
             "id", "user", "nombre_completo",
             "documento_tipo", "documento_numero", "nombres", "apellidos",
             "direccion", "distrito", "provincia", "departamento",
-            "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
+            "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas", "horas_fuera",
             "detalles_otras_mascotas", "experiencia_previa",
             "motivo_adopcion", "preferencia_especie", "preferencia_tamanio",
             "preferencia_edad", "cuestionario_completado", "fecha_cuestionario",
+            "compatibilidad_revision",
             "creado_en", "actualizado_en",
         ]
         read_only_fields = ["id", "user", "nombre_completo", "creado_en", "actualizado_en"]
@@ -421,7 +443,7 @@ class AdoptanteProfileCreateUpdateSerializer(serializers.ModelSerializer):
         fields = [
             "documento_tipo", "documento_numero", "nombres", "apellidos",
             "direccion", "distrito", "provincia", "departamento",
-            "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
+            "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas", "horas_fuera",
             "detalles_otras_mascotas", "experiencia_previa",
             "motivo_adopcion", "preferencia_especie", "preferencia_tamanio",
             "preferencia_edad",
@@ -433,6 +455,16 @@ class AdoptanteProfileCreateUpdateSerializer(serializers.ModelSerializer):
         ).exists():
             raise serializers.ValidationError("El número de documento ya está registrado.")
         return value
+
+    def validate_horas_fuera(self, value):
+        if value is not None and value > 24:
+            raise serializers.ValidationError("Las horas fuera de casa deben estar entre 0 y 24.")
+        return value
+
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            bloqueado = AdoptanteProfile.objects.select_for_update().get(pk=instance.pk)
+            return super().update(bloqueado, validated_data)
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):

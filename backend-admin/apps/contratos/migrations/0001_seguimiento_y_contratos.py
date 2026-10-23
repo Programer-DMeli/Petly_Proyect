@@ -4,7 +4,6 @@ import django.db.models.deletion
 import uuid
 from django.conf import settings
 from django.db import migrations, models
-import apps.contratos.storage
 
 
 class Migration(migrations.Migration):
@@ -12,7 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('acceso', '0008_sprint2_solicitudes'),
+        ('acceso', '0011_seguimiento_y_contratos'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -28,7 +27,6 @@ class Migration(migrations.Migration):
                 ('url_firma', models.URLField(blank=True, max_length=1000)),
                 ('contenido_html', models.TextField()),
                 ('contenido_sha256', models.CharField(db_index=True, max_length=64)),
-                ('documento_firmado', models.FileField(blank=True, null=True, storage=apps.contratos.storage.PrivateContractStorage(), upload_to='contratos/firmados/')),
                 ('snapshot', models.JSONField(default=dict)),
                 ('generado_en', models.DateTimeField(auto_now_add=True)),
                 ('enviado_en', models.DateTimeField(blank=True, null=True)),

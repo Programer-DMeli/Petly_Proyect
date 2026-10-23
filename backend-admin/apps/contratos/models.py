@@ -2,6 +2,7 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+
 from .storage import PrivateContractStorage
 
 
@@ -29,7 +30,9 @@ class ContratoAdopcion(models.Model):
     url_firma = models.URLField(max_length=1000, blank=True)
     contenido_html = models.TextField()
     contenido_sha256 = models.CharField(max_length=64, db_index=True)
-    documento_firmado = models.FileField(upload_to="contratos/firmados/", storage=PrivateContractStorage(), null=True, blank=True)
+    documento_firmado = models.FileField(
+        upload_to="contratos/firmados/", storage=PrivateContractStorage(), null=True, blank=True
+    )
     snapshot = models.JSONField(default=dict)
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,

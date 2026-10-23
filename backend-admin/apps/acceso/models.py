@@ -2,6 +2,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
@@ -80,6 +81,7 @@ class AdoptanteProfile(models.Model):
     tiene_patio = models.BooleanField("Tiene patio/área exterior", default=False)
     tiene_ninos = models.BooleanField("Viven niños en el hogar", default=False)
     tiene_otras_mascotas = models.BooleanField("Tiene otras mascotas", default=False)
+    horas_fuera = models.PositiveSmallIntegerField("Horas fuera de casa al día", null=True, blank=True)
     detalles_otras_mascotas = models.TextField("Detalle otras mascotas", blank=True)
     experiencia_previa = models.TextField("Experiencia previa con mascotas", blank=True)
 
@@ -95,6 +97,10 @@ class AdoptanteProfile(models.Model):
     # Cuestionario completado (US-16)
     cuestionario_completado = models.BooleanField("Cuestionario completado", default=False)
     fecha_cuestionario = models.DateTimeField("Fecha cuestionario", null=True, blank=True)
+    compatibilidad_revision = models.PositiveIntegerField(
+        "Revisión de compatibilidad", default=1,
+        help_text="Aumenta cuando cambia un dato usado por el motor de compatibilidad.",
+    )
 
     # Auditoría
     creado_en = models.DateTimeField(auto_now_add=True)
@@ -104,6 +110,24 @@ class AdoptanteProfile(models.Model):
         verbose_name = "Perfil de Adoptante"
         verbose_name_plural = "Perfiles de Adoptantes"
         ordering = ["-creado_en"]
+
+    CAMPOS_COMPATIBILIDAD = (
+        "tipo_vivienda", "tiene_patio", "tiene_ninos", "tiene_otras_mascotas",
+        "horas_fuera", "preferencia_especie", "preferencia_tamanio", "preferencia_edad",
+    )
+
+    def save(self, *args, **kwargs):
+        """Versiona cualquier cambio de datos que pueda alterar un puntaje."""
+        if self.pk and not self._state.adding:
+            previos = type(self).objects.filter(pk=self.pk).values(
+                *self.CAMPOS_COMPATIBILIDAD, "compatibilidad_revision"
+            ).first()
+            if previos and any(getattr(self, campo) != previos[campo] for campo in self.CAMPOS_COMPATIBILIDAD):
+                self.compatibilidad_revision = previos["compatibilidad_revision"] + 1
+                update_fields = kwargs.get("update_fields")
+                if update_fields is not None:
+                    kwargs["update_fields"] = set(update_fields) | {"compatibilidad_revision"}
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.nombres} {self.apellidos} ({self.user.username})"
@@ -271,7 +295,6 @@ class SolicitudAdopcion(models.Model):
     class Estado(models.TextChoices):
         PENDIENTE = "PENDIENTE", "Pendiente"
         OBSERVADA = "OBSERVADA", "Observada"
-        EN_REVISION = "EN_REVISION", "En Revisión"
         APROBADA = "APROBADA", "Aprobada"
         RECHAZADA = "RECHAZADA", "Rechazada"
         CANCELADA = "CANCELADA", "Cancelada por postulante"
@@ -305,6 +328,14 @@ class SolicitudAdopcion(models.Model):
         on_delete=models.CASCADE,
         related_name="solicitudes",
         verbose_name="Albergue",
+    )
+    adoptante = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="solicitudes_adopcion",
+        verbose_name="Cuenta adoptante",
     )
 
     # Estado del proceso
@@ -347,7 +378,7 @@ class SolicitudAdopcion(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["postulante", "mascota"],
-                condition=models.Q(estado__in=["PENDIENTE", "OBSERVADA", "EN_REVISION"]),
+                condition=models.Q(estado__in=["PENDIENTE", "OBSERVADA"]),
                 name="unique_pending_solicitud_per_mascota"
             ),
             models.UniqueConstraint(
@@ -365,9 +396,8 @@ class SolicitudAdopcion(models.Model):
     def get_valid_transitions(self):
         """Retorna lista de estados válidos para transición desde el actual."""
         transiciones = {
-            self.Estado.PENDIENTE: [self.Estado.OBSERVADA, self.Estado.EN_REVISION, self.Estado.APROBADA, self.Estado.RECHAZADA, self.Estado.CANCELADA],
-            self.Estado.OBSERVADA: [self.Estado.APROBADA, self.Estado.RECHAZADA, self.Estado.CANCELADA],
-            self.Estado.EN_REVISION: [self.Estado.APROBADA, self.Estado.RECHAZADA, self.Estado.PENDIENTE],
+            self.Estado.PENDIENTE: [self.Estado.OBSERVADA, self.Estado.APROBADA, self.Estado.RECHAZADA],
+            self.Estado.OBSERVADA: [self.Estado.APROBADA, self.Estado.RECHAZADA],
             self.Estado.APROBADA: [],
             self.Estado.RECHAZADA: [],
             self.Estado.CANCELADA: [],
@@ -377,9 +407,10 @@ class SolicitudAdopcion(models.Model):
 
 
 class SolicitudEvento(models.Model):
-    """Append-only audit trail used by the applicant timeline."""
+    """Evento inmutable del seguimiento cronológico de una solicitud (US-08)."""
 
     class Tipo(models.TextChoices):
+        REGISTRO_HISTORICO = "REGISTRO_HISTORICO", "Registro histórico"
         SOLICITUD_CREADA = "SOLICITUD_CREADA", "Solicitud creada"
         OBSERVADA = "OBSERVADA", "Solicitud observada"
         APROBADA = "APROBADA", "Solicitud aprobada"
@@ -392,14 +423,31 @@ class SolicitudEvento(models.Model):
         CONTRATO_EXPIRADO = "CONTRATO_EXPIRADO", "Contrato expirado"
         ENTREGADA = "ENTREGADA", "Mascota entregada"
 
-    solicitud = models.ForeignKey(SolicitudAdopcion, on_delete=models.CASCADE, related_name="eventos")
-    tipo = models.CharField(max_length=24, choices=Tipo.choices)
-    estado_anterior = models.CharField(max_length=20, blank=True)
-    estado_nuevo = models.CharField(max_length=20)
+    solicitud = models.ForeignKey(
+        SolicitudAdopcion,
+        on_delete=models.CASCADE,
+        related_name="eventos",
+        verbose_name="Solicitud",
+    )
+    tipo = models.CharField(max_length=24, choices=Tipo.choices, db_index=True)
+    estado_anterior = models.CharField(max_length=15, blank=True)
+    estado_nuevo = models.CharField(max_length=15, blank=True)
     descripcion = models.TextField(blank=True)
-    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    ocurrido_en = models.DateTimeField(default=timezone.now, db_index=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="eventos_solicitud_registrados",
+    )
     visible_adoptante = models.BooleanField(default=True)
-    ocurrido_en = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        verbose_name = "Evento de solicitud"
+        verbose_name_plural = "Eventos de solicitudes"
         ordering = ["ocurrido_en", "id"]
+        indexes = [models.Index(fields=["solicitud", "ocurrido_en"])]
+
+    def __str__(self):
+        return f"{self.solicitud_id}: {self.get_tipo_display()} ({self.ocurrido_en:%Y-%m-%d %H:%M})"

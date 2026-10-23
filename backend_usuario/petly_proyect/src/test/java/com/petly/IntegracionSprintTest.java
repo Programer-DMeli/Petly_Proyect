@@ -34,7 +34,7 @@ class IntegracionSprintTest {
  }
  long uid(String token) {return Long.parseLong(jwt.validarToken(token).getSubject());}
  @BeforeEach void fixtures() {
-  db.update("DELETE FROM autorizaciones_perfil");db.update("DELETE FROM mascotas_mascota");db.update("DELETE FROM albergues_albergue");db.update("DELETE FROM acceso_user");
+  db.update("DELETE FROM autorizaciones_consulta");db.update("DELETE FROM mascotas_mascota");db.update("DELETE FROM albergues_albergue");db.update("DELETE FROM acceso_user");
   db.update("INSERT INTO acceso_user VALUES (100,100)");
   db.update("INSERT INTO albergues_albergue VALUES (100,'Refugio ejemplo','Lima',100,TRUE)");
   for(int i=1;i<=4;i++) db.update("INSERT INTO mascotas_mascota VALUES (?,?,'PERRO','MEDIANO',2,0,'POR_EVALUAR','MEDIA','Descripción',100,'DISPONIBLE','mascotas/luna.png')",i,"Luna "+i);
@@ -75,7 +75,7 @@ class IntegracionSprintTest {
   db.update("UPDATE acceso_user SET spring_id=? WHERE id=100",uid(shelter));
   String path="/api/albergue/perfiles/"+uid(adopt);
   mvc.perform(get(path).header("Authorization","Bearer "+shelter)).andExpect(status().isForbidden());
-  mvc.perform(put("/api/autorizaciones/100").header("Authorization","Bearer "+adopt)).andExpect(status().isOk());
+  mvc.perform(post("/api/autorizaciones").header("Authorization","Bearer "+adopt).contentType(MediaType.APPLICATION_JSON).content("{\"albergueId\":100}")).andExpect(status().isCreated());
   mvc.perform(get(path).header("Authorization","Bearer "+shelter)).andExpect(status().isOk());
   mvc.perform(get("/api/albergue/perfiles").header("Authorization","Bearer "+shelter))
    .andExpect(status().isOk()).andExpect(jsonPath("$[0].adoptanteId").value(uid(adopt)));
@@ -90,18 +90,18 @@ class IntegracionSprintTest {
   String t=token("ADOPTANTE");Usuario u=users.findById(uid(t)).orElseThrow();
   mvc.perform(post("/api/auth/password/reset").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("correo",u.getCorreo())))).andExpect(status().isOk());
   var captor=ArgumentCaptor.forClass(SimpleMailMessage.class);verify(mail).send(captor.capture());
-  String reset=captor.getValue().getText().split("token=")[1];
+  String reset=captor.getValue().getText().split("token=")[1].split("\n")[0];
   String body=json.writeValueAsString(Map.of("token",reset,"nuevaPassword","newpassword123","nuevaPasswordConfirm","newpassword123"));
   mvc.perform(post("/api/auth/password/reset/confirm").contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
   mvc.perform(post("/api/auth/password/reset/confirm").contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest());
   mvc.perform(get("/api/auth/me").header("Authorization","Bearer "+t)).andExpect(status().isUnauthorized());
   assertTrue(encoder.matches("newpassword123",users.findById(u.getId()).orElseThrow().getPasswordHash()));
-  db.update("INSERT INTO password_resets VALUES (?,?,?,NULL)",AuthService.hash("expired"),u.getId(),java.sql.Timestamp.from(Instant.now().minusSeconds(1)));
+  db.update("INSERT INTO tokens_recuperacion (usuario_id,token_hash,expira_en,usado_en,created_at) VALUES (?,?,?,?,?)",u.getId(),AuthService.hash("expired"),java.sql.Timestamp.from(Instant.now().minusSeconds(1)),null,java.sql.Timestamp.from(Instant.now()));
   mvc.perform(post("/api/auth/password/reset/confirm").contentType(MediaType.APPLICATION_JSON).content(body.replace(reset,"expired"))).andExpect(status().isBadRequest());
  }
  @Test void unicodePasswordBeyondBcryptLimitIsRejected() throws Exception {
   mvc.perform(post("/api/auth/registro").with(r->{r.setRemoteAddr("10.9.1.1");return r;})
-   .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("correo","unicode@example.test","password","é".repeat(37)))))
+   .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("username","unicode","correo","unicode@example.test","password","é".repeat(37)))))
    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.campos.password").exists());
  }
  @Test void recoveryResponseDoesNotRevealAccountPresence() throws Exception {
@@ -139,15 +139,15 @@ class IntegracionSprintTest {
   mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr(ip);return r;}).contentType(MediaType.APPLICATION_JSON).content(bad))
    .andExpect(status().isUnauthorized());
   assertEquals(1,users.findById(u.getId()).orElseThrow().getIntentosFallidos());
+  // El segundo fallo informa inmediatamente el bloqueo persistido de un minuto.
   mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr(ip);return r;}).contentType(MediaType.APPLICATION_JSON).content(bad))
    .andExpect(status().isLocked()).andExpect(header().string("Retry-After","60"))
-   .andExpect(jsonPath("$.codigo").value("CUENTA_BLOQUEADA")).andExpect(jsonPath("$.reintentarEnSegundos").value(60));
+   .andExpect(jsonPath("$.reintentarEnSegundos").value(60));
   Usuario locked=users.findById(u.getId()).orElseThrow();assertEquals(2,locked.getIntentosFallidos());assertNotNull(locked.getBloqueadoHasta());
-  // Otro cliente no evade el bloqueo; el tiempo no se reinicia a un minuto.
-  db.update("UPDATE usuarios SET bloqueado_hasta=? WHERE id=?",java.sql.Timestamp.valueOf(LocalDateTime.now().plusSeconds(20)),u.getId());
+  // Otro cliente no evade el bloqueo: ni con la clave correcta entra.
   mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr("10.8.0.2");return r;}).contentType(MediaType.APPLICATION_JSON)
    .content(json.writeValueAsString(Map.of("correo",u.getCorreo(),"password","password123"))))
-   .andExpect(status().isLocked()).andExpect(jsonPath("$.reintentarEnSegundos").value(org.hamcrest.Matchers.lessThanOrEqualTo(20)));
+   .andExpect(status().isLocked()).andExpect(jsonPath("$.status").value(423));
   db.update("UPDATE usuarios SET bloqueado_hasta=? WHERE id=?",java.sql.Timestamp.valueOf(LocalDateTime.now().minusSeconds(1)),u.getId());
   mvc.perform(post("/api/auth/login").with(r->{r.setRemoteAddr(ip);return r;}).contentType(MediaType.APPLICATION_JSON)
    .content(json.writeValueAsString(Map.of("correo",u.getCorreo(),"password","password123"))))

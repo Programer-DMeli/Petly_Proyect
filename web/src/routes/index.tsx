@@ -10,9 +10,10 @@ import RecuperacionPage from '../features/auth/pages/RecuperacionPage';
 import AutorizacionesPage from '../features/adoptante/perfil/pages/AutorizacionesPage';
 import CatalogoPage, { DetallePage } from '../features/adoptante/catalogo/pages/CatalogoPage';
 import CuestionarioPage from '../features/adoptante/perfil/pages/CuestionarioPage';
-import SolicitudesAdoptantePage from '../features/adoptante/solicitudes/pages/SolicitudesAdoptantePage';
 import SeguimientoSolicitudPage from '../features/adoptante/solicitudes/pages/SeguimientoSolicitudPage';
+import SolicitudesAdoptantePage from '../features/adoptante/solicitudes/pages/SolicitudesAdoptantePage';
 import PanelAlberguePage from '../features/albergue/perfil/pages/PanelAlberguePage';
+import MascotasPanel from '../features/albergue/perfil/pages/MascotasPanel';
 import SolicitudesPage from '../features/albergue/perfil/pages/SolicitudesPage';
 import AlberguesAdminPage from '../features/administracion/albergues/pages/AlberguesAdminPage';
 
@@ -59,6 +60,16 @@ export const router = createBrowserRouter([
         ),
         children: [
           { index: true, element: <PanelAlberguePage /> },
+          {
+            path: 'mascotas',
+            element: (
+              <section className="card">
+                <h1>Mascotas registradas</h1>
+                <p className="muted">Consulta y administra las mascotas de tu albergue.</p>
+                <MascotasPanel />
+              </section>
+            ),
+          },
           { path: 'solicitudes', element: <SolicitudesPage /> },
         ],
       },
