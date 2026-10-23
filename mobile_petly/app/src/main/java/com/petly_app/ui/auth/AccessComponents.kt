@@ -4,7 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 internal val MintBackground = Color(0xFFE5FFF4)
-internal val MintField = Color(0xFFD4FBED)
 internal val MintContainer = Color(0xFFCEF5E7)
 internal val Forest = Color(0xFF146E58)
 internal val Ink = Color(0xFF062D24)
@@ -80,25 +79,46 @@ internal fun AccessTabs(creatingAccount: Boolean, busy: Boolean, onLogin: () -> 
 
 @Composable
 internal fun AccessField(
-    value: String, onValueChange: (String) -> Unit, placeholder: String, label: String,
-    tag: String, enabled: Boolean, keyboardOptions: KeyboardOptions,
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    label: String,
+    tag: String,
+    enabled: Boolean,
+    keyboardOptions: KeyboardOptions,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     transformation: VisualTransformation = VisualTransformation.None,
+    leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null
 ) {
-    BasicTextField(value, onValueChange, modifier = Modifier.fillMaxWidth().testTag(tag)
-        .semantics { contentDescription = label }, enabled = enabled, singleLine = true,
-        textStyle = LoginType.copy(fontSize = 16.sp), keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions, visualTransformation = transformation,
-        cursorBrush = androidx.compose.ui.graphics.SolidColor(Forest),
-        decorationBox = { inner ->
-            Row(Modifier.background(MintField, CircleShape).heightIn(min = 48.dp).padding(start = 15.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f).padding(vertical = 10.dp)) {
-                    if (value.isEmpty()) Text(placeholder, style = LoginType.copy(fontSize = 16.sp, color = Color(0xFF718C80)))
-                    inner()
-                }
-                trailing?.invoke()
-            }
-        })
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(tag)
+            .semantics { contentDescription = label },
+        enabled = enabled,
+        singleLine = true,
+        textStyle = LoginType.copy(fontSize = 15.sp, color = Ink),
+        label = { Text(label, style = LoginType.copy(fontSize = 13.sp, color = WarmText)) },
+        placeholder = { Text(placeholder, style = LoginType.copy(fontSize = 15.sp, color = Color(0xFF8A9A92))) },
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        visualTransformation = transformation,
+        leadingIcon = leading,
+        trailingIcon = trailing,
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            disabledContainerColor = Color(0xFFF8FAF9),
+            focusedBorderColor = Forest,
+            unfocusedBorderColor = Color(0xFFBCCEC5),
+            disabledBorderColor = Color(0xFFE0E8E4),
+            focusedLabelColor = Forest,
+            unfocusedLabelColor = WarmText,
+            cursorColor = Forest
+        )
+    )
 }

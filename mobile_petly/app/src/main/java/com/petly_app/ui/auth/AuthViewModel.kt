@@ -114,7 +114,7 @@ class AuthViewModel(
         if (_state.value.busy || _state.value.rateLimitRemainingSeconds > 0) return
         // Política propuesta de registro. Acordar el mínimo con Persona B.
         val error = validate(email, password) ?: when {
-            (password.length < 8 || password.toByteArray(Charsets.UTF_8).size > 72) -> "Usa al menos 8 caracteres y hasta 72 bytes UTF-8."
+            (password.length < 8 || password.toByteArray(Charsets.UTF_8).size > 72) -> "Usa al menos 8 caracteres."
             password != confirmation -> "Las contraseñas no coinciden."
             else -> null
         }

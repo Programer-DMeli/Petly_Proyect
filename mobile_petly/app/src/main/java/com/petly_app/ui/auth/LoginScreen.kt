@@ -24,7 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Reference access screen. Authentication and cooldowns remain owned by AuthViewModel. */
+/** Reference access screen with clean rectangular outlined input fields. */
 @Composable
 fun LoginScreen(
     state: AuthUiState,
@@ -50,7 +50,6 @@ fun LoginScreen(
             onLogin(email, password)
         }
     }
-    // This screen has its own light palette to match the supplied artwork in either system mode.
     AccessTheme {
         ProvideTextStyle(LoginType) {
             Column(
@@ -62,36 +61,53 @@ fun LoginScreen(
                 AccessHeader()
                 Surface(
                     modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth(),
-                    shape = RoundedCornerShape(44.dp), color = Color.White,
+                    shape = RoundedCornerShape(32.dp), color = Color.White,
                     shadowElevation = 5.dp
                 ) {
                     Column(Modifier.padding(horizontal = 22.dp, vertical = 22.dp)) {
                         AccessTabs(creatingAccount = false, busy = state.busy, onLogin = {}, onRegister = onRegister)
                         Spacer(Modifier.height(20.dp))
-                        Text("Correo electrónico", fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(4.dp))
-                        AccessField(email, { email = it }, "ejemplo@correo.com", "Correo electrónico",
-                            "login_email", !state.busy, KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next))
+                        AccessField(
+                            value = email,
+                            onValueChange = { email = it },
+                            placeholder = "ejemplo@correo.com",
+                            label = "Correo electrónico",
+                            tag = "login_email",
+                            enabled = !state.busy,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                            leading = { Icon(AccessIcons.Mail, null, tint = Forest, modifier = Modifier.size(18.dp)) }
+                        )
                         Spacer(Modifier.height(10.dp))
-                        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalArrangement = Arrangement.Center) {
-                            Text("Contraseña", modifier = Modifier.align(Alignment.CenterVertically), fontWeight = FontWeight.Bold)
-                            TextButton(onClick = onRecovery, enabled = !state.busy,
-                                contentPadding = PaddingValues(start = 6.dp, end = 0.dp)) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(
+                                onClick = onRecovery,
+                                enabled = !state.busy,
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                            ) {
                                 Text("¿Olvidaste tu contraseña?", style = LoginType.copy(fontSize = 12.sp, color = Forest))
                             }
                         }
-                        AccessField(password, { password = it }, "Tu contraseña", "Contraseña",
-                            "login_password", !state.busy,
-                            KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                            KeyboardActions(onDone = { submit() }),
-                            if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        AccessField(
+                            value = password,
+                            onValueChange = { password = it },
+                            placeholder = "Tu contraseña",
+                            label = "Contraseña",
+                            tag = "login_password",
+                            enabled = !state.busy,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { submit() }),
+                            transformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            leading = { Icon(AccessIcons.Lock, null, tint = Forest, modifier = Modifier.size(18.dp)) },
                             trailing = {
                                 IconButton(onClick = { passwordVisible = !passwordVisible }, enabled = !state.busy) {
                                     Icon(AccessIcons.Eye, if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
                                         tint = WarmText, modifier = Modifier.size(20.dp))
                                 }
-                            })
+                            }
+                        )
                         state.error?.let {
                             Text(it, color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.padding(top = 10.dp).semantics { liveRegion = LiveRegionMode.Polite },
@@ -103,10 +119,9 @@ fun LoginScreen(
                                 ". Puedes volver a intentar en $waitLabel.", color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.padding(top = 10.dp), style = LoginType.copy(fontSize = 13.sp))
                         }
-                        Spacer(Modifier.height(14.dp))
+                        Spacer(Modifier.height(16.dp))
                         Button(onClick = { submit() }, enabled = canSubmit, shape = CircleShape,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("login_submit"),
-                            // Keep the reference's green CTA while empty; semantics still report disabled.
                             colors = ButtonDefaults.buttonColors(containerColor = Forest, disabledContainerColor = Forest,
                                 disabledContentColor = Color.White)) {
                             if (state.busy) {
@@ -114,7 +129,7 @@ fun LoginScreen(
                                 Spacer(Modifier.width(8.dp))
                             }
                             Text(if (state.busy) "Ingresando…" else "Entrar",
-                                style = LoginType.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White))
+                                style = LoginType.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White))
                             Spacer(Modifier.width(10.dp))
                             Icon(AccessIcons.Arrow, null, modifier = Modifier.size(22.dp))
                         }
@@ -129,9 +144,6 @@ fun LoginScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             AlternativeAccess("Google", Modifier.weight(1f), state.busy, false) {
                                 notice = "El acceso con Google aún no está disponible. Por ahora, ingresa con tu correo y contraseña."
-                            }
-                            AlternativeAccess("Huella", Modifier.weight(1f), state.busy, true) {
-                                notice = "El acceso con huella aún no está disponible. Por ahora, ingresa con tu correo y contraseña."
                             }
                         }
                         Spacer(Modifier.height(12.dp))

@@ -32,7 +32,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val container = (application as PetlyApplication).container
-
         setContent {
             Petly_appTheme {
                 Surface(
