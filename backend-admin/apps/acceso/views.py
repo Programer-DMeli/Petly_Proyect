@@ -274,6 +274,10 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         nuevo_estado = serializer.validated_data["estado"]
         observaciones = serializer.validated_data.get("observaciones_revision", "")
+        if nuevo_estado == SolicitudAdopcion.Estado.CANCELADA:
+            raise ValidationError({
+                "estado": "La cancelación debe solicitarla el adoptante titular.",
+            })
         if nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA:
             raise ValidationError({"estado": "Registra la entrega desde el contrato firmado."})
         solicitud = cambiar_estado_solicitud(
