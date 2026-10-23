@@ -12,10 +12,12 @@ TRANSICIONES = {
         SolicitudAdopcion.Estado.OBSERVADA,
         SolicitudAdopcion.Estado.APROBADA,
         SolicitudAdopcion.Estado.RECHAZADA,
+        SolicitudAdopcion.Estado.CANCELADA,
     ],
     SolicitudAdopcion.Estado.OBSERVADA: [
         SolicitudAdopcion.Estado.APROBADA,
         SolicitudAdopcion.Estado.RECHAZADA,
+        SolicitudAdopcion.Estado.CANCELADA,
     ],
     SolicitudAdopcion.Estado.APROBADA: [SolicitudAdopcion.Estado.ENTREGADA],
     SolicitudAdopcion.Estado.RECHAZADA: [],
@@ -73,10 +75,14 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
             raise ValidationError({"autorizacion": "Se requiere autorización vigente para aprobar esta solicitud."})
 
     solicitud.estado = nuevo_estado
-    solicitud.revisado_por = usuario
-    solicitud.fecha_revision = ahora
+    update_fields = ["estado", "actualizado_en"]
+    if nuevo_estado != SolicitudAdopcion.Estado.CANCELADA:
+        solicitud.revisado_por = usuario
+        solicitud.fecha_revision = ahora
+        update_fields.extend(["revisado_por", "fecha_revision"])
     if observaciones is not None:
         solicitud.observaciones_revision = motivo
+        update_fields.append("observaciones_revision")
 
     if nuevo_estado == SolicitudAdopcion.Estado.APROBADA:
         # La mascota queda reservada mientras se coordina la entrega.
@@ -97,10 +103,7 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         mascota.fecha_adopcion = ahora.date()
         mascota.save(update_fields=["estado", "fecha_adopcion", "actualizado_en"])
 
-    solicitud.save(update_fields=[
-        "estado", "revisado_por", "fecha_revision", "observaciones_revision",
-        "fecha_entrega", "actualizado_en",
-    ])
+    solicitud.save(update_fields=update_fields)
     tipo_evento = {
         SolicitudAdopcion.Estado.OBSERVADA: SolicitudEvento.Tipo.OBSERVADA,
         SolicitudAdopcion.Estado.APROBADA: SolicitudEvento.Tipo.APROBADA,

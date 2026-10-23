@@ -396,8 +396,8 @@ class SolicitudAdopcion(models.Model):
     def get_valid_transitions(self):
         """Retorna lista de estados válidos para transición desde el actual."""
         transiciones = {
-            self.Estado.PENDIENTE: [self.Estado.OBSERVADA, self.Estado.APROBADA, self.Estado.RECHAZADA],
-            self.Estado.OBSERVADA: [self.Estado.APROBADA, self.Estado.RECHAZADA],
+            self.Estado.PENDIENTE: [self.Estado.OBSERVADA, self.Estado.APROBADA, self.Estado.RECHAZADA, self.Estado.CANCELADA],
+            self.Estado.OBSERVADA: [self.Estado.APROBADA, self.Estado.RECHAZADA, self.Estado.CANCELADA],
             self.Estado.APROBADA: [],
             self.Estado.RECHAZADA: [],
             self.Estado.CANCELADA: [],

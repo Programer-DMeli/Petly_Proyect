@@ -84,11 +84,21 @@ class SolicitudAdopcionPermission(IsAlbergueStaffOrReadOnly):
         action = getattr(view, "action", None)
         if action == "create":
             return request.user.rol == User.Rol.ADOPTANTE
+        if action == "cancelar":
+            return request.user.rol == User.Rol.ADOPTANTE
         if action == "cambiar_estado":
             return request.user.is_staff or (
                 request.user.rol == User.Rol.ALBERGUE and hasattr(request.user, "albergue")
             )
         return request.method in permissions.SAFE_METHODS
+
+    def has_object_permission(self, request, view, obj):
+        if getattr(view, "action", None) == "cancelar":
+            return (
+                request.user.rol == User.Rol.ADOPTANTE
+                and obj.adoptante_id == request.user.pk
+            )
+        return super().has_object_permission(request, view, obj)
 
 
 class PostulanteViewSet(viewsets.ModelViewSet):
@@ -270,6 +280,19 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             solicitud.pk, nuevo_estado, request.user, observaciones
         )
         return Response(SolicitudAdopcionSerializer(solicitud, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"], url_path="cancelar")
+    def cancelar(self, request, pk=None):
+        """Cancela una solicitud propia antes de que el albergue la apruebe."""
+        solicitud = self.get_object()
+        solicitud = cambiar_estado_solicitud(
+            solicitud.pk,
+            SolicitudAdopcion.Estado.CANCELADA,
+            request.user,
+        )
+        return Response(
+            SolicitudAdopcionSerializer(solicitud, context={"request": request}).data
+        )
 
     @action(detail=True, methods=["get"], url_path="historial-seguimiento")
     def historial_seguimiento(self, request, pk=None):
