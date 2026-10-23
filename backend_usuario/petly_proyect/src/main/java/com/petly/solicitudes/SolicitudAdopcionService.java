@@ -85,4 +85,27 @@ public class SolicitudAdopcionService {
             throw new ApiException(503, "El servicio de seguimiento no está disponible.");
         }
     }
+
+    public ResponseEntity<String> cancelar(Long solicitudId, String authorization) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+        headers.set(HttpHeaders.AUTHORIZATION, authorization);
+
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    djangoApiBaseUrl + RUTA_DJANGO + "{solicitudId}/cancelar/",
+                    new HttpEntity<>(headers),
+                    String.class,
+                    solicitudId);
+            return ResponseEntity.status(response.getStatusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(response.getBody());
+        } catch (HttpStatusCodeException ex) {
+            return ResponseEntity.status(ex.getStatusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(ex.getResponseBodyAsString());
+        } catch (ResourceAccessException ex) {
+            throw new ApiException(503, "El servicio de solicitudes no está disponible.");
+        }
+    }
 }

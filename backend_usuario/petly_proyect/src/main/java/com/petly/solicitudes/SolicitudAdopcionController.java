@@ -32,6 +32,13 @@ public class SolicitudAdopcionController {
         return solicitudService.crear(request, authorization);
     }
 
+    @PostMapping("/{solicitudId}/cancelar")
+    public ResponseEntity<String> cancelar(
+            @PathVariable Long solicitudId,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
+        return solicitudService.cancelar(solicitudId, authorization);
+    }
+
     @GetMapping("/{solicitudId}/seguimiento")
     public ResponseEntity<String> seguimiento(
             @PathVariable Long solicitudId,
