@@ -14,7 +14,7 @@ class CompatibilidadMascotaAPITest(TestCase):
         User = get_user_model()
         owner = User.objects.create_user(username="albergue", password="pass", rol="ALBERGUE")
         user = User.objects.create_user(username="adoptante", password="pass", rol="ADOPTANTE")
-        AdoptanteProfile.objects.create(user=user, cuestionario_completado=True,
+        self.perfil = AdoptanteProfile.objects.create(user=user, cuestionario_completado=True,
             tipo_vivienda="Casa", tiene_patio=True, horas_fuera=6)
         albergue = Albergue.objects.create(usuario=owner, nombre="Hogar", direccion="Calle 1")
         self.disponible = Mascota.objects.create(
@@ -33,6 +33,17 @@ class CompatibilidadMascotaAPITest(TestCase):
         self.client.force_authenticate(user=user)
 
     def test_expone_atributos_y_solo_mascotas_disponibles(self):
+        inactivo = Albergue.objects.create(
+            usuario=get_user_model().objects.create_user(
+                username="albergue-inactivo", password="pass", rol="ALBERGUE"
+            ),
+            nombre="Hogar inactivo", direccion="Calle 2", activo=False,
+        )
+        Mascota.objects.create(
+            albergue=inactivo, nombre="No disponible", codigo="INACTIVA01",
+            especie=Mascota.Especie.PERRO, sexo=Mascota.Sexo.HEMBRA,
+            estado=Mascota.Estado.DISPONIBLE,
+        )
         response = self.client.get("/api/mascotas/compatibilidad/")
         self.assertEqual(response.status_code, 200)
         result = response.data["results"] if isinstance(response.data, dict) else response.data
@@ -43,8 +54,44 @@ class CompatibilidadMascotaAPITest(TestCase):
         self.assertEqual(item["energia"], "MEDIA")
         self.assertEqual(item["estado"], "DISPONIBLE")
         self.assertEqual(item["compatibilidad"]["puntaje"], 100)
+        self.assertEqual(item["compatibilidad"]["porcentaje"], 100)
         self.assertEqual(item["compatibilidad"]["cobertura"], 100)
         self.assertFalse(item["compatibilidad"]["datosInsuficientes"])
+        self.assertEqual(item["compatibilidad"]["versionReglas"], "petly-compat-v1")
+
+    def test_aplica_las_mismas_penalizaciones_de_convivencia_que_spring(self):
+        self.perfil.tipo_vivienda = "Departamento"
+        self.perfil.horas_fuera = 10
+        self.perfil.tiene_ninos = True
+        self.perfil.tiene_otras_mascotas = True
+        self.perfil.save()
+        self.disponible.tamanio = Mascota.Tamanio.GRANDE
+        self.disponible.energia = "ALTA"
+        self.disponible.temperamento = Mascota.Temperamento.TIMIDO
+        self.disponible.save()
+
+        response = self.client.get("/api/mascotas/compatibilidad/")
+
+        items = response.data["results"] if isinstance(response.data, dict) else response.data
+        score = items[0]["compatibilidad"]
+        self.assertEqual(score["puntaje"], 46)
+        self.assertEqual(score["porcentaje"], 46)
+        self.assertEqual(score["criterios"]["convivencia"], 45)
+
+    def test_datos_desconocidos_no_generan_compatibilidad_perfecta(self):
+        self.disponible.tamanio = ""
+        self.disponible.energia = "POR_EVALUAR"
+        self.disponible.temperamento = Mascota.Temperamento.POR_EVALUAR
+        self.disponible.save()
+
+        response = self.client.get("/api/mascotas/compatibilidad/")
+
+        items = response.data["results"] if isinstance(response.data, dict) else response.data
+        score = items[0]["compatibilidad"]
+        self.assertIsNone(score["puntaje"])
+        self.assertTrue(score["datosInsuficientes"])
+        self.assertEqual(score["cobertura"], 0)
+        self.assertEqual(score["mensaje"], "Información insuficiente para calcular compatibilidad.")
 
 
 class SolicitudAdopcionSprint2APITest(TestCase):
