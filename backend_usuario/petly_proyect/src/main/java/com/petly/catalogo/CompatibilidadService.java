@@ -114,7 +114,12 @@ public class CompatibilidadService {
     private static boolean knownTemperament(Object value) { return value != null && !"Por evaluar".equals(value); }
 
     private static int routine(Map<String, Object> p, Map<String, Object> pet) {
-        double hours = ((Number) p.get("horasFuera")).doubleValue();
+        // Los perfiles parciales y los registros previos pueden no tener horasFuera.
+        // El criterio ya se marcará como desconocido; evita que calcular el catálogo
+        // convierta esa falta de datos en un error 500.
+        Object rawHours = p.get("horasFuera");
+        if (!(rawHours instanceof Number number)) return 0;
+        double hours = number.doubleValue();
         int timeBand = hours <= 4 ? 0 : hours <= 8 ? 1 : 2;
         String energy = String.valueOf(pet.get("energia"));
         int needBand = "Alta".equals(energy) ? 0 : "Media".equals(energy) ? 1 : 2;

@@ -35,6 +35,23 @@ class CompatibilidadServiceTest {
         assertEquals(0, score.get("cobertura"));
     }
 
+    @Test
+    void perfilParcialSinRutinaDevuelveDatosInsuficientesSinFallar() {
+        Map<String, Object> partial = new java.util.HashMap<>();
+        partial.put("finalizado", false);
+        partial.put("vivienda", null);
+        partial.put("horasFuera", null);
+        partial.put("tieneNinos", null);
+        partial.put("tieneOtrasMascotas", null);
+
+        Map<?, ?> score = (Map<?, ?>) CompatibilidadService.withScore(
+                pet("Grande", "Alta", "Sociable", "Perro"), partial).get("compatibilidad");
+
+        assertNull(score.get("porcentaje"));
+        assertEquals(0, score.get("cobertura"));
+        assertEquals(true, score.get("datosInsuficientes"));
+    }
+
     private Map<String, Object> pet(String size, String energy, String temperament, String species) {
         return Map.of("id", 9, "nombre", "Luna", "tamano", size, "energia", energy,
                 "temperamento", temperament, "especie", species, "estado", "Disponible");
