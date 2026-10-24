@@ -1,50 +1,62 @@
 package com.petly_app.ui.perfil
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import com.petly_app.data.model.Mascota
 import com.petly_app.data.model.PerfilDraft
-import com.petly_app.data.repository.FavoritosManager
 import com.petly_app.ui.common.PreviewNotice
-import com.petly_app.ui.screen.HomeIcons
 
 @Composable
 fun CuestionarioScreen(
     state: PerfilUiState, preview: Boolean,
     onEdit: (PerfilDraft) -> Unit, onSave: (Boolean) -> Unit,
     onRetry: () -> Unit, onBack: () -> Unit, onShare: (() -> Unit)? = null,
-    onDetailPet: (Long) -> Unit = {}
+    onDetailPet: (Long) -> Unit = {},
+    onExit: () -> Unit = {}
+) {
+    var showForm by rememberSaveable { mutableStateOf(false) }
+
+    if (!showForm) {
+        PerfilScreen(
+            state = state,
+            preview = preview,
+            onOpenQuestionnaire = { showForm = true },
+            onDetailPet = onDetailPet,
+            onExit = onExit
+        )
+    } else {
+        CuestionarioFormScreen(
+            state = state,
+            preview = preview,
+            onEdit = onEdit,
+            onSave = onSave,
+            onRetry = onRetry,
+            onBack = { showForm = false },
+            onShare = onShare
+        )
+    }
+}
+
+@Composable
+private fun CuestionarioFormScreen(
+    state: PerfilUiState, preview: Boolean,
+    onEdit: (PerfilDraft) -> Unit, onSave: (Boolean) -> Unit,
+    onRetry: () -> Unit, onBack: () -> Unit, onShare: (() -> Unit)? = null
 ) {
     var confirmExit by remember { mutableStateOf(false) }
-    val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
     val busy = state.loading || state.saving
     val editable = !busy && state.loaded
     val requestBack = { if (state.dirty) confirmExit = true else onBack() }
@@ -60,15 +72,8 @@ fun CuestionarioScreen(
         modifier = Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        TextButton(onClick = requestBack, enabled = !state.saving) { Text("Volver al catálogo") }
+        TextButton(onClick = requestBack, enabled = !state.saving) { Text("← Volver a mi perfil") }
         PreviewNotice(preview)
-
-        // Sección de Mascotas Favoritas en Perfil (US-14)
-        MascotasFavoritasPerfilSection(
-            favorites = favorites,
-            onRemoveFavorite = { FavoritosManager.removeFavorite(it) },
-            onDetailPet = onDetailPet
-        )
 
         Text("Tu estilo de vida", style = MaterialTheme.typography.headlineMedium)
         Text("Cuéntanos sobre tu hogar y convivencia.")
@@ -100,142 +105,6 @@ fun CuestionarioScreen(
             Text(if (state.saving) "Guardando…" else "Finalizar cuestionario")
         }
         OutlinedButton(onClick = { onSave(false) }, enabled = editable, modifier = Modifier.fillMaxWidth()) { Text("Guardar borrador") }
-    }
-}
-
-@Composable
-private fun MascotasFavoritasPerfilSection(
-    favorites: List<Mascota>,
-    onRemoveFavorite: (Long) -> Unit,
-    onDetailPet: (Long) -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = HomeIcons.HeartFilled,
-                        contentDescription = null,
-                        tint = Color(0xFFE53935),
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Text(
-                        text = "Mis Mascotas Favoritas",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F3A2E)
-                    )
-                }
-
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFFC8E8DA)
-                ) {
-                    Text(
-                        text = favorites.size.toString(),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF13614B),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (favorites.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFE8F8F5), RoundedCornerShape(16.dp))
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Aún no tienes mascotas favoritas guardadas. ¡Toca el icono ❤️ en cualquier mascota para guardarla aquí!",
-                        fontSize = 13.sp,
-                        color = Color(0xFF4A6258)
-                    )
-                }
-            } else {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(favorites, key = { it.id }) { pet ->
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = Color(0xFFF4F9F6),
-                            modifier = Modifier
-                                .width(160.dp)
-                                .clickable { onDetailPet(pet.id) }
-                        ) {
-                            Column(modifier = Modifier.padding(10.dp)) {
-                                Box(modifier = Modifier.fillMaxWidth().height(100.dp)) {
-                                    val imageUrl = pet.fotografiaUrl?.takeIf { it.isNotBlank() }
-                                        ?: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=1000"
-
-                                    AsyncImage(
-                                        model = imageUrl,
-                                        contentDescription = pet.nombre,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(RoundedCornerShape(12.dp))
-                                    )
-
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = Color.White.copy(alpha = 0.9f),
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .padding(4.dp)
-                                            .size(28.dp)
-                                            .clickable { onRemoveFavorite(pet.id) }
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = HomeIcons.HeartFilled,
-                                                contentDescription = "Quitar favorito",
-                                                tint = Color(0xFFE53935),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                Text(
-                                    text = pet.nombre,
-                                    fontFamily = FontFamily.Serif,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    color = Color(0xFF0F3A2E)
-                                )
-
-                                Text(
-                                    text = pet.especie,
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF4A6258)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
