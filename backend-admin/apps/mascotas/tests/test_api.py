@@ -3,8 +3,10 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
+from unittest.mock import patch
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
+from apps.mascotas.descripcion_ia import ProveedorDescripcionNoConfigurado
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
@@ -85,6 +87,49 @@ class MascotaAPITest(TestCase):
         # El serializer de lectura incluye el campo albergue
         self.assertIn('albergue', response.data)
         self.assertEqual(response.data['albergue'], self.albergue.id)
+
+    @patch(
+        "apps.mascotas.descripcion_ia.generar_borrador",
+        return_value="Pelaje dorado y orejas caídas visibles en la fotografía.",
+    )
+    def test_generar_descripcion_entrega_borrador_sin_guardarlo(self, generar):
+        self._auth(self.user)
+        self.mascota.descripcion = "Descripción aprobada por el albergue."
+        self.mascota.save(update_fields=["descripcion"])
+
+        response = self.client.post(f"/api/mascotas/{self.mascota.pk}/generar-descripcion/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data["borrador"], "Pelaje dorado y orejas caídas visibles en la fotografía.")
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.descripcion, "Descripción aprobada por el albergue.")
+        generar.assert_called_once_with(self.mascota)
+
+    def test_otro_albergue_no_puede_generar_descripcion_de_mascota_ajena(self):
+        otro_albergue = Albergue.objects.create(
+            usuario=self.other_user, nombre="Otro albergue", direccion="Calle 2"
+        )
+        otra_mascota = Mascota.objects.create(
+            albergue=otro_albergue, nombre="Luna", codigo="PET-OTRA",
+            especie=Mascota.Especie.GATO, sexo=Mascota.Sexo.HEMBRA,
+        )
+        self._auth(self.user)
+
+        response = self.client.post(f"/api/mascotas/{otra_mascota.pk}/generar-descripcion/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @patch(
+        "apps.mascotas.descripcion_ia.generar_borrador",
+        side_effect=ProveedorDescripcionNoConfigurado("sin proveedor"),
+    )
+    def test_generar_descripcion_informa_servicio_no_configurado(self, generar):
+        self._auth(self.user)
+
+        response = self.client.post(f"/api/mascotas/{self.mascota.pk}/generar-descripcion/")
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        generar.assert_called_once()
 
     def test_cambiar_estado_transicion_valida(self):
         """Cambio DISPONIBLE -> EN_PROCESO permitido."""

@@ -66,6 +66,27 @@ class MascotaViewSet(viewsets.ModelViewSet):
             return MascotaEstadoSerializer
         return MascotaSerializer
 
+    @action(detail=True, methods=["post"], url_path="generar-descripcion")
+    def generar_descripcion(self, request, pk=None):
+        """Solicita un borrador visual al proveedor; no guarda ni publica el texto."""
+        mascota = self.get_object()
+        from .descripcion_ia import (
+            DescripcionIAError,
+            ErrorProveedorDescripcion,
+            ProveedorDescripcionNoConfigurado,
+            generar_borrador,
+        )
+
+        try:
+            borrador = generar_borrador(mascota)
+        except ProveedorDescripcionNoConfigurado as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except ErrorProveedorDescripcion as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        except DescripcionIAError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"borrador": borrador}, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=["get"], url_path="compatibilidad")
     def compatibilidad(self, request):
         """Devuelve mascotas disponibles ordenadas por compatibilidad del adoptante."""

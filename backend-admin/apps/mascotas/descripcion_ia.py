@@ -1,6 +1,7 @@
 """Vision-provider adapter for human-reviewed pet description drafts (US-29)."""
 import base64
 import json
+from urllib.parse import urlsplit
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -15,11 +16,19 @@ class ProveedorDescripcionNoConfigurado(DescripcionIAError):
     pass
 
 
+class ErrorProveedorDescripcion(DescripcionIAError):
+    """Fallo de transporte o respuesta inválida del servicio de visión."""
+
+
 def generar_borrador(mascota):
     endpoint = settings.PET_DESCRIPTION_API_URL
     token = settings.PET_DESCRIPTION_API_TOKEN
     if not endpoint or not token:
         raise ProveedorDescripcionNoConfigurado("Configura PET_DESCRIPTION_API_URL y PET_DESCRIPTION_API_TOKEN.")
+    endpoint_url = urlsplit(endpoint)
+    esquemas_validos = {"https"} | ({"http"} if settings.DEBUG else set())
+    if endpoint_url.scheme not in esquemas_validos or not endpoint_url.netloc:
+        raise ProveedorDescripcionNoConfigurado("El endpoint de visión debe usar HTTPS (HTTP solo en DEBUG).")
     if not mascota.foto_principal:
         raise DescripcionIAError("La mascota necesita una foto antes de generar un borrador.")
     photo = mascota.foto_principal
@@ -50,21 +59,21 @@ def generar_borrador(mascota):
         with urlopen(req, timeout=settings.PET_DESCRIPTION_TIMEOUT_SECONDS) as response:
             raw = response.read(64 * 1024 + 1)
             if len(raw) > 64 * 1024:
-                raise DescripcionIAError("La respuesta del proveedor es demasiado grande.")
+                raise ErrorProveedorDescripcion("La respuesta del proveedor es demasiado grande.")
             data = json.loads(raw.decode("utf-8"))
     except HTTPError as exc:
-        raise DescripcionIAError(f"El proveedor IA respondió HTTP {exc.code}.") from exc
+        raise ErrorProveedorDescripcion(f"El proveedor IA respondió HTTP {exc.code}.") from exc
     except (URLError, TimeoutError, OSError) as exc:
-        raise DescripcionIAError("No fue posible conectar con el proveedor IA.") from exc
+        raise ErrorProveedorDescripcion("No fue posible conectar con el proveedor IA.") from exc
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise DescripcionIAError("El proveedor IA devolvió una respuesta no válida.") from exc
+        raise ErrorProveedorDescripcion("El proveedor IA devolvió una respuesta no válida.") from exc
     text = data.get("description") if isinstance(data, dict) else None
     if not isinstance(text, str) or not text.strip() or len(text.strip()) > 500:
-        raise DescripcionIAError("El proveedor no devolvió una descripción editable válida.")
+        raise ErrorProveedorDescripcion("El proveedor no devolvió una descripción editable válida.")
     draft = text.strip()
     # Refuse common unsupported claims; the shelter can retry with a corrected response.
     prohibited = ("raza", "saludable", "vacun", "desparas", "tiene buena salud", "años", " meses", "temperamento", "personalidad", "se comporta", "agresiv", "obediente")
     lowered = draft.casefold()
     if any(term in lowered for term in prohibited):
-        raise DescripcionIAError("La respuesta incluye inferencias que no se permiten. Conservamos la descripción actual.")
+        raise ErrorProveedorDescripcion("La respuesta incluye inferencias que no se permiten. Conservamos la descripción actual.")
     return draft
