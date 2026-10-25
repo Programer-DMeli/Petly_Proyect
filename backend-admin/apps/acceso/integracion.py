@@ -1,8 +1,11 @@
 import urllib.error
+from django.db.models import F
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .authentication import spring_get
+from .models import SolicitudAdopcion
+from apps.albergues.models import Albergue
 
 class PerfilCompartidoView(APIView):
     permission_classes = [IsAuthenticated]
@@ -12,6 +15,19 @@ class PerfilCompartidoView(APIView):
         try:
             # Spring verifica propietario del albergue y consentimiento vigente.
             profile = spring_get("/api/albergue/perfiles/" + str(adoptante_id), request.auth)
+            try:
+                albergue = Albergue.objects.only("id").get(usuario=request.user)
+            except Albergue.DoesNotExist:
+                return Response({"error": "el albergue no está configurado", "campos": {}}, status=403)
+            profile["solicitudesPrevias"] = list(
+                SolicitudAdopcion.objects.filter(
+                    adoptante__spring_id=adoptante_id,
+                    albergue=albergue,
+                ).order_by("-fecha_solicitud").values(
+                    "id", "estado", "fecha_solicitud", "fecha_revision",
+                    mascotaNombre=F("mascota__nombre"),
+                )
+            )
             return Response(profile)
         except urllib.error.HTTPError as error:
             return Response({"error": "perfil no autorizado", "campos": {}}, status=403 if error.code in (403,404) else 503)

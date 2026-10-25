@@ -5,6 +5,13 @@ export interface Profile {
   tieneNinos: boolean | null;
   tieneOtrasMascotas: boolean | null;
   finalizado: boolean;
+  solicitudesPrevias?: Array<{
+    id: number;
+    estado: EstadoSolicitudAdopcion;
+    fecha_solicitud: string;
+    fecha_revision: string | null;
+    mascotaNombre: string;
+  }>;
 }
 export interface Pet {
   id: number;

@@ -296,6 +296,12 @@ function PerfilesCompartidos() {
                   : 'No'}
             </dd>
           </dl>
+          <h4>Solicitudes anteriores a este albergue</h4>
+          {!selected.solicitudesPrevias?.length ? <p>Sin solicitudes previas.</p> : <ul>
+            {selected.solicitudesPrevias.map(solicitud => <li key={solicitud.id}>
+              {solicitud.mascotaNombre} · {solicitud.estado.replaceAll('_', ' ')} · {new Date(solicitud.fecha_solicitud).toLocaleDateString('es-PE')}
+            </li>)}
+          </ul>}
           <button className="secondary" onClick={() => setSelected(null)}>
             Cerrar perfil
           </button>
