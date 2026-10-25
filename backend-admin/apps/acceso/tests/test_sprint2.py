@@ -339,6 +339,50 @@ class SolicitudAdopcionSprint2APITest(TestCase):
         self.client.force_authenticate(user=stranger)
         self.assertEqual(self.client.get(history_url).status_code, 404)
 
+    def test_historial_conserva_rechazo_con_motivo_y_fecha(self):
+        created = self.client.post("/api/acceso/solicitudes/", self._payload(), format="json")
+        self.assertEqual(created.status_code, 201, created.data)
+        solicitud_id = created.data["id"]
+        decision_url = f"/api/acceso/solicitudes/{solicitud_id}/cambiar-estado/"
+
+        self.client.force_authenticate(user=self.owner)
+        rejected = self.client.post(decision_url, {
+            "estado": SolicitudAdopcion.Estado.RECHAZADA,
+            "observaciones_revision": "El hogar todavía no está preparado.",
+        }, format="json")
+        self.assertEqual(rejected.status_code, 200, rejected.data)
+
+        self.client.force_authenticate(user=self.user)
+        history = self.client.get(
+            f"/api/acceso/solicitudes/{solicitud_id}/historial-seguimiento/"
+        )
+
+        self.assertEqual(history.status_code, 200, history.data)
+        self.assertEqual(history.data["estadoActual"], SolicitudAdopcion.Estado.RECHAZADA)
+        events = history.data["eventos"]
+        self.assertEqual([event["tipo"] for event in events], ["SOLICITUD_CREADA", "RECHAZADA"])
+        self.assertEqual(events[-1]["descripcion"], "El hogar todavía no está preparado.")
+        self.assertTrue(events[-1]["ocurrido_en"])
+
+    def test_historial_incluye_cancelacion_despues_del_envio(self):
+        created = self.client.post("/api/acceso/solicitudes/", self._payload(), format="json")
+        self.assertEqual(created.status_code, 201, created.data)
+        solicitud_id = created.data["id"]
+
+        cancelled = self.client.post(f"/api/acceso/solicitudes/{solicitud_id}/cancelar/")
+        self.assertEqual(cancelled.status_code, 200, cancelled.data)
+        history = self.client.get(
+            f"/api/acceso/solicitudes/{solicitud_id}/historial-seguimiento/"
+        )
+
+        self.assertEqual(history.status_code, 200, history.data)
+        self.assertEqual(history.data["estadoActual"], SolicitudAdopcion.Estado.CANCELADA)
+        events = history.data["eventos"]
+        self.assertEqual([event["tipo"] for event in events], ["SOLICITUD_CREADA", "CANCELADA"])
+        self.assertEqual(events[-1]["estado_anterior"], SolicitudAdopcion.Estado.PENDIENTE)
+        self.assertEqual(events[-1]["estado_nuevo"], SolicitudAdopcion.Estado.CANCELADA)
+        self.assertTrue(events[0]["ocurrido_en"] <= events[-1]["ocurrido_en"])
+
     def test_segunda_aprobacion_de_la_misma_mascota_se_rechaza(self):
         first = self._decision_request()
         other = get_user_model().objects.create_user(username="segundo-adoptante", password="pass")
