@@ -1,10 +1,11 @@
-"""Reglas transparentes de ordenamiento para US-02 (sin inferir datos faltantes)."""
+"""Reglas versionadas de compatibilidad, alineadas con el motor Spring US-01."""
 from decimal import Decimal, ROUND_HALF_UP
 
 from .models import ReglaCompatibilidad
 
 
 def puntuar_compatibilidad(perfil, mascota, reglas=None):
+    """Calcula una puntuación versionada con los pesos configurados globalmente."""
     if reglas is None:
         reglas, _ = ReglaCompatibilidad.objects.get_or_create(pk=1)
     pesos = {
@@ -13,22 +14,38 @@ def puntuar_compatibilidad(perfil, mascota, reglas=None):
         "convivencia": reglas.peso_convivencia,
     }
     criterios = {}
+    perfil_finalizado = bool(perfil.cuestionario_completado)
 
-    # Mantener esta regla igual que Spring: el perfil consumido por Spring no
-    # incluye patio, así que este dato no puede afectar el puntaje de un solo motor.
-    if perfil.cuestionario_completado and perfil.tipo_vivienda and mascota.especie and mascota.tamanio:
-        vivienda_pequena = any(palabra in perfil.tipo_vivienda.lower() for palabra in ("departamento", "apartamento"))
-        requiere_exterior = mascota.especie == "PERRO" and mascota.tamanio == "GRANDE"
-        criterios["vivienda"] = 60 if vivienda_pequena and requiere_exterior else 100
+    vivienda = perfil.tipo_vivienda.strip() if perfil.tipo_vivienda else ""
+    tamano_conocido = bool(mascota.tamanio)
+    if perfil_finalizado and vivienda and mascota.especie and tamano_conocido:
+        vivienda_normalizada = vivienda.lower()
+        departamento = "depart" in vivienda_normalizada or "apartamento" in vivienda_normalizada
+        perro_grande = mascota.especie == "PERRO" and mascota.tamanio == "GRANDE"
+        criterios["vivienda"] = 60 if departamento and perro_grande else 100
 
     energia = {"BAJA": 0, "MEDIA": 1, "ALTA": 2}.get(mascota.energia)
-    if perfil.horas_fuera is not None and energia is not None:
-        energia_disponible = 2 if perfil.horas_fuera <= 4 else 1 if perfil.horas_fuera <= 8 else 0
-        criterios["rutina"] = 100 if energia == energia_disponible else 70 if abs(energia - energia_disponible) == 1 else 35
+    if perfil_finalizado and perfil.horas_fuera is not None and energia is not None:
+        horas = perfil.horas_fuera
+        banda_horaria = 2 if horas <= 4 else 1 if horas <= 8 else 0
+        distancia = abs(banda_horaria - energia)
+        criterios["rutina"] = 100 if distancia == 0 else 70 if distancia == 1 else 35
 
-    afinidad = {"SOCIABLE": 100, "TRANQUILO": 90, "JUGUETON": 80, "ACTIVO": 75,
-                "INDEPENDIENTE": 70, "TIMIDO": 60}.get(mascota.temperamento)
-    if perfil.cuestionario_completado and afinidad is not None:
+    temperamento = mascota.temperamento
+    afinidad = {
+        "SOCIABLE": 100,
+        "TRANQUILO": 90,
+        "JUGUETON": 80,
+        "ACTIVO": 75,
+        "INDEPENDIENTE": 70,
+        "TIMIDO": 60,
+    }.get(temperamento)
+    if (perfil_finalizado and perfil.tiene_ninos is not None
+            and perfil.tiene_otras_mascotas is not None and afinidad is not None):
+        if perfil.tiene_ninos and temperamento == "TIMIDO":
+            afinidad = 45
+        if perfil.tiene_otras_mascotas and temperamento == "ACTIVO":
+            afinidad = 65
         criterios["convivencia"] = afinidad
 
     cobertura = sum(pesos[key] for key in criterios)
@@ -40,11 +57,28 @@ def puntuar_compatibilidad(perfil, mascota, reglas=None):
         )}
         for key, value in criterios.items()
     }
-    if cobertura != 100:
-        return {"puntaje": None, "cobertura": cobertura, "datosInsuficientes": True,
-                "criterios": criterios_explicables,
-                "versionReglas": f"petly-compat-v{reglas.version_reglas}"}
-    score = sum(Decimal(pesos[key]) * Decimal(value) for key, value in criterios.items()) / Decimal(100)
-    return {"puntaje": int(score.quantize(Decimal("1"), rounding=ROUND_HALF_UP)), "cobertura": cobertura,
-            "datosInsuficientes": False, "criterios": criterios_explicables,
-            "versionReglas": f"petly-compat-v{reglas.version_reglas}"}
+    insuficiente = cobertura < 100
+    puntaje = None
+    if not insuficiente:
+        ponderado = sum(
+            Decimal(pesos[criterio]) * Decimal(valor) / Decimal(100)
+            for criterio, valor in criterios.items()
+        )
+        puntaje = int(ponderado.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+    mensaje = (
+        "Completa tu perfil para calcular compatibilidad."
+        if not perfil_finalizado
+        else "Información insuficiente para calcular compatibilidad."
+        if insuficiente
+        else "Puntaje orientativo; el albergue decide cada adopción."
+    )
+    return {
+        "puntaje": puntaje,
+        "porcentaje": puntaje,
+        "cobertura": cobertura,
+        "datosInsuficientes": insuficiente,
+        "mensaje": mensaje,
+        "versionReglas": f"petly-compat-v{reglas.version_reglas}",
+        "criterios": criterios_explicables,
+    }

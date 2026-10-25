@@ -91,7 +91,8 @@ fun MainAppScreen(
                         onRetry = onLoadPerfil,
                         onBack = { selectedTab = PetlyTab.INICIO },
                         onShare = onShareAutorizaciones,
-                        onDetailPet = onDetailPet
+                        onDetailPet = onDetailPet,
+                        onExit = onExit
                     )
                 }
             }

@@ -2,15 +2,16 @@
 
 ## Orden de compatibilidad (US-02)
 
-`GET /api/mascotas/compatibilidad/` requiere un adoptante autenticado con perfil. Devuelve mascotas `DISPONIBLE` ordenadas por puntaje descendente; los empates se resuelven por ID ascendente. El puntaje es entero de 0 a 100 y expone criterios, cobertura y `datosInsuficientes`. Si falta algún dato necesario, el puntaje es `null` y la mascota queda después de las puntuadas. Spring usa esta misma regla en catálogo y detalle para React y Android.
+`GET /api/mascotas/compatibilidad/` requiere un adoptante autenticado con perfil. Devuelve mascotas `DISPONIBLE` de albergues activos ordenadas por puntaje descendente; los empates se resuelven por ID ascendente. El puntaje es entero de 0 a 100 y expone criterios, cobertura y `datosInsuficientes`. Si falta algún dato necesario, el puntaje es `null` y la mascota queda después de las puntuadas. Spring aplica la misma regla en catálogo y detalle para React y Android.
 
 | Criterio | Peso | Regla inicial |
 | --- | ---: | --- |
-| Vivienda | 30% por defecto | Vivienda conocida: 60/100 para perro grande en departamento; otros pares conocidos reciben 100. Patio no afecta el puntaje, porque Spring no recibe ese campo. |
+| Vivienda | 30% por defecto | Vivienda y tamaño conocidos: 60/100 para perro grande en departamento; otros pares conocidos reciben 100. Patio no afecta el puntaje, porque Spring no recibe ese campo. |
 | Rutina | 35% por defecto | Se compara energía baja/media/alta con horas fuera (más de 8, hasta 8, hasta 4); misma categoría 100, adyacente 70, extremos 35. |
-| Convivencia | 35% por defecto | Requiere cuestionario completado y temperamento evaluado; sociable 100, tranquilo 90, juguetón 80, activo 75, independiente 70, tímido 60. |
+| Convivencia | 35% por defecto | Requiere cuestionario completado y temperamento evaluado; sociable 100, tranquilo 90, juguetón 80, activo 75, independiente 70, tímido 60. Niños con mascota tímida: 45; otras mascotas con mascota activa: 65. |
 
-Los pesos son editables por ADMIN en `GET/PUT /api/admin/compatibilidad/reglas`; deben sumar 100. La API devuelve la versión de reglas, que aumenta en cada cambio. Django y Spring leen la fila única `mascotas_reglacompatibilidad`, creada en la migración Django `0005_reglacompatibilidad_and_more`.
+
+Los pesos iniciales son 30/35/35 y ADMIN puede editarlos en `GET/PUT /api/admin/compatibilidad/reglas`; deben sumar 100. La API devuelve la versión de reglas, que aumenta en cada cambio. Django y Spring leen la fila única `mascotas_reglacompatibilidad`, creada en la migración Django `0005_reglacompatibilidad_and_more`.
 
 Los pesos se normalizan con precisión decimal y se redondean al entero más cercano. No se imputan valores desconocidos. Estas reglas son una primera versión explicable y deben revisarse con datos de uso y criterio de bienestar animal; el puntaje orienta la búsqueda y no decide una adopción.
 

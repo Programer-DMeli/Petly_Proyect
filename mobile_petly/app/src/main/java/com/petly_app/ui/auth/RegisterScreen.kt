@@ -77,7 +77,7 @@ fun RegisterScreen(
             .verticalScroll(rememberScrollState()).padding(horizontal = 10.dp)
             .padding(top = 8.dp, bottom = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             AccessHeader()
-            Surface(Modifier.widthIn(max = 420.dp).fillMaxWidth(), shape = RoundedCornerShape(44.dp),
+            Surface(Modifier.widthIn(max = 420.dp).fillMaxWidth(), shape = RoundedCornerShape(32.dp),
                 color = Color.White, shadowElevation = 5.dp) {
                 Column(Modifier.padding(horizontal = 22.dp, vertical = 22.dp)) {
                     AccessTabs(creatingAccount = true, busy = state.busy, onLogin = onBack, onRegister = {})
@@ -90,27 +90,63 @@ fun RegisterScreen(
                         Spacer(Modifier.height(16.dp))
                         Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), shape = CircleShape) { Text("Iniciar sesión") }
                     } else {
-                        RegistrationLabel("Nombre completo", AccessIcons.Person)
-                        AccessField(name, { name = it }, "Ej. Camila Morales", "Nombre completo", "register_name", !state.busy,
-                            KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next))
+                        AccessField(
+                            value = name,
+                            onValueChange = { name = it },
+                            placeholder = "Ej. Camila Morales",
+                            label = "Nombre completo",
+                            tag = "register_name",
+                            enabled = !state.busy,
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+                            leading = { Icon(AccessIcons.Person, null, tint = Forest, modifier = Modifier.size(18.dp)) }
+                        )
                         RegistrationError(if (attempted) errors["name"] else null)
                         Spacer(Modifier.height(10.dp))
-                        RegistrationLabel("Correo electrónico", AccessIcons.Mail)
-                        AccessField(email, { email = it }, "camila@adopta.org", "Correo electrónico", "register_email", !state.busy,
-                            KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next))
+
+                        AccessField(
+                            value = email,
+                            onValueChange = { email = it },
+                            placeholder = "camila@adopta.org",
+                            label = "Correo electrónico",
+                            tag = "register_email",
+                            enabled = !state.busy,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                            leading = { Icon(AccessIcons.Mail, null, tint = Forest, modifier = Modifier.size(18.dp)) }
+                        )
                         RegistrationError(if (attempted) errors["email"] else null)
                         Spacer(Modifier.height(10.dp))
-                        RegistrationLabel("Crea tu contraseña", AccessIcons.Lock)
-                        RegistrationPassword(password, { password = it }, "Mínimo 8 caracteres", "Crea tu contraseña",
-                            "register_password", !state.busy, passwordVisible, { passwordVisible = !passwordVisible }, ImeAction.Next)
+
+                        RegistrationPassword(
+                            value = password,
+                            onChange = { password = it },
+                            placeholder = "Mínimo 8 caracteres",
+                            label = "Crea tu contraseña",
+                            tag = "register_password",
+                            enabled = !state.busy,
+                            visible = passwordVisible,
+                            onToggle = { passwordVisible = !passwordVisible },
+                            imeAction = ImeAction.Next,
+                            leadingIcon = AccessIcons.Lock
+                        )
                         RegistrationError(if (attempted) errors["password"] else null)
                         Spacer(Modifier.height(10.dp))
-                        RegistrationLabel("Confirmar contraseña", AccessIcons.Check)
-                        RegistrationPassword(confirmation, { confirmation = it }, "Repite tu contraseña", "Confirmar contraseña",
-                            "register_confirmation", !state.busy, confirmationVisible, { confirmationVisible = !confirmationVisible },
-                            ImeAction.Done, KeyboardActions(onDone = { submit() }))
+
+                        RegistrationPassword(
+                            value = confirmation,
+                            onChange = { confirmation = it },
+                            placeholder = "Repite tu contraseña",
+                            label = "Confirmar contraseña",
+                            tag = "register_confirmation",
+                            enabled = !state.busy,
+                            visible = confirmationVisible,
+                            onToggle = { confirmationVisible = !confirmationVisible },
+                            imeAction = ImeAction.Done,
+                            keyboardActions = KeyboardActions(onDone = { submit() }),
+                            leadingIcon = AccessIcons.Check
+                        )
                         RegistrationError(if (attempted) errors["confirmation"] else null)
                         Spacer(Modifier.height(12.dp))
+
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = accepted, onCheckedChange = { accepted = it }, enabled = !state.busy,
                                 modifier = Modifier.testTag("register_terms").semantics {
@@ -159,33 +195,44 @@ fun RegisterScreen(
 }
 
 @Composable
-private fun RegistrationLabel(text: String, icon: ImageVector) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
-        Icon(icon, null, tint = Forest, modifier = Modifier.size(14.dp))
-        Spacer(Modifier.width(4.dp))
-        Text(text, style = LoginType.copy(fontSize = 13.sp, color = WarmText))
-    }
-}
-
-@Composable
 private fun RegistrationError(error: String?) {
     error?.let {
         Text(it, color = MaterialTheme.colorScheme.error, style = LoginType.copy(fontSize = 12.sp),
-            modifier = Modifier.padding(top = 6.dp).semantics { liveRegion = LiveRegionMode.Polite })
+            modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite })
     }
 }
 
 @Composable
-private fun RegistrationPassword(value: String, onChange: (String) -> Unit, placeholder: String, label: String,
-    tag: String, enabled: Boolean, visible: Boolean, onToggle: () -> Unit, imeAction: ImeAction,
-    keyboardActions: KeyboardActions = KeyboardActions.Default) {
-    AccessField(value, onChange, placeholder, label, tag, enabled,
-        KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = imeAction), keyboardActions,
-        if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailing = {
+private fun RegistrationPassword(
+    value: String,
+    onChange: (String) -> Unit,
+    placeholder: String,
+    label: String,
+    tag: String,
+    enabled: Boolean,
+    visible: Boolean,
+    onToggle: () -> Unit,
+    imeAction: ImeAction,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    leadingIcon: ImageVector
+) {
+    AccessField(
+        value = value,
+        onValueChange = onChange,
+        placeholder = placeholder,
+        label = label,
+        tag = tag,
+        enabled = enabled,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = imeAction),
+        keyboardActions = keyboardActions,
+        transformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        leading = { Icon(leadingIcon, null, tint = Forest, modifier = Modifier.size(18.dp)) },
+        trailing = {
             IconButton(onClick = onToggle, enabled = enabled) {
                 Icon(AccessIcons.Eye, if (visible) "Ocultar $label" else "Mostrar $label", tint = WarmText, modifier = Modifier.size(20.dp))
             }
-        })
+        }
+    )
 }
 
 @Preview(showBackground = true, widthDp = 352, heightDp = 796)

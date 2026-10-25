@@ -84,6 +84,8 @@ class SolicitudAdopcionPermission(IsAlbergueStaffOrReadOnly):
         action = getattr(view, "action", None)
         if action == "create":
             return request.user.rol == User.Rol.ADOPTANTE
+        if action == "cancelar":
+            return request.user.rol == User.Rol.ADOPTANTE
         if action == "cambiar_estado":
             return request.user.is_staff or (
                 request.user.rol == User.Rol.ALBERGUE and hasattr(request.user, "albergue")
@@ -271,6 +273,10 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         nuevo_estado = serializer.validated_data["estado"]
         observaciones = serializer.validated_data.get("observaciones_revision", "")
+        if nuevo_estado == SolicitudAdopcion.Estado.CANCELADA:
+            raise ValidationError({
+                "estado": "La cancelación debe solicitarla el adoptante titular.",
+            })
         if nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA:
             raise ValidationError({"estado": "Registra la entrega desde el contrato firmado."})
         solicitud = cambiar_estado_solicitud(
@@ -280,13 +286,18 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="cancelar")
     def cancelar(self, request, pk=None):
+        """Cancela una solicitud propia antes de que el albergue la apruebe."""
         if request.user.rol != User.Rol.ADOPTANTE:
             raise PermissionDenied("Solo el adoptante titular puede cancelar esta solicitud.")
         solicitud = self.get_object()
         solicitud = cambiar_estado_solicitud(
-            solicitud.pk, SolicitudAdopcion.Estado.CANCELADA, request.user
+            solicitud.pk,
+            SolicitudAdopcion.Estado.CANCELADA,
+            request.user,
         )
-        return Response(SolicitudAdopcionSerializer(solicitud, context={"request": request}).data)
+        return Response(
+            SolicitudAdopcionSerializer(solicitud, context={"request": request}).data
+        )
 
     @action(detail=True, methods=["get"], url_path="historial-seguimiento")
     def historial_seguimiento(self, request, pk=None):

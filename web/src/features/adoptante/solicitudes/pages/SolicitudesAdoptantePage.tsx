@@ -10,11 +10,12 @@ export default function SolicitudesAdoptantePage() {
   const [items, setItems] = useState<SolicitudAdopcion[]>([]);
   const [contracts, setContracts] = useState<ContratoAdopcion[]>([]);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(true);
   const [refresh, setRefresh] = useState(0);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const load = useCallback(async () => {
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setSuccess('');
     try {
       const [result, contractResult] = await Promise.all([
         spring<Page<SolicitudAdopcion>>('/api/solicitudes'), django<Page<ContratoAdopcion>>('/api/contratos/'),
@@ -30,17 +31,24 @@ export default function SolicitudesAdoptantePage() {
     catch (e) { setError(errorMessage(e)); }
   }
   async function cancelRequest(item: SolicitudAdopcion) {
-    if (!window.confirm(`¿Quieres cancelar la solicitud de ${item.mascota_nombre || 'esta mascota'}? Esta acción no se puede deshacer.`)) return;
-    setCancellingId(item.id); setError('');
+    const confirmar = window.confirm(
+      `¿Deseas cancelar la solicitud de ${item.mascota_nombre || `la solicitud #${item.id}`}? Esta acción no se puede deshacer.`
+    );
+    if (!confirmar) return;
+    setCancellingId(item.id); setError(''); setSuccess('');
     try {
-      await spring(`/api/solicitudes/${item.id}/cancelar`, { method: 'POST' });
-      await load();
-    } catch (e) { setError(errorMessage(e)); }
-    finally { setCancellingId(null); }
+      const actualizada = await spring<SolicitudAdopcion>(`/api/solicitudes/${item.id}/cancelar`, { method: 'POST' });
+      setItems(current => current.map(currentItem => currentItem.id === actualizada.id ? actualizada : currentItem));
+      setSuccess(`La solicitud #${actualizada.id} quedó cancelada.`);
+    } catch (e) {
+      setError(`${errorMessage(e)} Actualiza la lista para consultar el estado actual.`);
+    } finally {
+      setCancellingId(null);
+    }
   }
   return <section className="card">
     <h1>Mis solicitudes</h1>
-    <Feedback error={error} />
+    <Feedback error={error} success={success} />
     <button className="secondary" disabled={busy} onClick={() => setRefresh(v => v + 1)}>Actualizar</button>
     {busy ? <p role="status">Cargando solicitudes…</p> : items.length === 0
       ? <p>Aún no has enviado solicitudes.</p>

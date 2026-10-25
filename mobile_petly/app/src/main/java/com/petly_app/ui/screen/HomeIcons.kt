@@ -180,4 +180,78 @@ internal object HomeIcons {
             close()
         }
     }.build()
+
+    val Camera = ImageVector.Builder("Camera", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(23f, 19f)
+            curveTo(23f, 20.1f, 22.1f, 21f, 21f, 21f)
+            lineTo(3f, 21f)
+            curveTo(1.9f, 21f, 1f, 20.1f, 1f, 19f)
+            lineTo(1f, 8f)
+            curveTo(1f, 6.9f, 1.9f, 6f, 3f, 6f)
+            lineTo(7f, 6f)
+            lineTo(9f, 3f)
+            lineTo(15f, 3f)
+            lineTo(17f, 6f)
+            lineTo(21f, 6f)
+            curveTo(22.1f, 6f, 23f, 6.9f, 23f, 8f)
+            close()
+            moveTo(12f, 17f)
+            curveTo(14.21f, 17f, 16f, 15.21f, 16f, 13f)
+            curveTo(16f, 10.79f, 14.21f, 9f, 12f, 9f)
+            curveTo(9.79f, 9f, 8f, 10.79f, 8f, 13f)
+            curveTo(8f, 15.21f, 9.79f, 17f, 12f, 17f)
+            close()
+        }
+    }.build()
+
+    val Clipboard = ImageVector.Builder("Clipboard", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(16f, 4f)
+            lineTo(18f, 4f)
+            curveTo(19.1f, 4f, 20f, 4.9f, 20f, 6f)
+            lineTo(20f, 20f)
+            curveTo(20f, 21.1f, 19.1f, 22f, 18f, 22f)
+            lineTo(6f, 22f)
+            curveTo(4.9f, 22f, 4f, 21.1f, 4f, 20f)
+            lineTo(4f, 6f)
+            curveTo(4f, 4.9f, 4.9f, 4f, 6f, 4f)
+            lineTo(8f, 4f)
+            moveTo(9f, 3f)
+            lineTo(15f, 3f)
+            lineTo(15f, 5f)
+            lineTo(9f, 5f)
+            close()
+            moveTo(8f, 10f)
+            lineTo(16f, 10f)
+            moveTo(8f, 14f)
+            lineTo(16f, 14f)
+            moveTo(8f, 18f)
+            lineTo(12f, 18f)
+        }
+    }.build()
+
+    val ChevronRight = ImageVector.Builder("ChevronRight", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2.2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(9f, 18f)
+            lineTo(15f, 12f)
+            lineTo(9f, 6f)
+        }
+    }.build()
+
+    val Logout = ImageVector.Builder("Logout", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(9f, 21f)
+            lineTo(5f, 21f)
+            curveTo(3.9f, 21f, 3f, 20.1f, 3f, 19f)
+            lineTo(3f, 5f)
+            curveTo(3f, 3.9f, 3.9f, 3f, 5f, 3f)
+            lineTo(9f, 3f)
+            moveTo(16f, 17f)
+            lineTo(21f, 12f)
+            lineTo(16f, 7f)
+            moveTo(21f, 12f)
+            lineTo(9f, 12f)
+        }
+    }.build()
 }

@@ -3,9 +3,13 @@ package com.petly_app.data.model
 import java.math.BigDecimal
 
 data class PerfilDraft(
-    val vivienda: String = "", val horasFuera: String = "", val presupuesto: String = "",
-    val tieneNinos: Boolean? = null, val tieneOtrasMascotas: Boolean? = null,
-    val finalizado: Boolean = false
+    val vivienda: String = "",
+    val horasFuera: String = "",
+    val presupuesto: String = "",
+    val tieneNinos: Boolean? = null,
+    val tieneOtrasMascotas: Boolean? = null,
+    val finalizado: Boolean = false,
+    val fotosViviendaUrls: List<String> = emptyList()
 )
 
 object PerfilValidation {
