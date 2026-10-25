@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from .kyc_storage import PrivateKycStorage, nombre_archivo_kyc
 
 
 class User(AbstractUser):
@@ -170,6 +171,18 @@ class VerificacionKyc(models.Model):
     referencia_reniec = models.CharField(max_length=160, blank=True)
     fecha_consulta = models.DateTimeField(null=True, blank=True)
     error_servicio = models.CharField(max_length=500, blank=True)
+    documento_anverso = models.ImageField(
+        upload_to=nombre_archivo_kyc,
+        storage=PrivateKycStorage(),
+        null=True,
+        blank=True,
+    )
+    documento_reverso = models.ImageField(
+        upload_to=nombre_archivo_kyc,
+        storage=PrivateKycStorage(),
+        null=True,
+        blank=True,
+    )
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 

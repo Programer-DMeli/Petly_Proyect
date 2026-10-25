@@ -16,6 +16,7 @@ from .views import (
     UserProfileView,
     UserRegistrationView,
 )
+from .kyc_views import VerificacionKycViewSet
 from .integracion import (
     PerfilCompartidoView,
     PerfilesCompartidosListView,
@@ -25,6 +26,7 @@ from .integracion import (
 router = DefaultRouter()
 router.register("postulantes", PostulanteViewSet, basename="postulante")
 router.register("solicitudes", SolicitudAdopcionViewSet, basename="solicitud")
+router.register("verificaciones-kyc", VerificacionKycViewSet, basename="verificacion-kyc")
 
 urlpatterns = [
     path("", include(router.urls)),
