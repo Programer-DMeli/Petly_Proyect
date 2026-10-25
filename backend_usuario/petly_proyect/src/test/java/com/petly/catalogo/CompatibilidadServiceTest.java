@@ -104,7 +104,15 @@ class CompatibilidadServiceTest {
                 return profile(true, "Casa", 3, false, false);
             }
         };
-        return new CompatibilidadService(catalogo, perfiles);
+        return new CompatibilidadService(catalogo, perfiles, defaultRules());
+    }
+    private ReglasCompatibilidadService defaultRules() {
+        return new ReglasCompatibilidadService(null) {
+            @Override
+            public Reglas obtener() {
+                return new Reglas(30, 35, 35, 1);
+            }
+        };
     }
     private List<Long> ids(Map<String, Object> result) {
         return ((List<Map<String, Object>>) result.get("items")).stream()

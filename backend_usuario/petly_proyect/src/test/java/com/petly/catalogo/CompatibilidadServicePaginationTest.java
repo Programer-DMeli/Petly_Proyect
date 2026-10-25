@@ -29,7 +29,13 @@ class CompatibilidadServicePaginationTest {
                 return profile();
             }
         };
-        CompatibilidadService service = new CompatibilidadService(catalogo, perfiles);
+        ReglasCompatibilidadService reglas = new ReglasCompatibilidadService(null) {
+            @Override
+            public Reglas obtener() {
+                return new Reglas(30, 35, 35, 1);
+            }
+        };
+        CompatibilidadService service = new CompatibilidadService(catalogo, perfiles, reglas);
 
         Map<String, Object> result = service.listar(7, "Luna", "Perro", "Mediano", "Sociable", 1, 60, 2, 2);
 

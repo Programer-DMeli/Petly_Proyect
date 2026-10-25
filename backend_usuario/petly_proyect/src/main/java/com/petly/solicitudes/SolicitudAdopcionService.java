@@ -86,7 +86,7 @@ public class SolicitudAdopcionService {
 
         try {
             ResponseEntity<String> response = restTemplate.exchange(
-                    djangoApiBaseUrl + "/api/acceso/solicitudes/{solicitudId}/seguimiento/",
+                    djangoApiBaseUrl + "/api/acceso/solicitudes/{solicitudId}/historial-seguimiento/",
                     HttpMethod.GET,
                     new HttpEntity<>(headers),
                     String.class,
