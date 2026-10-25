@@ -2,6 +2,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -135,6 +136,50 @@ class AdoptanteProfile(models.Model):
     @property
     def nombre_completo(self):
         return f"{self.nombres} {self.apellidos}"
+
+
+class VerificacionKyc(models.Model):
+    """Estado y trazabilidad de una consulta de identidad a RENIEC (US-22)."""
+
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente de consulta"
+        VERIFICADO = "VERIFICADO", "Verificado por RENIEC"
+        PENDIENTE_REVISION = "PENDIENTE_REVISION", "Pendiente de revisión"
+
+    adoptante = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="verificacion_kyc",
+        limit_choices_to={"rol": "ADOPTANTE"},
+    )
+    dni = models.CharField(
+        "DNI",
+        max_length=8,
+        validators=[RegexValidator(r"^\d{8}$", "El DNI debe contener exactamente ocho dígitos.")],
+    )
+    nombres = models.CharField(max_length=100)
+    apellidos = models.CharField(max_length=100)
+    estado = models.CharField(
+        max_length=24,
+        choices=Estado.choices,
+        default=Estado.PENDIENTE,
+        db_index=True,
+    )
+    coincide = models.BooleanField(null=True, blank=True)
+    proveedor = models.CharField(max_length=80, blank=True)
+    referencia_reniec = models.CharField(max_length=160, blank=True)
+    fecha_consulta = models.DateTimeField(null=True, blank=True)
+    error_servicio = models.CharField(max_length=500, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Verificación KYC"
+        verbose_name_plural = "Verificaciones KYC"
+        ordering = ["-actualizado_en"]
+
+    def __str__(self):
+        return f"KYC {self.adoptante_id} ({self.get_estado_display()})"
 
 
 class Autorizacion(models.Model):
