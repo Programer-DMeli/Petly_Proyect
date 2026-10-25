@@ -48,7 +48,7 @@ export const router = createBrowserRouter([
           { path: 'autorizaciones', element: <AutorizacionesPage /> },
           { path: 'cuestionario', element: <CuestionarioPage /> },
           { path: 'solicitudes', element: <SolicitudesAdoptantePage /> },
-          { path: 'solicitudes/:id', element: <SeguimientoSolicitudPage /> },
+          { path: 'solicitudes/:solicitudId', element: <SeguimientoSolicitudPage /> },
         ],
       },
       {
