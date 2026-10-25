@@ -79,6 +79,9 @@ public class SecurityConfig {
                         // El envío de solicitudes es exclusivo del adoptante (US-06).
                         .requestMatchers("/api/solicitudes", "/api/solicitudes/**")
                         .hasRole("ADOPTANTE")
+                        // Consulta de identidad RENIEC exclusiva del adoptante titular.
+                        .requestMatchers("/api/kyc/**")
+                        .hasRole("ADOPTANTE")
                         // endpoint interno Django -> Spring: el secreto lo exige InternalApiFilter (US-18)
                         .requestMatchers("/api/interno/**")
                         .permitAll()

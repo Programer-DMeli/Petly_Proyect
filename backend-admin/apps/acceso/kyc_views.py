@@ -40,9 +40,12 @@ class VerificacionKycViewSet(viewsets.ModelViewSet):
         archivo = getattr(verificacion, f"documento_{tipo}")
         if not archivo:
             return Response({"detail": "El documento solicitado no está disponible."}, status=404)
-        return FileResponse(
+        response = FileResponse(
             archivo.open("rb"),
             as_attachment=True,
             filename=f"dni-{tipo}{'.png' if archivo.name.lower().endswith('.png') else '.jpg'}",
             content_type=mimetypes.guess_type(archivo.name)[0] or "application/octet-stream",
         )
+        response["Cache-Control"] = "private, no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response

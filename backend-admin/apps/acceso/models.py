@@ -170,6 +170,7 @@ class VerificacionKyc(models.Model):
     proveedor = models.CharField(max_length=80, blank=True)
     referencia_reniec = models.CharField(max_length=160, blank=True)
     fecha_consulta = models.DateTimeField(null=True, blank=True)
+    ultimo_intento_en = models.DateTimeField(null=True, blank=True)
     error_servicio = models.CharField(max_length=500, blank=True)
     documento_anverso = models.ImageField(
         upload_to=nombre_archivo_kyc,

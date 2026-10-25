@@ -10,8 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 /** Cliente del endpoint autorizado de validación RENIEC configurado por entorno. */
@@ -68,7 +67,7 @@ public class ReniecClient {
                 throw new ReniecRespuestaInvalidaException();
             }
             return result;
-        } catch (HttpStatusCodeException | ResourceAccessException ex) {
+        } catch (RestClientException ex) {
             throw new ReniecNoDisponibleException();
         }
     }
