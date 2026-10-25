@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from apps.acceso.models import SolicitudAdopcion, SolicitudEvento
 from .models import ContratoAdopcion, EventoWebhookFirma
-from .providers import ErrorProveedorFirma, obtener_adaptador_firma
+from .providers import ErrorProveedorFirma, obtener_adaptador_firma, obtener_callback_firma
 
 
 class TerminosContratoNoConfigurados(Exception):
@@ -29,6 +29,8 @@ def _renderizar_contrato(snapshot):
         "mascota_especie": snapshot["mascotaEspecie"],
         "mascota_codigo": snapshot["mascotaCodigo"],
         "terminos": snapshot.get("terminos", ""),
+        "terminos_version": snapshot.get("terminosVersion", ""),
+        "terminos_aprobados_por": snapshot.get("terminosAprobadosPor", ""),
         "generado_en": snapshot["generadoEn"],
     })
 
@@ -66,6 +68,8 @@ def crear_borrador(solicitud_id, actor):
         "mascotaEspecie": solicitud.mascota.get_especie_display(),
         "mascotaCodigo": solicitud.mascota.codigo,
         "terminos": terminos,
+        "terminosVersion": settings.ADOPTION_CONTRACT_TERMS_VERSION.strip(),
+        "terminosAprobadosPor": settings.ADOPTION_CONTRACT_TERMS_APPROVED_BY.strip(),
         "generadoEn": timezone.now().isoformat(),
     }
     contenido = _renderizar_contrato(snapshot)
@@ -89,8 +93,13 @@ def crear_borrador(solicitud_id, actor):
 def enviar_a_firma(contrato_id):
     """Llama al proveedor fuera de la transacción y usa clave idempotente estable."""
     terminos_configurados = settings.ADOPTION_CONTRACT_TERMS.strip()
-    if not terminos_configurados:
-        raise TerminosContratoNoConfigurados("Configura ADOPTION_CONTRACT_TERMS antes de enviar a firma.")
+    terminos_version = settings.ADOPTION_CONTRACT_TERMS_VERSION.strip()
+    terminos_aprobador = settings.ADOPTION_CONTRACT_TERMS_APPROVED_BY.strip()
+    if not terminos_configurados or not terminos_version or not terminos_aprobador or not settings.ADOPTION_CONTRACT_TERMS_APPROVED:
+        raise TerminosContratoNoConfigurados(
+            "Configura los términos, su versión y aprobador, y marca su aprobación antes de solicitar firmas."
+        )
+    callback_url = obtener_callback_firma()
     with transaction.atomic():
         contrato = ContratoAdopcion.objects.select_for_update().select_related(
             "solicitud__adoptante", "solicitud__postulante", "solicitud__albergue__usuario"
@@ -99,9 +108,15 @@ def enviar_a_firma(contrato_id):
             return contrato
         if contrato.estado in (ContratoAdopcion.Estado.RECHAZADO, ContratoAdopcion.Estado.EXPIRADO):
             raise ValidationError("El contrato terminó en el proveedor y no admite reenvío.")
-        if not contrato.snapshot.get("terminos"):
+        if (
+            contrato.snapshot.get("terminos") != terminos_configurados
+            or contrato.snapshot.get("terminosVersion") != terminos_version
+            or contrato.snapshot.get("terminosAprobadosPor") != terminos_aprobador
+        ):
             hash_anterior = contrato.contenido_sha256
             contrato.snapshot["terminos"] = terminos_configurados
+            contrato.snapshot["terminosVersion"] = terminos_version
+            contrato.snapshot["terminosAprobadosPor"] = terminos_aprobador
             contrato.contenido_html = _renderizar_contrato(contrato.snapshot)
             contrato.contenido_sha256 = hashlib.sha256(contrato.contenido_html.encode("utf-8")).hexdigest()
             contenido_actualizado = hash_anterior != contrato.contenido_sha256
@@ -122,8 +137,6 @@ def enviar_a_firma(contrato_id):
                 actor=contrato.creado_por,
             )
 
-    base = settings.PUBLIC_API_BASE_URL.rstrip("/")
-    callback_url = f"{base}/api/contratos/webhooks/firma/"
     try:
         resultado = obtener_adaptador_firma().enviar(contrato, callback_url)
         if not isinstance(resultado, dict) or not resultado.get("id"):

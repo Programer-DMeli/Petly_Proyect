@@ -10,6 +10,7 @@
     <h2>Mascota</h2>
     <p>{{ mascota_nombre }} · {{ mascota_especie }} · Código: {{ mascota_codigo }}</p>
     <h2>Condiciones acordadas</h2>
+    {% if terminos_version %}<p><strong>Versión de condiciones:</strong> {{ terminos_version }} · Revisadas por {{ terminos_aprobados_por }}</p>{% endif %}
     {% if terminos %}
       <div>{{ terminos|linebreaks }}</div>
     {% else %}

@@ -1,5 +1,6 @@
 """Adaptador REST neutro; se puede sustituir por un proveedor con otro contrato API."""
 import json
+import ipaddress
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -14,6 +15,29 @@ class ErrorProveedorFirma(Exception):
 
 class ProveedorNoConfigurado(ErrorProveedorFirma):
     pass
+
+
+def obtener_callback_firma():
+    """Valida que el webhook use una dirección pública alcanzable por el proveedor."""
+    base = settings.PUBLIC_API_BASE_URL.strip().rstrip("/")
+    parsed = urlsplit(base)
+    host = (parsed.hostname or "").lower().rstrip(".")
+    local = host in {"localhost", "localhost.localdomain"} or host.endswith((".localhost", ".local", ".test", ".example"))
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    local = local or (address is not None and not address.is_global)
+
+    if not host or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ProveedorNoConfigurado("PUBLIC_API_BASE_URL debe ser una URL base válida y sin credenciales.")
+    if settings.DEBUG and parsed.scheme == "http" and local:
+        return f"{base}/api/contratos/webhooks/firma/"
+    if parsed.scheme != "https" or local:
+        raise ProveedorNoConfigurado(
+            "PUBLIC_API_BASE_URL debe ser HTTPS y públicamente alcanzable para recibir el webhook de firma."
+        )
+    return f"{base}/api/contratos/webhooks/firma/"
 
 
 class ProveedorFirmaREST:
