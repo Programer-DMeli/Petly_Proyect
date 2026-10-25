@@ -35,6 +35,7 @@ class IntegracionSprintTest {
  long uid(String token) {return Long.parseLong(jwt.validarToken(token).getSubject());}
  @BeforeEach void fixtures() {
   db.update("DELETE FROM autorizaciones_consulta");db.update("DELETE FROM mascotas_mascota");db.update("DELETE FROM albergues_albergue");db.update("DELETE FROM acceso_user");
+  db.update("UPDATE mascotas_reglacompatibilidad SET peso_vivienda=30,peso_rutina=35,peso_convivencia=35,version_reglas=1,actualizado_por_spring_id=NULL WHERE id=1");
   db.update("INSERT INTO acceso_user VALUES (100,100)");
   db.update("INSERT INTO albergues_albergue VALUES (100,'Refugio ejemplo','Lima',100,TRUE)");
   for(int i=1;i<=4;i++) db.update("INSERT INTO mascotas_mascota VALUES (?,?,'PERRO','MEDIANO',2,0,'POR_EVALUAR','MEDIA','Descripción',100,'DISPONIBLE','mascotas/luna.png')",i,"Luna "+i);
@@ -69,6 +70,46 @@ class IntegracionSprintTest {
   mvc.perform(get("/api/catalogo/1").header("Authorization","Bearer "+t)).andExpect(jsonPath("$.estado").value("Adoptado")).andExpect(jsonPath("$.edadMeses").value(24));
   mvc.perform(get("/api/catalogo").param("edadMinimaMeses","25").param("edadMaximaMeses","24").header("Authorization","Bearer "+t)).andExpect(status().isBadRequest());
   mvc.perform(get("/api/catalogo").param("search","%'").header("Authorization","Bearer "+t)).andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+ }
+ @Test void compatibilityIsRecalculatedAfterProfileUpdate() throws Exception {
+  String t=token("ADOPTANTE"); long id=uid(t);
+  db.update("UPDATE mascotas_mascota SET especie='PERRO',tamanio='GRANDE',energia='BAJA',temperamento='SOCIABLE' WHERE id=1");
+  String auth="Bearer "+t;
+  mvc.perform(patch("/api/perfil").header("Authorization",auth).contentType(MediaType.APPLICATION_JSON)
+    .content("{\"vivienda\":\"Casa\",\"horasFuera\":3,\"presupuesto\":100,\"tieneNinos\":false,\"tieneOtrasMascotas\":false,\"finalizado\":true}"))
+   .andExpect(status().isOk());
+  mvc.perform(get("/api/catalogo").header("Authorization",auth))
+   .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(1))
+   .andExpect(jsonPath("$.items[0].compatibilidad.porcentaje").value(77));
+
+  mvc.perform(patch("/api/perfil").header("Authorization",auth).contentType(MediaType.APPLICATION_JSON)
+    .content("{\"vivienda\":\"Departamento\"}"))
+   .andExpect(status().isOk());
+  mvc.perform(get("/api/catalogo").header("Authorization",auth))
+   .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].compatibilidad.porcentaje").value(65));
+  assertEquals("Departamento",perfil.get(id).get("vivienda"));
+ }
+ @Test void adminCanVersionWeightsAndCatalogUsesThePersistedConfiguration() throws Exception {
+  String admin=token("ADMIN"), adopter=token("ADOPTANTE");
+  db.update("UPDATE mascotas_mascota SET especie='PERRO',tamanio='GRANDE',energia='BAJA',temperamento='SOCIABLE' WHERE id=1");
+  mvc.perform(patch("/api/perfil").header("Authorization","Bearer "+adopter).contentType(MediaType.APPLICATION_JSON)
+    .content("{\"vivienda\":\"Casa\",\"horasFuera\":3,\"presupuesto\":100,\"tieneNinos\":false,\"tieneOtrasMascotas\":false,\"finalizado\":true}"))
+   .andExpect(status().isOk());
+
+  mvc.perform(put("/api/admin/compatibilidad/reglas").header("Authorization","Bearer "+admin)
+    .contentType(MediaType.APPLICATION_JSON).content("{\"pesos\":{\"vivienda\":40,\"rutina\":30,\"convivencia\":30}}"))
+   .andExpect(status().isOk()).andExpect(jsonPath("$.pesos.vivienda").value(40))
+   .andExpect(jsonPath("$.versionReglas").value("petly-compat-v2"));
+  mvc.perform(get("/api/catalogo").header("Authorization","Bearer "+adopter))
+   .andExpect(status().isOk()).andExpect(jsonPath("$.versionReglas").value("petly-compat-v2"))
+   .andExpect(jsonPath("$.items[0].compatibilidad.porcentaje").value(81));
+
+  mvc.perform(put("/api/admin/compatibilidad/reglas").header("Authorization","Bearer "+admin)
+    .contentType(MediaType.APPLICATION_JSON).content("{\"pesos\":{\"vivienda\":50,\"rutina\":30,\"convivencia\":30}}"))
+   .andExpect(status().isBadRequest());
+  mvc.perform(put("/api/admin/compatibilidad/reglas").header("Authorization","Bearer "+adopter)
+    .contentType(MediaType.APPLICATION_JSON).content("{\"pesos\":{\"vivienda\":40,\"rutina\":30,\"convivencia\":30}}"))
+   .andExpect(status().isForbidden());
  }
  @Test void consentSpecificAndRevoked() throws Exception {
   String adopt=token("ADOPTANTE"), shelter=token("ALBERGUE"), other=token("ALBERGUE");

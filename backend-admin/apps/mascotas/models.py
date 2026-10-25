@@ -134,3 +134,39 @@ class Mascota(models.Model):
             self.Estado.ADOPTADO: [self.Estado.DISPONIBLE, self.Estado.EN_PROCESO],
         }
         return transiciones.get(self.estado, [])
+
+
+class ReglaCompatibilidad(models.Model):
+    """Pesos vigentes del motor compartido de compatibilidad (singleton id=1)."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    peso_vivienda = models.PositiveSmallIntegerField(default=30)
+    peso_rutina = models.PositiveSmallIntegerField(default=35)
+    peso_convivencia = models.PositiveSmallIntegerField(default=35)
+    version_reglas = models.PositiveIntegerField(default=1)
+    actualizado_en = models.DateTimeField(auto_now=True)
+    actualizado_por_spring_id = models.PositiveBigIntegerField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(check=models.Q(id=1), name="compat_rule_singleton_id"),
+            models.CheckConstraint(
+                check=models.Q(peso_vivienda__gte=0, peso_vivienda__lte=100)
+                & models.Q(peso_rutina__gte=0, peso_rutina__lte=100)
+                & models.Q(peso_convivencia__gte=0, peso_convivencia__lte=100),
+                name="compat_rule_weights_range",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.peso_vivienda + self.peso_rutina + self.peso_convivencia != 100:
+            from django.core.exceptions import ValidationError
+            raise ValidationError("Los pesos de compatibilidad deben sumar 100.")
+
+    def save(self, *args, **kwargs):
+        if self.pk != 1:
+            from django.core.exceptions import ValidationError
+            raise ValidationError("Solo existe una configuración global de compatibilidad.")
+        self.full_clean()
+        return super().save(*args, **kwargs)

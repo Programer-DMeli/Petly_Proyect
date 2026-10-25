@@ -23,6 +23,20 @@ CREATE TABLE IF NOT EXISTS perfiles_adoptantes (
     finalizado BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+CREATE TABLE IF NOT EXISTS mascotas_reglacompatibilidad (
+    id SMALLINT PRIMARY KEY,
+    peso_vivienda SMALLINT NOT NULL,
+    peso_rutina SMALLINT NOT NULL,
+    peso_convivencia SMALLINT NOT NULL,
+    version_reglas INTEGER NOT NULL DEFAULT 1,
+    actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_por_spring_id BIGINT NULL,
+    CONSTRAINT compat_rule_singleton_id CHECK (id=1),
+    CONSTRAINT compat_rule_weights_sum CHECK (peso_vivienda+peso_rutina+peso_convivencia=100)
+);
+MERGE INTO mascotas_reglacompatibilidad (id,peso_vivienda,peso_rutina,peso_convivencia,version_reglas)
+KEY(id) VALUES (1,30,35,35,1);
+
 CREATE TABLE IF NOT EXISTS mascotas_mascota (
     id BIGINT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,

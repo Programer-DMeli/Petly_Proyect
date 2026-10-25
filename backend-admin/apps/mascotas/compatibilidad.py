@@ -1,17 +1,25 @@
 """Reglas transparentes de ordenamiento para US-02 (sin inferir datos faltantes)."""
 from decimal import Decimal, ROUND_HALF_UP
 
-PESOS = {"vivienda": 30, "rutina": 35, "convivencia": 35}
+from .models import ReglaCompatibilidad
 
 
-def puntuar_compatibilidad(perfil, mascota):
+def puntuar_compatibilidad(perfil, mascota, reglas=None):
+    if reglas is None:
+        reglas, _ = ReglaCompatibilidad.objects.get_or_create(pk=1)
+    pesos = {
+        "vivienda": reglas.peso_vivienda,
+        "rutina": reglas.peso_rutina,
+        "convivencia": reglas.peso_convivencia,
+    }
     criterios = {}
 
-    # La necesidad de patio se usa como aproximación explícita; no se infiere raza.
+    # Mantener esta regla igual que Spring: el perfil consumido por Spring no
+    # incluye patio, así que este dato no puede afectar el puntaje de un solo motor.
     if perfil.cuestionario_completado and perfil.tipo_vivienda and mascota.especie and mascota.tamanio:
         vivienda_pequena = any(palabra in perfil.tipo_vivienda.lower() for palabra in ("departamento", "apartamento"))
         requiere_exterior = mascota.especie == "PERRO" and mascota.tamanio == "GRANDE"
-        criterios["vivienda"] = 60 if vivienda_pequena and requiere_exterior and not perfil.tiene_patio else 100
+        criterios["vivienda"] = 60 if vivienda_pequena and requiere_exterior else 100
 
     energia = {"BAJA": 0, "MEDIA": 1, "ALTA": 2}.get(mascota.energia)
     if perfil.horas_fuera is not None and energia is not None:
@@ -23,8 +31,20 @@ def puntuar_compatibilidad(perfil, mascota):
     if perfil.cuestionario_completado and afinidad is not None:
         criterios["convivencia"] = afinidad
 
-    cobertura = sum(PESOS[key] for key in criterios)
+    cobertura = sum(pesos[key] for key in criterios)
+    criterios_explicables = {
+        key: {"peso": pesos[key], "puntaje": value, "aporte": str(
+            (Decimal(pesos[key]) * Decimal(value) / Decimal(100)).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+        )}
+        for key, value in criterios.items()
+    }
     if cobertura != 100:
-        return {"puntaje": None, "cobertura": cobertura, "datosInsuficientes": True, "criterios": criterios}
-    score = sum(Decimal(PESOS[key]) * Decimal(value) for key, value in criterios.items()) / Decimal(100)
-    return {"puntaje": int(score.quantize(Decimal("1"), rounding=ROUND_HALF_UP)), "cobertura": cobertura, "datosInsuficientes": False, "criterios": criterios}
+        return {"puntaje": None, "cobertura": cobertura, "datosInsuficientes": True,
+                "criterios": criterios_explicables,
+                "versionReglas": f"petly-compat-v{reglas.version_reglas}"}
+    score = sum(Decimal(pesos[key]) * Decimal(value) for key, value in criterios.items()) / Decimal(100)
+    return {"puntaje": int(score.quantize(Decimal("1"), rounding=ROUND_HALF_UP)), "cobertura": cobertura,
+            "datosInsuficientes": False, "criterios": criterios_explicables,
+            "versionReglas": f"petly-compat-v{reglas.version_reglas}"}

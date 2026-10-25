@@ -327,3 +327,7 @@ Pendiente de verificaci�n en el entorno: envio real del correo (SMTP/MailHog).
 
 
 GET /api/mascotas/compatibilidad/ requiere un perfil adoptante y ordena mascotas disponibles por compatibilidad. El albergue propietario decide solicitudes mediante POST /api/acceso/solicitudes/{id}/cambiar-estado/; observar o rechazar requiere motivo y aprobar requiere autorización vigente. Ver [reglas de compatibilidad y solicitudes](compatibilidad-y-solicitudes.md).
+
+### Pesos administrables de compatibilidad
+
+`GET /api/admin/compatibilidad/reglas` devuelve los pesos vigentes y `versionReglas`. `PUT` acepta `{"pesos":{"vivienda":30,"rutina":35,"convivencia":35}}`; solo ADMIN puede leer o actualizar. Los pesos son enteros de 0 a 100 y deben sumar 100. Cada cambio aumenta la versión. Spring y Django leen la configuración persistida `mascotas_reglacompatibilidad`; desplegar primero las migraciones Django antes de actualizar Spring.

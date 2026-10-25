@@ -6,15 +6,15 @@ from rest_framework.test import APIClient
 
 from apps.acceso.models import AdoptanteProfile, Autorizacion, Postulante, SolicitudAdopcion
 from apps.albergues.models import Albergue
-from apps.mascotas.models import Mascota
+from apps.mascotas.models import Mascota, ReglaCompatibilidad
 
 
 class CompatibilidadMascotaAPITest(TestCase):
     def setUp(self):
         User = get_user_model()
         owner = User.objects.create_user(username="albergue", password="pass", rol="ALBERGUE")
-        user = User.objects.create_user(username="adoptante", password="pass", rol="ADOPTANTE")
-        AdoptanteProfile.objects.create(user=user, cuestionario_completado=True,
+        self.user = User.objects.create_user(username="adoptante", password="pass", rol="ADOPTANTE")
+        AdoptanteProfile.objects.create(user=self.user, cuestionario_completado=True,
             tipo_vivienda="Casa", tiene_patio=True, horas_fuera=6)
         albergue = Albergue.objects.create(usuario=owner, nombre="Hogar", direccion="Calle 1")
         self.disponible = Mascota.objects.create(
@@ -30,7 +30,7 @@ class CompatibilidadMascotaAPITest(TestCase):
             estado=Mascota.Estado.ADOPTADO,
         )
         self.client = APIClient()
-        self.client.force_authenticate(user=user)
+        self.client.force_authenticate(user=self.user)
 
     def test_expone_atributos_y_solo_mascotas_disponibles(self):
         response = self.client.get("/api/mascotas/compatibilidad/")
@@ -45,6 +45,57 @@ class CompatibilidadMascotaAPITest(TestCase):
         self.assertEqual(item["compatibilidad"]["puntaje"], 100)
         self.assertEqual(item["compatibilidad"]["cobertura"], 100)
         self.assertFalse(item["compatibilidad"]["datosInsuficientes"])
+
+    def test_regla_vivienda_no_depende_de_un_campo_que_spring_no_recibe(self):
+        """Django aplica la misma regla documentada que el motor Spring."""
+        from apps.mascotas.compatibilidad import puntuar_compatibilidad
+
+        mascota = self.disponible
+        mascota.tamanio = Mascota.Tamanio.GRANDE
+        perfil = self.user.adoptante_profile
+        perfil.tipo_vivienda = "Departamento"
+        perfil.tiene_patio = False
+        perfil.save()
+        sin_patio = puntuar_compatibilidad(perfil, mascota)
+
+        perfil.tiene_patio = True
+        perfil.save()
+        con_patio = puntuar_compatibilidad(perfil, mascota)
+
+        self.assertEqual(sin_patio["criterios"]["vivienda"]["puntaje"], 60)
+        self.assertEqual(con_patio["criterios"]["vivienda"]["puntaje"], 60)
+
+    def test_perfil_versiona_datos_que_invalida_compatibilidad(self):
+        response = self.client.patch(
+            "/api/acceso/mi-perfil/", {"tipo_vivienda": "Departamento", "tiene_patio": True}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["compatibilidad_revision"], 2, response.data)
+
+        response = self.client.patch(
+            "/api/acceso/mi-perfil/", {"detalles_otras_mascotas": "Convive con un gato adulto."}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["compatibilidad_revision"], 2)
+
+    def test_puntaje_django_usa_pesos_y_version_globales(self):
+        from apps.mascotas.compatibilidad import puntuar_compatibilidad
+
+        perfil = self.user.adoptante_profile
+        perfil.tipo_vivienda = "Departamento"
+        perfil.horas_fuera = 6
+        perfil.save()
+        mascota = self.disponible
+        mascota.tamanio = Mascota.Tamanio.GRANDE
+        mascota.energia = "BAJA"
+        reglas = ReglaCompatibilidad.objects.get(pk=1)
+        reglas.peso_vivienda, reglas.peso_rutina, reglas.peso_convivencia = 40, 30, 30
+        reglas.version_reglas = 2
+        reglas.save()
+
+        resultado = puntuar_compatibilidad(perfil, mascota, reglas)
+        self.assertEqual(resultado["puntaje"], 75)
+        self.assertEqual(resultado["versionReglas"], "petly-compat-v2")
 
 
 class SolicitudAdopcionSprint2APITest(TestCase):
@@ -207,6 +258,62 @@ class SolicitudAdopcionSprint2APITest(TestCase):
         self.assertEqual(observed.status_code, 200, observed.data)
         approved = self.client.post(path, {"estado": "APROBADA"}, format="json")
         self.assertEqual(approved.status_code, 200, approved.data)
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.estado, Mascota.Estado.EN_PROCESO)
+
+    def test_flujo_solicitud_decision_historial_y_denegacion_de_otro_adoptante(self):
+        created = self.client.post("/api/acceso/solicitudes/", self._payload(), format="json")
+        self.assertEqual(created.status_code, 201, created.data)
+        solicitud_id = created.data["id"]
+
+        self.client.force_authenticate(user=self.owner)
+        decision_url = f"/api/acceso/solicitudes/{solicitud_id}/cambiar-estado/"
+        observed = self.client.post(decision_url, {
+            "estado": SolicitudAdopcion.Estado.OBSERVADA,
+            "observaciones_revision": "Coordinar visita al hogar.",
+        }, format="json")
+        self.assertEqual(observed.status_code, 200, observed.data)
+        approved = self.client.post(decision_url, {"estado": SolicitudAdopcion.Estado.APROBADA}, format="json")
+        self.assertEqual(approved.status_code, 200, approved.data)
+
+        self.client.force_authenticate(user=self.user)
+        history_url = f"/api/acceso/solicitudes/{solicitud_id}/historial-seguimiento/"
+        history = self.client.get(history_url)
+        self.assertEqual(history.status_code, 200, history.data)
+        self.assertEqual(history.data["estadoActual"], SolicitudAdopcion.Estado.APROBADA)
+        types = [event["tipo"] for event in history.data["eventos"]]
+        self.assertEqual(types, ["SOLICITUD_CREADA", "OBSERVADA", "APROBADA"])
+        self.assertIn("solicitudCreada", history.data["fechasClave"])
+        self.assertIn("observada", history.data["fechasClave"])
+        self.assertIn("aprobada", history.data["fechasClave"])
+
+        stranger = get_user_model().objects.create_user(username="adoptante-ajeno", password="pass")
+        self.client.force_authenticate(user=stranger)
+        self.assertEqual(self.client.get(history_url).status_code, 404)
+
+    def test_segunda_aprobacion_de_la_misma_mascota_se_rechaza(self):
+        first = self._decision_request()
+        other = get_user_model().objects.create_user(username="segundo-adoptante", password="pass")
+        Postulante.objects.create(documento_numero="87654321", nombres="Segundo", apellidos="Adoptante")
+        AdoptanteProfile.objects.create(
+            user=other, documento_numero="87654321", nombres="Segundo", apellidos="Adoptante",
+            cuestionario_completado=True,
+        )
+        Autorizacion.objects.create(adoptante=other, albergue=self.albergue)
+        second = SolicitudAdopcion.objects.create(
+            postulante=Postulante.objects.get(documento_numero="87654321"), adoptante=other,
+            mascota=self.mascota, albergue=self.albergue,
+        )
+        self.client.force_authenticate(user=self.owner)
+        path = f"/api/acceso/solicitudes/{first.pk}/cambiar-estado/"
+        response = self.client.post(path, {"estado": SolicitudAdopcion.Estado.APROBADA}, format="json")
+        self.assertEqual(response.status_code, 200, response.data)
+        path = f"/api/acceso/solicitudes/{second.pk}/cambiar-estado/"
+        response = self.client.post(path, {"estado": SolicitudAdopcion.Estado.APROBADA}, format="json")
+        self.assertEqual(response.status_code, 400)
+        second.refresh_from_db()
+        self.assertEqual(second.estado, SolicitudAdopcion.Estado.PENDIENTE)
+        self.assertFalse(second.eventos.filter(tipo="APROBADA").exists())
         self.mascota.refresh_from_db()
         self.assertEqual(self.mascota.estado, Mascota.Estado.EN_PROCESO)
 

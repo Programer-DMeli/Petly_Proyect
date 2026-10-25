@@ -70,6 +70,7 @@ class MascotaViewSet(viewsets.ModelViewSet):
     def compatibilidad(self, request):
         """Devuelve mascotas disponibles ordenadas por compatibilidad del adoptante."""
         from .compatibilidad import puntuar_compatibilidad
+        from .models import ReglaCompatibilidad
         if request.user.rol != "ADOPTANTE":
             return Response({"detail": "Este orden requiere una cuenta de adoptante."}, status=status.HTTP_403_FORBIDDEN)
         perfil = getattr(request.user, "adoptante_profile", None)
@@ -78,9 +79,10 @@ class MascotaViewSet(viewsets.ModelViewSet):
         mascotas = list(Mascota.objects.filter(
             estado=Mascota.Estado.DISPONIBLE, albergue__activo=True
         ).select_related("albergue").order_by("id"))
+        reglas, _ = ReglaCompatibilidad.objects.get_or_create(pk=1)
         resultado = []
         for mascota in mascotas:
-            puntaje = puntuar_compatibilidad(perfil, mascota)
+            puntaje = puntuar_compatibilidad(perfil, mascota, reglas)
             datos = MascotaCompatibilidadSerializer(mascota, context={"request": request}).data
             datos["compatibilidad"] = puntaje
             resultado.append(datos)

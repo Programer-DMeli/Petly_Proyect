@@ -17,10 +17,13 @@ public class CompatibilidadService {
     public static final String VERSION = "petly-compat-v1";
     private final CatalogoService catalogo;
     private final PerfilService perfiles;
+    private final ReglasCompatibilidadService reglas;
 
-    public CompatibilidadService(CatalogoService catalogo, PerfilService perfiles) {
+    public CompatibilidadService(CatalogoService catalogo, PerfilService perfiles,
+            ReglasCompatibilidadService reglas) {
         this.catalogo = catalogo;
         this.perfiles = perfiles;
+        this.reglas = reglas;
     }
 
     public Map<String, Object> listar(long userId, String search, String especie, String tamano,
@@ -37,7 +40,8 @@ public class CompatibilidadService {
         }
         items.removeIf(item -> !"Disponible".equals(item.get("estado")));
         int total = items.size();
-        items.replaceAll(item -> withScore(item, profile));
+        ReglasCompatibilidadService.Reglas version = reglas.obtener();
+        items.replaceAll(item -> withScore(item, profile, version));
         items.sort(Comparator
                 .comparing((Map<String, Object> item) -> ((Map<?, ?>) item.get("compatibilidad")).get("porcentaje") == null)
                 .thenComparing((a, b) -> {
@@ -49,25 +53,30 @@ public class CompatibilidadService {
         int from = Math.min((page - 1) * pageSize, total);
         int to = Math.min(from + pageSize, total);
         return Map.of("items", items.subList(from, to), "page", page, "pageSize", pageSize, "total", total,
-                "orden", "compatibilidad_desc_id_asc", "versionReglas", VERSION);
+                "orden", "compatibilidad_desc_id_asc", "versionReglas", version.versionNombre());
     }
 
     public Map<String, Object> detalle(long userId, long mascotaId) {
-        return withScore(catalogo.detail(mascotaId), perfiles.get(userId));
+        return withScore(catalogo.detail(mascotaId), perfiles.get(userId), reglas.obtener());
     }
 
     static Map<String, Object> withScore(Map<String, Object> pet, Map<String, Object> profile) {
+        return withScore(pet, profile, new ReglasCompatibilidadService.Reglas(30, 35, 35, 1));
+    }
+
+    static Map<String, Object> withScore(Map<String, Object> pet, Map<String, Object> profile,
+            ReglasCompatibilidadService.Reglas rules) {
         Map<String, Object> item = new LinkedHashMap<>(pet);
         List<Map<String, Object>> criteria = new ArrayList<>();
         boolean finalized = Boolean.TRUE.equals(profile.get("finalizado"));
-        add(criteria, "vivienda", "Vivienda", 30,
+        add(criteria, "vivienda", "Vivienda", rules.vivienda(),
                 finalized && profile.get("vivienda") instanceof String home && !home.isBlank()
                         && pet.get("tamano") != null && !"Por evaluar".equals(pet.get("tamano")),
                 housing(profile, pet), "Compara el tipo de vivienda y espacio con el tamaño de la mascota.");
-        add(criteria, "rutina", "Rutina", 35,
+        add(criteria, "rutina", "Rutina", rules.rutina(),
                 finalized && profile.get("horasFuera") instanceof Number && knownEnergy(pet.get("energia")),
                 routine(profile, pet), "Compara las horas fuera de casa con el nivel de energía.");
-        add(criteria, "convivencia", "Convivencia", 35,
+        add(criteria, "convivencia", "Convivencia", rules.convivencia(),
                 finalized && profile.get("tieneNinos") instanceof Boolean
                         && profile.get("tieneOtrasMascotas") instanceof Boolean && knownTemperament(pet.get("temperamento")),
                 coexistence(profile, pet), "Considera las respuestas del hogar y el temperamento registrado.");
@@ -87,7 +96,7 @@ public class CompatibilidadService {
         Map<String, Object> compatibility = new LinkedHashMap<>();
         compatibility.put("porcentaje", score); compatibility.put("puntaje", score);
         compatibility.put("cobertura", coverage); compatibility.put("datosInsuficientes", insufficient);
-        compatibility.put("mensaje", message); compatibility.put("versionReglas", VERSION);
+        compatibility.put("mensaje", message); compatibility.put("versionReglas", rules.versionNombre());
         compatibility.put("criterios", criteria);
         item.put("compatibilidad", compatibility);
         return item;
@@ -103,9 +112,9 @@ public class CompatibilidadService {
         out.add(criterion);
     }
 
-    private static int housing(Map<String, Object> p, Map<String, Object> pet) {
+    static int housing(Map<String, Object> p, Map<String, Object> pet) {
         String home = String.valueOf(p.get("vivienda")).toLowerCase();
-        boolean apartment = home.contains("depart") || home.contains("departamento");
+        boolean apartment = home.contains("depart") || home.contains("apartamento");
         boolean largeDog = "Perro".equals(pet.get("especie")) && "Grande".equals(pet.get("tamano"));
         return apartment && largeDog ? 60 : 100;
     }

@@ -4,17 +4,17 @@
 
 Spring calcula en cada consulta, sin cachear puntajes. El perfil finalizado y los datos actuales de mascotas son la entrada; cambiar y guardar el perfil hace que la siguiente consulta recalcule. La lista completa se puntúa y ordena antes de aplicar paginación: porcentaje descendente, identificador ascendente; resultados sin información suficiente van al final. Django expone los atributos de mascotas en `/api/mascotas/compatibilidad/` y filtra mascotas disponibles de albergues activos.
 
-Versión inicial de reglas `petly-compat-v1`:
+La configuración inicial `petly-compat-v1` usa los pesos 30/35/35. ADMIN puede cambiarlos en Spring mediante `GET/PUT /api/admin/compatibilidad/reglas`; los valores deben ser enteros entre 0 y 100 y sumar exactamente 100. Cada actualización persiste los pesos, registra el ID Spring del administrador y aumenta la versión (`petly-compat-v2`, etc.). El catálogo devuelve la versión usada en cada cálculo. Django y Spring leen la misma configuración.
 
 | Criterio | Peso | Regla |
 | --- | ---: | --- |
-| Vivienda | 30% | Vivienda conocida y tamaño evaluado: 60/100 para perro grande en departamento; 100/100 para los demás pares conocidos. |
-| Rutina | 35% | Categorías de horas fuera: hasta 4, hasta 8, más de 8. Energía alta/media/baja requiere respectivamente la primera/segunda/tercera categoría. Misma categoría: 100; adyacente: 70; extremos: 35. |
-| Convivencia | 35% | Temperamento registrado: sociable 100, tranquilo 90, juguetón 80, activo 75, independiente 70, tímido 60. Niños con mascota tímida: 45; otras mascotas con temperamento activo: 65. |
+| Vivienda | 30% inicial | Vivienda conocida y tamaño evaluado: 60/100 para perro grande en departamento; 100/100 para los demás pares conocidos. El patio no altera esta regla para evitar diferencias entre contratos de perfil. |
+| Rutina | 35% inicial | Categorías de horas fuera: hasta 4, hasta 8, más de 8. Energía alta/media/baja requiere respectivamente la primera/segunda/tercera categoría. Misma categoría: 100; adyacente: 70; extremos: 35. |
+| Convivencia | 35% inicial | Temperamento registrado: sociable 100, tranquilo 90, juguetón 80, activo 75, independiente 70, tímido 60. Niños con mascota tímida: 45; otras mascotas con temperamento activo: 65. |
 
 Los tres criterios se calculan solo con perfil finalizado y datos requeridos conocidos. Si falta alguno, porcentaje `null`, cobertura en porcentaje del peso calculable e indicación “Información insuficiente”; no se asigna una coincidencia perfecta por defecto. Se calcula con decimales y se redondea al entero más cercano. Es orientación y no decide una adopción. Revisar estos pesos con el equipo antes de presentarlos como recomendación validada.
 
-React y Android usan el orden y puntaje de Spring. No se almacena resultado previo, así que una consulta posterior a guardar el perfil usa los valores vigentes.
+React y Android usan el orden y puntaje de Spring. No se almacena resultado previo, así que una consulta posterior a guardar el perfil usa los valores vigentes. Django conserva el endpoint de compatibilidad para la API administrativa y utiliza la misma fila de pesos y las mismas reglas de vivienda.
 
 ## Desglose explicativo (US-04)
 

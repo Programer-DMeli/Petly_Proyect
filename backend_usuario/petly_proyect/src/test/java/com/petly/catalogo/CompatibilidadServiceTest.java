@@ -26,6 +26,18 @@ class CompatibilidadServiceTest {
     }
 
     @Test
+    void reglaViviendaCoincideConDjangoYNoDependeDePatio() {
+        var department = profile(true, "Departamento", 3, false, false);
+        var house = profile(true, "Casa", 3, false, false);
+        var largeDog = pet("Grande", "Media", "Sociable", "Perro");
+        var smallDog = pet("Pequeño", "Media", "Sociable", "Perro");
+
+        assertEquals(60, CompatibilidadService.housing(department, largeDog));
+        assertEquals(100, CompatibilidadService.housing(house, largeDog));
+        assertEquals(100, CompatibilidadService.housing(department, smallDog));
+    }
+
+    @Test
     void perfilIncompletoNoRecibePuntajePerfecto() {
         Map<String, Object> result = CompatibilidadService.withScore(
                 pet("Grande", "Alta", "Sociable", "Perro"), profile(false, "Casa", 3, false, false));
