@@ -64,6 +64,11 @@ springdoc:
 
 petly:
   django-api-base-url: ${DJANGO_API_BASE_URL:http://localhost:8000}
+  # Endpoint completo del proveedor autorizado; si falta token o URL se falla cerrado.
+  reniec-api-url: ${RENIEC_API_URL:}
+  reniec-api-token: ${RENIEC_API_TOKEN:}
+  reniec-provider-name: ${RENIEC_PROVIDER_NAME:RENIEC}
+  reniec-timeout-ms: ${RENIEC_API_TIMEOUT_MS:5000}
   web-reset-link-base: ${WEB_RESET_LINK_BASE:http://localhost:5173/recuperacion}
   reset-link-base: ${RESET_LINK_BASE:petly://recuperacion}
   media-base-url: ${MEDIA_BASE_URL:http://10.0.2.2:8000/media/}
