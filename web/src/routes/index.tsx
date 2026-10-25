@@ -16,6 +16,8 @@ import PanelAlberguePage from '../features/albergue/perfil/pages/PanelAlberguePa
 import MascotasPanel from '../features/albergue/perfil/pages/MascotasPanel';
 import SolicitudesPage from '../features/albergue/perfil/pages/SolicitudesPage';
 import AlberguesAdminPage from '../features/administracion/albergues/pages/AlberguesAdminPage';
+import VerificacionKycPage from '../features/adoptante/perfil/pages/VerificacionKycPage';
+import VerificacionesKycAdminPage from '../features/administracion/kyc/pages/VerificacionesKycAdminPage';
 
 /**
  * Rutas de Petly web. Estructura prevista según PLANNING v2 §9.2:
@@ -47,6 +49,7 @@ export const router = createBrowserRouter([
           { path: 'catalogo/:id', element: <DetallePage /> },
           { path: 'autorizaciones', element: <AutorizacionesPage /> },
           { path: 'cuestionario', element: <CuestionarioPage /> },
+          { path: 'verificacion-identidad', element: <VerificacionKycPage /> },
           { path: 'solicitudes', element: <SolicitudesAdoptantePage /> },
           { path: 'solicitudes/:solicitudId', element: <SeguimientoSolicitudPage /> },
         ],
@@ -80,7 +83,10 @@ export const router = createBrowserRouter([
             <AdminLayout />
           </ProtectedRoute>
         ),
-        children: [{ path: 'albergues', element: <AlberguesAdminPage /> }],
+        children: [
+          { path: 'albergues', element: <AlberguesAdminPage /> },
+          { path: 'verificaciones-kyc', element: <VerificacionesKycAdminPage /> },
+        ],
       },
       { path: '*', element: <HomePage /> },
     ],

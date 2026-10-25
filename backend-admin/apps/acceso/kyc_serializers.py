@@ -18,12 +18,14 @@ class VerificacionKycSerializer(serializers.ModelSerializer):
             "id", "dni", "nombres", "apellidos", "estado", "coincide",
             "proveedor", "referencia_reniec", "fecha_consulta", "error_servicio",
             "ultimo_intento_en",
+            "motivo_revision", "fecha_revision", "revisado_por",
             "documento_anverso", "documento_reverso", "creado_en", "actualizado_en",
         ]
         read_only_fields = [
             "id", "estado", "coincide", "proveedor", "referencia_reniec",
             "fecha_consulta", "error_servicio", "creado_en", "actualizado_en",
             "ultimo_intento_en",
+            "motivo_revision", "fecha_revision", "revisado_por",
         ]
 
     def validate_dni(self, value):

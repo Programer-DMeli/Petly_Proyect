@@ -146,6 +146,8 @@ class VerificacionKyc(models.Model):
         PENDIENTE = "PENDIENTE", "Pendiente de consulta"
         VERIFICADO = "VERIFICADO", "Verificado por RENIEC"
         PENDIENTE_REVISION = "PENDIENTE_REVISION", "Pendiente de revisión"
+        APROBADO_MANUAL = "APROBADO_MANUAL", "Aprobado por revisión manual"
+        RECHAZADO_MANUAL = "RECHAZADO_MANUAL", "Rechazado por revisión manual"
 
     adoptante = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -172,6 +174,16 @@ class VerificacionKyc(models.Model):
     fecha_consulta = models.DateTimeField(null=True, blank=True)
     ultimo_intento_en = models.DateTimeField(null=True, blank=True)
     error_servicio = models.CharField(max_length=500, blank=True)
+    motivo_revision = models.CharField(max_length=500, blank=True)
+    fecha_revision = models.DateTimeField(null=True, blank=True)
+    revisado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="verificaciones_kyc_revisadas",
+        limit_choices_to={"rol": "ADMIN"},
+    )
     documento_anverso = models.ImageField(
         upload_to=nombre_archivo_kyc,
         storage=PrivateKycStorage(),

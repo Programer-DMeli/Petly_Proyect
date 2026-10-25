@@ -1,6 +1,9 @@
 import mimetypes
 
+from django.db import transaction
 from django.http import FileResponse
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -33,6 +36,29 @@ class VerificacionKycViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         instance = serializer.save(adoptante=request.user)
         return Response(self.get_serializer(instance).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="revision")
+    def revision(self, request, pk=None):
+        if not (request.user.is_staff or request.user.is_admin_user):
+            raise PermissionDenied("Solo ADMIN puede resolver verificaciones KYC.")
+        decision = request.data.get("decision")
+        motivo = str(request.data.get("motivo", "")).strip()
+        if decision not in {"APROBADO_MANUAL", "RECHAZADO_MANUAL"}:
+            return Response({"detail": "La decisión debe ser APROBADO_MANUAL o RECHAZADO_MANUAL."}, status=400)
+        if not motivo or len(motivo) > 500:
+            return Response({"detail": "Ingresa un motivo de hasta 500 caracteres."}, status=400)
+        with transaction.atomic():
+            verificacion = get_object_or_404(self.get_queryset().select_for_update(), pk=pk)
+            if verificacion.estado != VerificacionKyc.Estado.PENDIENTE_REVISION:
+                return Response({"detail": "Solo se puede revisar un caso pendiente de revisión."}, status=409)
+            verificacion.estado = decision
+            verificacion.motivo_revision = motivo
+            verificacion.fecha_revision = timezone.now()
+            verificacion.revisado_por = request.user
+            verificacion.save(update_fields=[
+                "estado", "motivo_revision", "fecha_revision", "revisado_por", "actualizado_en",
+            ])
+        return Response(self.get_serializer(verificacion).data)
 
     @action(detail=True, methods=["get"], url_path=r"documentos/(?P<tipo>anverso|reverso)")
     def documento(self, request, pk=None, tipo=None):

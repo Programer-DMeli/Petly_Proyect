@@ -36,6 +36,7 @@ export default function App() {
           { label: 'Catálogo de mascotas', to: '/adoptante/catalogo' },
           { label: 'Mi cuestionario', to: '/adoptante/cuestionario' },
           { label: 'Autorizaciones', to: '/adoptante/autorizaciones' },
+          { label: 'Verificación de identidad', to: '/adoptante/verificacion-identidad' },
         ]
       : session?.identity.rol === 'ALBERGUE'
         ? [
@@ -44,7 +45,10 @@ export default function App() {
             { label: 'Solicitudes', to: '/albergue/solicitudes' },
           ]
         : session?.identity.rol === 'ADMIN'
-          ? [{ label: 'Administración de albergues', to: '/administracion/albergues' }]
+          ? [
+              { label: 'Administración de albergues', to: '/administracion/albergues' },
+              { label: 'Revisión de identidad', to: '/administracion/verificaciones-kyc' },
+            ]
           : [];
 
   return (
