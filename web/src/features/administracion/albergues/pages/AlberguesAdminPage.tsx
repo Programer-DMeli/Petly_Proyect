@@ -359,31 +359,36 @@ export default function AlberguesAdminPage() {
               Cargando albergues…
             </p>
           ) : items.length > 0 ? (
-            <div className="grid">
+            <div className="grid shelter-card-grid">
               {items.map(s => (
                 <article className="card shelter-card" key={s.id}>
-                  <svg className="shelter-mark" aria-hidden="true" viewBox="0 0 24 24">
-                    <path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7" />
-                  </svg>
-                  <span className="badge">{s.activo ? 'Activo' : 'Inactivo'}</span>
+                  <div className="shelter-card__top">
+                    <span className="shelter-card__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><ellipse cx="12" cy="15.5" rx="5" ry="4" /><circle cx="6.5" cy="9" r="1.8" /><circle cx="10.2" cy="6.7" r="1.8" /><circle cx="14" cy="6.7" r="1.8" /><circle cx="17.5" cy="9" r="1.8" /></svg>
+                    </span>
+                    <span className={`shelter-card__status${s.activo ? '' : ' is-inactive'}`}>{s.activo ? 'Activo' : 'Inactivo'}</span>
+                  </div>
                   <h3>{s.nombre}</h3>
-                  <p className="muted">{s.direccion}</p>
-                  <p>{s.descripcion || 'Información institucional pendiente.'}</p>
-                  <dl>
-                    <dt>Capacidad</dt>
-                    <dd>{s.capacidad_maxima} mascotas</dd>
-                    <dt>Responsable</dt>
-                    <dd>{s.responsable_nombre || 'Sin indicar'}</dd>
-                    <dt>Cuenta propietaria</dt>
-                    <dd>{s.propietario_correo || 'Pendiente de vinculación'}</dd>
-                  </dl>
+                  <p className="shelter-card__location">
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+                    <span>{s.direccion}</span>
+                  </p>
+                  <div className="shelter-card__facts">
+                    <div><span>Capacidad</span><strong>{s.capacidad_maxima} mascotas</strong></div>
+                    <div><span>Responsable</span><strong>{s.responsable_nombre || 'Sin indicar'}</strong></div>
+                  </div>
+                  <p className="shelter-card__description">{s.descripcion || 'Información institucional pendiente.'}</p>
+                  <p className="shelter-card__owner"><span>Cuenta propietaria</span>{s.propietario_correo || 'Pendiente de vinculación'}</p>
+                  <div className="shelter-card__divider" />
                   <div className="actions">
-                    <button className="secondary" onClick={() => setDetail(s)}>
-                      Ver albergue
+                    <button className="shelter-action shelter-action--view" onClick={() => setDetail(s)}>
+                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>Ver
                     </button>
-                    <button onClick={() => edit(s)}>Editar albergue</button>
-                    <button className="danger" onClick={() => setDeleting(s)}>
-                      Eliminar albergue
+                    <button className="shelter-action shelter-action--edit" onClick={() => edit(s)}>
+                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 5 4 4M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16l-1 4Z" /></svg>Editar
+                    </button>
+                    <button className="shelter-action shelter-action--delete" onClick={() => setDeleting(s)}>
+                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6" /></svg>Eliminar
                     </button>
                   </div>
                 </article>

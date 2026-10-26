@@ -1528,3 +1528,213 @@ textarea:focus-visible {
 .w-full {
   width: 100%;
 }
+
+/* Administration shelter cards */
+.shelter-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 1rem;
+}
+.shelter-list__content .shelter-card {
+  display: flex;
+  min-width: 0;
+  min-height: 100%;
+  flex-direction: column;
+  padding: 1.15rem;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #d5e7d9;
+  border-radius: 16px;
+  box-shadow: 0 5px 16px rgb(24 58 48 / 7%);
+  transition: box-shadow 180ms ease, transform 180ms ease;
+}
+.shelter-list__content .shelter-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 9px 22px rgb(24 58 48 / 11%);
+}
+.shelter-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+.shelter-card__icon {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #e7f4e9;
+  color: #176b55;
+}
+.shelter-card__icon svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  fill: currentColor;
+}
+.shelter-card__status {
+  padding: 0.28rem 0.62rem;
+  border-radius: 999px;
+  background: #e7f4e9;
+  color: #176b55;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.shelter-card__status.is-inactive {
+  background: #eef1f3;
+  color: #647482;
+}
+.shelter-list__content .shelter-card h3 {
+  min-width: 0;
+  margin: 0 0 0.45rem;
+  color: #183a30;
+  font-size: 1.12rem;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.shelter-card__location {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 0.42rem;
+  margin: 0 0 1rem;
+  color: #718078;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.shelter-card__location svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  margin-top: 0.08rem;
+  fill: none;
+  stroke: #176b55;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+.shelter-card__facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 0;
+  border-block: 1px solid #e8eeea;
+}
+.shelter-card__facts > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+.shelter-card__facts > div + div {
+  padding-left: 0.8rem;
+  border-left: 1px solid #e1e9e4;
+}
+.shelter-card__facts span,
+.shelter-card__owner span {
+  color: #718078;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.shelter-card__facts strong {
+  color: #183a30;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.shelter-list__content .shelter-card .shelter-card__description {
+  display: -webkit-box;
+  min-height: 3.2em;
+  margin: 0 0 0.8rem;
+  overflow: hidden;
+  color: #647482;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.shelter-card__owner {
+  display: grid;
+  gap: 0.22rem;
+  margin: 0 0 0.9rem;
+  color: #647482;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.shelter-card__divider {
+  height: 1px;
+  margin-top: auto;
+  background: #e8eeea;
+}
+.shelter-list__content .shelter-card .actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+}
+.shelter-list__content .shelter-card .shelter-action {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2.6rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.32rem;
+  padding: 0.45rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+.shelter-action svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+.shelter-list__content .shelter-card .shelter-action--view {
+  border-color: #176b55;
+  background: #fff;
+  color: #176b55;
+}
+.shelter-list__content .shelter-card .shelter-action--view:hover {
+  background: #f0f7f2;
+}
+.shelter-list__content .shelter-card .shelter-action--edit {
+  border-color: #176b55;
+  background: #176b55;
+  color: #fff;
+}
+.shelter-list__content .shelter-card .shelter-action--edit:hover {
+  background: #125743;
+}
+.shelter-list__content .shelter-card .shelter-action--delete {
+  border-color: #f4d5d5;
+  background: #fff4f3;
+  color: #b83d3d;
+}
+.shelter-list__content .shelter-card .shelter-action--delete:hover {
+  background: #ffebea;
+}
+@media (max-width: 900px) {
+  .shelter-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .shelter-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
