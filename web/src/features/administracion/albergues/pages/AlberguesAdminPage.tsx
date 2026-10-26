@@ -72,6 +72,14 @@ export default function AlberguesAdminPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    if (!detail) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setDetail(null);
+    }
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [detail]);
   function create() {
     setEditing(null);
     setDraft(initial);
@@ -323,35 +331,38 @@ export default function AlberguesAdminPage() {
         </button>
       </div>
       {detail && (
-        <section
-          className="confirmation"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Detalle del albergue"
-        >
-          <h2>{detail.nombre}</h2>
-          <p>{detail.descripcion}</p>
-          <dl>
-            <dt>Dirección</dt>
-            <dd>{detail.direccion}</dd>
-            <dt>Contacto</dt>
-            <dd>
-              {detail.telefono} · {detail.email}
-            </dd>
-            <dt>Responsable</dt>
-            <dd>
-              {detail.responsable_nombre} · {detail.responsable_telefono} ·{' '}
-              {detail.responsable_email}
-            </dd>
-            <dt>Horario</dt>
-            <dd>{detail.horario_atencion || 'Sin indicar'}</dd>
-            <dt>Infraestructura</dt>
-            <dd>
-              {detail.infraestructura.map(i => i.nombre).join(', ') || 'Sin áreas registradas'}
-            </dd>
-          </dl>
-          <button onClick={() => setDetail(null)}>Cerrar detalle</button>
-        </section>
+        <div className="shelter-detail-backdrop">
+          <section
+            className="shelter-detail-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="shelter-detail-title"
+          >
+            <h2 id="shelter-detail-title">{detail.nombre}</h2>
+            <p>{detail.descripcion || 'Sin descripción institucional.'}</p>
+            <dl>
+              <dt>Dirección</dt>
+              <dd>{detail.direccion}</dd>
+              <dt>Contacto</dt>
+              <dd>
+                {detail.telefono || 'Sin teléfono'} · {detail.email || 'Sin correo'}
+              </dd>
+              <dt>Responsable</dt>
+              <dd>
+                {detail.responsable_nombre || 'Sin indicar'} ·{' '}
+                {detail.responsable_telefono || 'Sin teléfono'} ·{' '}
+                {detail.responsable_email || 'Sin correo'}
+              </dd>
+              <dt>Horario</dt>
+              <dd>{detail.horario_atencion || 'Sin indicar'}</dd>
+              <dt>Infraestructura</dt>
+              <dd>
+                {detail.infraestructura.map(i => i.nombre).join(', ') || 'Sin áreas registradas'}
+              </dd>
+            </dl>
+            <button onClick={() => setDetail(null)}>Cerrar detalle</button>
+          </section>
+        </div>
       )}
       {deleting && (
         <section
