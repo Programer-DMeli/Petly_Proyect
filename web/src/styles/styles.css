@@ -666,6 +666,26 @@ button:disabled {
 .shelter-detail-dialog dd {
   margin-bottom: 0.6rem;
 }
+.shelter-delete-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgb(17 33 29 / 58%);
+}
+.shelter-delete-dialog {
+  width: min(100%, 500px);
+  padding: clamp(1.25rem, 4vw, 2rem);
+  background: var(--petly-surface);
+  border: 1px solid var(--petly-border);
+  border-radius: 18px;
+  box-shadow: 0 24px 80px rgb(17 33 29 / 28%);
+}
+.shelter-delete-dialog h2 {
+  margin-top: 0;
+}
 .pet img {
   width: 100%;
   height: 200px;

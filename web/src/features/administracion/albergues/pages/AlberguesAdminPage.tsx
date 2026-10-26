@@ -80,6 +80,14 @@ export default function AlberguesAdminPage() {
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [detail]);
+  useEffect(() => {
+    if (!deleting) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !busy) setDeleting(null);
+    }
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [busy, deleting]);
   function create() {
     setEditing(null);
     setDraft(initial);
@@ -365,26 +373,28 @@ export default function AlberguesAdminPage() {
         </div>
       )}
       {deleting && (
-        <section
-          className="confirmation"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Confirmar eliminación"
-        >
-          <h2>¿Eliminar {deleting.nombre}?</h2>
-          <p>
-            Se eliminarán sus datos institucionales y áreas. La cuenta del propietario se conserva.
-            Si tiene mascotas, primero debes gestionarlas o desactivar el albergue.
-          </p>
-          <div className="actions">
-            <button className="danger" disabled={busy} onClick={() => void remove()}>
-              Confirmar eliminación
-            </button>
-            <button className="secondary" disabled={busy} onClick={() => setDeleting(null)}>
-              Conservar albergue
-            </button>
-          </div>
-        </section>
+        <div className="shelter-delete-backdrop">
+          <section
+            className="shelter-delete-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="shelter-delete-title"
+          >
+            <h2 id="shelter-delete-title">¿Eliminar {deleting.nombre}?</h2>
+            <p>
+              Se eliminarán sus datos institucionales y áreas. La cuenta del propietario se conserva.
+              Si tiene mascotas, primero debes gestionarlas o desactivar el albergue.
+            </p>
+            <div className="actions">
+              <button className="danger" disabled={busy} onClick={() => void remove()}>
+                {busy ? 'Eliminando…' : 'Confirmar eliminación'}
+              </button>
+              <button className="secondary" disabled={busy} onClick={() => setDeleting(null)}>
+                Conservar albergue
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </>
   );
