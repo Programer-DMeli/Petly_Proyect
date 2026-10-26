@@ -25,7 +25,7 @@ fun VerificacionDniScreen(
 ) {
     var pickingFront by remember { mutableStateOf(true) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (pickingFront) selectFront(uri) else selectBack(uri) }
-    val editable = !state.saving && state.record?.estado !in setOf("VERIFICADO", "APROBADO_MANUAL", "RECHAZADO_MANUAL", "PENDIENTE_REVISION")
+    val editable = !state.loading && !state.saving && state.record?.estado !in setOf("VERIFICADO", "APROBADO_MANUAL", "RECHAZADO_MANUAL", "PENDIENTE_REVISION")
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TextButton(onClick = onBack) { Text("Volver al perfil") }
         Text("Verificación de identidad", style = MaterialTheme.typography.headlineSmall)
@@ -45,7 +45,7 @@ fun VerificacionDniScreen(
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         Button(onClick = upload, enabled = editable && !state.saving) { Text(if (state.saving) "Procesando…" else "Enviar documentos") }
-        OutlinedButton(onClick = consultar, enabled = state.record != null && !state.saving && state.record.estado == "PENDIENTE") { Text("Consultar identidad") }
-        TextButton(onClick = retry) { Text("Actualizar estado") }
+        OutlinedButton(onClick = consultar, enabled = state.record?.estado == "PENDIENTE" && !state.loading && !state.saving) { Text("Consultar identidad") }
+        TextButton(onClick = retry, enabled = !state.loading && !state.saving) { Text("Actualizar estado") }
     }
 }

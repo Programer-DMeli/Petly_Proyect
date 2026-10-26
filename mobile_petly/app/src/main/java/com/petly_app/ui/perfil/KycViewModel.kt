@@ -67,6 +67,7 @@ class KycViewModel(private val repository: KycRepository) : ViewModel() {
     }
 
     private fun runRequest(transform: suspend (KycUiState) -> KycUiState) {
+        _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try { _state.value = transform(_state.value) }
             catch (e: Exception) { if (e is CancellationException) throw e; _state.value = _state.value.copy(loading = false, error = e.message ?: "No se pudo cargar la verificación.") }
