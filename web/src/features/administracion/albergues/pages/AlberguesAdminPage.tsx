@@ -39,6 +39,7 @@ export default function AlberguesAdminPage() {
   const [page, setPage] = useState(1);
   const [next, setNext] = useState(false);
   const [total, setTotal] = useState(0);
+  const [registeredTotal, setRegisteredTotal] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
@@ -54,13 +55,21 @@ export default function AlberguesAdminPage() {
     setBusy(true);
     setError('');
     try {
-      const [data, owners] = await Promise.all([
-        django<Page<Shelter>>(`/api/albergues/?page=${page}&search=${encodeURIComponent(query)}`),
+      const listRequest = django<Page<Shelter>>(
+        `/api/albergues/?page=${page}&search=${encodeURIComponent(query)}`
+      );
+      const allSheltersRequest = query
+        ? django<Page<Shelter>>('/api/albergues/?page=1&search=')
+        : listRequest;
+      const [data, owners, allShelters] = await Promise.all([
+        listRequest,
         django<Account[]>('/api/albergues/cuentas-disponibles/'),
+        allSheltersRequest,
       ]);
       setItems(data.results);
       setNext(data.next !== null);
       setTotal(data.count);
+      setRegisteredTotal(allShelters.count);
       setAccounts(owners);
       setReady(true);
     } catch (e) {
@@ -148,7 +157,7 @@ export default function AlberguesAdminPage() {
     try {
       await django(`/api/albergues/${deleting.id}/`, { method: 'DELETE' });
       setDeleting(null);
-      setSuccess('Albergue eliminado. La cuenta del propietario se conserva.');
+      setSuccess('Albergue eliminado correctamente');
       if (items.length === 1 && page > 1) setPage(p => p - 1);
       else await load();
     } catch (e) {
@@ -172,29 +181,77 @@ export default function AlberguesAdminPage() {
           + Registrar albergue
         </button>
       </section>
-      <div className="admin-summary">
-        <strong>{total}</strong>
-        <span>albergues registrados</span>
-        <span className="badge">Responsables vinculados</span>
+      <div className="shelter-overview">
+        <div className="shelter-statistics">
+          <article className="shelter-stat-card">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7" />
+            </svg>
+            <strong>{registeredTotal}</strong>
+            <span>Albergues registrados</span>
+          </article>
+          <article className="shelter-stat-card">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <strong>{accounts.filter(account => account.asignada).length}</strong>
+            <span>Responsables vinculados</span>
+          </article>
+        </div>
+        {success === 'Albergue eliminado correctamente' && (
+          <div className="shelter-success" role="status">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" />
+              <path d="m8 12 2.5 2.5L16 9" />
+            </svg>
+            <div>
+              <h2>Albergue eliminado correctamente</h2>
+              <p>La cuenta del propietario se conserva.</p>
+            </div>
+          </div>
+        )}
+        <Feedback
+          error={error}
+          success={success === 'Albergue eliminado correctamente' ? undefined : success}
+        />
+        <form
+          className="shelter-search"
+          onSubmit={e => {
+            e.preventDefault();
+            setPage(1);
+            setQuery(search);
+          }}
+        >
+          <h2>Buscar albergues</h2>
+          <label className="shelter-search__field">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <circle cx="10.8" cy="10.8" r="6.8" />
+              <path d="m16 16 4.5 4.5" />
+            </svg>
+            <span className="visually-hidden">Nombre del albergue o responsable</span>
+            <input
+              aria-label="Nombre del albergue o responsable"
+              placeholder="Nombre del albergue o responsable..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              maxLength={120}
+            />
+          </label>
+          <div className="shelter-search__actions">
+            <button type="submit" disabled={busy}>
+              Buscar
+            </button>
+            <button
+              className="secondary"
+              type="button"
+              disabled={busy}
+              onClick={() => void load()}
+            >
+              Actualizar lista
+            </button>
+          </div>
+        </form>
       </div>
-      <Feedback error={error} success={success} />
-      <form
-        className="actions"
-        onSubmit={e => {
-          e.preventDefault();
-          setPage(1);
-          setQuery(search);
-        }}
-      >
-        <label className="search-label">
-          Buscar albergue o responsable
-          <input value={search} onChange={e => setSearch(e.target.value)} maxLength={120} />
-        </label>
-        <button disabled={busy}>Buscar albergues</button>
-        <button className="secondary" type="button" disabled={busy} onClick={() => void load()}>
-          Actualizar lista
-        </button>
-      </form>
       {open && (
         <section className="card admin-form" aria-label="Formulario de albergue">
           <div className="admin-intro">
@@ -289,55 +346,74 @@ export default function AlberguesAdminPage() {
           </form>
         </section>
       )}
-      {busy ? (
-        <p role="status">Cargando…</p>
-      ) : (
-        <div className="grid">
-          {items.map(s => (
-            <article className="card shelter-card" key={s.id}>
-              <div className="shelter-mark" aria-hidden="true">
-                ⌂
-              </div>
-              <span className="badge">{s.activo ? 'Activo' : 'Inactivo'}</span>
-              <h3>{s.nombre}</h3>
-              <p className="muted">{s.direccion}</p>
-              <p>{s.descripcion || 'Información institucional pendiente.'}</p>
-              <dl>
-                <dt>Capacidad</dt>
-                <dd>{s.capacidad_maxima} mascotas</dd>
-                <dt>Responsable</dt>
-                <dd>{s.responsable_nombre || 'Sin indicar'}</dd>
-                <dt>Cuenta propietaria</dt>
-                <dd>{s.propietario_correo || 'Pendiente de vinculación'}</dd>
-              </dl>
-              <div className="actions">
-                <button className="secondary" onClick={() => setDetail(s)}>
-                  Ver albergue
-                </button>
-                <button onClick={() => edit(s)}>Editar albergue</button>
-                <button className="danger" onClick={() => setDeleting(s)}>
-                  Eliminar albergue
-                </button>
-              </div>
-            </article>
-          ))}
+      <section className="card shelter-list" aria-labelledby="shelter-list-title">
+        <header className="shelter-list__header">
+          <h2 id="shelter-list-title">Albergues registrados</h2>
+          <span>
+            {total} {total === 1 ? 'registro' : 'registros'}
+          </span>
+        </header>
+        <div className="shelter-list__content">
+          {busy ? (
+            <p className="shelter-empty" role="status">
+              Cargando albergues…
+            </p>
+          ) : items.length > 0 ? (
+            <div className="grid">
+              {items.map(s => (
+                <article className="card shelter-card" key={s.id}>
+                  <svg className="shelter-mark" aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7" />
+                  </svg>
+                  <span className="badge">{s.activo ? 'Activo' : 'Inactivo'}</span>
+                  <h3>{s.nombre}</h3>
+                  <p className="muted">{s.direccion}</p>
+                  <p>{s.descripcion || 'Información institucional pendiente.'}</p>
+                  <dl>
+                    <dt>Capacidad</dt>
+                    <dd>{s.capacidad_maxima} mascotas</dd>
+                    <dt>Responsable</dt>
+                    <dd>{s.responsable_nombre || 'Sin indicar'}</dd>
+                    <dt>Cuenta propietaria</dt>
+                    <dd>{s.propietario_correo || 'Pendiente de vinculación'}</dd>
+                  </dl>
+                  <div className="actions">
+                    <button className="secondary" onClick={() => setDetail(s)}>
+                      Ver albergue
+                    </button>
+                    <button onClick={() => edit(s)}>Editar albergue</button>
+                    <button className="danger" onClick={() => setDeleting(s)}>
+                      Eliminar albergue
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="shelter-empty">
+              <h3>
+                {query
+                  ? 'No encontramos albergues con esa búsqueda'
+                  : 'Aún no hay albergues registrados'}
+              </h3>
+              <p>
+                {query
+                  ? 'Prueba con otro nombre de albergue o responsable.'
+                  : 'Los albergues registrados aparecerán aquí.'}
+              </p>
+            </div>
+          )}
+          <div className="shelter-list__pagination">
+            <button disabled={busy || page === 1} onClick={() => setPage(v => v - 1)}>
+              Anterior
+            </button>
+            <span>Página {page}</span>
+            <button disabled={busy || !next} onClick={() => setPage(v => v + 1)}>
+              Siguiente
+            </button>
+          </div>
         </div>
-      )}
-      {!busy && !error && items.length === 0 && (
-        <section className="card">
-          <h2>No hay albergues para mostrar</h2>
-          <p>Registra un albergue o cambia tu búsqueda.</p>
-        </section>
-      )}
-      <div className="actions">
-        <button disabled={busy || page === 1} onClick={() => setPage(v => v - 1)}>
-          Anterior
-        </button>
-        <span>Página {page}</span>
-        <button disabled={busy || !next} onClick={() => setPage(v => v + 1)}>
-          Siguiente
-        </button>
-      </div>
+      </section>
       {detail && (
         <div className="shelter-detail-backdrop">
           <section
