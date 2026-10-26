@@ -14,7 +14,7 @@ class PerfilCompartidoView(APIView):
             return Response({"error": "perfil no autorizado", "campos": {}}, status=403)
         try:
             # Spring verifica propietario del albergue y consentimiento vigente.
-            profile = spring_get("/api/albergue/perfiles/" + str(adoptante_id), request.auth)
+            profile = spring_get("/api/albergue/perfiles/" + str(adoptante_id), request.headers.get("Authorization"))
             try:
                 albergue = Albergue.objects.only("id").get(usuario=request.user)
             except Albergue.DoesNotExist:
@@ -38,7 +38,7 @@ class PerfilesCompartidosListView(APIView):
         if request.user.rol != "ALBERGUE":
             return Response({"error": "perfil no autorizado", "campos": {}}, status=403)
         try:
-            return Response(spring_get("/api/albergue/perfiles", request.auth))
+            return Response(spring_get("/api/albergue/perfiles", request.headers.get("Authorization")))
         except urllib.error.HTTPError as error:
             return Response({"error": "consulta no disponible", "campos": {}}, status=403 if error.code in (403,404) else 503)
 

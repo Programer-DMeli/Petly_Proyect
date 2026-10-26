@@ -95,7 +95,7 @@ class AlbergueCreateUpdateSerializer(serializers.ModelSerializer):
             if self.instance and self.instance.usuario.spring_id != uid:
                 raise serializers.ValidationError({'propietario_spring_id':'El propietario no se transfiere desde este formulario.'})
             try:
-                identity = spring_get('/api/admin/cuentas-albergue/'+str(uid), request.auth)
+                identity = spring_get('/api/admin/cuentas-albergue/'+str(uid), request.headers.get('Authorization'))
             except urllib.error.HTTPError as error:
                 if error.code == 404:
                     raise serializers.ValidationError({'propietario_spring_id':'La cuenta no tiene rol ALBERGUE.'})

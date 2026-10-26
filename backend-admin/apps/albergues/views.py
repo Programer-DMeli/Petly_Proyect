@@ -98,7 +98,7 @@ class AlbergueViewSet(viewsets.ModelViewSet):
     def cuentas_disponibles(self, request):
         if request.user.rol != 'ADMIN': return Response({'error':'acceso denegado','campos':{}}, status=403)
         try:
-            identities = spring_get('/api/admin/cuentas-albergue', request.auth)
+            identities = spring_get('/api/admin/cuentas-albergue', request.headers.get('Authorization'))
         except urllib.error.HTTPError:
             raise AuthorityUnavailable()
         from django.contrib.auth import get_user_model
