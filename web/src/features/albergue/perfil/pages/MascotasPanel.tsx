@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
-import { django, json, errorMessage, mediaUrl } from '../../../../services/http';
+import { ApiError, django, json, errorMessage, mediaUrl } from '../../../../services/http';
 import type { AdminPet, Page, Shelter } from '../../../../services/types';
 import PosterMascota from './PosterMascota';
 const initial = {
@@ -43,6 +44,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
   const [file, setFile] = useState<File | null>(null);
   const [inputVersion, setInputVersion] = useState(0);
   const [error, setError] = useState('');
+  const [shelterMissing, setShelterMissing] = useState(false);
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(1);
@@ -67,8 +69,18 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
   useEffect(() => {
     if (suppliedShelter) { setLoadedShelter(suppliedShelter); return; }
     void django<Shelter>('/api/albergues/mi-perfil/')
-      .then(setLoadedShelter)
-      .catch(e => setError(errorMessage(e)));
+      .then(value => {
+        setLoadedShelter(value);
+        setShelterMissing(false);
+      })
+      .catch(e => {
+        if (e instanceof ApiError && e.status === 404) {
+          setShelterMissing(true);
+          setError(errorMessage(e));
+        } else {
+          setError(errorMessage(e));
+        }
+      });
   }, [suppliedShelter]);
   function reset() {
     setId(null);
@@ -185,6 +197,12 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
     <section className="card">
       <h2>Mascotas de mi albergue</h2>
       <Feedback error={error} success={success} />
+      {shelterMissing ? (
+        <p>
+          Ve a <Link to="/albergue">Mi albergue</Link> y registra los datos de tu institución. Luego podrás volver aquí para administrar tus mascotas.
+        </p>
+      ) : (
+      <>
       <form
         onSubmit={e => {
           e.preventDefault();
@@ -350,6 +368,8 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
         </article>
       )}
       {posterPet && shelter && <PosterMascota pet={posterPet} shelter={shelter} onClose={() => setPosterPet(null)} />}
+      </>
+      )}
     </section>
   );
 }

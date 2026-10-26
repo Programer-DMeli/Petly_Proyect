@@ -29,6 +29,7 @@ const initial: ShelterDraft = {
 };
 export default function PanelAlberguePage() {
   const [step, setStep] = useState(0);
+  const [highestStep, setHighestStep] = useState(0);
   const [shelter, setShelter] = useState<Shelter | null>(null);
   const [draft, setDraft] = useState(initial);
   const [loaded, setLoaded] = useState(false);
@@ -40,6 +41,8 @@ export default function PanelAlberguePage() {
     try {
       const value = await django<Shelter>('/api/albergues/mi-perfil/');
       setShelter(value);
+      setHighestStep(current => Math.max(current, 1));
+      setStep(current => (current === 0 ? 1 : current));
       setDraft({
         nombre: value.nombre,
         direccion: value.direccion,
@@ -60,6 +63,10 @@ export default function PanelAlberguePage() {
   useEffect(() => {
     void load();
   }, [load]);
+  function advanceTo(nextStep: number) {
+    setHighestStep(current => Math.max(current, nextStep));
+    setStep(nextStep);
+  }
   async function save() {
     setBusy(true);
     setError('');
@@ -70,7 +77,8 @@ export default function PanelAlberguePage() {
         { method: shelter ? 'PATCH' : 'POST', body: json(draft) }
       );
       setShelter(value);
-      setSuccess('Información del albergue guardada.');
+      setSuccess('Información del albergue guardada. Continuemos con la infraestructura.');
+      advanceTo(1);
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -82,6 +90,7 @@ export default function PanelAlberguePage() {
     <section className="card shelter-wizard">
       <h1>Panel del albergue</h1>
       <p className="muted">Completa cada paso para organizar la información de tu albergue.</p>
+      <Feedback error={error} success={success} />
       {shelter && (
         <nav className="shelter-steps" aria-label="Pasos del panel del albergue">
           {steps.map((label, index) => (
@@ -90,6 +99,7 @@ export default function PanelAlberguePage() {
               type="button"
               className={`shelter-step${step === index ? ' shelter-step--active' : ''}`}
               aria-current={step === index ? 'step' : undefined}
+              disabled={index > highestStep}
               onClick={() => setStep(index)}
             >
               <span className="shelter-step__number">{index + 1}</span>
@@ -101,7 +111,6 @@ export default function PanelAlberguePage() {
       {step === 0 && (
         <>
           <h2>Mi albergue</h2>
-          <Feedback error={error} success={success} />
           {!loaded ? (
             <button onClick={() => void load()}>Cargar información</button>
           ) : (
@@ -172,13 +181,6 @@ export default function PanelAlberguePage() {
               </fieldset>
             </form>
           )}
-          {shelter && (
-            <div className="shelter-wizard__actions">
-              <button type="button" onClick={() => setStep(1)}>
-                Siguiente: Infraestructura
-              </button>
-            </div>
-          )}
         </>
       )}
       {shelter && step === 1 && (
@@ -188,7 +190,7 @@ export default function PanelAlberguePage() {
             <button type="button" className="secondary" onClick={() => setStep(0)}>
               Anterior
             </button>
-            <button type="button" onClick={() => setStep(2)}>
+            <button type="button" onClick={() => advanceTo(2)}>
               Siguiente: Mascotas
             </button>
           </div>
@@ -201,7 +203,7 @@ export default function PanelAlberguePage() {
             <button type="button" className="secondary" onClick={() => setStep(1)}>
               Anterior
             </button>
-            <button type="button" onClick={() => setStep(3)}>
+            <button type="button" onClick={() => advanceTo(3)}>
               Siguiente: Perfiles autorizados
             </button>
           </div>

@@ -146,6 +146,11 @@ class AlbergueViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="mi-perfil")
     def mi_perfil(self, request):
         """Devuelve el perfil del albergue del usuario autenticado."""
-        albergue = get_object_or_404(Albergue, usuario=request.user)
+        albergue = Albergue.objects.filter(usuario=request.user).first()
+        if albergue is None:
+            return Response(
+                {"detail": "Aún no has registrado tu albergue. Regístralo para poder administrar tus mascotas."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         serializer = self.get_serializer(albergue)
         return Response(serializer.data)

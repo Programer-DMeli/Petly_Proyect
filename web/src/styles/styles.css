@@ -156,6 +156,11 @@ body {
   color: #fff;
 }
 
+.shelter-step:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .shelter-step__number {
   display: grid;
   width: 1.5rem;
