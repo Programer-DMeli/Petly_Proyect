@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import Feedback from '../../../../components/Feedback';
-import { django, errorMessage, json, spring } from '../../../../services/http';
+import { django, errorMessage, spring } from '../../../../services/http';
 
 interface VerificacionKyc {
   id: number;
@@ -98,7 +98,7 @@ export default function VerificacionKycPage() {
       {record.motivo_revision && <p>Resultado de revisión: {record.motivo_revision}</p>}
       {final && <p>La verificación está resuelta. Si necesitas corregir tus datos, comunícate con soporte.</p>}
     </div>}
-    {!final && <form onSubmit={upload}>
+    {!final && !pendingReview && <form onSubmit={upload}>
       <fieldset disabled={busy}>
         <label>DNI<input required inputMode="numeric" pattern="[0-9]{8}" maxLength={8} value={dni} onChange={e => setDni(e.target.value)} /></label>
         <label>Nombres como aparecen en el DNI<input required maxLength={100} value={nombres} onChange={e => setNombres(e.target.value)} /></label>

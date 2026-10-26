@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.petly_app.data.model.KycConsultaDto
 import com.petly_app.data.model.KycDto
 import com.petly_app.data.repository.KycRepository
+import com.petly_app.data.model.dniValido
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,7 +40,7 @@ class KycViewModel(private val repository: KycRepository) : ViewModel() {
 
     fun upload() {
         val s = _state.value
-        if (!s.dni.matches(Regex("[0-9]{8}"))) { _state.value = s.copy(error = "El DNI debe tener exactamente ocho dígitos."); return }
+        if (!dniValido(s.dni)) { _state.value = s.copy(error = "El DNI debe tener exactamente ocho dígitos."); return }
         if (s.nombres.isBlank() || s.apellidos.isBlank()) { _state.value = s.copy(error = "Completa nombres y apellidos tal como aparecen en el DNI."); return }
         if (s.anverso == null || s.reverso == null) { _state.value = s.copy(error = "Selecciona ambas caras del DNI."); return }
         _state.value = s.copy(saving = true, error = null, message = null)
@@ -57,12 +58,15 @@ class KycViewModel(private val repository: KycRepository) : ViewModel() {
         viewModelScope.launch {
             try {
                 val result = repository.consultar(record.id)
-                _state.value = _state.value.copy(resultado = result, saving = false, message = if (result.estado == "VERIFICADO") "Los datos coinciden con la consulta disponible." else "El caso permanece pendiente de revisión.")
+                val updatedRecord = record.copy(estado = result.estado, coincide = result.coincide,
+                    referencia_reniec = result.referencia, fecha_consulta = result.fechaConsulta)
+                _state.value = _state.value.copy(record = updatedRecord, resultado = result, saving = false,
+                    message = if (result.estado == "VERIFICADO") "Los datos coinciden con la consulta disponible." else "El caso permanece pendiente de revisión.")
             } catch (e: Exception) { if (e is CancellationException) throw e; _state.value = _state.value.copy(saving = false, error = e.message ?: "No se pudo consultar el servicio.") }
         }
     }
 
-    private fun runRequest(transform: (KycUiState) -> KycUiState) {
+    private fun runRequest(transform: suspend (KycUiState) -> KycUiState) {
         viewModelScope.launch {
             try { _state.value = transform(_state.value) }
             catch (e: Exception) { if (e is CancellationException) throw e; _state.value = _state.value.copy(loading = false, error = e.message ?: "No se pudo cargar la verificación.") }

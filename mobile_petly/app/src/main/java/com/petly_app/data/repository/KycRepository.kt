@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.net.Uri
 import android.webkit.MimeTypeMap
 import com.petly_app.data.model.KycDto
+import com.petly_app.data.model.dniValido
 import com.petly_app.data.remote.KycApi
 import com.petly_app.data.remote.KycConsultaApi
 import okhttp3.MediaType.Companion.toMediaType
@@ -23,7 +24,7 @@ class KycRepository(private val api: KycApi, private val consultaApi: KycConsult
             val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "jpg"
             return MultipartBody.Part.createFormData(partName, "dni-$partName.$extension", bytes.toRequestBody(mime.toMediaType()))
         }
-        require(dni.matches(Regex("[0-9]{8}"))) { "El DNI debe tener exactamente ocho dígitos." }
+        require(dniValido(dni)) { "El DNI debe tener exactamente ocho dígitos." }
         return api.upload(
             dni.toRequestBody("text/plain".toMediaType()),
             nombres.trim().toRequestBody("text/plain".toMediaType()),

@@ -17,6 +17,7 @@ public class VerificacionKycService {
 
     private static final Set<String> ESTADOS_TERMINALES = Set.of(
             "VERIFICADO", "APROBADO_MANUAL", "RECHAZADO_MANUAL");
+    private static final String ESTADOS_BLOQUEADOS_SQL = "'VERIFICADO','APROBADO_MANUAL','RECHAZADO_MANUAL','PENDIENTE_REVISION'";
 
     private final JdbcTemplate jdbc;
     private final ReniecClient reniec;
@@ -36,8 +37,11 @@ public class VerificacionKycService {
                 .stream().findFirst()
                 .orElseThrow(() -> new ApiException(404, "No se encontró la verificación KYC del adoptante."));
 
-        if (ESTADOS_TERMINALES.contains(candidato.estado())) {
+        if (estadoTerminal(candidato.estado())) {
             return respuesta(verificacionId, candidato.estado(), candidato.coincide(), candidato.referencia(), candidato.fechaConsulta());
+        }
+        if (estadoPendienteRevision(candidato.estado())) {
+            throw new ApiException(409, "La verificación está pendiente de revisión administrativa.");
         }
         if (!StringUtils.hasText(candidato.anverso()) || !StringUtils.hasText(candidato.reverso())) {
             throw new ApiException(409, "Debes cargar el anverso y reverso del DNI antes de verificarlo.");
@@ -59,7 +63,7 @@ public class VerificacionKycService {
                         + "SET k.estado=?,k.coincide=?,k.proveedor=?,k.referencia_reniec=?,"
                         + "k.fecha_consulta=CURRENT_TIMESTAMP,k.ultimo_intento_en=CURRENT_TIMESTAMP,"
                         + "k.error_servicio='',k.actualizado_en=CURRENT_TIMESTAMP "
-                        + "WHERE k.id=? AND u.spring_id=? AND k.estado NOT IN ('VERIFICADO','APROBADO_MANUAL','RECHAZADO_MANUAL') "
+                        + "WHERE k.id=? AND u.spring_id=? AND k.estado NOT IN (" + ESTADOS_BLOQUEADOS_SQL + ") "
                         + "AND k.dni=? AND k.nombres=? AND k.apellidos=?",
                 estado, resultado.coincide(), reniec.getProvider(), resultado.referencia(),
                 verificacionId, adoptanteSpringId, candidato.dni(), candidato.nombres(), candidato.apellidos());
@@ -72,12 +76,20 @@ public class VerificacionKycService {
                         (rs, row) -> rs.getTimestamp(1).toLocalDateTime(), verificacionId));
     }
 
+    static boolean estadoTerminal(String estado) {
+        return ESTADOS_TERMINALES.contains(estado);
+    }
+
+    static boolean estadoPendienteRevision(String estado) {
+        return "PENDIENTE_REVISION".equals(estado);
+    }
+
     private void registrarFallo(long id, long springId, Candidato candidato, String detalle) {
         jdbc.update(
                 "UPDATE acceso_verificacionkyc k JOIN acceso_user u ON u.id=k.adoptante_id "
                         + "SET k.ultimo_intento_en=CURRENT_TIMESTAMP,k.error_servicio=?,"
                         + "k.actualizado_en=CURRENT_TIMESTAMP "
-                        + "WHERE k.id=? AND u.spring_id=? AND k.estado NOT IN ('VERIFICADO','APROBADO_MANUAL','RECHAZADO_MANUAL') "
+                        + "WHERE k.id=? AND u.spring_id=? AND k.estado NOT IN (" + ESTADOS_BLOQUEADOS_SQL + ") "
                         + "AND k.dni=? AND k.nombres=? AND k.apellidos=?",
                 detalle, id, springId, candidato.dni(), candidato.nombres(), candidato.apellidos());
     }

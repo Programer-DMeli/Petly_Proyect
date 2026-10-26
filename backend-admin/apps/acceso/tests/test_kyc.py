@@ -54,6 +54,21 @@ class VerificacionKycProteccionTest(TestCase):
         self.assertEqual(record.dni, "12345678")
         self.assertEqual(record.estado, VerificacionKyc.Estado.RECHAZADO_MANUAL)
 
+    def test_no_se_pueden_reemplazar_documentos_mientras_espera_revision(self):
+        record = VerificacionKyc.objects.create(
+            adoptante=self.adoptante, dni="12345678", nombres="Ana", apellidos="Perez",
+            estado=VerificacionKyc.Estado.PENDIENTE_REVISION,
+        )
+        response = self.client.post("/api/acceso/verificaciones-kyc/", {
+            "dni": "87654321", "nombres": "Ana", "apellidos": "Perez",
+            "documento_anverso": self.imagen("anverso.png"),
+            "documento_reverso": self.imagen("reverso.png"),
+        }, format="multipart")
+        self.assertEqual(response.status_code, 400)
+        record.refresh_from_db()
+        self.assertEqual(record.dni, "12345678")
+        self.assertEqual(record.estado, VerificacionKyc.Estado.PENDIENTE_REVISION)
+
     def test_documentos_y_registros_no_se_exponen_a_otro_adoptante(self):
         record = VerificacionKyc.objects.create(
             adoptante=self.adoptante, dni="12345678", nombres="Ana", apellidos="Perez",

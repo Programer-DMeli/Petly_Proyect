@@ -25,7 +25,7 @@ fun VerificacionDniScreen(
 ) {
     var pickingFront by remember { mutableStateOf(true) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (pickingFront) selectFront(uri) else selectBack(uri) }
-    val editable = !state.saving && state.record?.estado !in setOf("VERIFICADO", "APROBADO_MANUAL", "RECHAZADO_MANUAL")
+    val editable = !state.saving && state.record?.estado !in setOf("VERIFICADO", "APROBADO_MANUAL", "RECHAZADO_MANUAL", "PENDIENTE_REVISION")
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TextButton(onClick = onBack) { Text("Volver al perfil") }
         Text("Verificación de identidad", style = MaterialTheme.typography.headlineSmall)
