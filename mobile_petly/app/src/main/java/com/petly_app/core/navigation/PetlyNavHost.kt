@@ -96,6 +96,7 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                         onSavePerfil = perfilVm::save,
                         onLoadPerfil = perfilVm::load,
                         onShareAutorizaciones = if (isPreview) null else ({ nav.navigate("autorizaciones") }),
+                        onOpenKyc = { nav.navigate("verificacion-dni") },
                         onExit = {
                             if (isPreview) { container.resetPreview(); preview = false } else container.session.clear()
                         }
@@ -114,6 +115,17 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     val vm: AutorizacionViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
                     AutorizacionesScreen(state, vm::change, vm::load, onBack = { nav.popBackStack() })
+                }
+                composable("verificacion-dni") {
+                    val factory = remember(container) {
+                        viewModelFactory { initializer { com.petly_app.ui.perfil.KycViewModel(container.kycRepository) } }
+                    }
+                    val vm: com.petly_app.ui.perfil.KycViewModel = viewModel(factory = factory)
+                    val state by vm.state.collectAsStateWithLifecycle()
+                    com.petly_app.ui.perfil.VerificacionDniScreen(
+                        state, vm::edit, vm::selectFront, vm::selectBack, vm::upload, vm::consultar, vm::load,
+                        onBack = { nav.popBackStack() }
+                    )
                 }
                 composable(Routes.DETAIL, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
                     val id = requireNotNull(entry.arguments).getLong("id")

@@ -50,6 +50,7 @@ fun CuestionarioScreen(
     onEdit: (PerfilDraft) -> Unit, onSave: (Boolean) -> Unit,
     onRetry: () -> Unit, onBack: () -> Unit, onShare: (() -> Unit)? = null,
     onDetailPet: (Long) -> Unit = {},
+    onOpenKyc: () -> Unit = {},
     onExit: () -> Unit = {}
 ) {
     var showForm by rememberSaveable { mutableStateOf(false) }
@@ -59,6 +60,7 @@ fun CuestionarioScreen(
             state = state,
             preview = preview,
             onOpenQuestionnaire = { showForm = true },
+            onOpenKyc = onOpenKyc,
             onDetailPet = onDetailPet,
             onExit = onExit
         )

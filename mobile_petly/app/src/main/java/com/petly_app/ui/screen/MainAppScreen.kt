@@ -37,6 +37,7 @@ fun MainAppScreen(
     onSavePerfil: (Boolean) -> Unit,
     onLoadPerfil: () -> Unit,
     onShareAutorizaciones: (() -> Unit)?,
+    onOpenKyc: () -> Unit,
     onExit: () -> Unit
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(PetlyTab.INICIO) }
@@ -91,6 +92,7 @@ fun MainAppScreen(
                         onRetry = onLoadPerfil,
                         onBack = { selectedTab = PetlyTab.INICIO },
                         onShare = onShareAutorizaciones,
+                        onOpenKyc = onOpenKyc,
                         onDetailPet = onDetailPet,
                         onExit = onExit
                     )

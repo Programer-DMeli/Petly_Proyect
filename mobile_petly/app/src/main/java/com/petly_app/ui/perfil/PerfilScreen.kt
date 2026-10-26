@@ -41,6 +41,7 @@ fun PerfilScreen(
     preview: Boolean,
     onOpenQuestionnaire: () -> Unit,
     onOpenNotifications: () -> Unit = {},
+    onOpenKyc: () -> Unit = {},
     onDetailPet: (Long) -> Unit = {},
     onExit: () -> Unit = {}
 ) {
@@ -70,6 +71,10 @@ fun PerfilScreen(
 
         // CARD 2: CUESTIONARIO DE ADOPCIÓN BANNER
         AdoptionQuestionnaireBannerCard(onOpenQuestionnaire = onOpenQuestionnaire)
+
+        OutlinedButton(onClick = onOpenKyc, modifier = Modifier.fillMaxWidth()) {
+            Text("Verificación de identidad (DNI)")
+        }
 
         // CARD 3: MENU OPTIONS CARD
         ProfileMenuOptionsCard(
