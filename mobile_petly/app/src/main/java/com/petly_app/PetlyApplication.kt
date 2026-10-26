@@ -4,5 +4,5 @@ import android.app.Application
 import com.petly_app.core.AppContainer
 
 class PetlyApplication : Application() {
-    val container by lazy { AppContainer() }
+    val container by lazy { AppContainer(applicationContext.contentResolver) }
 }

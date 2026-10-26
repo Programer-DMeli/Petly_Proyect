@@ -55,6 +55,25 @@ object ApiClient {
             .addConverterFactory(GsonConverterFactory.create(com.google.gson.GsonBuilder().serializeNulls().create()))
             .build()
     }
+
+    fun authenticatedAdminApi(session: SessionManager): Retrofit {
+        val authClient = baseClient.newBuilder()
+            .addInterceptor { chain ->
+                val token = session.token()
+                val request = chain.request().newBuilder().apply {
+                    if (token != null) header("Authorization", "Bearer $token")
+                }.build()
+                val response = chain.proceed(request)
+                if (response.code == 401 && token != null) session.clearIfMatches(token)
+                response
+            }
+            .build()
+        return Retrofit.Builder()
+            .baseUrl(BuildConfig.ADMIN_API_BASE_URL)
+            .client(authClient)
+            .addConverterFactory(GsonConverterFactory.create(com.google.gson.GsonBuilder().serializeNulls().create()))
+            .build()
+    }
 }
 
 

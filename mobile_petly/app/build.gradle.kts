@@ -27,6 +27,9 @@ android {
             val apiBase = providers.gradleProperty("petlyApiBaseUrl").getOrElse("http://10.0.2.2:8080/")
             require(apiBase.endsWith("/") && apiBase.matches(Regex("https?://[A-Za-z0-9.:-]+/")))
             buildConfigField("String", "API_BASE_URL", "\"$apiBase\"")
+            val adminBase = providers.gradleProperty("petlyAdminApiBaseUrl").getOrElse("http://10.0.2.2:8000/")
+            require(adminBase.endsWith("/") && adminBase.matches(Regex("https?://[A-Za-z0-9.:-]+/")))
+            buildConfigField("String", "ADMIN_API_BASE_URL", "\"$adminBase\"")
             isMinifyEnabled = false
             isShrinkResources = false
         }
@@ -48,6 +51,9 @@ android {
                 "API_BASE_URL",
                 "\"https://api.example.invalid/\""
             )
+            val adminBase = providers.gradleProperty("petlyAdminApiBaseUrl").getOrElse("https://admin-api.example.invalid/")
+            require(adminBase.endsWith("/") && adminBase.matches(Regex("https?://[A-Za-z0-9.:-]+/")))
+            buildConfigField("String", "ADMIN_API_BASE_URL", "\"$adminBase\"")
         }
     }
     compileOptions {
