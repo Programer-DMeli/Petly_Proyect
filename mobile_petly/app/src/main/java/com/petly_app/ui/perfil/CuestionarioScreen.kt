@@ -8,7 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -98,23 +97,28 @@ private fun CuestionarioFormScreen(
         }
     }
 
-    // Cálculo del porcentaje de avance del formulario
-    val fieldsCompleted = listOf(
-        state.form.vivienda.isNotBlank(),
-        state.form.horasFuera.isNotBlank(),
-        state.form.presupuesto.isNotBlank(),
-        state.form.tieneNinos != null,
-        state.form.tieneOtrasMascotas != null,
-        state.form.fotosViviendaUrls.isNotEmpty()
+    // Cálculo del porcentaje de avance
+    val form = state.form
+    val questionsAnswered = listOf(
+        form.vivienda.isNotBlank(),
+        form.espacioExterior.isNotBlank(),
+        form.horasFuera.isNotBlank(),
+        form.tiempoPaseos.isNotBlank(),
+        form.rutinaHabitual.isNotBlank(),
+        form.ninosDetalle.isNotBlank() || form.tieneNinos != null,
+        form.otrosAnimales.isNotBlank() || form.tieneOtrasMascotas != null,
+        form.experienciaMascotas.isNotBlank(),
+        form.cuidadosAsumibles.isNotEmpty(),
+        form.presupuesto.isNotBlank()
     ).count { it }
-    val progressFraction = fieldsCompleted.toFloat() / 6f
+    val progressFraction = (questionsAnswered.toFloat() / 10f).coerceIn(0.1f, 1f)
 
     BackHandler { if (!state.saving) requestBack() }
 
     if (confirmExit) AlertDialog(
         onDismissRequest = { confirmExit = false },
         title = { Text("¿Salir sin guardar?") },
-        text = { Text("Los últimos cambios del formulario se perderán.") },
+        text = { Text("Los cambios no guardados se perderán.") },
         confirmButton = { TextButton(onClick = { confirmExit = false; onBack() }) { Text("Salir") } },
         dismissButton = { TextButton(onClick = { confirmExit = false }) { Text("Continuar editando") } }
     )
@@ -125,7 +129,7 @@ private fun CuestionarioFormScreen(
             .imePadding()
             .verticalScroll(rememberScrollState())
             .background(Color(0xFFE8F8F5))
-            .padding(20.dp),
+            .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         TextButton(onClick = requestBack, enabled = !state.saving) {
@@ -134,26 +138,56 @@ private fun CuestionarioFormScreen(
 
         PreviewNotice(preview)
 
-        // Título de sección y avance
+        // HEADER & PROGRESS CARD
         Card(
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(18.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFF8DE2BA),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = HomeIcons.Clipboard,
+                                contentDescription = null,
+                                tint = Color(0xFF13614B),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Mi Estilo de Vida y Convivencia",
+                            fontFamily = FontFamily.Serif,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = Color(0xFF0F3A2E)
+                        )
+                        Text(
+                            text = "Test de Compatibilidad de Adopción",
+                            fontSize = 12.sp,
+                            color = Color(0xFF13614B),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
                 Text(
-                    text = "Formulario de Adopción Responsable",
-                    fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp,
-                    color = Color(0xFF0F3A2E)
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Completa los datos de tu hogar y adjunta fotos de tu vivienda (US-19) para evaluar la compatibilidad con tu futura mascota.",
+                    text = "Tus respuestas nos permitirán calcular el nivel de compatibilidad con las mascotas disponibles para encontrar tu compañero ideal.",
                     fontSize = 13.sp,
-                    color = Color(0xFF4A6258)
+                    color = Color(0xFF4A6258),
+                    lineHeight = 18.sp
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -164,13 +198,13 @@ private fun CuestionarioFormScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Avance del cuestionario",
+                        text = "Progreso de Match",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF13614B)
                     )
                     Text(
-                        text = "${(progressFraction * 100).toInt()}%",
+                        text = "${(progressFraction * 100).toInt()}% Match listo",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF13614B)
@@ -196,121 +230,223 @@ private fun CuestionarioFormScreen(
             if (!state.dirty) OutlinedButton(onClick = onRetry, enabled = !busy) { Text("Reintentar carga") }
         }
 
-        // SECCIÓN 1: ESTILO DE VIDA Y HOGAR
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            modifier = Modifier.fillMaxWidth()
+        // BLOQUE 1: ESPACIO E INSTALACIONES (P1, P2)
+        FormCardSection(
+            title = "1. Espacio e Instalaciones del Hogar",
+            description = "Determina el espacio físico y seguridad disponible para la mascota."
         ) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+            // Pregunta 1
+            QuestionItem(
+                number = "1",
+                question = "¿En qué tipo de vivienda vives?",
+                purpose = "Compara necesidades de espacio"
             ) {
-                Text(
-                    text = "1. Estilo de Vida y Hogar",
-                    fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color(0xFF0F3A2E)
-                )
-
-                FormField("Tipo de vivienda", state.form.vivienda, state.errors["vivienda"], editable) {
-                    onEdit(state.form.copy(vivienda = it))
-                }
-
-                // Accesos rápidos de vivienda
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Casa", "Departamento", "Casa de campo").forEach { opcion ->
-                        FilterChip(
-                            selected = state.form.vivienda == opcion,
-                            onClick = { if (editable) onEdit(state.form.copy(vivienda = opcion)) },
-                            label = { Text(opcion, fontSize = 12.sp) }
-                        )
+                SingleChoicePills(
+                    options = listOf("Departamento", "Casa", "Otro"),
+                    selected = form.vivienda,
+                    onSelect = {
+                        if (editable) onEdit(form.copy(vivienda = it))
                     }
-                }
-
-                FormField("Horas fuera de casa al día", state.form.horasFuera, state.errors["horasFuera"], editable, true) {
-                    onEdit(state.form.copy(horasFuera = it))
-                }
-
-                FormField("Presupuesto mensual estimado (S/)", state.form.presupuesto, state.errors["presupuesto"], editable, true) {
-                    onEdit(state.form.copy(presupuesto = it))
-                }
-            }
-        }
-
-        // SECCIÓN 2: CONVIVENCIA Y ENTORNO
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Text(
-                    text = "2. Convivencia y Entorno",
-                    fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color(0xFF0F3A2E)
                 )
+            }
 
-                BooleanQuestion("¿Viven niños en tu hogar?", state.form.tieneNinos, state.errors["ninos"], editable) {
-                    onEdit(state.form.copy(tieneNinos = it))
-                }
-
-                BooleanQuestion("¿Tienes otras mascotas actualmente?", state.form.tieneOtrasMascotas, state.errors["mascotas"], editable) {
-                    onEdit(state.form.copy(tieneOtrasMascotas = it))
-                }
+            // Pregunta 2
+            QuestionItem(
+                number = "2",
+                question = "¿Con qué espacio exterior seguro cuentas?",
+                purpose = "Compara seguridad y necesidades de entorno"
+            ) {
+                SingleChoicePills(
+                    options = listOf("Ninguno", "Patio amplio", "Jardín cercado", "Jardín sin cercar"),
+                    selected = form.espacioExterior,
+                    onSelect = {
+                        if (editable) onEdit(form.copy(espacioExterior = it))
+                    }
+                )
             }
         }
 
-        // SECCIÓN 3: FOTOGRAFÍAS DE LA VIVIENDA (US-19)
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            modifier = Modifier.fillMaxWidth()
+        // BLOQUE 2: TIEMPO Y RUTINA (P3, P4, P5)
+        FormCardSection(
+            title = "2. Tiempo, Rutina y Nivel de Actividad",
+            description = "Analiza el ritmo de vida y la presencia diaria en el hogar."
         ) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+            // Pregunta 3
+            QuestionItem(
+                number = "3",
+                question = "¿Cuántas horas al día estaría sola la mascota?",
+                purpose = "Compara tolerancia a la soledad"
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFF8DE2BA),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = HomeIcons.Camera,
-                                contentDescription = null,
-                                tint = Color(0xFF13614B),
-                                modifier = Modifier.size(18.dp)
-                            )
+                SingleChoicePills(
+                    options = listOf("Hasta 2h", "De 2 a 4h", "De 4 a 6h", "Más de 6h"),
+                    selected = form.horasFuera,
+                    onSelect = {
+                        if (editable) onEdit(form.copy(horasFuera = it))
+                    }
+                )
+            }
+
+            // Pregunta 4
+            QuestionItem(
+                number = "4",
+                question = "¿Cuánto tiempo diario puedes dedicar a paseos y juego?",
+                purpose = "Compara nivel de energía y estimulación"
+            ) {
+                SingleChoicePills(
+                    options = listOf("< 30 min", "30–60 min", "1–2 horas", "+ de 2 horas"),
+                    selected = form.tiempoPaseos,
+                    onSelect = {
+                        if (editable) onEdit(form.copy(tiempoPaseos = it))
+                    }
+                )
+            }
+
+            // Pregunta 5
+            QuestionItem(
+                number = "5",
+                question = "¿Cómo describes tu rutina habitual?",
+                purpose = "Compara temperamento e intensidad"
+            ) {
+                SingleChoicePills(
+                    options = listOf("Tranquila", "Moderadamente activa", "Muy activa"),
+                    selected = form.rutinaHabitual,
+                    onSelect = {
+                        if (editable) onEdit(form.copy(rutinaHabitual = it))
+                    }
+                )
+            }
+        }
+
+        // BLOQUE 3: CONVIVENCIA E INTEGRANTES (P6, P7)
+        FormCardSection(
+            title = "3. Convivencia e Integrantes del Hogar",
+            description = "Garantiza una adaptación segura con niños y otras mascotas."
+        ) {
+            // Pregunta 6
+            QuestionItem(
+                number = "6",
+                question = "¿Viven niños en tu hogar o te visitan frecuentemente?",
+                purpose = "Compara compatibilidad conocida con niños"
+            ) {
+                SingleChoicePills(
+                    options = listOf("No", "Menores de 6 años", "De 6 a 12 años", "Adolescentes"),
+                    selected = form.ninosDetalle,
+                    onSelect = {
+                        if (editable) {
+                            val esNo = it == "No"
+                            onEdit(form.copy(ninosDetalle = it, tieneNinos = !esNo))
                         }
                     }
+                )
+            }
 
-                    Text(
-                        text = "3. Fotos de la Vivienda (US-19)",
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = Color(0xFF0F3A2E)
+            // Pregunta 7
+            QuestionItem(
+                number = "7",
+                question = "¿Qué otros animales viven contigo?",
+                purpose = "Compara compatibilidad con otras mascotas"
+            ) {
+                SingleChoicePills(
+                    options = listOf("Ninguno", "Perros", "Gatos", "Otros"),
+                    selected = form.otrosAnimales,
+                    onSelect = {
+                        if (editable) {
+                            val esNinguno = it == "Ninguno"
+                            onEdit(form.copy(otrosAnimales = it, tieneOtrasMascotas = !esNinguno))
+                        }
+                    }
+                )
+            }
+        }
+
+        // BLOQUE 4: EXPERIENCIA Y CUIDADOS (P8, P9)
+        FormCardSection(
+            title = "4. Experiencia y Cuidados Especiales",
+            description = "Evalúa la capacidad de asumir requerimientos específicos."
+        ) {
+            // Pregunta 8
+            QuestionItem(
+                number = "8",
+                question = "¿Qué experiencia tienes cuidando mascotas?",
+                purpose = "Compara nivel de manejo requerido"
+            ) {
+                SingleChoicePills(
+                    options = listOf("Ninguna", "Básica", "Amplia (perros/gatos)"),
+                    selected = form.experienciaMascotas,
+                    onSelect = {
+                        if (editable) onEdit(form.copy(experienciaMascotas = it))
+                    }
+                )
+            }
+
+            // Pregunta 9
+            QuestionItem(
+                number = "9",
+                question = "¿Qué cuidados puedes asumir?",
+                purpose = "Compara necesidades especiales de salud y conducta"
+            ) {
+                MultiChoicePills(
+                    options = listOf("Medicación", "Cuidados adulto mayor", "Entrenamiento", "Adaptación conductual", "Ninguno adicional"),
+                    selectedList = form.cuidadosAsumibles,
+                    onToggleOption = { option ->
+                        if (editable) {
+                            val updated = if (form.cuidadosAsumibles.contains(option)) {
+                                form.cuidadosAsumibles - option
+                            } else {
+                                form.cuidadosAsumibles + option
+                            }
+                            onEdit(form.copy(cuidadosAsumibles = updated))
+                        }
+                    }
+                )
+            }
+        }
+
+        // BLOQUE 5: PRESUPUESTO Y FOTOS DEL HOGAR (P10 & US-19)
+        FormCardSection(
+            title = "5. Presupuesto y Fotos de la Vivienda",
+            description = "Verificación de entorno seguro y disponibilidad de recursos."
+        ) {
+            // Pregunta 10
+            QuestionItem(
+                number = "10",
+                question = "¿Qué presupuesto mensual puedes destinar a su cuidado?",
+                purpose = "Estimación de alimentación y atención médica"
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = form.presupuesto,
+                        onValueChange = { if (editable) onEdit(form.copy(presupuesto = it)) },
+                        label = { Text("Monto aproximado en soles (S/)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF13614B),
+                            focusedLabelColor = Color(0xFF13614B)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    SingleChoicePills(
+                        options = listOf("100", "200", "350", "500"),
+                        selected = form.presupuesto,
+                        onSelect = { if (editable) onEdit(form.copy(presupuesto = it)) }
                     )
                 }
+            }
 
+            // Fotografías de Vivienda (US-19)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Muestra la sala, patio/jardín o el área de descanso donde vivirá la mascota para verificar la seguridad del espacio.",
-                    fontSize = 13.sp,
+                    text = "Fotografías de tu hogar (US-19)",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = Color(0xFF0F3A2E)
+                )
+                Text(
+                    text = "Sube fotos de la sala, patio o el área donde vivirá la mascota para verificar la seguridad del ambiente.",
+                    fontSize = 12.sp,
                     color = Color(0xFF4A6258)
                 )
 
@@ -322,13 +458,13 @@ private fun CuestionarioFormScreen(
                     ) {
                         Icon(HomeIcons.Camera, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Añadir foto de tu hogar", fontSize = 13.sp)
+                        Text("📷 Añadir foto", fontSize = 13.sp)
                     }
 
-                    if (state.form.fotosViviendaUrls.isEmpty()) {
+                    if (form.fotosViviendaUrls.isEmpty()) {
                         TextButton(
                             onClick = {
-                                if (editable) onEdit(state.form.copy(fotosViviendaUrls = defaultHomePhotoSamples))
+                                if (editable) onEdit(form.copy(fotosViviendaUrls = defaultHomePhotoSamples))
                             },
                             enabled = editable
                         ) {
@@ -337,50 +473,22 @@ private fun CuestionarioFormScreen(
                     }
                 }
 
-                val currentPhotos = if (state.form.fotosViviendaUrls.isNotEmpty()) {
-                    state.form.fotosViviendaUrls
-                } else {
-                    emptyList()
-                }
-
-                if (currentPhotos.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFFE8F8F5), RoundedCornerShape(16.dp))
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Aún no has añadido fotografías de tu vivienda. Toca 'Añadir foto' para seleccionar de tu galería.",
-                            fontSize = 12.sp,
-                            color = Color(0xFF4A6258)
-                        )
-                    }
-                } else {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        itemsIndexed(currentPhotos) { index, photoUrl ->
+                if (form.fotosViviendaUrls.isNotEmpty()) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        itemsIndexed(form.fotosViviendaUrls) { index, photoUrl ->
                             Surface(
-                                shape = RoundedCornerShape(16.dp),
+                                shape = RoundedCornerShape(14.dp),
                                 color = Color(0xFFF4F9F6),
                                 shadowElevation = 1.dp,
-                                modifier = Modifier.width(170.dp)
+                                modifier = Modifier.width(160.dp)
                             ) {
                                 Column(modifier = Modifier.padding(8.dp)) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(110.dp)
-                                    ) {
+                                    Box(modifier = Modifier.fillMaxWidth().height(100.dp)) {
                                         AsyncImage(
                                             model = photoUrl,
-                                            contentDescription = "Foto de vivienda ${index + 1}",
+                                            contentDescription = "Foto ${index + 1}",
                                             contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .clip(RoundedCornerShape(12.dp))
+                                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp))
                                         )
 
                                         Surface(
@@ -389,35 +497,20 @@ private fun CuestionarioFormScreen(
                                             modifier = Modifier
                                                 .align(Alignment.TopEnd)
                                                 .padding(4.dp)
-                                                .size(28.dp)
+                                                .size(26.dp)
                                                 .clickable {
                                                     if (editable) {
-                                                        val updated = currentPhotos.toMutableList()
+                                                        val updated = form.fotosViviendaUrls.toMutableList()
                                                         updated.removeAt(index)
-                                                        onEdit(state.form.copy(fotosViviendaUrls = updated))
+                                                        onEdit(form.copy(fotosViviendaUrls = updated))
                                                     }
                                                 }
                                         ) {
                                             Box(contentAlignment = Alignment.Center) {
-                                                Text("✕", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE53935))
+                                                Text("✕", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE53935))
                                             }
                                         }
                                     }
-
-                                    Spacer(modifier = Modifier.height(6.dp))
-
-                                    val etiqueta = when (index % 3) {
-                                        0 -> "Sala / Área común"
-                                        1 -> "Patio / Jardín"
-                                        else -> "Lugar de descanso"
-                                    }
-
-                                    Text(
-                                        text = etiqueta,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF0F3A2E)
-                                    )
                                 }
                             }
                         }
@@ -426,85 +519,207 @@ private fun CuestionarioFormScreen(
             }
         }
 
-        onShare?.let { TextButton(onClick = it, enabled = editable && !state.dirty) { Text("Compartir mi perfil con un albergue") } }
+        // MATCH CARD PREVIEW
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF9F4)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0xFF8DE2BA),
+                    modifier = Modifier.size(42.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = HomeIcons.CompanionHeart,
+                            contentDescription = null,
+                            tint = Color(0xFF13614B),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "✨ Match de Compatibilidad Activo",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color(0xFF0F3A2E)
+                    )
+                    Text(
+                        text = "Tus respuestas permiten filtrar mascotas cuyo temperamento y energía se adapten idealmente a tu hogar.",
+                        fontSize = 12.sp,
+                        color = Color(0xFF4A6258)
+                    )
+                }
+            }
+        }
 
-        Text(
-            text = if (state.form.finalizado) "Cuestionario finalizado" else "Puedes guardar respuestas incompletas como borrador.",
-            fontSize = 13.sp,
-            color = Color(0xFF4A6258)
-        )
+        onShare?.let { TextButton(onClick = it, enabled = editable && !state.dirty) { Text("Compartir mi perfil con un albergue") } }
 
         state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
 
+        // BOTONES DE ENVÍO
         Button(
             onClick = { onSave(true) },
             enabled = editable,
             shape = CircleShape,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF13614B)),
-            modifier = Modifier.fillMaxWidth().height(50.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .semantics { contentDescription = "Finalizar cuestionario" }
         ) {
-            Text(if (state.saving) "Guardando…" else "Finalizar y Enviar Cuestionario", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(
+                if (state.saving) "Guardando…" else "Finalizar Cuestionario y Ver Matches 🐾",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
         }
 
         OutlinedButton(
             onClick = { onSave(false) },
             enabled = editable,
             shape = CircleShape,
-            modifier = Modifier.fillMaxWidth().height(48.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .semantics { contentDescription = "Guardar borrador" }
         ) {
-            Text("Guardar borrador", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF13614B))
+            Text("Guardar borrador", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF13614B))
         }
     }
 }
 
 @Composable
-private fun FormField(label: String, value: String, error: String?, enabled: Boolean, decimal: Boolean = false, onChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        label = { Text(label) },
-        singleLine = true,
-        enabled = enabled,
-        isError = error != null,
-        supportingText = { if (error != null) Text(error) },
-        keyboardOptions = KeyboardOptions(keyboardType = if (decimal) KeyboardType.Decimal else KeyboardType.Text),
-        shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color(0xFF13614B),
-            focusedLabelColor = Color(0xFF13614B)
-        ),
+private fun FormCardSection(
+    title: String,
+    description: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
-    )
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = title,
+                fontFamily = FontFamily.Serif,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = Color(0xFF0F3A2E)
+            )
+            Text(
+                text = description,
+                fontSize = 12.sp,
+                color = Color(0xFF4A6258)
+            )
+            HorizontalDivider(color = Color(0xFFEFF5F2), thickness = 1.dp)
+            content()
+        }
+    }
 }
 
 @Composable
-private fun BooleanQuestion(label: String, value: Boolean?, error: String?, enabled: Boolean, onChange: (Boolean) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFF0F3A2E))
-        Row(modifier = Modifier.selectableGroup()) {
-            listOf(true to "Sí", false to "No").forEach { (choice, text) ->
-                Row(
-                    modifier = Modifier
-                        .selectable(
-                            selected = value == choice,
-                            enabled = enabled,
-                            role = Role.RadioButton,
-                            onClick = { onChange(choice) }
-                        )
-                        .semantics { contentDescription = "$label: $text" }
-                        .padding(end = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+private fun QuestionItem(
+    number: String,
+    question: String,
+    purpose: String,
+    content: @Composable () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "$number. $question",
+            fontWeight = FontWeight.Bold,
+            fontSize = 15.sp,
+            color = Color(0xFF0F3A2E)
+        )
+        Text(
+            text = "💡 $purpose",
+            fontSize = 11.sp,
+            color = Color(0xFF2E6C58)
+        )
+        content()
+    }
+}
+
+@Composable
+private fun SingleChoicePills(
+    options: List<String>,
+    selected: String,
+    onSelect: (String) -> Unit
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        itemsIndexed(options) { _, option ->
+            val isSelected = selected.equals(option, ignoreCase = true)
+            Surface(
+                onClick = { onSelect(option) },
+                shape = CircleShape,
+                color = if (isSelected) Color(0xFF13614B) else Color(0xFFEFF8F4),
+                shadowElevation = if (isSelected) 2.dp else 0.dp,
+                modifier = Modifier.height(36.dp)
+            ) {
+                Box(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    RadioButton(
-                        selected = value == choice,
-                        onClick = null,
-                        enabled = enabled,
-                        colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF13614B))
+                    Text(
+                        text = option,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) Color.White else Color(0xFF13614B)
                     )
-                    Text(text, modifier = Modifier.padding(start = 4.dp))
                 }
             }
         }
-        if (error != null) Text(error, color = MaterialTheme.colorScheme.error)
+    }
+}
+
+@Composable
+private fun MultiChoicePills(
+    options: List<String>,
+    selectedList: List<String>,
+    onToggleOption: (String) -> Unit
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        itemsIndexed(options) { _, option ->
+            val isSelected = selectedList.contains(option)
+            Surface(
+                onClick = { onToggleOption(option) },
+                shape = CircleShape,
+                color = if (isSelected) Color(0xFF13614B) else Color(0xFFEFF8F4),
+                shadowElevation = if (isSelected) 2.dp else 0.dp,
+                modifier = Modifier.height(36.dp)
+            ) {
+                Box(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = option,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) Color.White else Color(0xFF13614B)
+                    )
+                }
+            }
+        }
     }
 }
