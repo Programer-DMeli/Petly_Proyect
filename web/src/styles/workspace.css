@@ -172,8 +172,17 @@
   position: relative;
 }
 .nav-chevron {
-  font-size: 1.1rem;
-  line-height: 1;
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: 0 0 auto;
+  border-right: 1.7px solid currentColor;
+  border-bottom: 1.7px solid currentColor;
+  transform: translateY(-0.12rem) rotate(45deg);
+  transition: transform 160ms ease;
+}
+.workspace-nav__trigger[aria-expanded='true'] .nav-chevron,
+.workspace-account__trigger[aria-expanded='true'] .nav-chevron {
+  transform: translateY(0.1rem) rotate(225deg);
 }
 .workspace-menu {
   position: absolute;
