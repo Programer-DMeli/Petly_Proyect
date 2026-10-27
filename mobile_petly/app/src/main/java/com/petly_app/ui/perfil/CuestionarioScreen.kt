@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,34 +44,57 @@ private val defaultHomePhotoSamples = listOf(
 
 @Composable
 fun CuestionarioScreen(
-    state: PerfilUiState, preview: Boolean,
-    onEdit: (PerfilDraft) -> Unit, onSave: (Boolean) -> Unit,
-    onRetry: () -> Unit, onBack: () -> Unit, onShare: (() -> Unit)? = null,
+    state: PerfilUiState,
+    disponibilidadState: DisponibilidadUiState = DisponibilidadUiState(),
+    preview: Boolean,
+    onEdit: (PerfilDraft) -> Unit,
+    onSave: (Boolean) -> Unit,
+    onRetry: () -> Unit,
+    onBack: () -> Unit,
+    onShare: (() -> Unit)? = null,
     onDetailPet: (Long) -> Unit = {},
     onOpenKyc: () -> Unit = {},
+    onAddFranja: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    onRemoveFranja: (Long) -> Unit = {},
+    onSaveDisponibilidad: () -> Unit = {},
     onExit: () -> Unit = {}
 ) {
-    var showForm by rememberSaveable { mutableStateOf(false) }
+    var currentSubScreen by rememberSaveable { mutableStateOf("DASHBOARD") }
 
-    if (!showForm) {
-        PerfilScreen(
-            state = state,
-            preview = preview,
-            onOpenQuestionnaire = { showForm = true },
-            onOpenKyc = onOpenKyc,
-            onDetailPet = onDetailPet,
-            onExit = onExit
-        )
-    } else {
-        CuestionarioFormScreen(
-            state = state,
-            preview = preview,
-            onEdit = onEdit,
-            onSave = onSave,
-            onRetry = onRetry,
-            onBack = { showForm = false },
-            onShare = onShare
-        )
+    when (currentSubScreen) {
+        "DASHBOARD" -> {
+            PerfilScreen(
+                state = state,
+                preview = preview,
+                onOpenQuestionnaire = { currentSubScreen = "QUESTIONNAIRE" },
+                onOpenDisponibilidad = { currentSubScreen = "DISPONIBILIDAD" },
+                onOpenKyc = onOpenKyc,
+                onDetailPet = onDetailPet,
+                onExit = onExit
+            )
+        }
+        "DISPONIBILIDAD" -> {
+            DisponibilidadScreen(
+                state = disponibilidadState,
+                preview = preview,
+                onAddFranja = onAddFranja,
+                onRemoveFranja = onRemoveFranja,
+                onSave = onSaveDisponibilidad,
+                onRetry = onRetry,
+                onBack = { currentSubScreen = "DASHBOARD" }
+            )
+        }
+        else -> {
+            CuestionarioFormScreen(
+                state = state,
+                preview = preview,
+                onEdit = onEdit,
+                onSave = onSave,
+                onRetry = onRetry,
+                onBack = { currentSubScreen = "DASHBOARD" },
+                onShare = onShare
+            )
+        }
     }
 }
 

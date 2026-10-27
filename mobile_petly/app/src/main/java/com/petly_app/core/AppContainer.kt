@@ -5,6 +5,7 @@ import com.petly_app.core.session.SessionManager
 import com.petly_app.data.remote.*
 import com.petly_app.data.repository.*
 import android.content.ContentResolver
+
 // Dependencias compartidas de la aplicación; no se crean al recomponer una pantalla.
 class AppContainer(private val contentResolver: ContentResolver) {
     val session = SessionManager()
@@ -17,6 +18,9 @@ class AppContainer(private val contentResolver: ContentResolver) {
     private val previewCatalogo = PreviewCatalogoRepository()
     private val remotePerfil = RemotePerfilRepository(privateApi.create(PerfilApi::class.java))
     private val remoteCatalogo = RemoteCatalogoRepository(privateApi.create(CatalogoApi::class.java))
+    private val previewDisponibilidad = PreviewDisponibilidadRepository()
+    private val remoteDisponibilidad = RemoteDisponibilidadRepository(privateApi.create(DisponibilidadApi::class.java))
+
     val kycRepository = KycRepository(
         ApiClient.authenticatedAdminApi(session).create(KycApi::class.java),
         privateApi.create(KycConsultaApi::class.java), contentResolver
@@ -24,6 +28,7 @@ class AppContainer(private val contentResolver: ContentResolver) {
 
     fun perfil(preview: Boolean): PerfilRepository = if (preview) previewPerfil else remotePerfil
     fun catalogo(preview: Boolean): CatalogoRepository = if (preview) previewCatalogo else remoteCatalogo
+    fun disponibilidad(preview: Boolean): DisponibilidadRepository = if (preview) previewDisponibilidad else remoteDisponibilidad
     val autorizaciones = AutorizacionRepository(privateApi.create(AutorizacionApi::class.java))
     val recuperacion = RecuperacionRepository(publicApi.create(RecuperacionApi::class.java))
     fun resetPreview() = previewPerfil.reset()

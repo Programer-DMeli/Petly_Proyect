@@ -147,8 +147,7 @@ internal object HomeIcons {
             close()
             moveTo(13.73f, 21f)
             curveTo(13.55f, 21.3f, 13.3f, 21.55f, 13f, 21.71f)
-            curveTo(12.7f, 21.87f, 12.35f, 21.96f, 12f, 21.96f)
-            curveTo(11.65f, 21.96f, 11.3f, 21.87f, 11f, 21.71f)
+            curveTo(12.7f, 21.87f, 11.3f, 21.87f, 11f, 21.71f)
             curveTo(10.7f, 21.55f, 10.45f, 21.3f, 10.27f, 21f)
         }
     }.build()
@@ -252,6 +251,39 @@ internal object HomeIcons {
             lineTo(16f, 7f)
             moveTo(21f, 12f)
             lineTo(9f, 12f)
+        }
+    }.build()
+
+    val Clock = ImageVector.Builder("Clock", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(12f, 22f)
+            curveTo(17.5228f, 22f, 22f, 17.5228f, 22f, 12f)
+            curveTo(22f, 6.47715f, 17.5228f, 2f, 12f, 2f)
+            curveTo(6.47715f, 2f, 2f, 6.47715f, 2f, 12f)
+            curveTo(2f, 17.5228f, 6.47715f, 22f, 12f, 22f)
+            close()
+            moveTo(12f, 6f)
+            lineTo(12f, 12f)
+            lineTo(16f, 14f)
+        }
+    }.build()
+
+    val Trash = ImageVector.Builder("Trash", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(3f, 6f)
+            lineTo(21f, 6f)
+            moveTo(19f, 6f)
+            lineTo(19f, 20f)
+            curveTo(19f, 21.1f, 18.1f, 22f, 17f, 22f)
+            lineTo(7f, 22f)
+            curveTo(5.9f, 22f, 5f, 21.1f, 5f, 20f)
+            lineTo(5f, 6f)
+            moveTo(8f, 6f)
+            lineTo(8f, 4f)
+            curveTo(8f, 2.9f, 8.9f, 2f, 10f, 2f)
+            lineTo(14f, 2f)
+            curveTo(15.1f, 2f, 16f, 2.9f, 16f, 4f)
+            lineTo(16f, 6f)
         }
     }.build()
 }

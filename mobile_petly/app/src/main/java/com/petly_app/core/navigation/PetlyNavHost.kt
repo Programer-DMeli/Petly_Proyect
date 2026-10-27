@@ -73,10 +73,17 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     val perfilFactory = remember(container, isPreview) {
                         viewModelFactory { initializer { PerfilViewModel(container.perfil(isPreview), isPreview) } }
                     }
+                    val disponibilidadFactory = remember(container, isPreview) {
+                        viewModelFactory { initializer { DisponibilidadViewModel(container.disponibilidad(isPreview), isPreview) } }
+                    }
+
                     val catalogVm: CatalogoViewModel = viewModel(factory = catalogFactory)
                     val perfilVm: PerfilViewModel = viewModel(factory = perfilFactory)
+                    val disponibilidadVm: DisponibilidadViewModel = viewModel(factory = disponibilidadFactory)
+
                     val catalogState by catalogVm.state.collectAsStateWithLifecycle()
                     val perfilState by perfilVm.state.collectAsStateWithLifecycle()
+                    val disponibilidadState by disponibilidadVm.state.collectAsStateWithLifecycle()
 
                     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                         catalogVm.retry()
@@ -85,6 +92,7 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     MainAppScreen(
                         catalogoState = catalogState,
                         perfilState = perfilState,
+                        disponibilidadState = disponibilidadState,
                         isPreview = isPreview,
                         onEditFilters = catalogVm::edit,
                         onApplyFilters = catalogVm::applyFilters,
@@ -95,6 +103,9 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                         onEditPerfil = perfilVm::edit,
                         onSavePerfil = perfilVm::save,
                         onLoadPerfil = perfilVm::load,
+                        onAddFranja = disponibilidadVm::addFranja,
+                        onRemoveFranja = disponibilidadVm::removeFranja,
+                        onSaveDisponibilidad = disponibilidadVm::save,
                         onShareAutorizaciones = if (isPreview) null else ({ nav.navigate("autorizaciones") }),
                         onOpenKyc = { nav.navigate("verificacion-dni") },
                         onExit = {
@@ -108,7 +119,7 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     }
                     val vm: PerfilViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    CuestionarioScreen(state, isPreview, vm::edit, vm::save, vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }))
+                    CuestionarioScreen(state, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }))
                 }
                 composable("autorizaciones") {
                     val factory = remember(container) { viewModelFactory { initializer { AutorizacionViewModel(container.autorizaciones) } } }
