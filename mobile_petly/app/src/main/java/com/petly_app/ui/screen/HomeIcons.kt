@@ -286,4 +286,120 @@ internal object HomeIcons {
             lineTo(16f, 6f)
         }
     }.build()
+
+    val Share = ImageVector.Builder("Share", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(18f, 8f)
+            curveTo(19.6569f, 8f, 21f, 6.65685f, 21f, 5f)
+            curveTo(21f, 3.34315f, 19.6569f, 2f, 18f, 2f)
+            curveTo(16.3431f, 2f, 15f, 3.34315f, 15f, 5f)
+            curveTo(15f, 6.65685f, 16.3431f, 8f, 18f, 8f)
+            close()
+            moveTo(6f, 15f)
+            curveTo(7.65685f, 15f, 9f, 13.6569f, 9f, 12f)
+            curveTo(9f, 10.3431f, 7.65685f, 9f, 6f, 9f)
+            curveTo(4.34315f, 9f, 3f, 10.3431f, 3f, 12f)
+            curveTo(3f, 13.6569f, 4.34315f, 15f, 6f, 15f)
+            close()
+            moveTo(18f, 22f)
+            curveTo(19.6569f, 22f, 21f, 20.6569f, 21f, 19f)
+            curveTo(21f, 17.3431f, 19.6569f, 16f, 18f, 16f)
+            curveTo(16.3431f, 16f, 15f, 17.3431f, 15f, 19f)
+            curveTo(15f, 20.6569f, 16.3431f, 22f, 18f, 22f)
+            close()
+            moveTo(8.59f, 13.51f)
+            lineTo(15.42f, 17.49f)
+            moveTo(15.41f, 6.51f)
+            lineTo(8.59f, 10.49f)
+        }
+    }.build()
+
+    val ArrowRight = ImageVector.Builder("ArrowRight", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2.2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(5f, 12f)
+            lineTo(19f, 12f)
+            moveTo(12f, 5f)
+            lineTo(19f, 12f)
+            lineTo(12f, 19f)
+        }
+    }.build()
+
+    val Resize = ImageVector.Builder("Resize", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(15f, 3f)
+            lineTo(21f, 3f)
+            lineTo(21f, 9f)
+            moveTo(9f, 21f)
+            lineTo(3f, 21f)
+            lineTo(3f, 15f)
+            moveTo(21f, 3f)
+            lineTo(14f, 10f)
+            moveTo(3f, 21f)
+            lineTo(10f, 14f)
+        }
+    }.build()
+
+    val Calendar = ImageVector.Builder("Calendar", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(19f, 4f)
+            lineTo(5f, 4f)
+            curveTo(3.89f, 4f, 3f, 4.89f, 3f, 6f)
+            lineTo(3f, 20f)
+            curveTo(3f, 21.1f, 3.89f, 22f, 5f, 22f)
+            lineTo(19f, 22f)
+            curveTo(20.1f, 22f, 21f, 21.1f, 21f, 20f)
+            lineTo(21f, 6f)
+            curveTo(21f, 4.89f, 20.1f, 4f, 19f, 4f)
+            close()
+            moveTo(16f, 2f)
+            lineTo(16f, 6f)
+            moveTo(8f, 2f)
+            lineTo(8f, 6f)
+            moveTo(3f, 10f)
+            lineTo(21f, 10f)
+        }
+    }.build()
+
+    val Smile = ImageVector.Builder("Smile", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(12f, 22f)
+            curveTo(17.5228f, 22f, 22f, 17.5228f, 22f, 12f)
+            curveTo(22f, 6.47715f, 17.5228f, 2f, 12f, 2f)
+            curveTo(6.47715f, 2f, 2f, 6.47715f, 2f, 12f)
+            curveTo(2f, 17.5228f, 6.47715f, 22f, 12f, 22f)
+            close()
+            moveTo(8f, 14f)
+            curveTo(9f, 16f, 11f, 17f, 12f, 17f)
+            curveTo(13f, 17f, 15f, 16f, 16f, 14f)
+            moveTo(9f, 9f)
+            lineTo(9.01f, 9f)
+            moveTo(15f, 9f)
+            lineTo(15.01f, 9f)
+        }
+    }.build()
+
+    val Bolt = ImageVector.Builder("Bolt", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(13f, 2f)
+            lineTo(3f, 14f)
+            lineTo(12f, 14f)
+            lineTo(11f, 22f)
+            lineTo(21f, 10f)
+            lineTo(12f, 10f)
+            close()
+        }
+    }.build()
+
+    val Leaf = ImageVector.Builder("Leaf", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(11f, 20f)
+            curveTo(6f, 20f, 2f, 16f, 2f, 11f)
+            curveTo(2f, 6f, 6f, 2f, 11f, 2f)
+            curveTo(16f, 2f, 20f, 6f, 20f, 11f)
+            curveTo(20f, 16f, 16f, 20f, 11f, 20f)
+            close()
+            moveTo(2f, 21f)
+            lineTo(11f, 12f)
+        }
+    }.build()
 }
