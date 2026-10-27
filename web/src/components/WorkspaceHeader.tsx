@@ -229,9 +229,7 @@ export default function WorkspaceHeader({ session }: { session: Session }) {
                 }}
               >
                 {group.label}
-                <span className="nav-chevron" aria-hidden="true">
-                  ⌄
-                </span>
+                <span className="nav-chevron" aria-hidden="true" />
               </button>
               {open === group.label && (
                 <div id={`workspace-group-${index}`} className="workspace-menu">
@@ -260,9 +258,7 @@ export default function WorkspaceHeader({ session }: { session: Session }) {
               {session.identity.correo.slice(0, 1).toUpperCase()}
             </span>
             <span className="workspace-account__label">Mi cuenta</span>
-            <span className="nav-chevron" aria-hidden="true">
-              ⌄
-            </span>
+            <span className="nav-chevron" aria-hidden="true" />
           </button>
           {open === 'cuenta' && (
             <div id="workspace-account-menu" className="workspace-menu workspace-menu--account">

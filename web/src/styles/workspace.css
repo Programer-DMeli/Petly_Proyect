@@ -172,8 +172,18 @@
   position: relative;
 }
 .nav-chevron {
-  font-size: 1.1rem;
-  line-height: 1;
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: 0 0 auto;
+  border-right: 1.7px solid currentColor;
+  border-bottom: 1.7px solid currentColor;
+  transform: translateY(-0.12rem) rotate(45deg);
+  transition: transform 160ms ease;
+}
+.workspace-nav__trigger[aria-expanded='true'] .nav-chevron,
+.workspace-account__trigger[aria-expanded='true'] .nav-chevron,
+.catalog-filters[open] .nav-chevron {
+  transform: translateY(0.1rem) rotate(225deg);
 }
 .workspace-menu {
   position: absolute;
@@ -297,14 +307,16 @@
 .adoption-carousel .workspace-eyebrow {
   color: #d5eddc;
   font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 .adoption-carousel h2 {
   margin: 1rem 0;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Baloo 2', var(--font-family);
   font-size: clamp(2rem, 3.25vw, 3.4rem);
-  font-weight: 500;
-  line-height: 1.12;
-  letter-spacing: -0.035em;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
 }
 .adoption-carousel h2 em {
   display: block;
@@ -315,8 +327,9 @@
   max-width: 34rem;
   min-height: 3.25em;
   color: #e1ede7;
-  font-size: 0.94rem;
-  line-height: 1.75;
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.7;
   margin: 0 0 1.5rem;
 }
 .adoption-carousel .carousel-cta {
@@ -329,6 +342,7 @@
   color: #183a30;
   border-radius: 10px;
   padding: 0.75rem 1.2rem;
+  font-family: 'Baloo 2', var(--font-family);
   font-size: 0.86rem;
   font-weight: 800;
 }
