@@ -118,7 +118,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
-        "DJANGO_ALLOWED_ORIGINS", "http://localhost:5173"
+        "DJANGO_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
     ).split(",")
     if origin.strip()
 ]

@@ -12,16 +12,23 @@ import org.springframework.web.bind.annotation.RestController;
 import io.jsonwebtoken.Claims;
 
 @RestController
-@RequestMapping("/api/kyc/verificaciones")
+@RequestMapping("/api/kyc")
 public class VerificacionKycController {
 
     private final VerificacionKycService service;
+    private final ApiPeruDniClient apiPeruDni;
 
-    public VerificacionKycController(VerificacionKycService service) {
+    public VerificacionKycController(VerificacionKycService service, ApiPeruDniClient apiPeruDni) {
         this.service = service;
+        this.apiPeruDni = apiPeruDni;
     }
 
-    @PostMapping("/{id}/consultar")
+    @PostMapping("/dni")
+    public ResponseEntity<ApiPeruDniResult> consultarDni(@org.springframework.web.bind.annotation.RequestBody ApiPeruDniRequest request) {
+        return ResponseEntity.ok(apiPeruDni.consultar(request.dni()));
+    }
+
+    @PostMapping("/verificaciones/{id}/consultar")
     public ResponseEntity<Map<String, Object>> consultar(@PathVariable long id, Authentication authentication) {
         Claims claims = (Claims) authentication.getPrincipal();
         long adoptanteId = Long.parseLong(claims.getSubject());

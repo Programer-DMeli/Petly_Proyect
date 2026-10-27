@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import Feedback from '../../../../components/Feedback';
 import { django, errorMessage, spring } from '../../../../services/http';
 
@@ -20,6 +20,7 @@ interface VerificacionKyc {
 
 interface Page<T> { results: T[] }
 interface ReniecResult { estado: string; coincide: boolean | null; fechaConsulta: string; referencia: string }
+interface ApiPeruDniResult { dni: string; nombres: string; apellidos: string; proveedor: string }
 
 function firstRecord(payload: VerificacionKyc[] | Page<VerificacionKyc>) {
   return Array.isArray(payload) ? payload[0] : payload.results[0];
@@ -34,7 +35,9 @@ export default function VerificacionKycPage() {
   const [back, setBack] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [dniLookup, setDniLookup] = useState('');
   const [busy, setBusy] = useState(false);
+  const lastLookupDni = useRef('');
 
   const load = useCallback(async () => {
     setError('');
@@ -43,6 +46,7 @@ export default function VerificacionKycPage() {
       const item = firstRecord(data) ?? null;
       setRecord(item);
       if (item) {
+        lastLookupDni.current = item.dni;
         setDni(item.dni);
         setNombres(item.nombres);
         setApellidos(item.apellidos);
@@ -51,6 +55,35 @@ export default function VerificacionKycPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    const cleanDni = dni.trim();
+    if (!/^[0-9]{8}$/.test(cleanDni)) {
+      setDniLookup('');
+      return;
+    }
+    if ((record?.dni === cleanDni && nombres && apellidos) || lastLookupDni.current === cleanDni) return;
+
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setDniLookup('Buscando datos del DNI…');
+      try {
+        const result = await spring<ApiPeruDniResult>('/api/kyc/dni', {
+          method: 'POST', body: JSON.stringify({ dni: cleanDni }),
+        });
+        if (!active) return;
+        lastLookupDni.current = cleanDni;
+        setNombres(result.nombres);
+        setApellidos(result.apellidos);
+        setDniLookup(`Datos completados desde ${result.proveedor}. Verifícalos antes de guardar.`);
+      } catch (e) {
+        if (!active) return;
+        lastLookupDni.current = cleanDni;
+        setDniLookup(errorMessage(e));
+      }
+    }, 500);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [dni, record?.dni, nombres, apellidos]);
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,7 +119,8 @@ export default function VerificacionKycPage() {
 
   return <section className="card">
     <h1>Verificación de identidad</h1>
-    <p className="muted">Tus documentos se guardan en un espacio privado. La consulta compara los datos ingresados con el proveedor autorizado configurado por Petly.</p>
+    <p className="muted">Tus documentos se guardan en un espacio privado. Al completar los ocho dígitos del DNI, Petly buscará los nombres y apellidos para autocompletar. Verifica los datos antes de guardar.</p>
+    <p className="muted">La búsqueda de autocompletado usa ApiPeruDev y no constituye una verificación oficial de identidad. Su cobertura depende de las fuentes disponibles y puede no incluir a menores.</p>
     <Feedback error={error} success={success} />
     {record && <div className="card" aria-live="polite">
       <h2>Estado: {record.estado.replaceAll('_', ' ')}</h2>
@@ -100,7 +134,8 @@ export default function VerificacionKycPage() {
     </div>}
     {!final && !pendingReview && <form onSubmit={upload}>
       <fieldset disabled={busy}>
-        <label>DNI<input required inputMode="numeric" pattern="[0-9]{8}" maxLength={8} value={dni} onChange={e => setDni(e.target.value)} /></label>
+        <label>DNI<input required inputMode="numeric" pattern="[0-9]{8}" maxLength={8} value={dni} onChange={e => { const value = e.target.value.replace(/\D/g, '').slice(0, 8); if (value !== dni) { lastLookupDni.current = ''; setNombres(''); setApellidos(''); setDniLookup(''); } setDni(value); }} /></label>
+        {dniLookup && <p role="status" aria-live="polite">{dniLookup}</p>}
         <label>Nombres como aparecen en el DNI<input required maxLength={100} value={nombres} onChange={e => setNombres(e.target.value)} /></label>
         <label>Apellidos como aparecen en el DNI<input required maxLength={100} value={apellidos} onChange={e => setApellidos(e.target.value)} /></label>
         <label>Foto del anverso (JPG o PNG, máximo 5 MB)<input required type="file" accept="image/jpeg,image/png" onChange={e => setFront(e.target.files?.[0] ?? null)} /></label>

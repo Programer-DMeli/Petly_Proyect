@@ -1,4 +1,7 @@
 spring:
+  config:
+    # Permite usar credenciales locales desde .env, archivo ignorado por Git.
+    import: optional:file:.env[.properties]
   application:
     # Se conserva el nombre original del proyecto.
     name: petly_proyect
@@ -64,6 +67,8 @@ springdoc:
 
 petly:
   django-api-base-url: ${DJANGO_API_BASE_URL:http://localhost:8000}
+  apiperu-dni-url: ${APIPERU_DNI_URL:https://api.apiperu.dev/dni}
+  apiperu-api-token: ${APIPERU_API_TOKEN:}
   # Endpoint completo del proveedor autorizado; si falta token o URL se falla cerrado.
   reniec-api-url: ${RENIEC_API_URL:}
   reniec-api-token: ${RENIEC_API_TOKEN:}
