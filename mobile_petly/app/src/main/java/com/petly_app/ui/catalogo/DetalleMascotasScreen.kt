@@ -41,133 +41,115 @@ fun DetalleMascotaScreen(
     onBack: () -> Unit
 ) {
     val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
-    var adoptionNoticeOpen by remember { mutableStateOf(false) }
+    var showSolicitudForm by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DetailMintBackground)
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // TOP NAVIGATION HEADER
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    if (showSolicitudForm && state.mascota != null) {
+        SolicitudAdopcionScreen(
+            mascotaId = state.mascota.id,
+            mascotaNombre = state.mascota.nombre,
+            onDismiss = { showSolicitudForm = false }
+        )
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(DetailMintBackground)
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            TextButton(
-                onClick = onBack,
-                contentPadding = PaddingValues(0.dp)
+            // TOP NAVIGATION HEADER
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "❮  Volver al catálogo",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DetailDarkGreen
-                )
-            }
-
-            state.mascota?.let { pet ->
-                val isFav = favorites.any { it.id == pet.id }
-                Surface(
-                    shape = CircleShape,
-                    color = Color.White,
-                    shadowElevation = 2.dp,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clickable { FavoritosManager.toggleFavorite(pet) }
+                TextButton(
+                    onClick = onBack,
+                    contentPadding = PaddingValues(0.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = if (isFav) HomeIcons.HeartFilled else HomeIcons.HeartOutlined,
-                            contentDescription = if (isFav) "Quitar de favoritos" else "Guardar en favoritos",
-                            tint = if (isFav) Color(0xFFE53935) else DetailDarkGreen,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    Text(
+                        text = "❮  Volver al catálogo",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DetailDarkGreen
+                    )
+                }
+
+                state.mascota?.let { pet ->
+                    val isFav = favorites.any { it.id == pet.id }
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White,
+                        shadowElevation = 2.dp,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clickable { FavoritosManager.toggleFavorite(pet) }
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (isFav) HomeIcons.HeartFilled else HomeIcons.HeartOutlined,
+                                contentDescription = if (isFav) "Quitar de favoritos" else "Guardar en favoritos",
+                                tint = if (isFav) Color(0xFFE53935) else DetailDarkGreen,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        if (preview) {
-            PreviewNotice(preview = true)
-        }
+            if (preview) {
+                PreviewNotice(preview = true)
+            }
 
-        when {
-            state.loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = DetailDarkGreen)
+            when {
+                state.loading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = DetailDarkGreen)
+                    }
+                }
+                state.error != null -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(state.error, color = MaterialTheme.colorScheme.error)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(onClick = onRetry) { Text("Reintentar") }
+                    }
+                }
+                else -> state.mascota?.let { mascota ->
+                    // 1. FOTO PRINCIPAL CON BADGE
+                    PetPhotoCard(mascota = mascota)
+
+                    // 2. HEADER CARD DE LA MASCOTA
+                    PetHeaderInfoCard(mascota = mascota)
+
+                    // 3. FICHA TÉCNICA
+                    FichaTecnicaSection(mascota = mascota)
+
+                    // 4. ALBERGUE RESPONSABLE
+                    AlbergueResponsableCard(mascota = mascota)
+
+                    // 5. BANNER PROCESO SEGURO
+                    ProcesoSeguroBanner(ubicacion = mascota.ubicacion)
+
+                    // 6. BARRA ACCIÓN INFERIOR
+                    BottomActionBar(
+                        nombreMascota = mascota.nombre,
+                        onAdoptClick = { showSolicitudForm = true }
+                    )
                 }
             }
-            state.error != null -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(state.error, color = MaterialTheme.colorScheme.error)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(onClick = onRetry) { Text("Reintentar") }
-                }
-            }
-            else -> state.mascota?.let { mascota ->
-                // 1. FOTO PRINCIPAL CON BADGE
-                PetPhotoCard(mascota = mascota)
-
-                // 2. HEADER CARD DE LA MASCOTA
-                PetHeaderInfoCard(mascota = mascota)
-
-                // 3. FICHA TÉCNICA
-                FichaTecnicaSection(mascota = mascota)
-
-                // 4. ALBERGUE RESPONSABLE
-                AlbergueResponsableCard(mascota = mascota)
-
-                // 5. BANNER PROCESO SEGURO
-                ProcesoSeguroBanner(ubicacion = mascota.ubicacion)
-
-                // 6. BARRA ACCIÓN INFERIOR
-                BottomActionBar(
-                    nombreMascota = mascota.nombre,
-                    onAdoptClick = { adoptionNoticeOpen = true }
-                )
-            }
         }
-    }
-
-    if (adoptionNoticeOpen) {
-        AlertDialog(
-            onDismissRequest = { adoptionNoticeOpen = false },
-            title = {
-                Text(
-                    text = "¡Solicitud en Proceso! 🐾",
-                    fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold,
-                    color = DetailTextDark
-                )
-            },
-            text = {
-                Text(
-                    text = "Tu interés para adoptar ha sido registrado. El albergue revisará tu perfil y cuestionario para ponerse en contacto contigo.",
-                    fontSize = 14.sp,
-                    color = Color(0xFF4A6258)
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { adoptionNoticeOpen = false }) {
-                    Text("Entendido", fontWeight = FontWeight.Bold, color = DetailDarkGreen)
-                }
-            }
-        )
     }
 }
 
