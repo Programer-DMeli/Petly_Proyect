@@ -79,15 +79,16 @@ Respuesta básica, sin información sensible (versión, base de datos o rutas).
 - [`PLANNING.md`](PLANNING.md) — planificación v2 (alcance, decisiones, sprints).
 - [`docs/arquitectura.md`](docs/arquitectura.md) — componentes, integración y responsables de datos.
 - [`docs/instalacion.md`](docs/instalacion.md) — requisitos y comandos en Windows.
-- [`docs/guia-companeros-sprint-01.md`](docs/guia-companeros-sprint-01.md) — guía para reproducir el avance en Windows/Linux con cuentas y fotografías locales.
 - [`docs/acuerdos-equipo.md`](docs/acuerdos-equipo.md) — reparto y revisión cruzada.
 - [`docs/api.md`](docs/api.md) — endpoints implementados y contrato previsto.
 - [`docs/sprint-01.md`](docs/sprint-01.md) — alcance del Sprint 1 (**implementación y revisión**).
+- [`docs/sprint-01.md`](sprint-02-descripcion-originales.md) — alcance del Sprint 2 (actualmente) (**implementación y revisión**).
 - [`database/modelo-datos.md`](database/modelo-datos.md) — modelo preliminar de datos.
 
 ## Estado actual
 
 Implementación Sprint 1 en `feature/petly_proyect` (12 de octubre de 2026):
+Implementación en proceso de  Sprint 2 en main (27 de octubre de 2026):
 
 - Perfil y convivencia Android con persistencia Spring, borrador/finalización y validaciones.
 - Catálogo Spring con datos Django reales, filtros combinados, paginación, detalle, fotografía y estados.
@@ -98,7 +99,6 @@ Implementación Sprint 1 en `feature/petly_proyect` (12 de octubre de 2026):
 - Fotografías suministradas publicadas desde ALBERGUE y servidas por Django para React y Android.
 - Las historias esperan revisión cruzada y verificación en el entorno compartido del equipo.
 
-Ver [`docs/entrega-sprint-01.md`](docs/entrega-sprint-01.md) para resultados y límites, [`docs/api.md`](docs/api.md) para contratos y [`docs/sprint-01.md`](docs/sprint-01.md) para estado por historia. La implementación Android anterior se publicó en cc83ea3. Los cambios posteriores de React y correcciones permanecen locales hasta una nueva publicación solicitada.
 
 ## Reglas del repositorio
 
