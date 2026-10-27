@@ -4,14 +4,6 @@ Actualización: 15 de octubre de 2026.
 
 Objetivo del Sprint: Desplegar el algoritmo de compatibilidad (Matchmaking), los servicios de IA generativa/visión para publicaciones y el flujo central de solicitudes de adopción.
 
-Se conservan las 22 descripciones originales, responsables, revisores, colaboración y criterios de aceptación. Se corrige la capacidad: las 3 horas diarias corresponden a cada integrante. El reparto incluye trabajo compartido y revisión, sin contar una misma hora dos veces.
-
-Capacidad confirmada: 14 días de trabajo x 3 horas diarias x 3 integrantes = 126 horas-persona. Cada integrante dispone de 42 h en las dos semanas, equivalentes a 21 h por semana. Este cálculo incluye los 14 días completos, también los fines de semana.
-
-Distribución propuesta: 17 historias seleccionadas, 114 h; integración final, correcciones y entrega, 12 h. Total del alcance completo planificado para el Sprint 2: 126 h. Las otras 5 historias quedan pendientes con 0 h asignadas; no significa que su implementación no requiera esfuerzo.
-
-Tiempo Estimado (h) expresa el esfuerzo asignado al Sprint 2, sumado entre los tres integrantes. La reserva de 12 h cubre integración/regresión (6 h), correcciones (4 h) y evidencia/demostración (2 h). US-09, US-30, US-49, US-22 y US-23 permanecen aplazadas. US-29 exige disponer del proveedor IA antes de iniciar.
-
 ## Cuadro de planificación
 
 | Historia | Responsable principal | Revisor | Colaboración necesaria entre los tres integrantes | Tiempo Estimado (h) |
@@ -202,10 +194,3 @@ Las horas de cada fila suman el tiempo asignado de esa historia. No son estimaci
 - Los horarios persisten y se recuperan al volver al perfil; se identifica la zona horaria America/Lima y se distinguen de las horas fuera de casa.
 - Solo el titular modifica los horarios; el albergue los consulta únicamente con permiso vigente. Un formulario inválido no reemplaza la disponibilidad guardada.
 
-## Criterios comunes y dependencias
-
-La estimación técnica previa de las 22 historias se conserva en 198 h. El total de 126 h corresponde al trabajo planificado para estas dos semanas: 114 h en historias y 12 h de reserva. Las 5 historias aplazadas suman 84 h estimadas. Se conservan descripciones y criterios; una historia solo se cierra con integración, pruebas y revisión.
-
-Tiempo Estimado (h) expresa el esfuerzo asignado al Sprint 2, sumado entre los tres integrantes. La reserva de 12 h cubre integración/regresión (6 h), correcciones (4 h) y evidencia/demostración (2 h). US-09, US-30, US-49, US-22 y US-23 permanecen aplazadas. US-29 exige disponer del proveedor IA antes de iniciar.
-
-US-01 precede a US-02, US-03, US-04 y US-05. US-06 precede a US-07, US-08, US-10, fotos US-19 e historial de solicitudes US-18. US-09 parte de solicitud aprobada; US-23 comparte estados con US-22. La carga existente de US-15 se verifica sin reconstruirla.
