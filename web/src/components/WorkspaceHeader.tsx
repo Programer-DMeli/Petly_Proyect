@@ -10,6 +10,11 @@ const groups: Record<string, Group[]> = {
       label: 'Mi adopción',
       items: [
         {
+          label: 'Enviar solicitud de adopción',
+          to: '/adoptante/catalogo',
+          description: 'Elige una mascota disponible y completa tu solicitud.',
+        },
+        {
           label: 'Mis solicitudes',
           to: '/adoptante/solicitudes',
           description: 'Consulta el estado de cada encuentro.',
