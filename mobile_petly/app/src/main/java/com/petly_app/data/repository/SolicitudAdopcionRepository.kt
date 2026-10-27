@@ -20,6 +20,10 @@ object SolicitudAdopcionManager {
         draftMap[draft.mascotaId] = draft
     }
 
+    fun isSolicitudEnviada(mascotaId: Long): Boolean {
+        return _submitted.value.any { it.mascotaId == mascotaId && it.finalizado } || draftMap[mascotaId]?.finalizado == true
+    }
+
     suspend fun enviarSolicitud(draft: SolicitudAdopcionDraft): Map<String, String> {
         delay(300)
         val errors = SolicitudAdopcionValidation.validate(draft, enviar = true)

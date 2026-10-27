@@ -319,13 +319,11 @@ private fun CategorySelectionSection(onCategorySelect: (String) -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        imageVector = HomeIcons.Dog,
-                        contentDescription = "Perros",
-                        tint = Color.White,
-                        modifier = Modifier.size(36.dp)
+                    Text(
+                        text = "🐶",
+                        fontSize = 44.sp
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Perros",
                         fontSize = 18.sp,
@@ -350,13 +348,11 @@ private fun CategorySelectionSection(onCategorySelect: (String) -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        imageVector = HomeIcons.Cat,
-                        contentDescription = "Gatos",
-                        tint = PetlyDarkGreen,
-                        modifier = Modifier.size(36.dp)
+                    Text(
+                        text = "🐱",
+                        fontSize = 44.sp
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Gatos",
                         fontSize = 18.sp,
@@ -431,7 +427,7 @@ private fun AlbergueDelMesCard(onVerAlbergue: () -> Unit) {
                         .clip(RoundedCornerShape(20.dp))
                 ) {
                     AsyncImage(
-                        model = "https://images.unsplash.com/photo-1548767797-d8c844163c4c?q=80&w=1000",
+                        model = "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?q=80&w=1000",
                         contentDescription = "Fotografía de Refugio Patitas Felices",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
@@ -455,7 +451,7 @@ private fun AlbergueDelMesCard(onVerAlbergue: () -> Unit) {
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = "Guadalajara",
+                                text = "San Juan de Miraflores",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color.White

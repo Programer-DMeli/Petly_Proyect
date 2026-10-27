@@ -434,7 +434,7 @@ private fun ProfileMenuOptionsCard(
                 icon = HomeIcons.Clock,
                 iconBg = Color(0xFF8DE2BA),
                 iconTint = ProfileDarkGreen,
-                title = "Horarios de Disponibilidad (US-20)",
+                title = "Horarios de Disponibilidad",
                 titleColor = ProfileTextDark,
                 onClick = onOpenDisponibilidad
             )

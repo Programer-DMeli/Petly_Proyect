@@ -128,7 +128,7 @@ fun SolicitudAdopcionScreen(
                                 isVerifyingDni = true
                                 draft = draft.copy(dniVerificado = true)
                                 isVerifyingDni = false
-                                statusMessage = "✔ DNI verificado con RENIEC en Spring Boot."
+                                statusMessage = "✔ DNI verificado."
                             } else {
                                 errors = errors + ("dni" to "El DNI debe tener exactamente 8 dígitos.")
                             }
@@ -153,7 +153,7 @@ fun SolicitudAdopcionScreen(
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Icon(HomeIcons.Check, contentDescription = null, tint = Color(0xFF126858), modifier = Modifier.size(14.dp))
-                            Text("✔ DNI verificado con RENIEC (Spring Boot)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF126858))
+                            Text("✔ DNI verificado", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF126858))
                         }
                     }
                 }

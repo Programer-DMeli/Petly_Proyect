@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.petly_app.data.model.Mascota
 import com.petly_app.data.repository.FavoritosManager
+import com.petly_app.data.repository.SolicitudAdopcionManager
 import com.petly_app.ui.common.PreviewNotice
 import com.petly_app.ui.screen.HomeIcons
 
@@ -41,13 +42,31 @@ fun DetalleMascotaScreen(
     onBack: () -> Unit
 ) {
     val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
+    val submittedRequests by SolicitudAdopcionManager.submitted.collectAsStateWithLifecycle()
     var showSolicitudForm by remember { mutableStateOf(false) }
+
+    val isSolicitudEnviada = remember(state.mascota, submittedRequests) {
+        state.mascota != null && (
+            SolicitudAdopcionManager.isSolicitudEnviada(state.mascota.id) ||
+            submittedRequests.any { it.mascotaId == state.mascota.id && it.finalizado } ||
+            state.mascota.estado.equals("En proceso", ignoreCase = true)
+        )
+    }
+
+    val mascotaActualizada = remember(state.mascota, isSolicitudEnviada) {
+        if (isSolicitudEnviada && state.mascota != null) {
+            state.mascota.copy(estado = "En proceso")
+        } else {
+            state.mascota
+        }
+    }
 
     if (showSolicitudForm && state.mascota != null) {
         SolicitudAdopcionScreen(
             mascotaId = state.mascota.id,
             mascotaNombre = state.mascota.nombre,
-            onDismiss = { showSolicitudForm = false }
+            onDismiss = { showSolicitudForm = false },
+            onSubmittedSuccess = { showSolicitudForm = false }
         )
     } else {
         Column(
@@ -77,7 +96,7 @@ fun DetalleMascotaScreen(
                     )
                 }
 
-                state.mascota?.let { pet ->
+                mascotaActualizada?.let { pet ->
                     val isFav = favorites.any { it.id == pet.id }
                     Surface(
                         shape = CircleShape,
@@ -126,7 +145,7 @@ fun DetalleMascotaScreen(
                         OutlinedButton(onClick = onRetry) { Text("Reintentar") }
                     }
                 }
-                else -> state.mascota?.let { mascota ->
+                else -> mascotaActualizada?.let { mascota ->
                     // 1. FOTO PRINCIPAL CON BADGE
                     PetPhotoCard(mascota = mascota)
 
@@ -145,6 +164,7 @@ fun DetalleMascotaScreen(
                     // 6. BARRA ACCIÓN INFERIOR
                     BottomActionBar(
                         nombreMascota = mascota.nombre,
+                        solicitudEnviada = isSolicitudEnviada,
                         onAdoptClick = { showSolicitudForm = true }
                     )
                 }
@@ -174,10 +194,16 @@ private fun PetPhotoCard(mascota: Mascota) {
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Badge Disponible en foto superior izquierda
+            val (badgeBg, badgeText) = when (mascota.estado.lowercase()) {
+                "en proceso" -> Color(0xFF2E6C58) to "En proceso de adopción"
+                "adoptado" -> Color(0xFFF7BD61) to "Adoptado"
+                else -> DetailDarkGreen to "Disponible para adopción"
+            }
+
+            // Badge en foto superior izquierda
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = DetailDarkGreen,
+                color = badgeBg,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(12.dp)
@@ -193,7 +219,7 @@ private fun PetPhotoCard(mascota: Mascota) {
                             .background(Color(0xFF8DE2BA), CircleShape)
                     )
                     Text(
-                        text = "Disponible para adopción",
+                        text = badgeText,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -542,6 +568,7 @@ private fun ProcesoSeguroBanner(ubicacion: String) {
 @Composable
 private fun BottomActionBar(
     nombreMascota: String,
+    solicitudEnviada: Boolean,
     onAdoptClick: () -> Unit
 ) {
     Row(
@@ -568,29 +595,62 @@ private fun BottomActionBar(
             }
         }
 
-        // CTA Button
-        Button(
-            onClick = onAdoptClick,
-            shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(containerColor = DetailDarkGreen),
-            modifier = Modifier
-                .weight(1f)
-                .height(52.dp)
-                .semantics { contentDescription = "Quiero Adoptar a $nombreMascota" }
-        ) {
-            Text(
-                text = "Quiero Adoptar a $nombreMascota",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = HomeIcons.ArrowRight,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(18.dp)
-            )
+        if (solicitudEnviada) {
+            Surface(
+                shape = CircleShape,
+                color = DetailMintPill,
+                shadowElevation = 1.dp,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = HomeIcons.Check,
+                        contentDescription = null,
+                        tint = DetailDarkGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Solicitud Enviada",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DetailDarkGreen
+                    )
+                }
+            }
+        } else {
+            // CTA Button
+            Button(
+                onClick = onAdoptClick,
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(containerColor = DetailDarkGreen),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp)
+                    .semantics { contentDescription = "Quiero Adoptar a $nombreMascota" }
+            ) {
+                Text(
+                    text = "Quiero Adoptar a $nombreMascota",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = HomeIcons.ArrowRight,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }

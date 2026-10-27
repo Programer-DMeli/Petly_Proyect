@@ -16,6 +16,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -195,14 +196,19 @@ fun DisponibilidadScreen(
                     OutlinedTextField(
                         value = horaInicio,
                         onValueChange = { horaInicio = it },
-                        label = { Text("Hora inicio") },
-                        placeholder = { Text("09:00") },
+                        label = { Text("Hora inicio", color = Color(0xFF4A6258)) },
+                        placeholder = { Text("09:00", color = Color(0xFF81938A)) },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                        textStyle = TextStyle(color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Medium),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
                             focusedBorderColor = Color(0xFF13614B),
-                            focusedLabelColor = Color(0xFF13614B)
+                            unfocusedBorderColor = Color(0xFFBCCEC5),
+                            focusedLabelColor = Color(0xFF13614B),
+                            unfocusedLabelColor = Color(0xFF4A6258)
                         ),
                         modifier = Modifier.weight(1f)
                     )
@@ -210,14 +216,19 @@ fun DisponibilidadScreen(
                     OutlinedTextField(
                         value = horaFin,
                         onValueChange = { horaFin = it },
-                        label = { Text("Hora fin") },
-                        placeholder = { Text("12:00") },
+                        label = { Text("Hora fin", color = Color(0xFF4A6258)) },
+                        placeholder = { Text("12:00", color = Color(0xFF81938A)) },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                        textStyle = TextStyle(color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Medium),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
                             focusedBorderColor = Color(0xFF13614B),
-                            focusedLabelColor = Color(0xFF13614B)
+                            unfocusedBorderColor = Color(0xFFBCCEC5),
+                            focusedLabelColor = Color(0xFF13614B),
+                            unfocusedLabelColor = Color(0xFF4A6258)
                         ),
                         modifier = Modifier.weight(1f)
                     )
@@ -226,13 +237,19 @@ fun DisponibilidadScreen(
                 OutlinedTextField(
                     value = descripcion,
                     onValueChange = { descripcion = it },
-                    label = { Text("Notas / Detalle opcional") },
-                    placeholder = { Text("Ej. Entrevistas virtuales o visitas en casa") },
+                    label = { Text("Notas / Detalle opcional", color = Color(0xFF4A6258)) },
+                    placeholder = { Text("Ej. Entrevistas virtuales o visitas en casa", color = Color(0xFF81938A)) },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    textStyle = TextStyle(color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Medium),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
                         focusedBorderColor = Color(0xFF13614B),
-                        focusedLabelColor = Color(0xFF13614B)
+                        unfocusedBorderColor = Color(0xFFBCCEC5),
+                        focusedLabelColor = Color(0xFF13614B),
+                        unfocusedLabelColor = Color(0xFF4A6258)
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
