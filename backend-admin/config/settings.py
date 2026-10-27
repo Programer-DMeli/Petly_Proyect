@@ -128,15 +128,18 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 # Email para recuperación de contraseña (US-24)
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@petly.local")
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.filebased.EmailBackend")
 EMAIL_FILE_PATH = os.getenv("EMAIL_FILE_PATH", BASE_DIR / "emails")
-
-# SMTP (descomentar y configurar en producción)
-# EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-# EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
-# EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
-# EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-# EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").strip().lower() in {"1", "true", "yes"}
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.smtp.EmailBackend"
+    if EMAIL_HOST and EMAIL_HOST_USER and EMAIL_HOST_PASSWORD
+    else "django.core.mail.backends.filebased.EmailBackend",
+)
 
 # --- DRF ---
 REST_FRAMEWORK = {
@@ -152,6 +155,7 @@ REST_FRAMEWORK = {
         "anon": "20/min",
         "user": "100/min",
         "auth": "2/min",  # Base rate; custom AuthThrottle handles 5-min window
+        "contract_approval": "5/hour",
     },
     # Paginación global (US-12): preserva query params en next/previous
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
@@ -167,15 +171,16 @@ SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "test-secret-key-for-developm
 # US-03: secreto de servicio para el feed de datos vigentes de mascotas.
 PET_COMPATIBILITY_SERVICE_TOKEN = os.getenv("PET_COMPATIBILITY_SERVICE_TOKEN", "")
 
-# US-09: proveedor REST de firma electrónica (el proveedor concreto se configura por entorno).
+# US-09: aprobación por código de correo o proveedor de firma REST configurable por entorno.
 CONTRACT_SIGNATURE_API_URL = os.getenv("CONTRACT_SIGNATURE_API_URL", "")
 CONTRACT_SIGNATURE_API_TOKEN = os.getenv("CONTRACT_SIGNATURE_API_TOKEN", "")
 CONTRACT_SIGNATURE_WEBHOOK_SECRET = os.getenv("CONTRACT_SIGNATURE_WEBHOOK_SECRET", "")
 CONTRACT_SIGNATURE_TIMEOUT_SECONDS = int(os.getenv("CONTRACT_SIGNATURE_TIMEOUT_SECONDS", "10"))
-CONTRACT_SIGNATURE_PROVIDER = os.getenv("CONTRACT_SIGNATURE_PROVIDER", "generic-rest")
+CONTRACT_SIGNATURE_PROVIDER = os.getenv("CONTRACT_SIGNATURE_PROVIDER", "email-approval")
 CONTRACT_SIGNATURE_ADAPTER_CLASS = os.getenv(
-    "CONTRACT_SIGNATURE_ADAPTER_CLASS", "apps.contratos.providers.ProveedorFirmaREST"
+    "CONTRACT_SIGNATURE_ADAPTER_CLASS", "apps.contratos.providers.ProveedorAprobacionCorreo"
 )
+CONTRACT_APPROVAL_TOKEN_TTL_MINUTES = max(5, int(os.getenv("CONTRACT_APPROVAL_TOKEN_TTL_MINUTES", "15")))
 ADOPTION_CONTRACT_TERMS = os.getenv("ADOPTION_CONTRACT_TERMS", "")
 ADOPTION_CONTRACT_TERMS_VERSION = os.getenv("ADOPTION_CONTRACT_TERMS_VERSION", "")
 ADOPTION_CONTRACT_TERMS_APPROVED_BY = os.getenv("ADOPTION_CONTRACT_TERMS_APPROVED_BY", "")

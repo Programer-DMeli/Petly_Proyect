@@ -60,6 +60,14 @@ export interface ContratoAdopcion {
   documento_disponible: boolean;
   generado_en: string;
   firmado_en: string | null;
+  aprobado_en?: string | null;
+  aprobacion_correo?: {
+    correo: string;
+    estado: string;
+    expira_en: string;
+    intentos_fallidos: number;
+  } | null;
+  proveedor?: string;
   error_integracion: string;
 }
 

@@ -37,11 +37,11 @@ Desde el panel del albergue propietario, React prepara una vista previa descarga
 
 ## Contrato firmado (US-09)
 
-La aplicación genera un borrador inmutable con adoptante, mascota, albergue y términos configurados. El proveedor se conecta con un adaptador REST reemplazable. El contrato API esperado es `POST CONTRACT_SIGNATURE_API_URL` con HTML y hash del documento, ambos firmantes, política `all_signers`, URL de webhook y clave idempotente; responde `id`, `signingUrl` y estado. El proveedor debe reportar `signed` únicamente después de ambas firmas y firmar el webhook HMAC con `CONTRACT_SIGNATURE_WEBHOOK_SECRET`. El PDF firmado se recupera desde `{CONTRACT_SIGNATURE_API_URL}/{document_id}/download` y se guarda fuera de `MEDIA_ROOT`; solo adoptante y albergue involucrados pueden descargarlo.
+La aplicación genera un borrador inmutable con adoptante, mascota, albergue y términos aprobados. El flujo local predeterminado envía al correo del adoptante un código aleatorio de un uso, válido por 15 minutos. Después de revisar el contrato, el adoptante comparte el código con el albergue y el albergue propietario lo registra desde su sesión autenticada. Se limita a cinco intentos, se persiste solo el HMAC del código y se audita quién lo registró. La constancia de aprobación queda descargable por las partes autorizadas. El correo y la constancia explican que el código registra consentimiento por correo en Petly y no es una firma digital certificada ni verifica identidad.
 
-La entrega física es una acción explícita del albergue en `/api/contratos/solicitudes/{id}/entrega/`. Solo después de las dos firmas y con PDF descargado cambia la solicitud a `ENTREGADA` y la mascota a `ADOPTADO`. Reintentos usan una clave idempotente; rechazo y expiración del proveedor no finalizan la adopción.
+La entrega física es una acción explícita del albergue en `/api/contratos/solicitudes/{id}/entrega/`. Solo después de registrar la aprobación del contrato cambia la solicitud a `ENTREGADA` y la mascota a `ADOPTADO`. El proveedor REST alternativo continúa disponible con `CONTRACT_SIGNATURE_PROVIDER=generic-rest`; requiere URL, credenciales, webhook público y acceso público a la API.
 
-Para activar esta integración aún hay que acordar y configurar el proveedor concreto, sus credenciales, webhook público y términos aprobados por el equipo. El adaptador ya implementa el protocolo REST anterior; proveedores con otro contrato requieren adaptar `apps/contratos/providers.py`. Sin esa configuración, la app guarda el borrador y responde con un error explícito; no simula firmas.
+En ambos modos es obligatorio configurar en el entorno los términos, versión y responsable aprobados por el equipo; la aplicación rechaza el envío si faltan esos datos. En desarrollo los correos se guardan en `backend-admin/emails`; para entregar códigos a bandejas reales hay que configurar SMTP.
 
 ## Borrador desde foto (US-29)
 

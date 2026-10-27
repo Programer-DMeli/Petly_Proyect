@@ -27,7 +27,8 @@ export default function SolicitudesAdoptantePage() {
   }, []);
   useEffect(() => { void load(); }, [load, refresh]);
   async function downloadContract(contract: ContratoAdopcion) {
-    try { await downloadDjango(`/api/contratos/${contract.public_id}/descargar/`, `contrato-adopcion-${contract.solicitud_id}.pdf`); }
+    const extension = contract.proveedor === 'email-approval' ? 'html' : 'pdf';
+    try { await downloadDjango(`/api/contratos/${contract.public_id}/descargar/`, `contrato-adopcion-${contract.solicitud_id}.${extension}`); }
     catch (e) { setError(errorMessage(e)); }
   }
   async function cancelRequest(item: SolicitudAdopcion) {
@@ -62,7 +63,9 @@ export default function SolicitudesAdoptantePage() {
         {contracts.filter(contract => contract.solicitud_id === item.id).map(contract => <div key={contract.public_id}>
           <p>Contrato: {contract.estado_display}</p>
           {contract.url_firma && <a href={contract.url_firma} target="_blank" rel="noreferrer">Abrir firma electrónica</a>}
-          {contract.documento_disponible && <button className="secondary" onClick={() => void downloadContract(contract)}>Descargar contrato firmado</button>}
+          {contract.documento_disponible && <button className="secondary" onClick={() => void downloadContract(contract)}>
+            {contract.proveedor === 'email-approval' ? 'Descargar constancia de aprobación' : 'Descargar contrato firmado'}
+          </button>}
         </div>)}
         <Link className="button" to={`/adoptante/solicitudes/${item.id}`}>Ver seguimiento</Link>
       </article>)}

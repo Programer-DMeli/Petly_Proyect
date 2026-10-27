@@ -1,11 +1,19 @@
 """Adaptador REST neutro; se puede sustituir por un proveedor con otro contrato API."""
 import json
 import ipaddress
+import hashlib
+import hmac
+import secrets
+from datetime import timedelta
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.db import transaction
+from django.utils import timezone
+from django.utils.html import escape, strip_tags
 from django.utils.module_loading import import_string
 
 
@@ -130,6 +138,76 @@ class ProveedorFirmaREST:
         if len(data) > 20 * 1024 * 1024 or not data.startswith(b"%PDF-"):
             raise ErrorProveedorFirma("El proveedor no devolvió un PDF firmado válido.")
         return data
+
+
+class ProveedorAprobacionCorreo:
+    """Envía un código de un solo uso al adoptante para que lo entregue al albergue."""
+
+    def enviar(self, contrato, callback_url=""):
+        from .models import AprobacionContratoCorreo, ContratoAdopcion
+        adoptante_correo = (contrato.snapshot.get("adoptanteCorreo") or "").strip()
+        if not adoptante_correo:
+            raise ErrorProveedorFirma("El adoptante no tiene un correo registrado para recibir el código.")
+
+        codigo = f"{secrets.randbelow(100_000_000):08d}"
+        digest = hmac.new(
+            settings.SECRET_KEY.encode("utf-8"),
+            f"{contrato.public_id}:{codigo}".encode("ascii"),
+            hashlib.sha256,
+        ).hexdigest()
+        expiration = timezone.now() + timedelta(minutes=settings.CONTRACT_APPROVAL_TOKEN_TTL_MINUTES)
+        with transaction.atomic():
+            locked = ContratoAdopcion.objects.select_for_update().get(pk=contrato.pk)
+            AprobacionContratoCorreo.objects.update_or_create(
+                contrato=locked,
+                defaults={
+                    "correo": adoptante_correo,
+                    "estado": AprobacionContratoCorreo.Estado.PENDIENTE,
+                    "token_sha256": digest,
+                    "contenido_sha256": locked.contenido_sha256,
+                    "expira_en": expiration,
+                    "consumido_en": None,
+                    "intentos_fallidos": 0,
+                    "aprobado_por_albergue": None,
+                    "direccion_ip": None,
+                    "agente_usuario": "",
+                },
+            )
+            locked.expira_en = expiration
+            locked.save(update_fields=["expira_en", "actualizado_en"])
+
+        minutes = settings.CONTRACT_APPROVAL_TOKEN_TTL_MINUTES
+        subject = f"Código para aprobar el contrato de adopción {contrato.snapshot['contratoNumero']}"
+        body = (
+            f"Hola {contrato.snapshot.get('adoptanteNombre', 'adoptante')},\n\n"
+            f"Tu código de aprobación es: {codigo}\n\n"
+            f"Vence en {minutes} minutos y solo se puede usar una vez. Comparte el código con el albergue "
+            "cuando hayas revisado y aceptado el contrato. El albergue lo ingresará desde su cuenta Petly.\n\n"
+            "Este código confirma el acceso a tu correo y registra tu aprobación del contrato en Petly; "
+            "no es una firma digital certificada ni verifica tu identidad.\n\n"
+            f"Contrato: {contrato.snapshot['contratoNumero']}\n\n{strip_tags(contrato.contenido_html)}"
+        )
+        try:
+            message = EmailMultiAlternatives(
+                subject=subject, body=body, from_email=settings.DEFAULT_FROM_EMAIL, to=[adoptante_correo]
+            )
+            message.attach_alternative(
+                f"<p>Hola {escape(contrato.snapshot.get('adoptanteNombre', 'adoptante'))},</p>"
+                f"<p>Tu código de aprobación es <strong>{codigo}</strong>. Vence en {minutes} minutos y solo se usa una vez.</p>"
+                "<p>Después de revisar y aceptar el contrato, comparte el código con el albergue para que lo registre en Petly.</p>"
+                "<p>Este código registra una aprobación por correo; no es una firma digital certificada.</p>"
+                f"<hr>{contrato.contenido_html}",
+                "text/html",
+            )
+            message.send(fail_silently=False)
+        except Exception as exc:
+            raise ErrorProveedorFirma("No se pudo enviar el código al correo del adoptante.") from exc
+
+        return {
+            "id": f"email-approval:{contrato.public_id}:{contrato.contenido_sha256[:12]}",
+            "url": "",
+            "status": "sent",
+        }
 
 
 def obtener_adaptador_firma():

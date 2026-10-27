@@ -490,6 +490,7 @@ class SolicitudEvento(models.Model):
         CONTRATO_GENERADO = "CONTRATO_GENERADO", "Contrato generado"
         CONTRATO_ENVIADO = "CONTRATO_ENVIADO", "Contrato enviado a firma"
         CONTRATO_FIRMADO = "CONTRATO_FIRMADO", "Contrato firmado"
+        CONTRATO_APROBADO_CORREO = "CONTRATO_APROBADO_CORREO", "Contrato aprobado por correo"
         CONTRATO_RECHAZADO = "CONTRATO_RECHAZADO", "Contrato rechazado"
         CONTRATO_EXPIRADO = "CONTRATO_EXPIRADO", "Contrato expirado"
         ENTREGADA = "ENTREGADA", "Mascota entregada"

@@ -318,6 +318,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             SolicitudEvento.Tipo.CONTRATO_GENERADO: "contratoGenerado",
             SolicitudEvento.Tipo.CONTRATO_ENVIADO: "contratoEnviadoAFirma",
             SolicitudEvento.Tipo.CONTRATO_FIRMADO: "contratoFirmado",
+            SolicitudEvento.Tipo.CONTRATO_APROBADO_CORREO: "contratoFirmado",
             SolicitudEvento.Tipo.CONTRATO_EXPIRADO: "contratoExpirado",
             SolicitudEvento.Tipo.ENTREGADA: "entregada",
         }

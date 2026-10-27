@@ -55,7 +55,10 @@ public class VerificacionKycService {
             throw new ApiException(503, "No se pudo consultar RENIEC. La identidad permanece pendiente.");
         }
 
-        String estado = resultado.coincide()
+        // ApiPeruDev uses public sources and is not an official RENIEC identity check.
+        // Keep its matches for a human review instead of marking identity as verified.
+        boolean fuenteNoOficial = "ApiPeruDev".equalsIgnoreCase(reniec.getProvider());
+        String estado = resultado.coincide() && !fuenteNoOficial
                 ? "VERIFICADO"
                 : "PENDIENTE_REVISION";
         int actualizados = jdbc.update(

@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from apps.acceso.models import SolicitudAdopcion, SolicitudEvento
-from .models import ContratoAdopcion, EventoWebhookFirma
+from .models import AprobacionContratoCorreo, ContratoAdopcion, EventoWebhookFirma
 from .providers import ErrorProveedorFirma, obtener_adaptador_firma, obtener_callback_firma
 
 
@@ -99,14 +99,32 @@ def enviar_a_firma(contrato_id):
         raise TerminosContratoNoConfigurados(
             "Configura los términos, su versión y aprobador, y marca su aprobación antes de solicitar firmas."
         )
-    callback_url = obtener_callback_firma()
+    callback_url = "" if settings.CONTRACT_SIGNATURE_PROVIDER == "email-approval" else obtener_callback_firma()
     with transaction.atomic():
         contrato = ContratoAdopcion.objects.select_for_update().select_related(
             "solicitud__adoptante", "solicitud__postulante", "solicitud__albergue__usuario"
         ).get(pk=contrato_id)
-        if contrato.estado in (ContratoAdopcion.Estado.EN_FIRMA, ContratoAdopcion.Estado.FIRMADO):
+        if contrato.estado in (ContratoAdopcion.Estado.FIRMADO, ContratoAdopcion.Estado.APROBADO):
             return contrato
-        if contrato.estado in (ContratoAdopcion.Estado.RECHAZADO, ContratoAdopcion.Estado.EXPIRADO):
+        if contrato.estado == ContratoAdopcion.Estado.EN_FIRMA:
+            if settings.CONTRACT_SIGNATURE_PROVIDER != "email-approval":
+                return contrato
+            aprobacion = AprobacionContratoCorreo.objects.select_for_update().filter(contrato=contrato).first()
+            codigo_vigente = (
+                aprobacion is not None
+                and aprobacion.estado == AprobacionContratoCorreo.Estado.PENDIENTE
+                and aprobacion.expira_en > timezone.now()
+            )
+            if codigo_vigente:
+                return contrato
+            if aprobacion and aprobacion.estado == AprobacionContratoCorreo.Estado.PENDIENTE:
+                aprobacion.estado = AprobacionContratoCorreo.Estado.EXPIRADO
+                aprobacion.save(update_fields=["estado"])
+            contrato.estado = ContratoAdopcion.Estado.EXPIRADO
+            contrato.save(update_fields=["estado", "actualizado_en"])
+        if contrato.estado == ContratoAdopcion.Estado.EXPIRADO and settings.CONTRACT_SIGNATURE_PROVIDER == "email-approval":
+            pass  # El albergue puede reenviar tras vencer; el adaptador genera un código nuevo.
+        elif contrato.estado in (ContratoAdopcion.Estado.RECHAZADO, ContratoAdopcion.Estado.EXPIRADO):
             raise ValidationError("El contrato terminó en el proveedor y no admite reenvío.")
         if (
             contrato.snapshot.get("terminos") != terminos_configurados
@@ -157,7 +175,13 @@ def enviar_a_firma(contrato_id):
         contrato.url_firma = resultado["url"]
         contrato.enviado_en = contrato.enviado_en or timezone.now()
         contrato.error_integracion = ""
-        if contrato.estado != ContratoAdopcion.Estado.FIRMADO:
+        if (
+            settings.CONTRACT_SIGNATURE_PROVIDER != "email-approval"
+            and contrato.estado != ContratoAdopcion.Estado.FIRMADO
+        ) or (
+            settings.CONTRACT_SIGNATURE_PROVIDER == "email-approval"
+            and contrato.estado == ContratoAdopcion.Estado.PENDIENTE_FIRMA
+        ):
             contrato.estado = ContratoAdopcion.Estado.EN_FIRMA
         contrato.save(update_fields=[
             "proveedor", "proveedor_documento_id", "url_firma", "enviado_en",
@@ -168,7 +192,11 @@ def enviar_a_firma(contrato_id):
             tipo=SolicitudEvento.Tipo.CONTRATO_ENVIADO,
             defaults={
                 "estado_nuevo": contrato.solicitud.estado,
-                "descripcion": "Contrato enviado al proveedor de firma.",
+                "descripcion": (
+                    "Se envió un código de aprobación al correo del adoptante."
+                    if settings.CONTRACT_SIGNATURE_PROVIDER == "email-approval"
+                    else "Contrato enviado al proveedor de firma."
+                ),
                 "actor": contrato.creado_por,
             },
         )

@@ -14,6 +14,7 @@ class ContratoAdopcion(models.Model):
         PENDIENTE_FIRMA = "PENDIENTE_FIRMA", "Pendiente de envío"
         EN_FIRMA = "EN_FIRMA", "En firma"
         FIRMADO = "FIRMADO", "Firmado"
+        APROBADO = "APROBADO", "Aprobado por correo"
         RECHAZADO = "RECHAZADO", "Rechazado"
         EXPIRADO = "EXPIRADO", "Expirado"
         ERROR = "ERROR", "Error de integración"
@@ -41,6 +42,7 @@ class ContratoAdopcion(models.Model):
     generado_en = models.DateTimeField(auto_now_add=True)
     enviado_en = models.DateTimeField(null=True, blank=True)
     firmado_en = models.DateTimeField(null=True, blank=True)
+    aprobado_en = models.DateTimeField(null=True, blank=True)
     expira_en = models.DateTimeField(null=True, blank=True)
     error_integracion = models.CharField(max_length=500, blank=True)
     creado_en = models.DateTimeField(auto_now_add=True)
@@ -52,6 +54,40 @@ class ContratoAdopcion(models.Model):
 
     def __str__(self):
         return f"Contrato {self.public_id} · solicitud {self.solicitud_id} · {self.get_estado_display()}"
+
+
+class AprobacionContratoCorreo(models.Model):
+    """Código enviado al adoptante y canjeado por el albergue propietario."""
+
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        CONSUMIDO = "CONSUMIDO", "Consumido"
+        EXPIRADO = "EXPIRADO", "Expirado"
+        INVALIDADO = "INVALIDADO", "Invalidado"
+
+    contrato = models.OneToOneField(
+        ContratoAdopcion, on_delete=models.CASCADE, related_name="aprobacion_correo"
+    )
+    correo = models.EmailField(max_length=254)
+    estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PENDIENTE)
+    token_sha256 = models.CharField(max_length=64, unique=True, db_index=True)
+    contenido_sha256 = models.CharField(max_length=64)
+    expira_en = models.DateTimeField(db_index=True)
+    consumido_en = models.DateTimeField(null=True, blank=True)
+    intentos_fallidos = models.PositiveSmallIntegerField(default=0)
+    aprobado_por_albergue = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="aprobaciones_contrato_por_codigo",
+    )
+    direccion_ip = models.GenericIPAddressField(null=True, blank=True)
+    agente_usuario = models.CharField(max_length=500, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["contrato_id"]
+
+    def __str__(self):
+        return f"Aprobación por correo · contrato {self.contrato_id} · {self.estado}"
 
 
 class EventoWebhookFirma(models.Model):

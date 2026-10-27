@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Constancia de aprobación {{ contrato.snapshot.contratoNumero }}</title></head>
+  <body>
+    <h1>Constancia de aprobación por código enviado al correo</h1>
+    <p>Esta constancia registra en Petly el uso del código enviado al correo del adoptante. No constituye una firma digital certificada ni verifica la identidad de quien recibió el código.</p>
+    <p><strong>Contrato:</strong> {{ contrato.snapshot.contratoNumero }}</p>
+    <p><strong>Solicitud:</strong> {{ contrato.solicitud_id }}</p>
+    <p><strong>Versión aprobada (SHA-256):</strong> {{ contrato.contenido_sha256 }}</p>
+    <p><strong>Correo del adoptante:</strong> {{ aprobacion.correo }}</p>
+    <p><strong>Albergue que registró el código:</strong> {{ aprobacion.aprobado_por_albergue.get_full_name|default:aprobacion.aprobado_por_albergue.username }}</p>
+    <p><strong>Aprobado el:</strong> {{ aprobacion.consumido_en|date:"d/m/Y H:i T" }}</p>
+    <hr>
+    {{ contrato.contenido_html|safe }}
+  </body>
+</html>
