@@ -112,7 +112,7 @@ export default function CatalogoPage() {
               <span>
                 <span aria-hidden="true">☷</span> Filtrar mascotas
               </span>
-              <span aria-hidden="true">⌄</span>
+              <span className="nav-chevron" aria-hidden="true" />
             </summary>
             <form
               onSubmit={e => {

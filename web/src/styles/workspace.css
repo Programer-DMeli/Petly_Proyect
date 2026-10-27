@@ -181,7 +181,8 @@
   transition: transform 160ms ease;
 }
 .workspace-nav__trigger[aria-expanded='true'] .nav-chevron,
-.workspace-account__trigger[aria-expanded='true'] .nav-chevron {
+.workspace-account__trigger[aria-expanded='true'] .nav-chevron,
+.catalog-filters[open] .nav-chevron {
   transform: translateY(0.1rem) rotate(225deg);
 }
 .workspace-menu {
