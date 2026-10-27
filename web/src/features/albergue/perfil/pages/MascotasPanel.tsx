@@ -37,7 +37,11 @@ const labels = {
   temperamento: 'Temperamento',
   energia: 'Energía',
 };
-export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: Shelter }) {
+type MascotasPanelProps = {
+  shelter?: Shelter;
+  onComplete?: (force?: boolean) => void;
+};
+export default function MascotasPanel({ shelter: suppliedShelter, onComplete }: MascotasPanelProps) {
   const [items, setItems] = useState<AdminPet[]>([]);
   const [draft, setDraft] = useState(initial);
   const [id, setId] = useState<number | null>(null);
@@ -59,10 +63,11 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
       const result = await django<Page<AdminPet>>(`/api/mascotas/?page=${page}`);
       setItems(result.results);
       setNext(result.next !== null);
+      if (result.results.length > 0) onComplete?.();
     } catch (e) {
       setError(errorMessage(e));
     }
-  }, [page]);
+  }, [onComplete, page]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -109,7 +114,8 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
       });
       reset();
       setSuccess('Mascota guardada.');
-      await load();
+      if (onComplete) onComplete(true);
+      else await load();
     } catch (e) {
       setError(errorMessage(e));
     } finally {

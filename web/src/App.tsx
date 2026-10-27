@@ -41,7 +41,6 @@ export default function App() {
       : session?.identity.rol === 'ALBERGUE'
         ? [
             { label: 'Panel del albergue', to: '/albergue' },
-            { label: 'Mascotas registradas', to: '/albergue/mascotas' },
             { label: 'Solicitudes', to: '/albergue/solicitudes' },
           ]
         : session?.identity.rol === 'ADMIN'

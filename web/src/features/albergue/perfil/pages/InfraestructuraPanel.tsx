@@ -25,7 +25,11 @@ const initial = {
   equipamiento: '',
   activo: true,
 };
-export default function InfraestructuraPanel({ shelterId }: { shelterId: number }) {
+type InfraestructuraPanelProps = {
+  shelterId: number;
+  onComplete?: (force?: boolean) => void;
+};
+export default function InfraestructuraPanel({ shelterId, onComplete }: InfraestructuraPanelProps) {
   const [items, setItems] = useState<Infrastructure[]>([]);
   const [draft, setDraft] = useState(initial);
   const [id, setId] = useState<number | null>(null);
@@ -35,11 +39,13 @@ export default function InfraestructuraPanel({ shelterId }: { shelterId: number 
   const path = `/api/albergues/${shelterId}/infraestructura/`;
   const load = useCallback(async () => {
     try {
-      setItems(await django<Infrastructure[]>(path));
+      const result = await django<Infrastructure[]>(path);
+      setItems(result);
+      if (result.length > 0) onComplete?.();
     } catch (e) {
       setError(errorMessage(e));
     }
-  }, [path]);
+  }, [onComplete, path]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -48,7 +54,7 @@ export default function InfraestructuraPanel({ shelterId }: { shelterId: number 
     setError('');
     setSuccess('');
     try {
-      await django(id ? path + `${id}/` : path, {
+      const saved = await django<Infrastructure>(id ? path + `${id}/` : path, {
         method: id ? 'PATCH' : 'POST',
         body: json({
           ...draft,
@@ -56,10 +62,17 @@ export default function InfraestructuraPanel({ shelterId }: { shelterId: number 
           metros_cuadrados: draft.metros_cuadrados === '' ? null : draft.metros_cuadrados,
         }),
       });
+      setItems(current =>
+        id ? current.map(item => (item.id === saved.id ? saved : item)) : [...current, saved]
+      );
       setDraft(initial);
       setId(null);
       setSuccess('Área guardada.');
-      await load();
+      if (onComplete) {
+        onComplete(true);
+      } else {
+        await load();
+      }
     } catch (e) {
       setError(errorMessage(e));
     } finally {

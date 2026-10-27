@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
 import { django, json, errorMessage, ApiError } from '../../../../services/http';
-import type { Shelter, Profile } from '../../../../services/types';
+import type { AdminPet, Page, Shelter, Profile } from '../../../../services/types';
 import MascotasPanel from './MascotasPanel';
 import InfraestructuraPanel from './InfraestructuraPanel';
 type ShelterDraft = Pick<
@@ -63,10 +63,12 @@ export default function PanelAlberguePage() {
   useEffect(() => {
     void load();
   }, [load]);
-  function advanceTo(nextStep: number) {
+  const advanceAfterCompletion = useCallback((completedStep: number, force = false) => {
+    if (completedStep !== step || (!force && completedStep < highestStep)) return;
+    const nextStep = completedStep + 1;
     setHighestStep(current => Math.max(current, nextStep));
     setStep(nextStep);
-  }
+  }, [highestStep, step]);
   async function save() {
     setBusy(true);
     setError('');
@@ -78,7 +80,7 @@ export default function PanelAlberguePage() {
       );
       setShelter(value);
       setSuccess('Información del albergue guardada. Continuemos con la infraestructura.');
-      advanceTo(1);
+      advanceAfterCompletion(0, true);
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -99,7 +101,7 @@ export default function PanelAlberguePage() {
               type="button"
               className={`shelter-step${step === index ? ' shelter-step--active' : ''}`}
               aria-current={step === index ? 'step' : undefined}
-              disabled={index > highestStep}
+              disabled={index > step}
               onClick={() => setStep(index)}
             >
               <span className="shelter-step__number">{index + 1}</span>
@@ -185,26 +187,28 @@ export default function PanelAlberguePage() {
       )}
       {shelter && step === 1 && (
         <>
-          <InfraestructuraPanel shelterId={shelter.id} />
+          <p className="muted">Registra al menos un área. Al guardarla, avanzaremos automáticamente al paso de mascotas.</p>
+          <InfraestructuraPanel
+            shelterId={shelter.id}
+            onComplete={force => advanceAfterCompletion(1, force)}
+          />
           <div className="shelter-wizard__actions">
             <button type="button" className="secondary" onClick={() => setStep(0)}>
               Anterior
-            </button>
-            <button type="button" onClick={() => advanceTo(2)}>
-              Siguiente: Mascotas
             </button>
           </div>
         </>
       )}
       {shelter && step === 2 && (
         <>
-          <MascotasPanel shelter={shelter} />
+          <p className="muted">Registra al menos una mascota. Al guardarla, avanzaremos automáticamente al último paso.</p>
+          <MascotasPanel
+            shelter={shelter}
+            onComplete={force => advanceAfterCompletion(2, force)}
+          />
           <div className="shelter-wizard__actions">
             <button type="button" className="secondary" onClick={() => setStep(1)}>
               Anterior
-            </button>
-            <button type="button" onClick={() => advanceTo(3)}>
-              Siguiente: Perfiles autorizados
             </button>
           </div>
         </>
@@ -212,12 +216,74 @@ export default function PanelAlberguePage() {
       {shelter && step === 3 && (
         <>
           <PerfilesCompartidos />
+          <ResumenRegistroAlbergue shelter={shelter} />
           <div className="shelter-wizard__actions">
             <button type="button" className="secondary" onClick={() => setStep(2)}>
               Anterior
             </button>
           </div>
         </>
+      )}
+    </section>
+  );
+}
+function ResumenRegistroAlbergue({ shelter: initialShelter }: { shelter: Shelter }) {
+  const [shelter, setShelter] = useState(initialShelter);
+  const [pets, setPets] = useState<AdminPet[]>([]);
+  const [petCount, setPetCount] = useState(0);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      try {
+        const [currentShelter, petPage] = await Promise.all([
+          django<Shelter>('/api/albergues/mi-perfil/'),
+          django<Page<AdminPet>>('/api/mascotas/?page=1'),
+        ]);
+        if (!active) return;
+        setShelter(currentShelter);
+        setPets(petPage.results);
+        setPetCount(petPage.count);
+      } catch (e) {
+        if (active) setError(errorMessage(e));
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    void load();
+    return () => { active = false; };
+  }, []);
+  return (
+    <section className="card">
+      <h2>Resumen de la información registrada</h2>
+      {loading && <p className="muted">Cargando el resumen…</p>}
+      {error && <Feedback error={error} />}
+      <h3>Datos del albergue</h3>
+      <dl>
+        <dt>Nombre</dt><dd>{shelter.nombre}</dd>
+        <dt>Dirección</dt><dd>{shelter.direccion}</dd>
+        <dt>Correo de contacto</dt><dd>{shelter.email || 'Sin registrar'}</dd>
+        <dt>Teléfono</dt><dd>{shelter.telefono || 'Sin registrar'}</dd>
+        <dt>Capacidad máxima</dt><dd>{shelter.capacidad_maxima}</dd>
+      </dl>
+      <h3>Infraestructura registrada ({shelter.infraestructura.length})</h3>
+      {shelter.infraestructura.length === 0 ? (
+        <p>No hay áreas registradas.</p>
+      ) : (
+        <ul>
+          {shelter.infraestructura.map(area => (
+            <li key={area.id}>{area.nombre} · {area.tipo.replaceAll('_', ' ')}</li>
+          ))}
+        </ul>
+      )}
+      <h3>Mascotas registradas ({petCount})</h3>
+      {pets.length === 0 ? (
+        <p>No hay mascotas registradas.</p>
+      ) : (
+        <ul>
+          {pets.map(pet => <li key={pet.id}>{pet.nombre} · {pet.especie} · {pet.estado}</li>)}
+        </ul>
       )}
     </section>
   );

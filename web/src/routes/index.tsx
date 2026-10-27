@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import App from '../App';
 import AdoptanteLayout from '../layouts/AdoptanteLayout';
 import AlbergueLayout from '../layouts/AlbergueLayout';
@@ -13,7 +13,6 @@ import CuestionarioPage from '../features/adoptante/perfil/pages/CuestionarioPag
 import SeguimientoSolicitudPage from '../features/adoptante/solicitudes/pages/SeguimientoSolicitudPage';
 import SolicitudesAdoptantePage from '../features/adoptante/solicitudes/pages/SolicitudesAdoptantePage';
 import PanelAlberguePage from '../features/albergue/perfil/pages/PanelAlberguePage';
-import MascotasPanel from '../features/albergue/perfil/pages/MascotasPanel';
 import SolicitudesPage from '../features/albergue/perfil/pages/SolicitudesPage';
 import AlberguesAdminPage from '../features/administracion/albergues/pages/AlberguesAdminPage';
 import VerificacionKycPage from '../features/adoptante/perfil/pages/VerificacionKycPage';
@@ -65,13 +64,7 @@ export const router = createBrowserRouter([
           { index: true, element: <PanelAlberguePage /> },
           {
             path: 'mascotas',
-            element: (
-              <section className="card">
-                <h1>Mascotas registradas</h1>
-                <p className="muted">Consulta y administra las mascotas de tu albergue.</p>
-                <MascotasPanel />
-              </section>
-            ),
+            element: <Navigate to="/albergue" replace />,
           },
           { path: 'solicitudes', element: <SolicitudesPage /> },
         ],
