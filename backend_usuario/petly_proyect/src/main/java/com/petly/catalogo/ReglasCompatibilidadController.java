@@ -35,12 +35,17 @@ public class ReglasCompatibilidadController {
         }
         Claims claims = (Claims) authentication.getPrincipal();
         ReglasCompatibilidadService.Reglas actualizadas = reglas.actualizar(
-                request.pesos().vivienda().intValue(), request.pesos().rutina().intValue(),
-                request.pesos().convivencia().intValue(),
+                entero(request.pesos().vivienda()), entero(request.pesos().rutina()),
+                entero(request.pesos().convivencia()),
                 Long.parseLong(claims.getSubject()));
         return actualizadas.respuesta();
     }
 
+    private int entero(java.math.BigDecimal value) {
+        try { return value.intValueExact(); }
+        catch (ArithmeticException ex) { throw new ApiException(400, "Los pesos deben ser enteros entre 0 y 100."); }
+    }
+
     public record PesosRequest(Pesos pesos) {}
-    public record Pesos(Integer vivienda, Integer rutina, Integer convivencia) {}
+    public record Pesos(java.math.BigDecimal vivienda, java.math.BigDecimal rutina, java.math.BigDecimal convivencia) {}
 }

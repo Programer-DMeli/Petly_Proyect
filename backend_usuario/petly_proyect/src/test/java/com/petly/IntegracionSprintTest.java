@@ -213,4 +213,23 @@ class IntegracionSprintTest {
    .andExpect(status().isBadRequest());
   assertEquals(0,users.findById(id).orElseThrow().getIntentosFallidos());
  }
+
+ @Test void favoritosPersistenSinDuplicadosYSonDelTitular() throws Exception {
+  String a=token("ADOPTANTE"), b=token("ADOPTANTE");
+  for(int n=0;n<2;n++) mvc.perform(put("/api/perfil/favoritos/1").header("Authorization","Bearer "+a)).andExpect(status().isNoContent());
+  mvc.perform(get("/api/perfil/favoritos").header("Authorization","Bearer "+a)).andExpect(jsonPath("$.length()").value(1));
+  mvc.perform(get("/api/perfil/favoritos").header("Authorization","Bearer "+b)).andExpect(jsonPath("$.length()").value(0));
+  db.update("UPDATE mascotas_mascota SET estado='ADOPTADO' WHERE id=1");
+  mvc.perform(get("/api/perfil/favoritos").header("Authorization","Bearer "+a)).andExpect(jsonPath("$[0].estado").value("Adoptado"));
+  mvc.perform(delete("/api/perfil/favoritos/1").header("Authorization","Bearer "+a)).andExpect(status().isNoContent());
+  mvc.perform(get("/api/perfil/favoritos").header("Authorization","Bearer "+token("ALBERGUE"))).andExpect(status().isForbidden());
+ }
+ @Test void disponibilidadInvalidaNoReemplazaLaGuardada() throws Exception {
+  String a=token("ADOPTANTE"), b=token("ADOPTANTE");
+  String franja="{\"diaSemana\":\"Lunes\",\"horaInicio\":\"09:00\",\"horaFin\":\"11:00\",\"descripcion\":\"Visita\"}";
+  mvc.perform(post("/api/perfil/disponibilidad").header("Authorization","Bearer "+a).contentType(MediaType.APPLICATION_JSON).content("["+franja+"]")).andExpect(status().isOk());
+  mvc.perform(post("/api/perfil/disponibilidad").header("Authorization","Bearer "+a).contentType(MediaType.APPLICATION_JSON).content("["+franja+","+franja+"]")).andExpect(status().isBadRequest());
+  mvc.perform(get("/api/perfil/disponibilidad").header("Authorization","Bearer "+a)).andExpect(jsonPath("$.length()").value(1));
+  mvc.perform(get("/api/perfil/disponibilidad").header("Authorization","Bearer "+b)).andExpect(jsonPath("$.length()").value(0));
+ }
 }

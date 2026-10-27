@@ -87,3 +87,19 @@ class Infraestructura(models.Model):
 
     def __str__(self):
         return f"{self.albergue.nombre} - {self.get_tipo_display()}: {self.nombre}"
+
+class EventoAdopcion(models.Model):
+    albergue = models.ForeignKey(Albergue, on_delete=models.CASCADE, related_name="eventos_adopcion")
+    titulo = models.CharField(max_length=150)
+    descripcion = models.TextField(max_length=3000)
+    inicio = models.DateTimeField()
+    fin = models.DateTimeField()
+    ubicacion = models.CharField(max_length=255)
+    contacto_publico = models.CharField(max_length=150)
+    cancelado = models.BooleanField(default=False)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["inicio", "id"]
+        constraints = [models.CheckConstraint(check=models.Q(fin__gt=models.F("inicio")), name="evento_fin_posterior_inicio")]

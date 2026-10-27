@@ -43,6 +43,8 @@ fun DisponibilidadScreen(
     var horaFin by rememberSaveable { mutableStateOf("12:00") }
     var descripcion by rememberSaveable { mutableStateOf("") }
 
+    var editingId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var editError by remember { mutableStateOf<String?>(null) }
     val busy = state.loading || state.saving
 
     Column(
@@ -273,14 +275,20 @@ fun DisponibilidadScreen(
 
                 Button(
                     onClick = {
-                        onAddFranja(selectedDia, horaInicio, horaFin, descripcion)
+                        val candidate = FranjaHoraria(null, selectedDia, horaInicio, horaFin, descripcion)
+                        editError = DisponibilidadValidation.validateNoOverlap(state.franjas.filter { it.id != editingId }, candidate)
+                        if (editError == null) {
+                            editingId?.let(onRemoveFranja)
+                            onAddFranja(selectedDia, horaInicio, horaFin, descripcion)
+                            editingId = null
+                        }
                     },
                     enabled = !busy,
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF13614B)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("➕ Agregar Franja Horaria", fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(if (editingId == null) "➕ Agregar Franja Horaria" else "Aplicar edición de franja", fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }
@@ -386,7 +394,12 @@ fun DisponibilidadScreen(
                                         }
                                     }
 
+                                    TextButton(enabled = !busy, onClick = {
+                                        editingId = item.id; selectedDia = item.diaSemana
+                                        horaInicio = item.horaInicio; horaFin = item.horaFin; descripcion = item.descripcion
+                                    }) { Text("Editar") }
                                     IconButton(
+                                        enabled = !busy,
                                         onClick = { item.id?.let { onRemoveFranja(it) } }
                                     ) {
                                         Icon(
@@ -413,6 +426,8 @@ fun DisponibilidadScreen(
             )
         }
 
+        editError?.let { Text(it, color = Color(0xFFB00020)) }
+        if (editingId != null) TextButton(onClick = { editingId = null; editError = null }) { Text("Cancelar edición") }
         // SAVE BUTTON
         Button(
             onClick = onSave,

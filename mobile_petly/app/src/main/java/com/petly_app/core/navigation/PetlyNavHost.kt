@@ -30,6 +30,18 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
     var preview by rememberSaveable { mutableStateOf(false) }
     // La vista de prueba no crea tokens, no inicia una sesión real y solo existe en debug.
     val isPreview = BuildConfig.DEBUG && preview
+    LaunchedEffect(authenticated, isPreview) {
+        com.petly_app.data.repository.FavoritosManager.clear()
+        com.petly_app.data.repository.SolicitudAdopcionManager.clear()
+        if (authenticated && !isPreview) {
+            com.petly_app.data.repository.FavoritosManager.api = container.favoritosApi
+            com.petly_app.data.repository.FavoritosManager.cargar()
+            com.petly_app.data.repository.SolicitudAdopcionManager.api = container.solicitudesApi
+            com.petly_app.data.repository.SolicitudAdopcionManager.fotosApi = container.fotosHogarApi
+            com.petly_app.data.repository.SolicitudAdopcionManager.resolver = container.resolver
+            runCatching { com.petly_app.data.repository.SolicitudAdopcionManager.cargar() }
+        }
+    }
     key(authenticated, isPreview, resetToken) {
         val nav = rememberNavController()
         val privateGraph = resetToken == null && (authenticated || isPreview)
@@ -84,6 +96,9 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     val catalogState by catalogVm.state.collectAsStateWithLifecycle()
                     val perfilState by perfilVm.state.collectAsStateWithLifecycle()
                     val disponibilidadState by disponibilidadVm.state.collectAsStateWithLifecycle()
+                    LaunchedEffect(perfilState.message) {
+                        if (perfilState.message != null) catalogVm.retry()
+                    }
 
                     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                         catalogVm.retry()
@@ -145,7 +160,7 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     }
                     val vm: DetalleMascotaViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    DetalleMascotaScreen(state, isPreview, vm::load, onBack = { nav.popBackStack() })
+                    DetalleMascotaScreen(state, isPreview, vm::load, onBack = { nav.popBackStack() }, onConsejos = vm::consejos)
                 }
             }
         }

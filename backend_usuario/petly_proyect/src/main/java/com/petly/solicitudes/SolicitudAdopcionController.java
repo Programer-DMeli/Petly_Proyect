@@ -34,8 +34,9 @@ public class SolicitudAdopcionController {
 
     @GetMapping
     public ResponseEntity<String> misSolicitudes(
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "1") int page,
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
-        return solicitudService.misSolicitudes(authorization);
+        return solicitudService.misSolicitudes(authorization, page);
     }
 
     @GetMapping("/{solicitudId}/seguimiento")

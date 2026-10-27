@@ -1,40 +1,37 @@
 package com.petly_app.data.repository
 
 import com.petly_app.data.model.Mascota
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import com.petly_app.data.remote.FavoritosApi
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-/**
- * Gestor reactivo de mascotas favoritas del adoptante (US-14).
- * Permite guardar, eliminar y consultar favoritos de forma persistente durante la sesión.
- */
 object FavoritosManager {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val mutex = Mutex()
+    private var generation = 0
+    var api: FavoritosApi? = null
     private val _favorites = MutableStateFlow<List<Mascota>>(emptyList())
-    val favorites: StateFlow<List<Mascota>> = _favorites.asStateFlow()
-
-    fun isFavorite(petId: Long): Boolean {
-        return _favorites.value.any { it.id == petId }
+    val favorites = _favorites.asStateFlow()
+    private val _error = MutableStateFlow("")
+    val error = _error.asStateFlow()
+    fun isFavorite(petId: Long) = _favorites.value.any { it.id == petId }
+    suspend fun cargar() { val service=api ?: return; val epoch=generation; try { val rows=service.listar(); if(epoch==generation) { _favorites.value=rows; _error.value="" } } catch(e: Exception) { if(epoch==generation) _error.value="No se pudieron cargar favoritos. Reintenta." } }
+    fun toggleFavorite(mascota: Mascota) = change(mascota, false)
+    fun removeFavorite(petId: Long) { _favorites.value.firstOrNull { it.id==petId }?.let { change(it,true) } }
+    private fun change(pet: Mascota, remove: Boolean) {
+        val epoch=generation
+        scope.launch { mutex.withLock {
+            if(epoch!=generation) return@withLock
+            val service=api
+            if(service==null) { _error.value="Inicia sesión para guardar favoritos."; return@withLock }
+            try {
+                val response=if(remove || isFavorite(pet.id)) service.quitar(pet.id) else service.agregar(pet.id)
+                if(!response.isSuccessful) throw IllegalStateException()
+                cargar()
+            } catch(e: Exception) { if(epoch==generation) _error.value="No se pudo guardar el favorito. Reintenta." }
+        } }
     }
-
-    fun toggleFavorite(mascota: Mascota) {
-        _favorites.update { current ->
-            if (current.any { it.id == mascota.id }) {
-                current.filter { it.id != mascota.id }
-            } else {
-                current + mascota
-            }
-        }
-    }
-
-    fun removeFavorite(petId: Long) {
-        _favorites.update { current ->
-            current.filter { it.id != petId }
-        }
-    }
-
-    fun clear() {
-        _favorites.value = emptyList()
-    }
+    fun clear() { generation++; api=null; _favorites.value=emptyList(); _error.value="" }
 }

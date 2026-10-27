@@ -1,0 +1,19 @@
+{
+  "proveedor": "Gemini real",
+  "resultados": [
+    {
+      "flujo": "descripcion",
+      "resultado": "ERROR",
+      "tipo": "ErrorProveedorDescripcion",
+      "causa": "HTTPError",
+      "http": 404
+    },
+    {
+      "flujo": "temperamento",
+      "resultado": "ERROR",
+      "tipo": "ErrorProveedorDescripcion",
+      "causa": "HTTPError",
+      "http": 404
+    }
+  ]
+}

@@ -21,6 +21,9 @@ class ErrorProveedorDescripcion(DescripcionIAError):
 
 
 def generar_borrador(mascota):
+    if settings.GEMINI_API_KEY:
+        from .gemini import descripcion
+        return validar_borrador(descripcion(mascota))
     endpoint = settings.PET_DESCRIPTION_API_URL
     token = settings.PET_DESCRIPTION_API_TOKEN
     if not endpoint or not token:
@@ -67,12 +70,15 @@ def generar_borrador(mascota):
         raise ErrorProveedorDescripcion("No fue posible conectar con el proveedor IA.") from exc
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ErrorProveedorDescripcion("El proveedor IA devolvió una respuesta no válida.") from exc
-    text = data.get("description") if isinstance(data, dict) else None
+    return validar_borrador(data.get("description") if isinstance(data, dict) else None)
+
+
+def validar_borrador(text):
     if not isinstance(text, str) or not text.strip() or len(text.strip()) > 500:
         raise ErrorProveedorDescripcion("El proveedor no devolvió una descripción editable válida.")
     draft = text.strip()
     # Refuse common unsupported claims; the shelter can retry with a corrected response.
-    prohibited = ("raza", "saludable", "vacun", "desparas", "tiene buena salud", "años", " meses", "temperamento", "personalidad", "se comporta", "agresiv", "obediente")
+    prohibited = ("raza", "saludable", "vacun", "desparas", "tiene buena salud", "años", " meses", "temperamento", "personalidad", "se comporta", "agresiv", "obediente", "cariños", "juguet", "sociable", "tranquilo", "se llama")
     lowered = draft.casefold()
     if any(term in lowered for term in prohibited):
         raise ErrorProveedorDescripcion("La respuesta incluye inferencias que no se permiten. Conservamos la descripción actual.")

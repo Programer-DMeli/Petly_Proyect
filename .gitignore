@@ -68,3 +68,6 @@ web/dist/
 
 # Fotografías suministradas para publicaciones locales (originales conservados).
 img_mascotas/
+
+# Documentos y fotos privadas, servidos solo con autorización.
+private-media/

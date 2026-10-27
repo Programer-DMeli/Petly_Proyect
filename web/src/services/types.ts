@@ -5,6 +5,8 @@ export interface Profile {
   tieneNinos: boolean | null;
   tieneOtrasMascotas: boolean | null;
   finalizado: boolean;
+  zonaHoraria?: string;
+  disponibilidad?: Array<{ id: number; diaSemana: string; horaInicio: string; horaFin: string; descripcion: string }>;
   solicitudesPrevias?: Array<{
     id: number;
     estado: EstadoSolicitudAdopcion;

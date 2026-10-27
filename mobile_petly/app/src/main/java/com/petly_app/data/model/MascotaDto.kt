@@ -59,3 +59,5 @@ object DemoCatalogoQuery {
         return MascotaPage(matching.drop((safePage - 1) * pageSize).take(pageSize), safePage, matching.size, pageSize)
     }
 }
+
+data class ConsejosIA(val estado: String, val explicacion: String, val recomendaciones: List<String> = emptyList())

@@ -1,12 +1,15 @@
-import { Outlet } from 'react-router-dom';
-
-/**
- * Área del adoptante (catálogo, cuestionario). Portal del adoptante incluido en Sprint 1 por la actualización del usuario.
- */
+import { Outlet, useLocation } from 'react-router-dom';
+import AdoptionCarousel from '../components/AdoptionCarousel';
+import { FavoritesProvider } from '../components/FavoritesProvider';
 export default function AdoptanteLayout() {
+  const { pathname } = useLocation();
+  const overview = pathname === '/adoptante' || pathname === '/adoptante/catalogo';
   return (
-    <div className="layout">
-      <Outlet />
-    </div>
+    <FavoritesProvider>
+      <div className="workspace workspace--adoptante">
+        {overview && <AdoptionCarousel role="adoptante" />}
+        <Outlet />
+      </div>
+    </FavoritesProvider>
   );
 }

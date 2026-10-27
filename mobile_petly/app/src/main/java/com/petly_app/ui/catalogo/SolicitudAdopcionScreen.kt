@@ -46,6 +46,48 @@ fun SolicitudAdopcionScreen(
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var successDialogOpen by remember { mutableStateOf(false) }
 
+    var fotosGuardadas by remember { mutableStateOf<List<ByteArray>>(emptyList()) }
+    LaunchedEffect(mascotaId) {
+        runCatching {
+            fotosGuardadas = SolicitudAdopcionManager.fotosGuardadas(mascotaId).map { f ->
+                SolicitudAdopcionManager.fotosApi!!.descargar(f.url.removePrefix("/")).bytes()
+            }
+        }.onFailure { statusMessage = "No se pudieron recuperar las fotos privadas. Vuelve a abrir para reintentar." }
+    }
+    var fotos by remember { mutableStateOf(SolicitudAdopcionManager.fotosLocales[mascotaId].orEmpty()) }
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments()
+    ) { selected ->
+        fotos = selected.take(3)
+        SolicitudAdopcionManager.fotosLocales[mascotaId] = fotos
+    }
+    val solicitudExistente = SolicitudAdopcionManager.identificador(mascotaId)
+    if (solicitudExistente != null && draft.finalizado) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            TextButton(onClick = onDismiss) { Text("Volver") }
+            Text("Solicitud #$solicitudExistente · $mascotaNombre", style = MaterialTheme.typography.titleLarge)
+            Text("Estado: ${SolicitudAdopcionManager.estado(mascotaId)}")
+            Text("Nombre: ${draft.nombreCompleto}")
+            Text("DNI declarado: ${draft.dni}. No acredita verificación de identidad.")
+            Text("Dirección: ${draft.direccionHogar}")
+            Text("Contacto: ${draft.telefonoContacto}")
+            Text("Motivo: ${draft.motivoAdopcion}")
+            Text("Fotos privadas guardadas: ${fotosGuardadas.size}")
+            fotosGuardadas.forEach { bytes -> coil.compose.AsyncImage(model = bytes, contentDescription = "Foto privada guardada", modifier = Modifier.height(150.dp)) }
+            if (SolicitudAdopcionManager.estado(mascotaId) in listOf("PENDIENTE", "OBSERVADA")) {
+                OutlinedButton(onClick = { picker.launch(arrayOf("image/jpeg", "image/png")) }, enabled = !isSending) { Text("Seleccionar fotos del hogar") }
+                Text("${fotos.size} fotos seleccionadas; máximo tres en total.")
+                Button(enabled = !isSending && fotos.isNotEmpty(), onClick = { scope.launch {
+                    isSending = true
+                    val result = SolicitudAdopcionManager.enviarSolicitud(draft)
+                    statusMessage = if (result.isEmpty()) "Fotos guardadas en la solicitud." else result.values.joinToString(" ")
+                    isSending = false
+                } }) { Text("Adjuntar fotos a la solicitud") }
+            }
+            statusMessage?.let { Text(it) }
+        }
+        return
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -95,7 +137,7 @@ fun SolicitudAdopcionScreen(
                 error = errors["nombreCompleto"]
             )
 
-            // DNI y Botón Verificar DNI
+            // DNI y Botón Validar formato
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = "DNI (8 dígitos)",
@@ -128,7 +170,7 @@ fun SolicitudAdopcionScreen(
                                 isVerifyingDni = true
                                 draft = draft.copy(dniVerificado = true)
                                 isVerifyingDni = false
-                                statusMessage = "✔ DNI verificado."
+                                statusMessage = "Formato de DNI válido."
                             } else {
                                 errors = errors + ("dni" to "El DNI debe tener exactamente 8 dígitos.")
                             }
@@ -138,7 +180,7 @@ fun SolicitudAdopcionScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF126858)),
                         modifier = Modifier.height(48.dp)
                     ) {
-                        Text(if (isVerifyingDni) "Verificando…" else "Verificar DNI", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(if (isVerifyingDni) "Verificando…" else "Validar formato", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -153,7 +195,7 @@ fun SolicitudAdopcionScreen(
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Icon(HomeIcons.Check, contentDescription = null, tint = Color(0xFF126858), modifier = Modifier.size(14.dp))
-                            Text("✔ DNI verificado", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF126858))
+                            Text("Formato de DNI válido", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF126858))
                         }
                     }
                 }
@@ -307,6 +349,13 @@ fun SolicitudAdopcionScreen(
             )
         }
 
+        FormSectionCard(title = "Fotos privadas del hogar") {
+            Text("Hasta tres imágenes JPEG/PNG de 5 MB. Solo tú y el albergue autorizado pueden consultarlas.")
+            Text("${fotos.size} fotografías seleccionadas")
+            OutlinedButton(onClick = { picker.launch(arrayOf("image/jpeg", "image/png")) }, enabled = !isSending) { Text("Seleccionar fotos del hogar") }
+            fotosGuardadas.forEach { bytes -> coil.compose.AsyncImage(model = bytes, contentDescription = "Foto privada guardada", modifier = Modifier.height(100.dp)) }
+            fotos.forEach { uri -> coil.compose.AsyncImage(model = uri, contentDescription = "Foto del hogar", modifier = Modifier.height(100.dp)) }
+        }
         // BOTONES INFERIORES
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             // Enviar Solicitud
@@ -320,7 +369,7 @@ fun SolicitudAdopcionScreen(
                             successDialogOpen = true
                         } else {
                             errors = validationErrors
-                            statusMessage = "Revisa los campos obligatorios antes de enviar la solicitud."
+                            statusMessage = validationErrors["servidor"] ?: "Revisa los campos obligatorios antes de enviar la solicitud."
                         }
                     }
                 },
@@ -378,7 +427,7 @@ fun SolicitudAdopcionScreen(
             },
             text = {
                 Text(
-                    text = "Tu Solicitud de Adopción para $mascotaNombre ha sido enviada al albergue. Tu DNI y datos han sido validados.",
+                    text = "Tu Solicitud de Adopción para $mascotaNombre ha sido enviada al albergue. Solicitud #${SolicitudAdopcionManager.lastId} registrada como PENDIENTE. No reserva la mascota.",
                     fontSize = 14.sp,
                     color = Color(0xFF4A6258)
                 )

@@ -44,6 +44,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
   const [inputVersion, setInputVersion] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [suggestion, setSuggestion] = useState<{ etiqueta: string; explicacion: string; evidencia: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(1);
   const [next, setNext] = useState(false);
@@ -71,6 +72,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
       .catch(e => setError(errorMessage(e)));
   }, [suppliedShelter]);
   function reset() {
+    setSuggestion(null);
     setId(null);
     setDraft(initial);
     setFile(null);
@@ -115,12 +117,22 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
     } catch (e) { setError(errorMessage(e)); }
     finally { setBusy(false); }
   }
+  async function suggestTemperament() {
+    if (!id || file) { setError('Guarda primero el perfil y la foto actuales.'); return; }
+    setBusy(true); setError(''); setSuggestion(null);
+    try {
+      const result = await django<{ etiqueta: string; explicacion: string; evidencia: string }>(`/api/mascotas/${id}/sugerir-temperamento/`, { method: 'POST', body: json({}) });
+      setSuggestion(result);
+    } catch (e) { setError(errorMessage(e)); }
+    finally { setBusy(false); }
+  }
   async function show(value: number, edit: boolean) {
     setBusy(true);
     setError('');
     try {
       const pet = await django<AdminPet>(`/api/mascotas/${value}/`);
       if (edit) {
+        setSuggestion(null);
         setId(pet.id);
         setDraft({
           nombre: pet.nombre,
@@ -257,6 +269,10 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
             <button type="button" className="secondary" onClick={() => void generateDescription()}>
               Generar borrador desde la foto
             </button>
+            <button type="button" disabled={busy || !id || !!file} onClick={() => void suggestTemperament()}>Sugerir temperamento con Gemini</button>
+            {suggestion && <section aria-label="Sugerencia de temperamento"><p>Sugerencia pendiente: {suggestion.etiqueta}</p><p>{suggestion.explicacion}</p><p>Observación: {suggestion.evidencia || 'Sin evidencia conductual'}</p>
+              <button type="button" onClick={() => { setDraft(old => ({ ...old, temperamento: suggestion.etiqueta })); setSuggestion(null); setSuccess('Etiqueta aplicada al editor. Revisa y guarda para confirmar.'); }}>Aplicar al editor</button>
+              <button type="button" onClick={() => setSuggestion(null)}>Descartar sugerencia</button></section>}
             <span className="muted">La IA propone texto; no modifica la descripción guardada hasta que confirmes Guardar cambios.</span>
           </div>}
           <label>

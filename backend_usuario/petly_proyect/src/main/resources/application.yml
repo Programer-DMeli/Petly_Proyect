@@ -1,7 +1,7 @@
 spring:
   config:
     # Permite usar credenciales locales desde .env, archivo ignorado por Git.
-    import: optional:file:.env[.properties]
+    import: "optional:file:.env[.properties],optional:file:../../.env.gemini[.properties]"
   application:
     # Se conserva el nombre original del proyecto.
     name: petly_proyect

@@ -54,6 +54,8 @@ def home(request):
 
 
 admin.site.login_form = TechnicalAdminLoginForm
+# Use the standalone Petly login; Jazzmin is no longer installed as a Django app.
+admin.site.login_template = "registration/login.html"
 
 urlpatterns = [
     path("", home, name="home"),
@@ -101,3 +103,10 @@ if settings.DEBUG:
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Eventos públicos y gestión autenticada del propietario (US-50).
+from rest_framework.routers import DefaultRouter
+from apps.albergues.eventos import EventoViewSet
+_eventos = DefaultRouter()
+_eventos.register("eventos", EventoViewSet, basename="evento-adopcion")
+urlpatterns += [path("api/", include(_eventos.urls))]

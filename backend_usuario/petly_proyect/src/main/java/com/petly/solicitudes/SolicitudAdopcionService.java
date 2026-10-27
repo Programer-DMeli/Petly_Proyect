@@ -45,10 +45,15 @@ public class SolicitudAdopcionService {
         headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
         headers.set(HttpHeaders.AUTHORIZATION, authorization);
 
+        byte[] jsonBody;
+        try { jsonBody = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsBytes(payload); }
+        catch (com.fasterxml.jackson.core.JsonProcessingException ex) { throw new ApiException(400, "No se pudo serializar la solicitud."); }
+        // El servidor WSGI de desarrollo necesita Content-Length, no transferencia chunked.
+        headers.setContentLength(jsonBody.length);
         try {
             ResponseEntity<String> response = restTemplate.postForEntity(
                     djangoApiBaseUrl + RUTA_DJANGO,
-                    new HttpEntity<>(payload, headers),
+                    new HttpEntity<>(jsonBody, headers),
                     String.class);
             return ResponseEntity.status(response.getStatusCode())
                     .contentType(MediaType.APPLICATION_JSON)
@@ -62,13 +67,14 @@ public class SolicitudAdopcionService {
         }
     }
 
-    public ResponseEntity<String> misSolicitudes(String authorization) {
+    public ResponseEntity<String> misSolicitudes(String authorization, int page) {
+        if (page < 1 || page > 100000) throw new ApiException(400, "Página inválida.");
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
         headers.set(HttpHeaders.AUTHORIZATION, authorization);
         try {
             ResponseEntity<String> response = restTemplate.exchange(
-                    djangoApiBaseUrl + RUTA_DJANGO, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+                    djangoApiBaseUrl + RUTA_DJANGO + "?page=" + page, HttpMethod.GET, new HttpEntity<>(headers), String.class);
             return ResponseEntity.status(response.getStatusCode())
                     .contentType(MediaType.APPLICATION_JSON).body(response.getBody());
         } catch (HttpStatusCodeException ex) {

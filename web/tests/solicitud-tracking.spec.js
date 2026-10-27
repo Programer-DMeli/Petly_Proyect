@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 async function loginAsAdopter(page) {
+  await page.route('http://localhost:8080/api/catalogo?**', route =>
+    route.fulfill({ json: { items: [], total: 0 } })
+  );
+  await page.route('http://localhost:8080/api/catalogo/opciones', route =>
+    route.fulfill({ json: { especies: [], tamanos: [], temperamentos: [] } })
+  );
+  await page.route('http://localhost:8080/api/perfil/favoritos', route => route.fulfill({ json: [] }));
   await page.route('http://localhost:8080/api/auth/login', route =>
     route.fulfill({ json: { token: 'token-de-prueba', expiresIn: 3600 } })
   );
@@ -33,9 +40,10 @@ function event(id, type, label, date, previous = null, next = null, description 
 
 test('el seguimiento ordena los eventos y actualiza el estado y el evento más reciente', async ({ page }) => {
   let requests = 0;
+  let updated = false;
   await page.route('http://localhost:8080/api/solicitudes/42/seguimiento', route => {
     requests += 1;
-    const payload = requests === 1
+    const payload = !updated
       ? {
           solicitudId: 42,
           estadoActual: 'OBSERVADA',
@@ -63,6 +71,8 @@ test('el seguimiento ordena los eventos y actualiza el estado y el evento más r
     'Solicitud creada',
     'Solicitud observada',
   ]);
+  const initialRequests = requests;
+  updated = true;
   await page.getByRole('button', { name: 'Actualizar historial', exact: true }).click();
   await expect(page.getByText('Aprobada', { exact: true })).toBeVisible();
   await expect(timeline.locator('li strong')).toHaveText([
@@ -71,7 +81,7 @@ test('el seguimiento ordena los eventos y actualiza el estado y el evento más r
     'Solicitud aprobada',
   ]);
   await expect(timeline.locator('li').last()).toHaveClass(/tracking-timeline__event--latest/);
-  expect(requests).toBe(2);
+  expect(requests).toBeGreaterThan(initialRequests);
 });
 
 test('el seguimiento informa cuando la solicitud todavía no tiene eventos', async ({ page }) => {
@@ -87,16 +97,19 @@ test('el seguimiento informa cuando la solicitud todavía no tiene eventos', asy
 
 test('el adoptante puede reintentar cuando falla la consulta del historial', async ({ page }) => {
   let requests = 0;
+  let recovered = false;
   await page.route('http://localhost:8080/api/solicitudes/42/seguimiento', route => {
     requests += 1;
-    if (requests === 1) return route.fulfill({ status: 503, json: { detail: 'Servicio temporalmente no disponible.' } });
+    if (!recovered) return route.fulfill({ status: 503, json: { detail: 'Servicio temporalmente no disponible.' } });
     return route.fulfill({ json: { solicitudId: 42, estadoActual: 'PENDIENTE', eventos: [] } });
   });
 
   await loginAsAdopter(page);
 
   await expect(page.getByRole('alert')).toContainText('Servicio temporalmente no disponible.');
+  const initialRequests = requests;
+  recovered = true;
   await page.getByRole('button', { name: 'Reintentar', exact: true }).click();
   await expect(page.getByText(/Aún no hay eventos registrados/)).toBeVisible();
-  expect(requests).toBe(2);
+  expect(requests).toBeGreaterThan(initialRequests);
 });

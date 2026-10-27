@@ -39,27 +39,22 @@ fun DetalleMascotaScreen(
     state: DetalleMascotaUiState,
     preview: Boolean,
     onRetry: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onConsejos: () -> Unit = {}
 ) {
     val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
+    val favoritoError by FavoritosManager.error.collectAsStateWithLifecycle()
     val submittedRequests by SolicitudAdopcionManager.submitted.collectAsStateWithLifecycle()
     var showSolicitudForm by remember { mutableStateOf(false) }
 
     val isSolicitudEnviada = remember(state.mascota, submittedRequests) {
         state.mascota != null && (
             SolicitudAdopcionManager.isSolicitudEnviada(state.mascota.id) ||
-            submittedRequests.any { it.mascotaId == state.mascota.id && it.finalizado } ||
-            state.mascota.estado.equals("En proceso", ignoreCase = true)
+            submittedRequests.any { it.mascotaId == state.mascota.id && it.finalizado }
         )
     }
 
-    val mascotaActualizada = remember(state.mascota, isSolicitudEnviada) {
-        if (isSolicitudEnviada && state.mascota != null) {
-            state.mascota.copy(estado = "En proceso")
-        } else {
-            state.mascota
-        }
-    }
+    val mascotaActualizada = state.mascota
 
     if (showSolicitudForm && state.mascota != null) {
         SolicitudAdopcionScreen(
@@ -78,6 +73,7 @@ fun DetalleMascotaScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (favoritoError.isNotBlank()) Text(favoritoError)
             // TOP NAVIGATION HEADER
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -151,6 +147,28 @@ fun DetalleMascotaScreen(
 
                     // 2. HEADER CARD DE LA MASCOTA
                     PetHeaderInfoCard(mascota = mascota)
+                    mascota.compatibilidad?.let { score ->
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(score.porcentaje?.let { "$it% compatible" } ?: "Información insuficiente", style = MaterialTheme.typography.titleMedium)
+                                Text(score.mensaje)
+                                Text("Cobertura: ${score.cobertura}% · ${score.versionReglas}")
+                                score.criterios.forEach { criterion ->
+                                    Text("${criterion.nombre}: peso ${criterion.peso}% · " + (criterion.aporte?.let { "aporte %.2f puntos".format(it) } ?: "Dato desconocido"))
+                                    Text(criterion.explicacion)
+                                }
+                                Text("El total ponderado se redondea al entero más cercano. El albergue decide cada adopción.")
+                                if (!preview) {
+                                    OutlinedButton(onClick = onConsejos, enabled = !state.consultandoIA) { Text(if (state.consultandoIA) "Consultando…" else "Consultar o reintentar consejos Gemini") }
+                                    state.consejos?.let { advice ->
+                                        Text("Sugerencias complementarias · ${advice.estado}")
+                                        Text(advice.explicacion)
+                                        advice.recomendaciones.forEach { Text("• $it") }
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     // 3. FICHA TÉCNICA
                     FichaTecnicaSection(mascota = mascota)
@@ -161,8 +179,9 @@ fun DetalleMascotaScreen(
                     // 5. BANNER PROCESO SEGURO
                     ProcesoSeguroBanner(ubicacion = mascota.ubicacion)
 
+                    if (isSolicitudEnviada) TextButton(onClick = { showSolicitudForm = true }) { Text("Consultar solicitud y fotos del hogar") }
                     // 6. BARRA ACCIÓN INFERIOR
-                    BottomActionBar(
+                    if (mascota.estado.equals("Disponible", true) || isSolicitudEnviada) BottomActionBar(
                         nombreMascota = mascota.nombre,
                         solicitudEnviada = isSolicitudEnviada,
                         onAdoptClick = { showSolicitudForm = true }

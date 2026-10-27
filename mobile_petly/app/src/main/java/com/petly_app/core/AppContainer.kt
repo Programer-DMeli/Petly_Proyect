@@ -29,6 +29,10 @@ class AppContainer(private val contentResolver: ContentResolver) {
     fun perfil(preview: Boolean): PerfilRepository = if (preview) previewPerfil else remotePerfil
     fun catalogo(preview: Boolean): CatalogoRepository = if (preview) previewCatalogo else remoteCatalogo
     fun disponibilidad(preview: Boolean): DisponibilidadRepository = if (preview) previewDisponibilidad else remoteDisponibilidad
+    val fotosHogarApi = ApiClient.authenticatedAdminApi(session).create(FotosHogarApi::class.java)
+    val resolver = contentResolver
+    val favoritosApi = privateApi.create(FavoritosApi::class.java)
+    val solicitudesApi = privateApi.create(SolicitudesApi::class.java)
     val autorizaciones = AutorizacionRepository(privateApi.create(AutorizacionApi::class.java))
     val recuperacion = RecuperacionRepository(publicApi.create(RecuperacionApi::class.java))
     fun resetPreview() = previewPerfil.reset()

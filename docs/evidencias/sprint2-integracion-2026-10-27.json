@@ -1,0 +1,41 @@
+{
+  "fecha": "2026-10-27T13:44:33.349100+00:00",
+  "resultado": "PASS",
+  "comprobaciones": [
+    "Solicitud Spring–Django persistida, recuperada y duplicado rechazado; no reserva mascota",
+    "Foto privada persistida, reintento idempotente, titularidad, aislamiento y revocación con 403",
+    "Favoritos únicos por titular y horarios persistidos, rechazo de solapamiento sin pérdida, consulta autorizada del albergue",
+    "Observación, cancelación terminal, cronología y privacidad; aprobación reserva mascota e impide una segunda aprobación",
+    "Evento creado, editado, aislado por propietario y cancelado conservando registro público"
+  ],
+  "datos_prueba": {
+    "solicitud": 1,
+    "aprobada": 2,
+    "mascotas": [
+      25,
+      26,
+      27
+    ],
+    "albergue": 7,
+    "evento": 1
+  },
+  "validaciones_finales": {
+    "spring": {
+      "pruebas": 62,
+      "fallos": 0
+    },
+    "django": {
+      "encontradas": 130,
+      "aprobadas": 118,
+      "omitidas": 12
+    },
+    "kotlin_unitarias": 23,
+    "android_integradas": 1,
+    "mariadb_concurrencia": 2,
+    "react_playwright": 5,
+    "react_build": "PASS",
+    "react_lint": "PASS",
+    "revocacion_formulario_privado": "PASS",
+    "revision_del_integrador": "PENDIENTE_USUARIO"
+  }
+}

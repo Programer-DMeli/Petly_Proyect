@@ -136,7 +136,7 @@ def backup():
     temporary.rename(dump)
     photos = folder / "fotografias.tar.gz"
     with tarfile.open(photos, "w:gz") as archive:
-        for relative in ("backend-admin/media", "img_mascotas"):
+        for relative in ("backend-admin/media", "backend-admin/private-media", "img_mascotas"):
             path = ROOT / relative
             if path.exists():
                 archive.add(path, arcname=relative)

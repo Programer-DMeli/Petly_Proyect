@@ -65,7 +65,7 @@ export default function VerificacionKycPage() {
     if ((record?.dni === cleanDni && nombres && apellidos) || lastLookupDni.current === cleanDni) return;
 
     let active = true;
-    const timer = window.setTimeout(async () => {
+    const timer = window.setTimeout(() => { void (async () => {
       setDniLookup('Buscando datos del DNI…');
       try {
         const result = await spring<ApiPeruDniResult>('/api/kyc/dni', {
@@ -81,7 +81,7 @@ export default function VerificacionKycPage() {
         lastLookupDni.current = cleanDni;
         setDniLookup(errorMessage(e));
       }
-    }, 500);
+    })(); }, 500);
     return () => { active = false; window.clearTimeout(timer); };
   }, [dni, record?.dni, nombres, apellidos]);
 
@@ -132,7 +132,7 @@ export default function VerificacionKycPage() {
       {record.motivo_revision && <p>Resultado de revisión: {record.motivo_revision}</p>}
       {final && <p>La verificación está resuelta. Si necesitas corregir tus datos, comunícate con soporte.</p>}
     </div>}
-    {!final && !pendingReview && <form onSubmit={upload}>
+    {!final && !pendingReview && <form onSubmit={event => { void upload(event); }}>
       <fieldset disabled={busy}>
         <label>DNI<input required inputMode="numeric" pattern="[0-9]{8}" maxLength={8} value={dni} onChange={e => { const value = e.target.value.replace(/\D/g, '').slice(0, 8); if (value !== dni) { lastLookupDni.current = ''; setNombres(''); setApellidos(''); setDniLookup(''); } setDni(value); }} /></label>
         {dniLookup && <p role="status" aria-live="polite">{dniLookup}</p>}

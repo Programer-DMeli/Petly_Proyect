@@ -10,5 +10,6 @@ class RemoteCatalogoRepository(private val api: CatalogoApi): CatalogoRepository
     override suspend fun search(filters: CatalogoFilters, page: Int, pageSize: Int) = api.search(
         filters.search.trim(),filters.especie,filters.tamano,filters.temperamento,
         filters.edadMinimaMeses.trim().toIntOrNull(), filters.edadMaximaMeses.trim().toIntOrNull(),page,pageSize)
+    override suspend fun consejos(id: Long) = api.consejos(id)
     override suspend fun detail(id: Long) = api.detail(id)
 }

@@ -8,6 +8,7 @@ import com.petly.common.exception.ApiException;
 @RestController
 public class PerfilController {
  private final PerfilService perfiles;private final JdbcTemplate db;
+ @org.springframework.beans.factory.annotation.Autowired private PreferenciasService preferencias;
  public PerfilController(PerfilService perfiles,JdbcTemplate db){this.perfiles=perfiles;this.db=db;}
  static long id(Authentication a) {return Long.parseLong(((Claims)a.getPrincipal()).getSubject());}
  @GetMapping("/api/perfil") public Map<String,Object> get(Authentication a){return perfiles.get(id(a));}
@@ -19,6 +20,6 @@ public class PerfilController {
  @GetMapping("/api/albergue/perfiles/{adoptanteId}")
  public Map<String,Object> shared(Authentication a,@PathVariable long adoptanteId){
   var rows=db.queryForList("SELECT al.id FROM albergues_albergue al JOIN acceso_user du ON du.id=al.usuario_id JOIN autorizaciones_consulta ac ON ac.albergue_id=al.id WHERE du.spring_id=? AND al.activo=TRUE AND ac.adoptante_id=? AND ac.estado='ACTIVA'",id(a),adoptanteId);
-  if(rows.isEmpty()) throw new ApiException(403,"perfil no autorizado");return perfiles.get(adoptanteId);
+  if(rows.isEmpty()) throw new ApiException(403,"perfil no autorizado");var perfil = perfiles.get(adoptanteId); perfil.put("disponibilidad", preferencias.horarios(adoptanteId)); perfil.put("zonaHoraria", "America/Lima"); return perfil;
  }
 }

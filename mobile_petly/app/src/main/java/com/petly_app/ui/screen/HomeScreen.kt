@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +41,8 @@ fun HomeScreen(
     onNavigateDetail: (Long) -> Unit = {}
 ) {
     val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
+    val favoritoError by FavoritosManager.error.collectAsStateWithLifecycle()
+    val favoritesScope = rememberCoroutineScope()
     var showFavoritesDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -50,10 +53,11 @@ fun HomeScreen(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
+        if (favoritoError.isNotBlank()) Text(favoritoError)
         // TOP HEADER BAR
         HomeHeaderBar(
             onNavigateProfile = onNavigateProfile,
-            onOpenFavorites = { showFavoritesDialog = true },
+            onOpenFavorites = { showFavoritesDialog = true; favoritesScope.launch { FavoritosManager.cargar() } },
             favoritesCount = favorites.size
         )
 

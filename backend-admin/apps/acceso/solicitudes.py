@@ -29,10 +29,10 @@ TRANSICIONES = {
 @transaction.atomic
 def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=None):
     """Aplica una transición bajo bloqueo para evitar dobles aprobaciones."""
-    solicitud = SolicitudAdopcion.objects.select_for_update().select_related(
-        "mascota", "albergue"
-    ).get(pk=solicitud_id)
-    mascota = Mascota.objects.select_for_update().get(pk=solicitud.mascota_id)
+    # Todas las transiciones y envíos toman primero la misma mascota.
+    mascota_id = SolicitudAdopcion.objects.values_list("mascota_id", flat=True).get(pk=solicitud_id)
+    mascota = Mascota.objects.select_for_update().get(pk=mascota_id)
+    solicitud = SolicitudAdopcion.objects.select_for_update().get(pk=solicitud_id)
     actual = solicitud.estado
 
     if nuevo_estado == SolicitudAdopcion.Estado.CANCELADA and (
@@ -68,19 +68,16 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         if otra_aprobada:
             raise ValidationError({"estado": "Ya existe otra solicitud aprobada para esta mascota."})
 
-        perfil = AdoptanteProfile.objects.filter(
-            documento_numero=solicitud.postulante.documento_numero,
-            cuestionario_completado=True,
-        ).first()
-        if perfil is None:
-            raise ValidationError({"autorizacion": "El perfil del adoptante ya no está finalizado."})
-        autorizacion = Autorizacion.objects.select_for_update().filter(
-            adoptante=perfil.user,
-            albergue=solicitud.albergue,
-            estado=Autorizacion.Estado.VIGENTE,
-        ).first()
-        if autorizacion is None or not autorizacion.esta_vigente():
-            raise ValidationError({"autorizacion": "Se requiere autorización vigente para aprobar esta solicitud."})
+        from .eligibilidad import comprobar_elegibilidad
+        if not solicitud.adoptante:
+            # Compatibilidad con solicitudes históricas vinculadas por documento.
+            perfil = AdoptanteProfile.objects.filter(documento_numero=solicitud.postulante.documento_numero).first() if solicitud.postulante else None
+            if not perfil:
+                raise ValidationError({"perfil": "No se encontró el titular de la solicitud."})
+            titular = perfil.user
+        else:
+            titular = solicitud.adoptante
+        comprobar_elegibilidad(titular, solicitud.albergue_id, bloquear=True)
 
     solicitud.estado = nuevo_estado
     update_fields = ["estado", "actualizado_en"]

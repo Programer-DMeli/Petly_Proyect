@@ -1,3 +1,4 @@
+import FotosHogar from '../../../../components/FotosHogar';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { errorMessage, spring } from '../../../../services/http';
@@ -80,6 +81,7 @@ export default function SeguimientoSolicitudPage() {
               {estadoLabel[seguimiento.estadoActual] ?? seguimiento.estadoActual}
             </span>
           </p>
+          <FotosHogar solicitudId={seguimiento.solicitudId}/>
           <h2>Historial de cambios</h2>
           {seguimiento.eventos.length === 0 ? (
             <p className="feedback tracking-empty">

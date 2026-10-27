@@ -263,3 +263,32 @@ class MascotaAPITest(TestCase):
         self.mascota.refresh_from_db()
         self.assertIsNone(self.mascota.edad_anos)
         self.assertIsNone(self.mascota.edad_meses)
+
+    @patch('apps.mascotas.gemini.temperamento')
+    def test_temperamento_sugerido_no_se_guarda_hasta_confirmar(self, generate):
+        self._auth(self.user)
+        generate.return_value = {'etiqueta': 'SOCIABLE', 'explicacion': 'Observación registrada.', 'evidencia': 'Juega con otros perros', 'guardado': False}
+        url = f'/api/mascotas/{self.mascota.id}/sugerir-temperamento/'
+        response = self.client.post(url, {}, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.temperamento, 'POR_EVALUAR')
+        response = self.client.patch(f'/api/mascotas/{self.mascota.id}/', {'temperamento': 'SOCIABLE'}, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.temperamento, 'SOCIABLE')
+        self._auth(self.other_user)
+        self.assertEqual(self.client.post(url, {}, format='json').status_code, 404)
+        self._auth(self.staff)
+        self.assertEqual(self.client.post(url, {}, format='json').status_code, 403)
+
+    @patch('apps.mascotas.gemini.temperamento')
+    def test_error_temperamento_conserva_etiqueta(self, generate):
+        from apps.mascotas.descripcion_ia import ErrorProveedorDescripcion
+        generate.side_effect = ErrorProveedorDescripcion('Servicio no disponible')
+        self._auth(self.user)
+        original = self.mascota.temperamento
+        response = self.client.post(f'/api/mascotas/{self.mascota.id}/sugerir-temperamento/', {}, format='json')
+        self.assertEqual(response.status_code, 502)
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.temperamento, original)

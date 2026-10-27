@@ -29,7 +29,6 @@ object SolicitudAdopcionValidation {
         if (enviar) {
             if (draft.nombreCompleto.isBlank()) put("nombreCompleto", "Ingresa tu nombre completo.")
             if (draft.dni.trim().length != 8 || draft.dni.trim().any { !it.isDigit() }) put("dni", "El DNI debe tener 8 dígitos numéricos.")
-            if (!draft.dniVerificado) put("dniVerificado", "Debes verificar tu DNI antes de enviar.")
             if (draft.direccionHogar.isBlank()) put("direccionHogar", "Ingresa la dirección de tu hogar.")
             if (draft.telefonoContacto.isBlank()) put("telefonoContacto", "Ingresa tu teléfono de contacto.")
             if (draft.motivoAdopcion.isBlank()) put("motivoAdopcion", "Explica brevemente por qué deseas adoptar.")

@@ -52,6 +52,7 @@ const pets = [
 ];
 
 test('el catálogo React conserva el orden recibido y marca compatibilidad incompleta', async ({ page }) => {
+  await page.route('http://localhost:8080/api/perfil/favoritos', route => route.fulfill({ json: [] }));
   await page.route('http://localhost:8080/api/auth/login', route =>
     route.fulfill({ json: { token: 'token-de-prueba', expiresIn: 3600 } })
   );

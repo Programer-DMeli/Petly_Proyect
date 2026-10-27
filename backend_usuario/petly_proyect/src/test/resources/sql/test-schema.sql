@@ -51,3 +51,14 @@ CREATE TABLE IF NOT EXISTS mascotas_mascota (
     estado VARCHAR(15) NOT NULL DEFAULT 'DISPONIBLE',
     foto_principal VARCHAR(255) NULL
 );
+
+CREATE TABLE IF NOT EXISTS favoritos_mascotas (
+ usuario_id BIGINT NOT NULL, mascota_id BIGINT NOT NULL,
+ creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(usuario_id,mascota_id)
+);
+CREATE TABLE IF NOT EXISTS disponibilidad_adoptante (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, usuario_id BIGINT NOT NULL,
+ dia_semana VARCHAR(12) NOT NULL, hora_inicio VARCHAR(5) NOT NULL,
+ hora_fin VARCHAR(5) NOT NULL, descripcion VARCHAR(300) NOT NULL DEFAULT ''
+);
