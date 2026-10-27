@@ -259,7 +259,7 @@ US-03 tiene esta redacción actualizada por el usuario, que reemplaza la del PDF
 
 > Como usuario quiero visualizar el puntaje recalculado de coincidencia cuando actualice mis preferencias para mantener el catálogo personalizado.
 
-## 9. Sprint 1: alcance de desarrollo
+## 9. Sprint 1: (Ya completado)
 
 Objetivo: disponer de una base integrada donde el albergue registre mascotas y actualice su disponibilidad, y el adoptante acceda, complete su perfil y consulte el catálogo.
 
@@ -275,17 +275,6 @@ Objetivo: disponer de una base integrada donde el albergue registre mascotas y a
 | US-18 | Consulta de datos de postulantes por el albergue. El backlog añade antecedentes e historial. | 3 h |
 | US-13 | Estados Disponible, En Proceso y Adoptado; actualización del catálogo. | 2 h |
 
-El PDF contiene 33 tareas que suman **26 horas**, aunque declara **30 horas**. No corregir silenciosamente: aclarar si las cuatro horas restantes son una reserva. Las estimaciones pueden ser insuficientes si se parte desde cero y no incluyen explícitamente toda la preparación e integración.
-
-### 9.1. Decisiones aprobadas para el Sprint 1
-
-El usuario eligió la opción A de las alternativas de aclaración, con la excepción de pantallas, donde combinó A y B. Estas decisiones sustituyen los pendientes anteriores. La tabla de horas conserva el alcance y estimaciones del PDF como referencia histórica; no constituye una nueva estimación del alcance actualizado.
-
-- **US-21:** registro del adoptante con correo y contraseña. Las cuentas de albergue y administrador son creadas por el equipo mediante un procedimiento documentado, sin contraseñas en Git. Tras dos intentos consecutivos fallidos, bloqueo temporal de la cuenta durante **1 minuto**, con desbloqueo automático. Aplicar también limitación de peticiones. No incluir registro mediante redes sociales en esta entrega.
-- **US-11:** **una fotografía por mascota**, en JPEG o PNG, de máximo **5 MB**. El archivo se guarda en almacenamiento local de Django y su referencia en la DB. Validar el archivo en el backend; no guardar las fotografías privadas en Git.
-- **US-12:** filtros por especie, tamaño, edad y temperamento. El temperamento utiliza categorías predefinidas registradas por el albergue, incluyendo **“Por evaluar”** cuando se desconozca. No inferirlo mediante IA. Documentar las categorías y su correspondencia entre registro y filtros.
-- **US-24:** recuperación **solo por correo**, mediante enlace con token de un solo uso que vence en **15 minutos**. SMS queda pendiente para una versión posterior. No declarar entregada la alternativa SMS.
-- **US-18:** consulta del perfil únicamente cuando el adoptante **autorice expresamente compartirlo con un albergue específico**. El adoptante puede revocar la autorización. No incluir antecedentes externos ni historial de adopciones en el Sprint 1. Spring Boot conserva la autorización vinculada al perfil; Django comprueba su vigencia antes de permitir la consulta. La consulta no equivale a una solicitud de adopción.
 
 ### 9.2. Interfaces acordadas — actualización del usuario
 
@@ -299,7 +288,7 @@ La indicación posterior del usuario incorpora el portal React del adoptante al 
 - No incluye matchmaking, solicitudes, IA, chatbot, mensajería ni seguimiento.
 - Este cambio de alcance requiere reestimar el esfuerzo; no modifica automáticamente las horas del PDF.
 
-### 9.3. Responsables y revisión cruzada
+### 9.3. Responsables y revisión cruzada (Ya completado)
 
 Indicaciones de liderazgo acordadas:
 
@@ -319,9 +308,8 @@ Indicaciones de liderazgo acordadas:
 | US-18 — Consulta autorizada | Angie | Mayra | Angie implementa autorización/revocación y consulta autorizada; Mayra implementa panel y permisos Django; Meliton integra el consentimiento Android. |
 | US-13 — Estado de la mascota | Mayra | Meliton | Angie expone el estado en el catálogo; Meliton verifica el cambio al consultar desde Android. |
 
-Cada persona tiene tres historias como responsable, pero esto no implica igualdad de esfuerzo. El responsable coordina la historia completa, sus dependencias y su evidencia; no desarrolla necesariamente todos sus componentes. El revisor comprueba criterios y permisos y revisa los cambios antes de integrarlos. Ninguna historia se aprueba únicamente por su propio responsable.
 
-### 9.4. Criterios mínimos de aceptación
+### 9.4. Criterios mínimos de aceptación (Ya completado)
 
 **US-21 — Registro y acceso**
 
@@ -396,19 +384,6 @@ Pendientes que permanecen: confirmar capacidad y reestimar el alcance actualizad
 
 El Sprint 1 no incluye el motor de compatibilidad, IA, solicitudes, chatbot, mensajería ni seguimiento.
 
-## 10. Objetivo inmediato de OpenCode: preparar la estructura
-
-Esta etapa prepara el proyecto para que el equipo programe. No equivale a completar el Sprint 1.
-
-1. Inspeccionar los archivos existentes y organizar los proyectos sin sobrescribir trabajo.
-2. Crear React y Django si no existen; extender los proyectos Spring Boot y Android existentes.
-3. Preparar configuraciones, documentación y carpetas de los módulos.
-4. Mostrar una pantalla inicial sencilla de Petly en web y Android.
-5. Añadir `GET /api/health/` en ambos backends, con respuesta básica sin información sensible.
-6. Documentar el modelo preliminar de datos, sin generar todavía entidades ni migraciones de negocio.
-7. Mantener las funcionalidades del Sprint 1 como pendientes durante esta preparación. Las decisiones de v2 definen cómo programarlas cuando se solicite esa etapa; no autorizan implementarlas todas al leer este archivo.
-8. Preparar únicamente el proyecto local de acuerdo a la estructura del repositorio. No publicar en GitHub, hacer push ni crear repositorios remotos en esta etapa.
-
 ## 10.1. Mejoras de preparación (octubre 2026)
 
 Como parte de la preparación de la estructura, se han implementado las siguientes mejoras de calidad y herramientas:
@@ -435,7 +410,7 @@ Como parte de la preparación de la estructura, se han implementado las siguient
 - SecurityConfig actualizado para permitir endpoints de documentación sin autenticación
 - Variable de entorno: `SPRING_JWT_SECRET` (clave compartida con Django)
 
-**Móvil (Kotlin + Jetpack Compose):**
+**Móvil (Kotlin + Jetpack Compose + MVVM + Singleton):**
 - Network Security Config: debug permite cleartext para `10.0.2.2`/`localhost`; release solo HTTPS
 - AndroidManifest con `networkSecurityConfig` y permisos `INTERNET`, `ACCESS_NETWORK_STATE`
 - Dependencias añadidas: OkHttp + logging interceptor, Moshi (JSON), Retrofit, Navigation Compose, Lifecycle ViewModel Compose
@@ -504,15 +479,3 @@ Cambios de v2: opciones A aprobadas para registro/acceso, fotografías, temperam
 
 Este documento resume la conversación de planificación, la arquitectura proporcionada.
 Las restricciones explícitas y actualizaciones del usuario prevalecen sobre las propuestas pendientes de este documento. Leer este archivo como contexto para la tarea solicitada; IMPORTANTE: no ejecutar automáticamente todas las funcionalidades aquí descritas.
-
-## 16. Implementación local de Persona C — 12 de octubre de 2026
-
-La solicitud posterior de Meliton autorizó implementar e integrar US-16, US-17 y US-12 y sus apoyos, corregir compilación, migraciones y autenticación, sin publicar. El estado de preparación descrito previamente queda como antecedente histórico. Consultar `docs/sprint-01.md` y `docs/entrega-sprint-01.md` para resultados actuales. Los nuevos detalles de contrato se registran como decisiones propuestas en `docs/api.md`; no se atribuye aprobación previa del grupo ni se modifican estimaciones. La revisión cruzada y la verificación de la base existente siguen pendientes.
-
-## 17. Cierre técnico de interfaces Sprint 1
-
-El usuario autorizó completar en orden las actividades pendientes. Se implementaron las áreas React de los tres roles, consulta ADMIN por rol (sin depender de is_staff), listado protegido de perfiles autorizados, recuperación con enlace web además del enlace Android, edad total consistente y corrección manual de disponibilidad. Resultados y límites en docs/entrega-sprint-01.md. La revisión cruzada sigue siendo una aprobación humana pendiente y no se atribuye al agente.
-
-## 18. Ampliación explícita US-46 y fotografías suministradas
-
-Meliton solicitó CRUD de albergues desde ADMIN React y publicar img_mascotas desde ALBERGUE, visibles en Android. Se implementó el CRUD en Django/React y la consulta restringida ADMIN de cuentas ALBERGUE en Spring. Las siete fotos se subieron usando el formulario real del albergue; nombres/descripciones son de demostración. Edad, tamaño, sexo, energía y temperamento desconocidos no se deducen de la imagen. Django admite sexo POR_EVAL mediante migración 0004 propia. Originales y medios privados quedan fuera de Git. Evidencia actual en entrega-sprint-01.md.
