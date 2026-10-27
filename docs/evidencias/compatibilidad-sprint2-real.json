@@ -1,0 +1,18 @@
+{
+  "fecha": "2026-10-27T18:25:51.488207+00:00",
+  "tipo": "APIs reales Spring-Django-MariaDB",
+  "mascotasPrueba": [
+    28,
+    29,
+    30,
+    31
+  ],
+  "checks": [
+    "US-01/02: perfil compatible 100, empates por id y desconocidos al final; mascotas nuevas persistidas",
+    "US-04: lista y detalle idénticos, aportes sumados y redondeados; paginación conserva orden",
+    "US-03: formulario inválido no cambia datos; guardar vivienda/rutina/convivencia recalcula con perfil poco compatible",
+    "US-02/03: mascota recién reservada se excluye del recálculo",
+    "US-05: acceso negado a adoptante/albergue y pesos inválidos no sustituyen configuración vigente"
+  ],
+  "gemini": []
+}

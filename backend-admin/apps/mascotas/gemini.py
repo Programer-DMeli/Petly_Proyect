@@ -1,6 +1,7 @@
 """Gemini server-side; outputs are drafts, never adoption decisions."""
 import base64
 import json
+import logging
 import re
 from io import BytesIO
 from urllib.request import Request, urlopen
@@ -15,8 +16,11 @@ def generar(mascota, prompt, schema):
         raise ProveedorDescripcionNoConfigurado('Gemini no está configurado.')
     if not mascota.foto_principal:
         raise DescripcionIAError('Guarda una foto JPEG/PNG de la mascota primero.')
-    with mascota.foto_principal.open('rb') as photo:
-        data = photo.read(5 * 1024 * 1024 + 1)
+    try:
+        with mascota.foto_principal.open('rb') as photo:
+            data = photo.read(5 * 1024 * 1024 + 1)
+    except (OSError, ValueError) as exc:
+        raise DescripcionIAError('No se pudo leer la foto guardada. Reemplázala o reintenta.') from exc
     if len(data) > 5 * 1024 * 1024:
         raise DescripcionIAError('La foto supera 5 MB.')
     try:
@@ -49,21 +53,24 @@ def generar(mascota, prompt, schema):
             raise ValueError('object required')
         return result
     except (HTTPError, URLError, OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+        logging.getLogger(__name__).warning('Gemini no disponible: tipo=%s http=%s', type(exc).__name__, getattr(exc, 'code', None))
         raise ErrorProveedorDescripcion('Gemini no pudo generar una sugerencia válida. Puedes reintentar.') from exc
 
 
 def descripcion(mascota):
     result = generar(mascota,
         'Describe en español solo rasgos visibles. Máximo 500 caracteres. No inventes nombre, salud, '
-        'edad, raza, personalidad ni conducta. Omite rasgos inciertos. Texto editable para revisión humana.',
+        'edad, raza, personalidad ni conducta. Usa perro/gato, nunca cachorro/adulto. '
+        'Limítate al pelaje, colores, orejas, hocico, ojos y postura visibles. No describas el fondo. '
+        'Omite rasgos inciertos y no menciones categorías prohibidas ni para negarlas. Texto editable para revisión humana.',
         {'type': 'OBJECT', 'properties': {'description': {'type': 'STRING'}}, 'required': ['description']})
     return result.get('description')
 
 
 def temperamento(mascota):
     observations = mascota.descripcion.strip()
-    if not observations:
-        raise DescripcionIAError('Registra observaciones en el perfil de la mascota antes de solicitar etiquetas.')
+    if not mascota.especie:
+        raise DescripcionIAError('Completa el perfil de la mascota primero.')
     from .models import Mascota
     allowed = list(Mascota.Temperamento.values)
     result = generar(mascota,
@@ -80,6 +87,8 @@ def temperamento(mascota):
         raise ErrorProveedorDescripcion('Gemini devolvió una etiqueta inválida.')
     evidence = result.get('evidencia')
     # Require a literal observation from the stored profile; image-only inference cannot change a label.
-    if result['etiqueta'] != 'POR_EVALUAR' and (not isinstance(evidence, str) or len(evidence.strip()) < 8 or evidence.casefold() not in observations.casefold()):
+    if result['etiqueta'] != 'POR_EVALUAR' and (not isinstance(evidence, str) or not 8 <= len(evidence.strip()) <= 500 or evidence.casefold() not in observations.casefold() or not re.search(r'jueg|juga|conviv|interact|se acerca|pase|descans|ladra|esconde|evita|disfruta|tolera|busca|socializa|permanece|corre|responde|explora|miedo|temor|actividad|tranquil|sociab|tímid|independ|enérg|juguet|activo', evidence, re.IGNORECASE)):
         result = {'etiqueta': 'POR_EVALUAR', 'explicacion': 'Faltan observaciones registradas que respalden la conducta.', 'evidencia': ''}
-    return {**result, 'guardado': False}
+    return {'etiqueta': result['etiqueta'], 'explicacion': result['explicacion'].strip(),
+            'evidencia': evidence.strip() if isinstance(evidence, str) and len(evidence) <= 500 and result['etiqueta'] != 'POR_EVALUAR' else '',
+            'guardado': False}

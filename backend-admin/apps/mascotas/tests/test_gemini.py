@@ -59,3 +59,21 @@ class GeminiTest(SimpleTestCase):
     def test_reject_unknown_label(self, send):
         send.return_value = self.response({'etiqueta': 'PELIGROSO', 'explicacion': 'No permitida.', 'evidencia': ''})
         with self.assertRaises(ErrorProveedorDescripcion): temperamento(self.pet())
+
+    @patch('apps.mascotas.gemini.urlopen')
+    def test_rasgo_visual_no_es_evidencia_y_no_se_filtran_campos_extra(self, send):
+        send.return_value = self.response({'etiqueta': 'SOCIABLE', 'explicacion': 'Por su color.', 'evidencia': 'Pelaje marrón con manchas blancas.', 'score': 99})
+        result = temperamento(self.pet('Pelaje marrón con manchas blancas.'))
+        self.assertEqual(result['etiqueta'], 'POR_EVALUAR')
+        self.assertEqual(result['evidencia'], '')
+        self.assertNotIn('score', result)
+
+    @patch('apps.mascotas.gemini.urlopen')
+    def test_requiere_foto_real_y_no_acepta_respuestas_no_objeto(self, send):
+        from apps.mascotas.descripcion_ia import DescripcionIAError
+        pet = self.pet(); pet.foto_principal = None
+        with self.assertRaises(DescripcionIAError): temperamento(pet)
+        send.assert_not_called()
+        for value in [[], 'texto', None, {'candidates': None}]:
+            send.return_value = BytesIO(json.dumps(value).encode())
+            with self.assertRaises(ErrorProveedorDescripcion): generar_borrador(self.pet())

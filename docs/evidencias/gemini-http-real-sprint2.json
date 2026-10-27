@@ -1,0 +1,66 @@
+{
+  "tipo": "Gemini REAL mediante HTTP Spring y Django",
+  "fecha": "2026-10-27T18:35:40.582067+00:00",
+  "mascota_prueba": 28,
+  "checks": [
+    {
+      "flujo": "consejos",
+      "ok": true,
+      "intentos": [
+        {
+          "http": 200,
+          "respuesta": {
+            "explicacion": "El análisis de compatibilidad arroja un puntaje perfecto del 100%, indicando una alineación total entre las características de la mascota y el perfil del hogar. Este resultado se desglosa en tres pilares fundamentales: la vivienda, que se ajusta al tamaño grande del perro; la rutina, que satisface sus necesidades de actividad física; y la convivencia, donde el temperamento sociable del animal coincide con la dinámica familiar. Es un indicador positivo de que el entorno propuesto puede cubrir los requerimientos de bienestar, energía y socialización de este perro, facilitando una integración armoniosa basada en los datos proporcionados.",
+            "estado": "DISPONIBLE",
+            "recomendaciones": [
+              "Dado el nivel de energía alta, asegúrate de establecer una rutina diaria de paseos largos y juegos interactivos para canalizar su vitalidad de forma saludable.",
+              "Prepara un espacio amplio y cómodo dentro de casa donde el perro pueda descansar, considerando su tamaño grande para garantizar su bienestar físico.",
+              "Refuerza la socialización mediante encuentros controlados y positivos, aprovechando su temperamento sociable para fortalecer su confianza en diversos entornos.",
+              "Mantén una comunicación constante con el albergue para recibir orientación específica sobre sus necesidades particulares de salud y entrenamiento continuo."
+            ],
+            "versionReglas": "petly-compat-v1"
+          }
+        }
+      ],
+      "sin_cambios_automaticos": true
+    },
+    {
+      "flujo": "descripcion",
+      "ok": false,
+      "intentos": [
+        {
+          "http": 502,
+          "respuesta": {
+            "detail": "Gemini no pudo generar una sugerencia válida. Puedes reintentar."
+          }
+        },
+        {
+          "http": 502,
+          "respuesta": {
+            "detail": "Gemini no pudo generar una sugerencia válida. Puedes reintentar."
+          }
+        }
+      ],
+      "sin_cambios_automaticos": true
+    },
+    {
+      "flujo": "temperamento",
+      "ok": false,
+      "intentos": [
+        {
+          "http": 502,
+          "respuesta": {
+            "detail": "Gemini no pudo generar una sugerencia válida. Puedes reintentar."
+          }
+        },
+        {
+          "http": 502,
+          "respuesta": {
+            "detail": "Gemini no pudo generar una sugerencia válida. Puedes reintentar."
+          }
+        }
+      ],
+      "sin_cambios_automaticos": true
+    }
+  ]
+}

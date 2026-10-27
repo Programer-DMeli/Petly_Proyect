@@ -15,7 +15,7 @@ public class GeminiConsejosService {
     private final RestTemplate http;
     private final ObjectMapper json = new ObjectMapper();
     public GeminiConsejosService(@Value("${GEMINI_API_KEY:}") String key,
-            @Value("${GEMINI_MODEL:gemini-2.5-flash}") String model,
+            @Value("${GEMINI_MODEL:gemini-3.1-flash-lite}") String model,
             @Value("${GEMINI_TIMEOUT_SECONDS:20}") int timeout) {
         this.key = key; this.model = model;
         var factory = new SimpleClientHttpRequestFactory();

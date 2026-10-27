@@ -78,7 +78,7 @@ def validar_borrador(text):
         raise ErrorProveedorDescripcion("El proveedor no devolvió una descripción editable válida.")
     draft = text.strip()
     # Refuse common unsupported claims; the shelter can retry with a corrected response.
-    prohibited = ("raza", "saludable", "vacun", "desparas", "tiene buena salud", "años", " meses", "temperamento", "personalidad", "se comporta", "agresiv", "obediente", "cariños", "juguet", "sociable", "tranquilo", "se llama")
+    prohibited = ("raza", "saludable", "vacun", "desparas", "tiene buena salud", "años", " meses", "temperamento", "personalidad", "se comporta", "agresiv", "obediente", "cariños", "juguet", "sociable", "tranquilo", "se llama", "sano", "sana", "amigable", "leal", "fiel", "agresivo", "cachorro", "adulto")
     lowered = draft.casefold()
     if any(term in lowered for term in prohibited):
         raise ErrorProveedorDescripcion("La respuesta incluye inferencias que no se permiten. Conservamos la descripción actual.")

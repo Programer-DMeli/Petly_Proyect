@@ -277,6 +277,7 @@ class MascotaAPITest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.mascota.refresh_from_db()
         self.assertEqual(self.mascota.temperamento, 'SOCIABLE')
+        Albergue.objects.get_or_create(usuario=self.other_user, defaults={'nombre': 'Otro', 'direccion': 'Lima'})
         self._auth(self.other_user)
         self.assertEqual(self.client.post(url, {}, format='json').status_code, 404)
         self._auth(self.staff)

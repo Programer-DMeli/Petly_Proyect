@@ -46,7 +46,7 @@ public class CatalogoService {
   Map<String,Object> v=new LinkedHashMap<>();v.put("id",row.get("id"));v.put("nombre",row.get("nombre"));
   v.put("especie",ESPECIES.get(row.get("especie")));v.put("tamano",TAMANOS.getOrDefault(row.get("tamanio"),"Por evaluar"));
   v.put("edadMeses",row.get("edad_total"));v.put("temperamento",TEMPERAMENTOS.getOrDefault(row.get("temperamento"),"Por evaluar"));
-  v.put("energia",Map.of("BAJA","Baja","MEDIA","Media","ALTA","Alta").getOrDefault(row.get("energia"),"Por evaluar"));
+  v.put("energia",Map.of("BAJA","Baja","MEDIA","Media","ALTA","Alta").getOrDefault(String.valueOf(row.get("energia")),"Por evaluar"));
   v.put("descripcion",row.get("descripcion"));v.put("albergue",row.get("albergue_nombre"));v.put("albergueId",row.get("albergue_id"));v.put("ubicacion",row.get("ubicacion"));
   v.put("estado",Map.of("DISPONIBLE","Disponible","EN_PROCESO","En Proceso","ADOPTADO","Adoptado").get(row.get("estado")));
   String photo=(String)row.get("foto_principal");v.put("fotografiaUrl",photo==null||photo.isBlank()?null:media.replaceAll("/$","")+"/"+photo);return v;

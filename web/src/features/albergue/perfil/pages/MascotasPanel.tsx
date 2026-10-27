@@ -44,6 +44,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
   const [inputVersion, setInputVersion] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [descriptionSuggestion, setDescriptionSuggestion] = useState('');
   const [suggestion, setSuggestion] = useState<{ etiqueta: string; explicacion: string; evidencia: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(1);
@@ -73,6 +74,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
   }, [suppliedShelter]);
   function reset() {
     setSuggestion(null);
+    setDescriptionSuggestion('');
     setId(null);
     setDraft(initial);
     setFile(null);
@@ -112,8 +114,8 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
     setBusy(true); setError(''); setSuccess('');
     try {
       const result = await django<{ borrador: string }>(`/api/mascotas/${id}/generar-descripcion/`, { method: 'POST', body: json({}) });
-      setDraft(old => ({ ...old, descripcion: result.borrador }));
-      setSuccess('Borrador generado. Revísalo y edítalo antes de guardar.');
+      setDescriptionSuggestion(result.borrador);
+      setSuccess('Borrador generado. Puedes editarlo, descartarlo o aplicarlo al editor antes de guardar.');
     } catch (e) { setError(errorMessage(e)); }
     finally { setBusy(false); }
   }
@@ -133,6 +135,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
       const pet = await django<AdminPet>(`/api/mascotas/${value}/`);
       if (edit) {
         setSuggestion(null);
+        setDescriptionSuggestion('');
         setId(pet.id);
         setDraft({
           nombre: pet.nombre,
@@ -258,17 +261,23 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
             Deja la edad vacía cuando se desconozca. El comportamiento y energía desconocidos se
             registran como Por evaluar.
           </p>
-          <label>
+          <label htmlFor="descripcion-mascota">
             Descripción de la mascota
-            <textarea
+            <textarea id="descripcion-mascota"
               value={draft.descripcion}
               onChange={e => setDraft({ ...draft, descripcion: e.target.value })}
             />
           </label>
+          <p className="muted">Para sugerir temperamento se usa la foto y la descripción guardadas. Registra observaciones de conducta; una foto por sí sola deja el temperamento Por evaluar.</p>
           {id && <div className="actions">
             <button type="button" className="secondary" onClick={() => void generateDescription()}>
               Generar borrador desde la foto
             </button>
+            {descriptionSuggestion && <section aria-label="Borrador de descripción IA">
+              <label>Borrador editable de Gemini<textarea value={descriptionSuggestion} maxLength={500} onChange={e => setDescriptionSuggestion(e.target.value)} /></label>
+              <button type="button" onClick={() => { setDraft(old => ({ ...old, descripcion: descriptionSuggestion })); setDescriptionSuggestion(''); }}>Aplicar descripción al editor</button>
+              <button type="button" onClick={() => setDescriptionSuggestion('')}>Descartar borrador</button>
+            </section>}
             <button type="button" disabled={busy || !id || !!file} onClick={() => void suggestTemperament()}>Sugerir temperamento con Gemini</button>
             {suggestion && <section aria-label="Sugerencia de temperamento"><p>Sugerencia pendiente: {suggestion.etiqueta}</p><p>{suggestion.explicacion}</p><p>Observación: {suggestion.evidencia || 'Sin evidencia conductual'}</p>
               <button type="button" onClick={() => { setDraft(old => ({ ...old, temperamento: suggestion.etiqueta })); setSuggestion(null); setSuccess('Etiqueta aplicada al editor. Revisa y guarda para confirmar.'); }}>Aplicar al editor</button>

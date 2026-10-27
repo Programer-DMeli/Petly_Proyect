@@ -1302,3 +1302,7 @@
   max-height: calc(100dvh - 2.5rem);
   overflow-y: auto;
 }
+
+.pet-card__compatibility.is-high { color: #126858; }
+.pet-card__compatibility.is-medium { color: #806000; }
+.pet-card__compatibility.is-low { color: #a5440a; }

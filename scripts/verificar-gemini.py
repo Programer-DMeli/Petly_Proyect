@@ -23,7 +23,7 @@ if '--models' in sys.argv:
 from django.core.files import File
 from apps.mascotas.descripcion_ia import generar_borrador
 from apps.mascotas.gemini import temperamento
-photos = list((root / 'backend-admin/media').rglob('*.jpg')) + list((root / 'backend-admin/media').rglob('*.png'))
+photos = list((root / 'img_mascotas').glob('*.jpg')) or list((root / 'backend-admin/media').rglob('*.jpg'))
 if not photos:
     print('No hay foto local para prueba real.'); raise SystemExit(1)
 results = []
@@ -35,8 +35,10 @@ for name, function in [('descripcion', generar_borrador), ('temperamento', tempe
         results.append({'flujo': name, 'resultado': 'OK', 'respuesta': result, 'datos': 'Foto local y observación de prueba; sin persistencia'})
     except Exception as exc:
         cause = exc.__cause__
-        results.append({'flujo': name, 'resultado': 'ERROR', 'tipo': type(exc).__name__, 'causa': type(cause).__name__ if cause else None, 'http': getattr(cause, 'code', None)})
-report = {'proveedor': 'Gemini real', 'resultados': results}
+        results.append({'flujo': name, 'resultado': 'ERROR', 'tipo': type(exc).__name__, 'causa': type(cause).__name__ if cause else None, 'http': getattr(cause, 'code', None), 'mensaje': str(exc)})
+from django.conf import settings
+from datetime import datetime, timezone
+report = {'proveedor': 'Gemini real', 'modelo': settings.GEMINI_MODEL, 'fecha': datetime.now(timezone.utc).isoformat(), 'resultados': results}
 print(json.dumps(report, ensure_ascii=False, indent=2))
 (root / 'docs/evidencias/gemini-real-sprint2.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
 raise SystemExit(0 if all(r['resultado'] == 'OK' for r in results) else 1)

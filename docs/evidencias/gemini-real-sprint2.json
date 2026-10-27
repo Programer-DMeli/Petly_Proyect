@@ -1,19 +1,24 @@
 {
   "proveedor": "Gemini real",
+  "modelo": "gemini-3.1-flash-lite",
+  "fecha": "2026-10-27T18:25:33.877792+00:00",
   "resultados": [
     {
       "flujo": "descripcion",
-      "resultado": "ERROR",
-      "tipo": "ErrorProveedorDescripcion",
-      "causa": "HTTPError",
-      "http": 404
+      "resultado": "OK",
+      "respuesta": "Perro de pelaje largo y suave, con una combinación de colores blanco y castaño. Presenta una mancha blanca que se extiende desde el hocico hasta la frente. Tiene orejas largas, caídas y cubiertas de pelo. Sus ojos son grandes, redondos y de color oscuro. El hocico es corto y termina en una nariz negra. El perro se encuentra en una postura recostada, con la cabeza apoyada sobre la superficie.",
+      "datos": "Foto local y observación de prueba; sin persistencia"
     },
     {
       "flujo": "temperamento",
-      "resultado": "ERROR",
-      "tipo": "ErrorProveedorDescripcion",
-      "causa": "HTTPError",
-      "http": 404
+      "resultado": "OK",
+      "respuesta": {
+        "etiqueta": "SOCIABLE",
+        "explicacion": "El perro demuestra una disposición abierta y amigable al acercarse voluntariamente a otros perros durante los paseos, lo cual es un indicador claro de un temperamento sociable.",
+        "evidencia": "Se acerca a otros perros y juega con ellos durante los paseos.",
+        "guardado": false
+      },
+      "datos": "Foto local y observación de prueba; sin persistencia"
     }
   ]
 }

@@ -521,7 +521,12 @@ fun PetCard(
                             ?: "Información insuficiente",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = CatalogTextDark,
+                        color = when {
+                            compatibilidad.porcentaje == null -> Color(0xFF555555)
+                            compatibilidad.porcentaje >= 80 -> Color(0xFF126858)
+                            compatibilidad.porcentaje >= 60 -> Color(0xFF806000)
+                            else -> Color(0xFFA5440A)
+                        },
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }

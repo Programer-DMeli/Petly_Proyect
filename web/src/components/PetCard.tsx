@@ -34,7 +34,7 @@ export default function PetCard({ pet }: { pet: Pet }) {
         <p className="pet-card__temperament">{pet.temperamento}</p>
         {pet.compatibilidad && (
           <p
-            className={`pet-card__compatibility${pet.compatibilidad.porcentaje === null ? ' is-unknown' : ''}`}
+            className={`pet-card__compatibility${pet.compatibilidad.porcentaje === null ? ' is-unknown' : pet.compatibilidad.porcentaje >= 80 ? ' is-high' : pet.compatibilidad.porcentaje >= 60 ? ' is-medium' : ' is-low'}`}
             aria-label="Compatibilidad"
           >
             {pet.compatibilidad.porcentaje === null

@@ -16,10 +16,11 @@ class DetalleMascotaViewModel(private val repository: CatalogoRepository, privat
     private val _state = MutableStateFlow(DetalleMascotaUiState())
     val state = _state.asStateFlow()
     init { load() }
+    private var adviceJob: kotlinx.coroutines.Job? = null
     fun consejos() {
         if (_state.value.consultandoIA || _state.value.mascota == null) return
         _state.value = _state.value.copy(consultandoIA = true)
-        viewModelScope.launch {
+        adviceJob = viewModelScope.launch {
             try { _state.value = _state.value.copy(consejos = repository.consejos(id), consultandoIA = false) }
             catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -29,6 +30,7 @@ class DetalleMascotaViewModel(private val repository: CatalogoRepository, privat
     }
     fun load() {
         if (_state.value.loading) return
+        adviceJob?.cancel()
         _state.value = DetalleMascotaUiState(loading = true)
         viewModelScope.launch {
             try {
