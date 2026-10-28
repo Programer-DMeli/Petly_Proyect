@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.BufferingClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -33,6 +35,8 @@ public class CorsConfig {
 
     @Bean
     RestTemplate restTemplate() {
-        return new RestTemplate();
+        // Buffer outbound bodies so the local Django server receives Content-Length
+        // instead of chunked transfer encoding, which its development server rejects.
+        return new RestTemplate(new BufferingClientHttpRequestFactory(new SimpleClientHttpRequestFactory()));
     }
 }
