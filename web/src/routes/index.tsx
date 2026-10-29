@@ -1,5 +1,6 @@
 import PesosCompatibilidad from '../components/PesosCompatibilidad';
 import EventosPage from '../features/albergue/perfil/pages/EventosPage';
+import NecesidadesPage from '../features/albergue/perfil/pages/NecesidadesPage';
 import FavoritosPage from '../features/adoptante/catalogo/pages/FavoritosPage';
 import DisponibilidadPage from '../features/adoptante/perfil/pages/DisponibilidadPage';
 import { createBrowserRouter } from 'react-router-dom';
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <CatalogoPage /> },
           { path: 'eventos', element: <EventosPage /> },
+          { path: 'necesidades', element: <NecesidadesPage /> },
           { path: 'favoritos', element: <FavoritosPage /> },
           { path: 'disponibilidad', element: <DisponibilidadPage /> },
           { path: 'catalogo', element: <CatalogoPage /> },
@@ -82,6 +84,7 @@ export const router = createBrowserRouter([
           },
           { path: 'solicitudes', element: <SolicitudesPage /> },
           { path: 'eventos', element: <EventosPage gestionar /> },
+          { path: 'necesidades', element: <NecesidadesPage gestionar /> },
         ],
       },
       {

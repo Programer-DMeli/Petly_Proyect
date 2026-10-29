@@ -103,3 +103,49 @@ class EventoAdopcion(models.Model):
     class Meta:
         ordering = ["inicio", "id"]
         constraints = [models.CheckConstraint(check=models.Q(fin__gt=models.F("inicio")), name="evento_fin_posterior_inicio")]
+
+
+class NecesidadAlbergue(models.Model):
+    class Estado(models.TextChoices):
+        ABIERTA = "ABIERTA", "Abierta"
+        CUBIERTA = "CUBIERTA", "Cubierta"
+
+    albergue = models.ForeignKey(Albergue, on_delete=models.CASCADE, related_name="necesidades")
+    titulo = models.CharField(max_length=150)
+    descripcion = models.TextField(max_length=2000, blank=True)
+    cantidad_objetivo = models.DecimalField(max_digits=10, decimal_places=2)
+    unidad = models.CharField(max_length=40)
+    estado = models.CharField(max_length=10, choices=Estado.choices, default=Estado.ABIERTA)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["estado", "titulo", "id"]
+        constraints = [
+            models.CheckConstraint(check=models.Q(cantidad_objetivo__gt=0), name="necesidad_cantidad_positiva"),
+        ]
+
+
+class DonacionAlbergue(models.Model):
+    class Tipo(models.TextChoices):
+        DINERO = "DINERO", "Dinero"
+        INSUMO = "INSUMO", "Insumo"
+        SERVICIO = "SERVICIO", "Servicio"
+        OTRO = "OTRO", "Otro"
+
+    albergue = models.ForeignKey(Albergue, on_delete=models.CASCADE, related_name="donaciones")
+    necesidad = models.ForeignKey(
+        NecesidadAlbergue, on_delete=models.SET_NULL, null=True, blank=True, related_name="donaciones"
+    )
+    tipo = models.CharField(max_length=10, choices=Tipo.choices)
+    descripcion = models.CharField(max_length=200)
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    unidad = models.CharField(max_length=40)
+    fecha = models.DateField()
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+        constraints = [
+            models.CheckConstraint(check=models.Q(cantidad__gt=0), name="donacion_cantidad_positiva"),
+        ]

@@ -107,6 +107,9 @@ if settings.DEBUG:
 # Eventos públicos y gestión autenticada del propietario (US-50).
 from rest_framework.routers import DefaultRouter
 from apps.albergues.eventos import EventoViewSet
+from apps.albergues.necesidades import NecesidadViewSet, DonacionViewSet
 _eventos = DefaultRouter()
 _eventos.register("eventos", EventoViewSet, basename="evento-adopcion")
+_eventos.register("necesidades", NecesidadViewSet, basename="necesidad-albergue")
+_eventos.register("donaciones", DonacionViewSet, basename="donacion-albergue")
 urlpatterns += [path("api/", include(_eventos.urls))]

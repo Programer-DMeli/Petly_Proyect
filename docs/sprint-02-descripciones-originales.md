@@ -1,8 +1,8 @@
 # Sprint 2 - Planificación con descripciones originales
 
-Actualización: 15 de octubre de 2026.
+Actualización: 29 de octubre de 2026.
 
-Objetivo del Sprint: Desplegar el algoritmo de compatibilidad (Matchmaking), los servicios de IA generativa/visión para publicaciones y el flujo central de solicitudes de adopción.
+Objetivo del Sprint: Desplegar el algoritmo de compatibilidad (Matchmaking), los servicios de IA generativa/visión para publicaciones y el flujo central de solicitudes de adopción, incluyendo contrato digital, verificación KYC, revisión administrativa, sugerencias de temperamento y necesidades/donaciones.
 
 ## Cuadro de planificación
 
@@ -14,24 +14,24 @@ Objetivo del Sprint: Desplegar el algoritmo de compatibilidad (Matchmaking), los
 | US-02 - Clasificación de posibles Candidatos Mascotas por Compatibilidad entre Mascota y Adoptante a partir del perfil del Adoptante. | Angie | Meliton | Angie ordena mascotas por puntaje y crea el listado React. Mayra garantiza disponibilidad y datos de mascotas. Meliton integra el orden en Android y verifica desempates. | 6 |
 | US-08 - Seguimiento de Estado de Solicitud con línea de Tiempo | Angie | Meliton | Angie implementa consulta Spring y línea de tiempo React. Mayra registra eventos y fechas en Django. Meliton verifica orden de eventos, privacidad y estados vacíos. | 5 |
 | US-03 - Recálculo de Compatibilidad al Actualizar el Perfil de Adoptante. | Meliton | Angie | Meliton conecta guardado de perfil y refresco en Android. Angie invalida resultados en Spring y actualiza React. Mayra comprueba que se usen los datos vigentes de mascotas. | 4 |
-| US-09 - Firma e Integración de Contrato Digital de Adopción | Mayra | Angie | Mayra genera el contrato y conecta el proveedor de firma. Angie verifica identidad de firmantes y permisos. Meliton prueba descarga, fallos y registro de entrega. | 0 (aplazada) |
+| US-09 - Firma e Integración de Contrato Digital de Adopción | Mayra | Angie | Mayra genera el contrato y conecta el proveedor de firma. Angie verifica identidad de firmantes y permisos. Meliton prueba descarga, fallos y registro de entrega. | 24 |
 | US-29 - Descripción generada de la mascota partir de una foto | Mayra | Meliton | Mayra conecta foto, proveedor IA y editor React del albergue. Angie implementa validación de respuesta y gestión de errores. Meliton prueba generación, edición y conservación del texto. | 12 |
 | US-04 - Desglose Explicativo del % de Compatibilidad de Mascota en el Panel de Adoptante | Meliton | Mayra | Meliton presenta aportes y explicaciones en Android. Angie expone el desglose Spring y lo muestra en React. Mayra valida categorías y coherencia con la ficha de mascota. | 5 |
 | US-28 - Generación Automática de Afiches para Redes Sociales como primer borrador en rol de Albergue | Mayra | Meliton | Mayra crea plantilla, vista previa y descarga en React. Angie facilita datos públicos y validaciones. Meliton comprueba legibilidad, resolución y manejo de fotos faltantes. | 8 |
 | US-10 - Cancelación o Desistimiento de Solicitud de Adopcion por parte del Adoptante | Angie | Meliton | Angie implementa confirmación React y petición Spring. Mayra persiste la cancelación y protege la transición en Django. Meliton prueba propiedad y concurrencia con aprobación. | 3 |
 | US-05 - Ajustar el peso de los criterios de compatibilidad (ejemplo vivienda, rutina y convivencia) para medir la compatibilidad entre mascota y adoptante. | Angie | Mayra | Angie implementa configuración ADMIN y versiones en Spring. Mayra revisa permisos y validez de los criterios. Meliton verifica recálculo y consistencia de puntajes en Android. | 8 |
-| US-30 - Etiquetado Automático de Temperamento con IA según una perfil y foto de la mascota | Mayra | Angie | Mayra conecta perfil, foto y sugerencias IA en el panel. Angie valida etiquetas permitidas y respuesta del proveedor. Meliton prueba confirmación humana y visualización en catálogo. | 0 (aplazada) |
-| US-49 - Registro de Necesidades y Donaciones para el Albergue | Mayra | Angie | Mayra implementa necesidades y registro manual de donaciones en Django/React. Angie conecta consulta pública para adoptantes. Meliton prueba cantidades, permisos y privacidad del donante. | 0 (aplazada) |
+| US-30 - Etiquetado Automático de Temperamento con IA según una perfil y foto de la mascota | Mayra | Angie | Mayra conecta perfil, foto y sugerencias IA en el panel. Angie valida etiquetas permitidas y respuesta del proveedor. Meliton prueba confirmación humana y visualización en catálogo. | 12 |
+| US-49 - Registro de Necesidades y Donaciones para el Albergue | Mayra | Angie | Mayra implementa necesidades y registro manual de donaciones en Django/React. Angie conecta consulta pública para adoptantes. Meliton prueba cantidades, permisos y privacidad del donante. | 12 |
 | US-50 - Publicación de Eventos de Adopción Presencial | Mayra | Meliton | Mayra implementa CRUD de eventos y cancelación Django/React. Angie integra listado público del adoptante. Meliton revisa fechas, ubicación y rechazo a cambios de otro albergue. | 7 |
 | US-19 - Carga de Fotos de la Vivienda del Adoptante en el formulario de Estilo de vida y convivencia, desde la app Móvil | Meliton | Mayra | Meliton implementa selección y carga desde Android. Angie vincula identidad, autorización y solicitud desde Spring. Mayra almacena fotos privadas y aplica permisos Django. | 10 |
 | US-14 - Guardar Mascotas Favoritas desde el perfil del Adoptante con el Icono de Favoritos. | Meliton | Angie | Meliton implementa icono y lista en Android. Angie persiste favoritos en Spring e integra React. Mayra comprueba que se conserve la disponibilidad real de cada mascota. | 6 |
 | US-18 - Verificación de Datos e Historial de Usuarios por Albergue | Angie | Mayra | Angie verifica consentimiento y expone el perfil Spring. Mayra muestra perfil e historial interno autorizado en React/Django. Meliton prueba revocación y acceso desde otro albergue. | 5 |
 | US-15 - Carga de Foto de Presentación de la Mascota | Mayra | Angie | Mayra verifica carga, reemplazo y validación Django/React. Angie comprueba la URL y datos de foto en catálogo Spring/React. Meliton verifica descarga y visualización Android. | 1 |
-| US-22 - Verificación KYC de Documentos (DNI del Adoptante verificando con datos de Reniec según el DNI) | Angie | Mayra | Angie integra servicio autorizado RENIEC y estados KYC. Mayra protege documentos y consulta administrativa. Meliton implementa captura/carga Android y consulta del resultado. | 0 (aplazada) |
-| US-23 - Gestión Administradora de Verificación KYC desde el Panel de Admin en React | Mayra | Angie | Mayra implementa panel ADMIN React y revisión de documentos. Angie integra estados KYC, permisos y auditoría. Meliton verifica resultado visible al adoptante y acceso denegado. | 0 (aplazada) |
+| US-22 - Verificación KYC de Documentos (DNI del Adoptante verificando con datos de Reniec según el DNI) | Angie | Mayra | Angie integra servicio autorizado RENIEC y estados KYC. Mayra protege documentos y consulta administrativa. Meliton implementa captura/carga Android y consulta del resultado. | 28 |
+| US-23 - Gestión Administradora de Verificación KYC desde el Panel de Admin en React | Mayra | Angie | Mayra implementa panel ADMIN React y revisión de documentos. Angie integra estados KYC, permisos y auditoría. Meliton verifica resultado visible al adoptante y acceso denegado. | 12 |
 | US-20 - Actualización de Disponibilidad y Horarios del Adoptante | Meliton | Angie | Meliton implementa horarios y validación Android. Angie persiste franjas en Spring y crea formulario React. Mayra integra consulta del albergue con autorización vigente. | 5 |
 | Integración final, correcciones y entrega | Meliton | Angie y Mayra | Angie: 4 h; Mayra: 4 h; Meliton: 4 h. | 12 |
-| **TOTAL DEL ALCANCE COMPLETO DEL SPRINT 2** | | | **Incluye reserva de 12 h** | **126** |
+| **TOTAL DEL ALCANCE COMPLETO DEL SPRINT 2** | | | **Incluye reserva de 12 h** | **214** |
 
 ## Reparto de horas por integrante
 
@@ -56,9 +56,31 @@ Las horas de cada fila suman el tiempo asignado de esa historia. No son estimaci
 | US-29 | 2 | 6 | 4 | 12 |
 | US-28 | 2 | 3 | 3 | 8 |
 | US-50 | 3 | 1 | 3 | 7 |
-| Subtotal de historias | 38 | 38 | 38 | 114 |
+| US-09 | 6 | 12 | 6 | 24 |
+| US-22 | 14 | 6 | 8 | 28 |
+| US-23 | 4 | 6 | 2 | 12 |
+| US-30 | 3 | 5 | 4 | 12 |
+| US-49 | 2 | 6 | 4 | 12 |
+| Subtotal de historias | 67 | 73 | 62 | 202 |
 | Integración, correcciones y entrega | 4 | 4 | 4 | 12 |
-| **Total por integrante** | **42** | **42** | **42** | **126** |
+| **Total por integrante** | **71** | **77** | **66** | **214** |
+
+## Alcance reincorporado y supuestos de estimación
+
+Por decisión del solicitante del 29 de octubre de 2026, US-09, US-22, US-23, US-30 y US-49 son obligatorias para concluir el Sprint 2. Todas deben cumplir los criterios de aceptación de este documento y contar con evidencia de integración y aceptación del equipo.
+
+| Historia reincorporada | Estimación (h-persona) | Trabajo contemplado |
+| --- | ---: | --- |
+| US-09 | 24 | Integrar el proveedor de firma, ambas firmas, webhook, documento privado, registro de entrega y pruebas de fallos e idempotencia. |
+| US-22 | 28 | Conectar un servicio autorizado de consulta RENIEC, carga privada React/Android, estados KYC y pruebas de coincidencias, discrepancias y fallos. |
+| US-23 | 12 | Completar la revisión ADMIN, permisos, motivos, auditoría y consulta del resultado por el adoptante. |
+| US-30 | 12 | Integrar foto y observaciones con IA, validar sugerencias, confirmar manualmente y comprobar persistencia y catálogo. |
+| US-49 | 12 | Completar necesidades y aportes manuales, consulta pública, validaciones, permisos y privacidad del donante. |
+| **Total reincorporado** | **88** | |
+
+Son estimaciones de esfuerzo total por historia, repartidas entre los integrantes; no representan horas pendientes ni certifican avance terminado. Se aprovechan los componentes existentes. El alcance pasa de 126 a 214 h-persona: 202 h de historias y 12 h de integración, correcciones y entrega. El calendario debe ajustarse a la disponibilidad real del equipo y a la revisión de esa reserva durante la integración.
+
+US-09 supone un proveedor de firma acordado, credenciales, entorno de prueba, webhook accesible y plantilla contractual revisada. US-22 supone acceso y credenciales de un servicio autorizado compatible con RENIEC. Las estimaciones no incluyen la espera de contratación, habilitación o aprobación externa. US-30 requiere un proveedor de visión disponible. Estas dependencias deben resolverse para aceptar las historias; su reincorporación no acredita que ya estén disponibles.
 
 ## Criterios de aceptación por historia
 

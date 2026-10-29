@@ -29,6 +29,11 @@ const groups: Record<string, Group[]> = {
           to: '/adoptante/eventos',
           description: 'Encuentros de adopción presencial.',
         },
+        {
+          label: 'Necesidades',
+          to: '/adoptante/necesidades',
+          description: 'Conoce los apoyos que requieren los albergues.',
+        },
       ],
     },
     {
@@ -100,6 +105,11 @@ const groups: Record<string, Group[]> = {
           label: 'Eventos',
           to: '/albergue/eventos',
           description: 'Publica y organiza encuentros.',
+        },
+        {
+          label: 'Necesidades y donaciones',
+          to: '/albergue/necesidades',
+          description: 'Publica necesidades y registra aportes recibidos.',
         },
       ],
     },

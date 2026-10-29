@@ -26,7 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.petly_app.data.model.CatalogoFilters
 import com.petly_app.data.model.CatalogoOptions
 import com.petly_app.data.model.Mascota
@@ -450,16 +450,20 @@ fun PetCard(
                     .height(145.dp)
             ) {
                 val imageUrl = mascota.fotografiaUrl?.takeIf { it.isNotBlank() }
-                    ?: getFallbackImageUrl(mascota.nombre, mascota.especie)
-
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "Fotografía de ${mascota.nombre}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                )
+                if (imageUrl == null) {
+                    PhotoUnavailable("Fotografía no registrada")
+                } else {
+                    SubcomposeAsyncImage(
+                        model = imageUrl,
+                        contentDescription = "Fotografía de ${mascota.nombre}",
+                        contentScale = ContentScale.Crop,
+                        loading = { PhotoUnavailable("Cargando fotografía…") },
+                        error = { PhotoUnavailable("No se pudo cargar la fotografía") },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                    )
+                }
 
                 // Icono Favorito superior izquierda (US-14)
                 Surface(
@@ -518,7 +522,7 @@ fun PetCard(
                 mascota.compatibilidad?.let { compatibilidad ->
                     Text(
                         text = compatibilidad.porcentaje?.let { "$it% compatible" }
-                            ?: "Información insuficiente",
+                            ?: compatibilidad.mensaje.ifBlank { "Información insuficiente" },
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = when {
@@ -535,18 +539,15 @@ fun PetCard(
     }
 }
 
-private fun getFallbackImageUrl(nombre: String, especie: String): String {
-    return when (nombre.lowercase()) {
-        "luna" -> "https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=1000"
-        "rocky" -> "https://images.unsplash.com/photo-1589941013453-ec89f33b5e95?q=80&w=1000"
-        "milo" -> "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=1000"
-        "canela" -> "https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=1000"
-        "simba" -> "https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=1000"
-        "bella" -> "https://images.unsplash.com/photo-1534361960057-19889db9621e?q=80&w=1000"
-        "thor" -> "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?q=80&w=1000"
-        "nala" -> "https://images.unsplash.com/photo-1513245543132-31f507417b26?q=80&w=1000"
-        else -> if (especie.lowercase().contains("gato")) "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=1000"
-        else "https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=1000"
+@Composable
+private fun PhotoUnavailable(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF1F5F1)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(message, color = Color(0xFF60736A), fontSize = 12.sp)
     }
 }
 

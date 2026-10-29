@@ -91,16 +91,7 @@ export default function CatalogoPage() {
   }, []);
   return (
     <section className="catalog-page" id="catalogo" aria-labelledby="catalog-title">
-      <header className="workspace-page-heading">
-        <div>
-          <span className="workspace-eyebrow">ADOPTA CON EL CORAZÓN Y CON RESPONSABILIDAD</span>
-          <h1 id="catalog-title">Encuentra a tu compañero</h1>
-          <p>Una nueva historia puede empezar con una mirada.</p>
-        </div>
-        <Link className="catalog-favorites-link" to="/adoptante/favoritos">
-          <span aria-hidden="true">♡</span> Mis favoritos <span aria-hidden="true">↗</span>
-        </Link>
-      </header>
+
       <div className="catalog-layout">
         <aside className="catalog-filter-sidebar">
           <details
@@ -268,9 +259,11 @@ export function DetallePage() {
   const [error, setError] = useState('');
   const [eligibilityError, setEligibilityError] = useState('');
   const [profileFinalizado, setProfileFinalizado] = useState<boolean | null>(null);
+  const [applicationProfile, setApplicationProfile] = useState<Profile | null>(null);
   const [autorizacionActiva, setAutorizacionActiva] = useState<boolean | null>(null);
   const [checkingEligibility, setCheckingEligibility] = useState(false);
   const [mensajePostulante, setMensajePostulante] = useState('');
+  const [planCuidado, setPlanCuidado] = useState('');
   const [sending, setSending] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submittedRequestId, setSubmittedRequestId] = useState<number | null>(null);
@@ -301,6 +294,7 @@ export function DetallePage() {
         spring<Profile>('/api/perfil'),
         spring<{ albergueId: number; estado: string }[]>('/api/autorizaciones'),
       ]);
+      setApplicationProfile(profile);
       setProfileFinalizado(profile.finalizado);
       setAutorizacionActiva(
         consents.some(
@@ -330,7 +324,10 @@ export function DetallePage() {
     const payload: CrearSolicitudAdopcion = {
       mascotaId: pet.id,
       mensajePostulante: mensajePostulante.trim(),
-      respuestasCuestionario: {},
+      respuestasCuestionario: {
+        ...(applicationProfile ?? {}),
+        planCuidado: planCuidado.trim(),
+      },
     };
     try {
       const created = await spring<SolicitudAdopcion>('/api/solicitudes', {
@@ -436,15 +433,33 @@ export function DetallePage() {
                 void submitApplication();
               }}
             >
+              <p className="muted">
+                Cuéntale al albergue por qué quieres adoptar y cómo cubrirás sus cuidados. Se
+                enviará también el cuestionario que ya completaste.
+              </p>
               <label>
-                Mensaje para el albergue (opcional)
+                ¿Por qué quieres adoptar a {pet.nombre}? <span aria-hidden="true">*</span>
                 <textarea
                   maxLength={2000}
+                  required
                   value={mensajePostulante}
                   onChange={event => setMensajePostulante(event.target.value)}
+                  placeholder="Cuéntanos qué te motivó a elegirle…"
                 />
               </label>
-              <button disabled={sending}>{sending ? 'Enviando…' : 'Enviar solicitud'}</button>
+              <label>
+                ¿Cómo organizarás sus cuidados diarios? <span aria-hidden="true">*</span>
+                <textarea
+                  maxLength={2000}
+                  required
+                  value={planCuidado}
+                  onChange={event => setPlanCuidado(event.target.value)}
+                  placeholder="Describe su espacio, compañía, paseos y atención veterinaria…"
+                />
+              </label>
+              <button disabled={sending || !mensajePostulante.trim() || !planCuidado.trim()}>
+                {sending ? 'Enviando…' : 'Enviar solicitud'}
+              </button>
             </form>
           )}
           {submitted && (

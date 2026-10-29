@@ -17,7 +17,8 @@ data class PerfilUiState(
     val form: PerfilDraft = PerfilDraft(), val loading: Boolean = false,
     val saving: Boolean = false, val dirty: Boolean = false,
     val errors: Map<String, String> = emptyMap(), val error: String? = null,
-    val message: String? = null, val loaded: Boolean = false
+    val message: String? = null, val loaded: Boolean = false,
+    val saveRevision: Long = 0
 )
 
 class PerfilViewModel(private val repository: PerfilRepository, private val preview: Boolean) : ViewModel() {
@@ -58,6 +59,7 @@ class PerfilViewModel(private val repository: PerfilRepository, private val prev
             try {
                 repository.save(form)
                 _state.update { it.copy(form = form, saving = false, dirty = false,
+                    saveRevision = it.saveRevision + 1,
                     message = if (preview) "Guardado temporal de prueba. Se pierde al cerrar el proceso o salir de la vista de prueba."
                     else if (finalizar) "Cuestionario guardado." else "Borrador guardado.") }
             } catch (e: Exception) {

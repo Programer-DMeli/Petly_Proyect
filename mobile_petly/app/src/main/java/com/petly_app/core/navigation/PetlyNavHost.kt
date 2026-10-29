@@ -96,8 +96,8 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     val catalogState by catalogVm.state.collectAsStateWithLifecycle()
                     val perfilState by perfilVm.state.collectAsStateWithLifecycle()
                     val disponibilidadState by disponibilidadVm.state.collectAsStateWithLifecycle()
-                    LaunchedEffect(perfilState.message) {
-                        if (perfilState.message != null) catalogVm.retry()
+                    LaunchedEffect(perfilState.saveRevision) {
+                        if (perfilState.saveRevision > 0) catalogVm.retry()
                     }
 
                     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {

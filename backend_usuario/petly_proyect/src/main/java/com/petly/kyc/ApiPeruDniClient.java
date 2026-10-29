@@ -85,7 +85,10 @@ public class ApiPeruDniClient {
             throw new ApiException(502, "ApiPeruDev no devolvió nombres y apellidos completos para ese DNI.");
         }
 
-        String numero = StringUtils.hasText(data.numero()) ? data.numero() : dni;
+        String numero = clean(data.numero());
+        if (!dni.equals(numero)) {
+            throw new ApiException(502, "El proveedor devolvió datos de un DNI distinto o incompleto.");
+        }
         return new ApiPeruDniResult(numero, nombres, apellidos, "ApiPeruDev");
     }
 
