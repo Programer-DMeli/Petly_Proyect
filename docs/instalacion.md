@@ -6,7 +6,7 @@ Revisión: 12 de octubre de 2026. Se conservan `com.petly`, `com.petly_app` y lo
 
 1. Crear la base `database_petly` en MariaDB y comprobar `SELECT VERSION();`. Usar un usuario local con permisos suficientes para las migraciones.
 2. Copiar los `.env.example` de ambos backends a archivos `.env` privados y completar DB y secretos. Django carga su `.env`; Spring **no** lo carga automáticamente.
-3. Generar claves propias, por ejemplo `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Compartir `SPRING_JWT_SECRET` entre los dos servicios y generar además `DJANGO_SECRET_KEY`. No escribirlas en commits, capturas ni ejemplos públicos.
+3. Generar claves propias, por ejemplo `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Compartir `SPRING_JWT_SECRET` e `INTERNAL_API_SECRET` entre los dos servicios y generar además `DJANGO_SECRET_KEY`. No escribirlas en commits, capturas ni ejemplos públicos.
 4. Configurar SMTP: host, puerto, usuario y contraseña si corresponde; habilitar auth y STARTTLS según ese servidor. El receptor SMTP del script de pruebas utiliza localhost:1025, sin auth/TLS y entrega solo a un archivo local de pruebas, no a Internet.
 5. Emulador: `MEDIA_BASE_URL=http://10.0.2.2:8000/media/`, Android `http://10.0.2.2:8080/`. Django llama a Spring por `SPRING_API_URL=http://127.0.0.1:8080`.
 

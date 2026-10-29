@@ -163,6 +163,7 @@ REST_FRAMEWORK = {
 # Spring Boot es la única autoridad de cuentas de negocio.
 SPRING_API_URL = os.getenv("SPRING_API_URL", "http://127.0.0.1:8080").rstrip("/")
 SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "test-secret-key-for-development-only-change-in-production")
+INTERNAL_API_SECRET = os.getenv("INTERNAL_API_SECRET", "local-internal-secret-change-me")
 
 # US-03: secreto de servicio para el feed de datos vigentes de mascotas.
 PET_COMPATIBILITY_SERVICE_TOKEN = os.getenv("PET_COMPATIBILITY_SERVICE_TOKEN", "")

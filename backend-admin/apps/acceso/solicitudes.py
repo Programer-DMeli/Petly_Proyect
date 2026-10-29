@@ -74,12 +74,14 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         ).first()
         if perfil is None:
             raise ValidationError({"autorizacion": "El perfil del adoptante ya no está finalizado."})
-        autorizacion = Autorizacion.objects.select_for_update().filter(
-            adoptante=perfil.user,
-            albergue=solicitud.albergue,
-            estado=Autorizacion.Estado.VIGENTE,
-        ).first()
-        if autorizacion is None or not autorizacion.esta_vigente():
+        from .authentication import AuthorityUnavailable, spring_autorizacion_vigente
+        try:
+            autorizado = spring_autorizacion_vigente(
+                perfil.user.spring_id, solicitud.albergue_id
+            )
+        except AuthorityUnavailable as error:
+            raise ValidationError({"autorizacion": "No se pudo verificar el consentimiento en Spring."}) from error
+        if not autorizado:
             raise ValidationError({"autorizacion": "Se requiere autorización vigente para aprobar esta solicitud."})
 
     solicitud.estado = nuevo_estado

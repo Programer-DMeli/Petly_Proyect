@@ -17,7 +17,7 @@ root = Path(__file__).resolve().parents[1]
 home = Path.home() / ".local/share/petly"
 spring = dotenv_values(root / "backend_usuario/petly_proyect/.env")
 django = dotenv_values(root / "backend-admin/.env")
-for key in ("SPRING_JWT_SECRET", "DB_PASSWORD"):
+for key in ("SPRING_JWT_SECRET", "INTERNAL_API_SECRET", "DB_PASSWORD"):
     if not spring.get(key) or spring.get(key) != django.get(key):
         raise SystemExit("Revisar configuración compartida: " + key)
 if django.get("DB_NAME") != "database_petly" or "/database_petly" not in spring.get("DB_URL", ""):

@@ -178,3 +178,23 @@ def spring_get(path: str, auth_header: str | None = None, timeout: float = 3.0):
         raise AuthorityUnavailable(f"Spring HTTP {e.code}: {e.read().decode()}")
     except Exception as e:
         raise AuthorityUnavailable(f"Spring inalcanzable: {e}")
+
+
+def spring_autorizacion_vigente(adoptante_id: int, albergue_id: int, timeout: float = 3.0) -> bool:
+    """Consulta a Spring, autoridad única de los consentimientos de perfil."""
+    from urllib.parse import urlencode
+
+    base = getattr(settings, "SPRING_API_URL", "http://127.0.0.1:8080").rstrip("/")
+    query = urlencode({"adoptanteId": adoptante_id, "albergueId": albergue_id})
+    req = urllib.request.Request(
+        f"{base}/api/interno/autorizaciones?{query}",
+        headers={"Accept": "application/json", "X-Internal-Secret": settings.INTERNAL_API_SECRET},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            data = json.loads(response.read().decode("utf-8"))
+            return data.get("autorizado") is True
+    except urllib.error.HTTPError as error:
+        raise AuthorityUnavailable(f"Spring HTTP {error.code}: {error.read().decode()}")
+    except Exception as error:
+        raise AuthorityUnavailable(f"Spring inalcanzable: {error}")

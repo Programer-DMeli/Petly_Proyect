@@ -260,16 +260,14 @@ class SolicitudCreateSerializer(serializers.ModelSerializer):
         if postulante.estado != Postulante.EstadoPostulante.ACTIVO:
             raise serializers.ValidationError({"detail": "El postulante no está activo."})
 
-        autorizacion = None
         if mascota:
-            autorizacion = Autorizacion.objects.filter(
-            adoptante=user, albergue=mascota.albergue,
-            estado=Autorizacion.Estado.VIGENTE,
-            ).first()
-        if mascota and autorizacion is None:
-            raise serializers.ValidationError({"detail": "Se requiere autorización vigente para este albergue."})
-        if autorizacion and not autorizacion.esta_vigente():
-            raise serializers.ValidationError({"detail": "La autorización para este albergue está vencida."})
+            from .authentication import AuthorityUnavailable, spring_autorizacion_vigente
+            try:
+                autorizado = spring_autorizacion_vigente(user.spring_id, mascota.albergue_id)
+            except AuthorityUnavailable as error:
+                raise serializers.ValidationError({"detail": "No se pudo verificar la autorización del adoptante."}) from error
+            if not autorizado:
+                raise serializers.ValidationError({"detail": "Se requiere autorización vigente para este albergue."})
 
         if postulante and mascota and SolicitudAdopcion.objects.filter(
             postulante=postulante,
