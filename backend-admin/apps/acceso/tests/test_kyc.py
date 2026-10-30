@@ -80,3 +80,70 @@ class VerificacionKycProteccionTest(TestCase):
         self.assertEqual(records, [])
         document = self.client.get(f"/api/acceso/verificaciones-kyc/{record.pk}/documentos/anverso/")
         self.assertEqual(document.status_code, 404)
+
+    def test_adoptante_con_is_staff_no_puede_listar_kyc_ajenos(self):
+        self.adoptante.is_staff = True
+        self.adoptante.save(update_fields=["is_staff"])
+        VerificacionKyc.objects.create(
+            adoptante=self.otro, dni="87654321", nombres="Luis", apellidos="Gomez",
+            estado=VerificacionKyc.Estado.PENDIENTE_REVISION,
+        )
+        response = self.client.get("/api/acceso/verificaciones-kyc/")
+        records = response.data["results"] if isinstance(response.data, dict) else response.data
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(records, [])
+
+    def test_adoptante_con_is_staff_no_puede_resolver_revision(self):
+        self.adoptante.is_staff = True
+        self.adoptante.save(update_fields=["is_staff"])
+        record = VerificacionKyc.objects.create(
+            adoptante=self.otro, dni="87654321", nombres="Luis", apellidos="Gomez",
+            estado=VerificacionKyc.Estado.PENDIENTE_REVISION,
+        )
+        response = self.client.post(
+            f"/api/acceso/verificaciones-kyc/{record.pk}/revision/",
+            {"decision": "APROBADO_MANUAL", "motivo": "Documento válido"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+        record.refresh_from_db()
+        self.assertEqual(record.estado, VerificacionKyc.Estado.PENDIENTE_REVISION)
+
+    def test_admin_puede_resolver_revision(self):
+        admin = get_user_model().objects.create_user(
+            username="kyc-admin", password="pass", rol="ADMIN",
+        )
+        record = VerificacionKyc.objects.create(
+            adoptante=self.otro, dni="87654321", nombres="Luis", apellidos="Gomez",
+            estado=VerificacionKyc.Estado.PENDIENTE_REVISION,
+        )
+        self.client.force_authenticate(user=admin)
+        response = self.client.post(
+            f"/api/acceso/verificaciones-kyc/{record.pk}/revision/",
+            {"decision": "APROBADO_MANUAL", "motivo": "Documento válido"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        record.refresh_from_db()
+        self.assertEqual(record.estado, VerificacionKyc.Estado.APROBADO_MANUAL)
+        self.assertEqual(record.revisado_por, admin)
+        self.assertEqual(record.motivo_revision, "Documento válido")
+        self.assertIsNotNone(record.fecha_revision)
+
+    def test_admin_no_puede_revisar_su_propia_verificacion(self):
+        admin = get_user_model().objects.create_user(
+            username="kyc-admin-propio", password="pass", rol="ADMIN",
+        )
+        record = VerificacionKyc.objects.create(
+            adoptante=admin, dni="87654321", nombres="Luis", apellidos="Gomez",
+            estado=VerificacionKyc.Estado.PENDIENTE_REVISION,
+        )
+        self.client.force_authenticate(user=admin)
+        response = self.client.post(
+            f"/api/acceso/verificaciones-kyc/{record.pk}/revision/",
+            {"decision": "APROBADO_MANUAL", "motivo": "Autorevisión"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+        record.refresh_from_db()
+        self.assertEqual(record.estado, VerificacionKyc.Estado.PENDIENTE_REVISION)

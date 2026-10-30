@@ -23,7 +23,7 @@ class VerificacionKycViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         qs = VerificacionKyc.objects.select_related("adoptante")
-        if user.is_staff or user.is_admin_user:
+        if user.is_admin_user:
             return qs
         if user.rol == User.Rol.ADOPTANTE:
             return qs.filter(adoptante=user)
@@ -39,7 +39,7 @@ class VerificacionKycViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="revision")
     def revision(self, request, pk=None):
-        if not (request.user.is_staff or request.user.is_admin_user):
+        if not request.user.is_admin_user:
             raise PermissionDenied("Solo ADMIN puede resolver verificaciones KYC.")
         decision = request.data.get("decision")
         motivo = str(request.data.get("motivo", "")).strip()
@@ -49,6 +49,8 @@ class VerificacionKycViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Ingresa un motivo de hasta 500 caracteres."}, status=400)
         with transaction.atomic():
             verificacion = get_object_or_404(self.get_queryset().select_for_update(), pk=pk)
+            if verificacion.adoptante_id == request.user.id:
+                raise PermissionDenied("Un administrador no puede revisar su propia verificación KYC.")
             if verificacion.estado != VerificacionKyc.Estado.PENDIENTE_REVISION:
                 return Response({"detail": "Solo se puede revisar un caso pendiente de revisión."}, status=409)
             verificacion.estado = decision
