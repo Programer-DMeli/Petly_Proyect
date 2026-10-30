@@ -22,3 +22,17 @@
 La carrera fue probada por código de prueba, pero no se ejecutó en esta máquina porque la base de pruebas usa SQLite. Para registrar esa evidencia falta ejecutar `apps.acceso.tests.test_concurrencia_solicitudes` en la base de integración que soporte bloqueos de fila (por ejemplo, MariaDB de prueba). Las llamadas Spring y Django se verificaron en suites separadas; aún falta un recorrido visual completo contra ambos servicios conectados y la revisión cruzada del equipo.
 
 La configuración `main` es local. Esta evidencia no implica que el commit se haya publicado en `origin/main`.
+
+## Verificación adicional en MariaDB aislada — 30 de octubre de 2026
+
+Se inicializó una instancia MariaDB 10.4.32 nueva y una base temporal (`petly_sprint2_test`) bajo `tmp/`; no se utilizó ni modificó la base permanente ni la base de presentación. Django ejecutó las pruebas con `SELECT ... FOR UPDATE` habilitado:
+
+| Área | Comando / resultado |
+| --- | --- |
+| Django, solicitudes | `manage.py test --settings=config.test_settings_mariadb apps.acceso.tests.test_sprint2 apps.acceso.tests.test_concurrencia_solicitudes`: 32 pruebas, 0 fallos, 0 errores, 0 omitidas. |
+| Carreras | Aprobación simultánea de dos solicitudes y aprobación frente a cancelación: ambas aprobadas en MariaDB. |
+| React, seguimiento | Playwright con Chrome local: 3 pruebas aprobadas. Las respuestas Spring están simuladas; comprueba renderizado, orden, actualización, error y reintento. |
+
+Django emitió `models.W036`: MariaDB no crea las restricciones `UniqueConstraint` condicionales del modelo de solicitudes. La creación y las decisiones también bloquean la fila de la mascota y vuelven a comprobar solicitudes activas dentro de transacciones; aun así, el aviso debe resolverse o documentarse explícitamente para la matriz de bases soportadas.
+
+Esta ejecución cierra la comprobación de concurrencia pendiente para MariaDB 10.4.32 y verifica los estados de seguimiento en React con respuestas simuladas. No cierra el recorrido visual integrado React-Spring-Django ni sustituye la revisión cruzada de otro integrante. El módulo temporal de configuración fue retirado; la instancia MariaDB aislada y el resultado local de Playwright permanecen bajo `tmp/` para inspección.

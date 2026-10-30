@@ -36,6 +36,12 @@ class SpringIdentityTest(TestCase):
     def test_sharing_denied_after_revocation(self, authority, profiles):
         authority.return_value = self.identity
         self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token())
+        owner, _ = get_user_model().objects.get_or_create(
+            spring_id=101,
+            defaults={"username": "shelter-101", "email": self.identity["correo"], "rol": "ALBERGUE"},
+        )
+        from apps.albergues.models import Albergue
+        Albergue.objects.create(usuario=owner, nombre="Hogar autorizado", direccion="Lima")
         profiles.return_value = {"vivienda": "Departamento", "tieneNinos": False}
         self.assertEqual(self.client.get("/api/acceso/perfiles-compartidos/202/").status_code, 200)
         profiles.side_effect = urllib.error.HTTPError("local", 403, "forbidden", {}, None)

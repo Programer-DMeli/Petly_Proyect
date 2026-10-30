@@ -1,6 +1,7 @@
 """Prueba de carrera real, ejecutada en bases con SELECT ... FOR UPDATE."""
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.db import close_old_connections
@@ -47,6 +48,16 @@ class AprobacionConcurrenteTest(TransactionTestCase):
                 postulante=Postulante.objects.get(documento_numero=document),
                 adoptante=adopter, mascota=self.pet, albergue=self.shelter,
             ).pk)
+        # These tests focus on row locks and transitions; model Spring's
+        # consent authority deterministically from the MariaDB fixture.
+        self.spring_consent = patch(
+            "apps.acceso.authentication.spring_autorizacion_vigente",
+            side_effect=lambda _adoptante_id, albergue_id: Autorizacion.objects.filter(
+                albergue_id=albergue_id, estado=Autorizacion.Estado.VIGENTE
+            ).exists(),
+        )
+        self.spring_consent.start()
+        self.addCleanup(self.spring_consent.stop)
 
     @skipUnlessDBFeature("has_select_for_update")
     def test_solo_una_aprobacion_gana_la_carrera_por_la_misma_mascota(self):

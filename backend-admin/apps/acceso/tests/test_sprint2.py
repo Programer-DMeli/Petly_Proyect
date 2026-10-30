@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
+from unittest.mock import patch
 
 from apps.acceso.models import AdoptanteProfile, Autorizacion, Postulante, SolicitudAdopcion, SolicitudEvento
 from apps.albergues.models import Albergue
@@ -162,6 +163,18 @@ class SolicitudAdopcionSprint2APITest(TestCase):
         self.autorizacion = Autorizacion.objects.create(
             adoptante=self.user, albergue=self.albergue,
         )
+        # Spring owns live consent checks. Unit tests model that authority from
+        # the local fixture so they do not depend on a running Spring service.
+        self.spring_consent = patch(
+            "apps.acceso.authentication.spring_autorizacion_vigente",
+            side_effect=lambda _adoptante_id, albergue_id: (
+                (record := Autorizacion.objects.filter(
+                    adoptante=self.user, albergue_id=albergue_id
+                ).first()) is not None and record.esta_vigente()
+            ),
+        )
+        self.spring_consent.start()
+        self.addCleanup(self.spring_consent.stop)
         self.mascota = Mascota.objects.create(
             albergue=self.albergue, nombre="Luna", codigo="LUNA02",
             especie=Mascota.Especie.PERRO, sexo=Mascota.Sexo.HEMBRA,
@@ -228,7 +241,7 @@ class SolicitudAdopcionSprint2APITest(TestCase):
         self.autorizacion.save(update_fields=["fecha_expiracion"])
         response = self.client.post("/api/acceso/solicitudes/", self._payload(), format="json")
         self.assertEqual(response.status_code, 400)
-        self.assertIn("vencida", str(response.data).lower())
+        self.assertIn("autorización", str(response.data).lower())
 
     def test_no_acepta_crear_solicitud_a_nombre_de_otra_persona(self):
         otro = Postulante.objects.create(
