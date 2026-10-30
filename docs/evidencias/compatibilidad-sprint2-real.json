@@ -1,11 +1,11 @@
 {
-  "fecha": "2026-10-27T18:25:51.488207+00:00",
+  "fecha": "2026-10-30T04:12:16.984879+00:00",
   "tipo": "APIs reales Spring-Django-MariaDB",
   "mascotasPrueba": [
-    28,
-    29,
-    30,
-    31
+    36,
+    37,
+    38,
+    39
   ],
   "checks": [
     "US-01/02: perfil compatible 100, empates por id y desconocidos al final; mascotas nuevas persistidas",

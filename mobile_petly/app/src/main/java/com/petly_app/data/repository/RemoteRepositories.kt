@@ -37,10 +37,15 @@ internal object CatalogPhotoUrl {
 
         val apiUri = runCatching { URI(apiBaseUrl) }.getOrNull() ?: return photo
         val apiHost = apiUri.host ?: return photo
-        if (apiHost.lowercase() in localHosts) return photo
         val mediaUri = runCatching { URI(adminBaseUrl) }.getOrNull() ?: return photo
+        val mediaHost = mediaUri.host ?: return photo
+        val reachableHost = if (mediaHost.lowercase() in localHosts && apiHost.lowercase() !in localHosts) {
+            apiHost
+        } else {
+            mediaHost
+        }
         val port = mediaUri.port.takeIf { it >= 0 }?.let { ":$it" }.orEmpty()
-        return "${apiUri.scheme}://$apiHost$port${photoUri.rawPath}" +
+        return "${mediaUri.scheme}://$reachableHost$port${photoUri.rawPath}" +
             (photoUri.rawQuery?.let { "?$it" } ?: "") +
             (photoUri.rawFragment?.let { "#$it" } ?: "")
     }

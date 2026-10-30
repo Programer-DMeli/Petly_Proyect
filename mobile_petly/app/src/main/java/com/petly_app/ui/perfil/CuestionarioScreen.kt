@@ -297,14 +297,18 @@ private fun CuestionarioFormScreen(
             QuestionItem(
                 number = "3",
                 question = "¿Cuántas horas al día estaría sola la mascota?",
-                purpose = "Compara tolerancia a la soledad"
+                purpose = "Indica las horas diarias reales para calcular la compatibilidad de rutina."
             ) {
-                SingleChoicePills(
-                    options = listOf("Hasta 2h", "De 2 a 4h", "De 4 a 6h", "Más de 6h"),
-                    selected = form.horasFuera,
-                    onSelect = {
-                        if (editable) onEdit(form.copy(horasFuera = it))
-                    }
+                OutlinedTextField(
+                    value = form.horasFuera,
+                    onValueChange = { if (editable) onEdit(form.copy(horasFuera = it)) },
+                    label = { Text("Horas fuera de casa (0 a 24)") },
+                    enabled = editable,
+                    isError = state.errors.containsKey("horasFuera"),
+                    supportingText = { state.errors["horasFuera"]?.let { Text(it) } },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 

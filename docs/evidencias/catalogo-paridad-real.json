@@ -1,0 +1,12 @@
+{
+  "fecha": "2026-10-30T04:18:46.975Z",
+  "mascotaId": 28,
+  "nombre": "Sprint2 Match b8842969 0",
+  "antes": 100,
+  "despues": 65,
+  "fotoSha256": "548f2e23a13d6bd19e88eb3b7529b77060292c6d999fb53749284621703e0dbe",
+  "fotografiaIdentica": true,
+  "androidFormularioReal": true,
+  "reactFormularioReal": true,
+  "servicios": "Spring, Django y MariaDB locales; sin respuestas simuladas"
+}
