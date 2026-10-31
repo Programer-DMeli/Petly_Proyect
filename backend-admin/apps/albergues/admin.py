@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Albergue, Infraestructura
+from .models import Albergue, Infraestructura, NecesidadAlbergue, DonacionAlbergue
 
 
 class InfraestructuraInline(admin.TabularInline):
@@ -79,3 +79,17 @@ class InfraestructuraAdmin(admin.ModelAdmin):
         color = colors.get(obj.tipo, '#000')
         return format_html('<span style="background:{}; color:white; padding:2px 8px; border-radius:3px;">{}</span>', color, obj.get_tipo_display())
     tipo_badge.short_description = 'Tipo'
+
+
+@admin.register(NecesidadAlbergue)
+class NecesidadAlbergueAdmin(admin.ModelAdmin):
+    list_display = ('titulo', 'albergue', 'cantidad_objetivo', 'unidad', 'estado', 'actualizado_en')
+    list_filter = ('estado', 'albergue')
+    search_fields = ('titulo', 'albergue__nombre')
+
+
+@admin.register(DonacionAlbergue)
+class DonacionAlbergueAdmin(admin.ModelAdmin):
+    list_display = ('descripcion', 'albergue', 'tipo', 'cantidad', 'unidad', 'fecha', 'necesidad')
+    list_filter = ('tipo', 'albergue', 'fecha')
+    search_fields = ('descripcion', 'albergue__nombre')

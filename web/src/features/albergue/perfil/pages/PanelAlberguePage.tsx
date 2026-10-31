@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { useCallback, useEffect, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
 import { django, json, errorMessage, ApiError } from '../../../../services/http';
@@ -28,7 +29,10 @@ const initial: ShelterDraft = {
   responsable_telefono: '',
 };
 export default function PanelAlberguePage() {
-  const [step, setStep] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sections = ['datos', 'infraestructura', 'mascotas', 'perfiles'];
+  const step = Math.max(0, sections.indexOf(searchParams.get('seccion') ?? 'datos'));
+  function setStep(index: number) { setSearchParams({ seccion: sections[index] ?? 'datos' }); }
   const [shelter, setShelter] = useState<Shelter | null>(null);
   const [draft, setDraft] = useState(initial);
   const [loaded, setLoaded] = useState(false);
@@ -296,6 +300,8 @@ function PerfilesCompartidos() {
                   : 'No'}
             </dd>
           </dl>
+          <h4>Disponibilidad · America/Lima</h4>
+          {!selected.disponibilidad?.length ? <p>Sin horarios registrados.</p> : <ul>{selected.disponibilidad.map(f => <li key={f.id}>{f.diaSemana}: {f.horaInicio}–{f.horaFin} · {f.descripcion}</li>)}</ul>}
           <h4>Solicitudes anteriores a este albergue</h4>
           {!selected.solicitudesPrevias?.length ? <p>Sin solicitudes previas.</p> : <ul>
             {selected.solicitudesPrevias.map(solicitud => <li key={solicitud.id}>

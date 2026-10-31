@@ -127,6 +127,8 @@ class SolicitudAdopcionAdmin(admin.ModelAdmin):
     # Acciones masivas
     def _cambiar_estado_masivo(self, request, queryset, nuevo_estado, mensaje):
         from django.utils import timezone
+        from apps.contratos.models import ContratoAdopcion
+
         count = 0
         for obj in queryset:
             transiciones_validas = {
@@ -137,6 +139,14 @@ class SolicitudAdopcionAdmin(admin.ModelAdmin):
                 'CANCELADA': [],
                 'ENTREGADA': [],
             }
+            if nuevo_estado == 'ENTREGADA':
+                contrato = getattr(obj, 'contrato_adopcion', None)
+                if (
+                    contrato is None
+                    or contrato.estado != ContratoAdopcion.Estado.FIRMADO
+                    or not contrato.documento_firmado
+                ):
+                    continue
             if nuevo_estado in transiciones_validas.get(obj.estado, []):
                 obj.estado = nuevo_estado
                 obj.revisado_por = request.user

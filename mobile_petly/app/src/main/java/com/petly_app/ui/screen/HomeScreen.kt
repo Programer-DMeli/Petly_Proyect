@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +41,8 @@ fun HomeScreen(
     onNavigateDetail: (Long) -> Unit = {}
 ) {
     val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
+    val favoritoError by FavoritosManager.error.collectAsStateWithLifecycle()
+    val favoritesScope = rememberCoroutineScope()
     var showFavoritesDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -50,10 +53,11 @@ fun HomeScreen(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
+        if (favoritoError.isNotBlank()) Text(favoritoError)
         // TOP HEADER BAR
         HomeHeaderBar(
             onNavigateProfile = onNavigateProfile,
-            onOpenFavorites = { showFavoritesDialog = true },
+            onOpenFavorites = { showFavoritesDialog = true; favoritesScope.launch { FavoritosManager.cargar() } },
             favoritesCount = favorites.size
         )
 
@@ -319,13 +323,11 @@ private fun CategorySelectionSection(onCategorySelect: (String) -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        imageVector = HomeIcons.Dog,
-                        contentDescription = "Perros",
-                        tint = Color.White,
-                        modifier = Modifier.size(36.dp)
+                    Text(
+                        text = "🐶",
+                        fontSize = 44.sp
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Perros",
                         fontSize = 18.sp,
@@ -350,13 +352,11 @@ private fun CategorySelectionSection(onCategorySelect: (String) -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        imageVector = HomeIcons.Cat,
-                        contentDescription = "Gatos",
-                        tint = PetlyDarkGreen,
-                        modifier = Modifier.size(36.dp)
+                    Text(
+                        text = "🐱",
+                        fontSize = 44.sp
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Gatos",
                         fontSize = 18.sp,
@@ -431,7 +431,7 @@ private fun AlbergueDelMesCard(onVerAlbergue: () -> Unit) {
                         .clip(RoundedCornerShape(20.dp))
                 ) {
                     AsyncImage(
-                        model = "https://images.unsplash.com/photo-1548767797-d8c844163c4c?q=80&w=1000",
+                        model = "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?q=80&w=1000",
                         contentDescription = "Fotografía de Refugio Patitas Felices",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
@@ -455,7 +455,7 @@ private fun AlbergueDelMesCard(onVerAlbergue: () -> Unit) {
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = "Guadalajara",
+                                text = "San Juan de Miraflores",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color.White

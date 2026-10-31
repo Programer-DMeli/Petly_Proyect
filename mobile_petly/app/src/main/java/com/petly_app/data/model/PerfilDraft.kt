@@ -9,6 +9,13 @@ data class PerfilDraft(
     val tieneNinos: Boolean? = null,
     val tieneOtrasMascotas: Boolean? = null,
     val finalizado: Boolean = false,
+    val espacioExterior: String = "",
+    val tiempoPaseos: String = "",
+    val rutinaHabitual: String = "",
+    val ninosDetalle: String = "",
+    val otrosAnimales: String = "",
+    val experienciaMascotas: String = "",
+    val cuidadosAsumibles: List<String> = emptyList(),
     val fotosViviendaUrls: List<String> = emptyList()
 )
 
@@ -18,8 +25,8 @@ object PerfilValidation {
         if (form.vivienda.length > 120) put("vivienda", "Usa como máximo 120 caracteres.")
         validateNumber(form.horasFuera, "horasFuera", finalizar, BigDecimal("24"))
         validateNumber(form.presupuesto, "presupuesto", finalizar, null)
-        if (finalizar && form.tieneNinos == null) put("ninos", "Selecciona Sí o No.")
-        if (finalizar && form.tieneOtrasMascotas == null) put("mascotas", "Selecciona Sí o No.")
+        if (finalizar && form.tieneNinos == null && form.ninosDetalle.isBlank()) put("ninos", "Selecciona una opción sobre presencia de niños.")
+        if (finalizar && form.tieneOtrasMascotas == null && form.otrosAnimales.isBlank()) put("mascotas", "Selecciona una opción sobre otros animales.")
     }
 
     private fun MutableMap<String, String>.validateNumber(raw: String, field: String, required: Boolean, maximum: BigDecimal?) {

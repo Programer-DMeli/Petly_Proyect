@@ -28,7 +28,11 @@ router.register("postulantes", PostulanteViewSet, basename="postulante")
 router.register("solicitudes", SolicitudAdopcionViewSet, basename="solicitud")
 router.register("verificaciones-kyc", VerificacionKycViewSet, basename="verificacion-kyc")
 
+from .fotos_hogar import FotosHogarView, FotoHogarView
+
 urlpatterns = [
+    path("solicitudes/<int:pk>/fotos-hogar/", FotosHogarView.as_view()),
+    path("solicitudes/<int:pk>/fotos-hogar/<int:foto_id>/", FotoHogarView.as_view()),
     path("", include(router.urls)),
     path("auth/registro/", UserRegistrationView.as_view(), name="auth_registro"),
     path("auth/login/", CustomTokenObtainPairView.as_view(), name="auth_login"),

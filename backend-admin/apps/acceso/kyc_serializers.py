@@ -6,6 +6,12 @@ from .models import VerificacionKyc
 
 
 MAX_DOCUMENT_BYTES = 5 * 1024 * 1024
+ESTADOS_KYC_TERMINALES = {
+    VerificacionKyc.Estado.VERIFICADO,
+    VerificacionKyc.Estado.APROBADO_MANUAL,
+    VerificacionKyc.Estado.RECHAZADO_MANUAL,
+}
+ESTADOS_KYC_BLOQUEADOS = ESTADOS_KYC_TERMINALES | {VerificacionKyc.Estado.PENDIENTE_REVISION}
 
 
 class VerificacionKycSerializer(serializers.ModelSerializer):
@@ -49,8 +55,8 @@ class VerificacionKycSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         adoptante = validated_data.pop("adoptante")
         previous = VerificacionKyc.objects.select_for_update().filter(adoptante=adoptante).first()
-        if previous and previous.estado == VerificacionKyc.Estado.VERIFICADO:
-            raise ValidationError({"detail": "La identidad ya está verificada."})
+        if previous and previous.estado in ESTADOS_KYC_BLOQUEADOS:
+            raise ValidationError({"detail": "La verificación está resuelta o pendiente de revisión y no puede reemplazarse."})
 
         old_files = []
         if previous:

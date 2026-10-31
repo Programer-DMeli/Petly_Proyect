@@ -19,10 +19,19 @@ C:\xampp\mysql\bin\mysql.exe -uroot -e "CREATE DATABASE IF NOT EXISTS database_p
 
 ## Responsables de migraciones
 
-| Información | Responsable |
-| --- | --- |
-| Cuentas y perfiles de adoptantes | Spring Boot (Flyway) |
-| Albergues y mascotas | Django (migraciones por aplicación) |
-| Solicitudes, adopciones y seguimientos | Por definir |
+| Información | Responsable de migraciones | Responsable del equipo |
+| --- | --- | --- |
+| Cuentas, credenciales, roles globales y recuperación | Spring Boot (Flyway) | Angie |
+| Perfil, convivencia, preferencias, disponibilidad y consentimiento | Spring Boot (Flyway) | Angie; Meliton integra Android |
+| Favoritos, compatibilidad y configuración de sus criterios | Spring Boot (Flyway) | Angie; Meliton integra Android |
+| Identidad KYC, documentos privados y fotos de vivienda del adoptante | Spring Boot (Flyway) | Angie; Meliton integra Android |
+| Albergues, infraestructura y pertenencia de trabajadores | Django (migraciones por aplicación) | Mayra |
+| Mascotas, fotos públicas y ficha médica | Django (migraciones por aplicación) | Mayra |
+| Solicitudes, eventos de su línea de tiempo, adopciones y contratos | Django (migraciones por aplicación) | Mayra; Angie integra el acceso del adoptante |
+| Seguimientos posteriores y sus evidencias | Django (migraciones por aplicación) | Mayra; Meliton integra la carga móvil |
+| Publicaciones y borradores IA, afiches, eventos y donaciones del albergue | Django (migraciones por aplicación) | Mayra |
+| Notificaciones de usuario, mensajería y reseñas | Spring Boot (Flyway) | Angie; Meliton integra Android |
+
+Detalle de tablas vigentes, heredadas y futuras: [propiedad de tablas](../docs/propiedad-tablas.md). Definición de arquitectura del 15 de octubre de 2026; no ejecuta migraciones.
 
 Las migraciones viven en cada backend; aquí no se generan. Ver `database/modelo-datos.md` y `PLANNING.md` v2 §6.

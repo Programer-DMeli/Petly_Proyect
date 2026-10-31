@@ -13,6 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Carga .env si existe (los valores reales nunca van a Git).
 load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR.parent / ".env.gemini")
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
 
@@ -118,7 +119,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
-        "DJANGO_ALLOWED_ORIGINS", "http://localhost:5173"
+        "DJANGO_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
     ).split(",")
     if origin.strip()
 ]
@@ -190,6 +191,9 @@ PRIVATE_FILES_ROOT = Path(os.getenv("PRIVATE_FILES_ROOT", str(BASE_DIR / "privat
 PET_DESCRIPTION_API_URL = os.getenv("PET_DESCRIPTION_API_URL", "")
 PET_DESCRIPTION_API_TOKEN = os.getenv("PET_DESCRIPTION_API_TOKEN", "")
 PET_DESCRIPTION_TIMEOUT_SECONDS = int(os.getenv("PET_DESCRIPTION_TIMEOUT_SECONDS", "20"))
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- SimpleJWT (US-21) ---
@@ -294,3 +298,8 @@ SPECTACULAR_SETTINGS = {
         {"name": "postulantes", "description": "Consulta de postulantes (US-18)"},
     ],
 }
+
+# Gemini: secret remains on the server.
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+GEMINI_TIMEOUT_SECONDS = max(1, min(60, int(os.getenv("GEMINI_TIMEOUT_SECONDS", "20"))))

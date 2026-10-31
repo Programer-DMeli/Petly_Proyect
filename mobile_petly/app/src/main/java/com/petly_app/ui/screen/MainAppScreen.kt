@@ -18,6 +18,7 @@ import com.petly_app.ui.auth.AccessIcons
 import com.petly_app.ui.catalogo.CatalogoScreen
 import com.petly_app.ui.catalogo.CatalogoUiState
 import com.petly_app.ui.perfil.CuestionarioScreen
+import com.petly_app.ui.perfil.DisponibilidadUiState
 import com.petly_app.ui.perfil.PerfilUiState
 
 enum class PetlyTab { INICIO, CATALOGO, NOVEDADES, PERFIL }
@@ -26,6 +27,7 @@ enum class PetlyTab { INICIO, CATALOGO, NOVEDADES, PERFIL }
 fun MainAppScreen(
     catalogoState: CatalogoUiState,
     perfilState: PerfilUiState,
+    disponibilidadState: DisponibilidadUiState = DisponibilidadUiState(),
     isPreview: Boolean,
     onEditFilters: (CatalogoFilters) -> Unit,
     onApplyFilters: () -> Unit,
@@ -36,7 +38,11 @@ fun MainAppScreen(
     onEditPerfil: (PerfilDraft) -> Unit,
     onSavePerfil: (Boolean) -> Unit,
     onLoadPerfil: () -> Unit,
+    onAddFranja: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    onRemoveFranja: (Long) -> Unit = {},
+    onSaveDisponibilidad: () -> Unit = {},
     onShareAutorizaciones: (() -> Unit)?,
+    onOpenKyc: () -> Unit,
     onExit: () -> Unit
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(PetlyTab.INICIO) }
@@ -85,13 +91,18 @@ fun MainAppScreen(
                 PetlyTab.PERFIL -> {
                     CuestionarioScreen(
                         state = perfilState,
+                        disponibilidadState = disponibilidadState,
                         preview = isPreview,
                         onEdit = onEditPerfil,
                         onSave = onSavePerfil,
                         onRetry = onLoadPerfil,
                         onBack = { selectedTab = PetlyTab.INICIO },
                         onShare = onShareAutorizaciones,
+                        onOpenKyc = onOpenKyc,
                         onDetailPet = onDetailPet,
+                        onAddFranja = onAddFranja,
+                        onRemoveFranja = onRemoveFranja,
+                        onSaveDisponibilidad = onSaveDisponibilidad,
                         onExit = onExit
                     )
                 }

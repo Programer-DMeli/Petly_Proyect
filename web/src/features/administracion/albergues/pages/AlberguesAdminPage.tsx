@@ -1,3 +1,4 @@
+import { useDialogFocus } from '../../../../services/useDialogFocus';
 import { useCallback, useEffect, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
 import { django, json, errorMessage } from '../../../../services/http';
@@ -49,6 +50,7 @@ export default function AlberguesAdminPage() {
   const [draft, setDraft] = useState(initial);
   const [detail, setDetail] = useState<Shelter | null>(null);
   const [deleting, setDeleting] = useState<Shelter | null>(null);
+  useDialogFocus(detail !== null || deleting !== null);
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const load = useCallback(async () => {

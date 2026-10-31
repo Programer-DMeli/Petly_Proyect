@@ -29,10 +29,10 @@ TRANSICIONES = {
 @transaction.atomic
 def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=None):
     """Aplica una transición bajo bloqueo para evitar dobles aprobaciones."""
-    solicitud = SolicitudAdopcion.objects.select_for_update().select_related(
-        "mascota", "albergue"
-    ).get(pk=solicitud_id)
-    mascota = Mascota.objects.select_for_update().get(pk=solicitud.mascota_id)
+    # Todas las transiciones y envíos toman primero la misma mascota.
+    mascota_id = SolicitudAdopcion.objects.values_list("mascota_id", flat=True).get(pk=solicitud_id)
+    mascota = Mascota.objects.select_for_update().get(pk=mascota_id)
+    solicitud = SolicitudAdopcion.objects.select_for_update().get(pk=solicitud_id)
     actual = solicitud.estado
 
     if nuevo_estado == SolicitudAdopcion.Estado.CANCELADA and (
@@ -48,6 +48,19 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
             "estado": f"Transición no permitida: {actual} -> {nuevo_estado}.",
             "transiciones_validas": TRANSICIONES.get(actual, []),
         })
+
+    if nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA:
+        from apps.contratos.models import ContratoAdopcion
+
+        contrato = getattr(solicitud, "contrato_adopcion", None)
+        if (
+            contrato is None
+            or contrato.estado != ContratoAdopcion.Estado.FIRMADO
+            or not contrato.documento_firmado
+        ):
+            raise ValidationError({
+                "estado": "La adopción solo puede cerrarse con un contrato firmado y entregado.",
+            })
 
     requiere_motivo = nuevo_estado in (
         SolicitudAdopcion.Estado.OBSERVADA,
@@ -68,21 +81,16 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         if otra_aprobada:
             raise ValidationError({"estado": "Ya existe otra solicitud aprobada para esta mascota."})
 
-        perfil = AdoptanteProfile.objects.filter(
-            documento_numero=solicitud.postulante.documento_numero,
-            cuestionario_completado=True,
-        ).first()
-        if perfil is None:
-            raise ValidationError({"autorizacion": "El perfil del adoptante ya no está finalizado."})
-        from .authentication import AuthorityUnavailable, spring_autorizacion_vigente
-        try:
-            autorizado = spring_autorizacion_vigente(
-                perfil.user.spring_id, solicitud.albergue_id
-            )
-        except AuthorityUnavailable as error:
-            raise ValidationError({"autorizacion": "No se pudo verificar el consentimiento en Spring."}) from error
-        if not autorizado:
-            raise ValidationError({"autorizacion": "Se requiere autorización vigente para aprobar esta solicitud."})
+        from .eligibilidad import comprobar_elegibilidad
+        if not solicitud.adoptante:
+            # Compatibilidad con solicitudes históricas vinculadas por documento.
+            perfil = AdoptanteProfile.objects.filter(documento_numero=solicitud.postulante.documento_numero).first() if solicitud.postulante else None
+            if not perfil:
+                raise ValidationError({"perfil": "No se encontró el titular de la solicitud."})
+            titular = perfil.user
+        else:
+            titular = solicitud.adoptante
+        comprobar_elegibilidad(titular, solicitud.albergue_id, bloquear=True)
 
     solicitud.estado = nuevo_estado
     update_fields = ["estado", "actualizado_en"]

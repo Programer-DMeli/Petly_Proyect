@@ -218,7 +218,7 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Recheck under a row lock so concurrent submissions cannot both pass validation.
         mascota_id = serializer.validated_data["mascota"].pk
-        postulante = serializer.validated_data["postulante"]
+        postulante = serializer.validated_data.get("postulante")
         with transaction.atomic():
             mascota = Mascota.objects.select_for_update().filter(pk=mascota_id).first()
             if mascota is None:
@@ -227,13 +227,16 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
                 raise ValidationError({"mascota": "La mascota no está disponible para adopción."})
             if not mascota.albergue.activo:
                 raise ValidationError({"mascota": "El albergue de esta mascota no está activo."})
+            titular = Q(adoptante=self.request.user) | (Q(postulante=postulante) if postulante else Q(adoptante=self.request.user))
             activa = SolicitudAdopcion.objects.filter(
-                postulante=postulante,
+                titular,
                 mascota=mascota,
                 estado__in=[SolicitudAdopcion.Estado.PENDIENTE, SolicitudAdopcion.Estado.OBSERVADA],
             ).exists()
             if activa:
                 raise ValidationError({"non_field_errors": ["Ya existe una solicitud activa para esta mascota."]})
+            from .eligibilidad import comprobar_elegibilidad
+            comprobar_elegibilidad(self.request.user, mascota.albergue_id, bloquear=True)
             solicitud = serializer.save(
                 mascota=mascota,
                 albergue=mascota.albergue,

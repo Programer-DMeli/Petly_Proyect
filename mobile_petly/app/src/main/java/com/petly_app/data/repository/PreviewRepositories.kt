@@ -33,7 +33,14 @@ class PreviewCatalogoRepository : CatalogoRepository {
     override suspend fun options() = CatalogoOptions(listOf("Perro", "Gato"), listOf("Pequeño", "Mediano", "Grande"), listOf("Tranquilo", "Activo", "Sociable", "Por evaluar"))
     override suspend fun search(filters: CatalogoFilters, page: Int, pageSize: Int): MascotaPage {
         delay(200)
-        return DemoCatalogoQuery.search(mascotas, filters, page, pageSize)
+        val updatedList = mascotas.map { pet ->
+            if (SolicitudAdopcionManager.isSolicitudEnviada(pet.id)) pet.copy(estado = "En proceso") else pet
+        }
+        return DemoCatalogoQuery.search(updatedList, filters, page, pageSize)
     }
-    override suspend fun detail(id: Long): Mascota? { delay(200); return mascotas.find { it.id == id } }
+    override suspend fun detail(id: Long): Mascota? {
+        delay(200)
+        val pet = mascotas.find { it.id == id } ?: return null
+        return if (SolicitudAdopcionManager.isSolicitudEnviada(id)) pet.copy(estado = "En proceso") else pet
+    }
 }

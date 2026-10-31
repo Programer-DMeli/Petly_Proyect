@@ -80,6 +80,30 @@ class CompatibilidadServiceTest {
         assertEquals(true, score.get("datosInsuficientes"));
     }
 
+    @Test
+    void datosDesconocidosConPesoCeroNoRompenCalculoYDesgloseRedondeaAlTotal() {
+        var animal = pet("Grande", "Alta", "Por evaluar", "Perro");
+        var score = (Map<?, ?>) CompatibilidadService.withScore(animal,
+                profile(true, "Departamento", 10, false, false),
+                new ReglasCompatibilidadService.Reglas(50, 50, 0, 3)).get("compatibilidad");
+        assertEquals(48, score.get("porcentaje")); // 30 + 17.5 = 47.5, HALF_UP
+        var criteria = (List<Map<String,Object>>) score.get("criterios");
+        var sum = criteria.stream().filter(c -> c.get("aporte") != null)
+                .map(c -> (java.math.BigDecimal) c.get("aporte")).reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        assertEquals(48, sum.setScale(0, java.math.RoundingMode.HALF_UP).intValue());
+        assertEquals("petly-compat-v3", score.get("versionReglas"));
+        assertNull(criteria.get(2).get("puntaje"));
+    }
+
+    @Test
+    void mascotaConEnergiaNulaOTamanoVacioEsInsuficiente() {
+        var animal = pet("", null, "No reconocido", "Perro");
+        var score = (Map<?,?>) CompatibilidadService.withScore(animal,
+                profile(true, "Casa", 3, false, false)).get("compatibilidad");
+        assertNull(score.get("porcentaje"));
+        assertEquals(0, score.get("cobertura"));
+    }
+
     private Map<String, Object> pet(String size, String energy, String temperament, String species) {
         return petWithId(9, size, energy, temperament, species);
     }

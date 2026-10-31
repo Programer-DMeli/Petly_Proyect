@@ -1,0 +1,35 @@
+{
+  "fecha": "2026-10-27T18:39:13.881020+00:00",
+  "spring": {
+    "pruebas": 69,
+    "resultado": "PASS",
+    "base": "H2 aislada",
+    "IA": "respuestas simuladas"
+  },
+  "django": {
+    "pruebas": 80,
+    "resultado": "PASS",
+    "base": "SQLite aislada",
+    "IA": "respuestas simuladas"
+  },
+  "android_unitarias": {
+    "pruebas": 25,
+    "resultado": "PASS"
+  },
+  "android_instrumentales": {
+    "pruebas": 2,
+    "resultado": "PASS",
+    "detalle": "Una prueba de pantalla con respuesta IA simulada y una con Spring/MariaDB reales; Gemini opcional conserva puntaje"
+  },
+  "react": {
+    "pruebas": 4,
+    "resultado": "PASS",
+    "IA": "respuestas simuladas",
+    "compilacion": "PASS",
+    "eslint": "PASS"
+  },
+  "APIs_reales": "docs/evidencias/compatibilidad-sprint2-real.json",
+  "gemini_real_adaptador": "docs/evidencias/gemini-real-sprint2.json",
+  "gemini_real_HTTP": "docs/evidencias/gemini-http-real-sprint2.json",
+  "observacion": "El proveedor ha devuelto 503 y timeouts en algunas peticiones. El cálculo y los datos guardados se conservan."
+}

@@ -1,6 +1,6 @@
 # Modelo de datos preliminar — Petly
 
-**Documento de referencia.** Esta etapa no crea entidades ni migraciones de negocio; aquí se registra el modelo acordado en `PLANNING.md` v2 para programar los sprints con un criterio único.
+**Documento de referencia actualizado el 15 de octubre de 2026.** Se distinguen las tablas presentes en el código de las ampliaciones propuestas; este documento no ejecuta migraciones.
 
 ## Reglas generales
 
@@ -12,17 +12,26 @@
 
 ## Responsables
 
-| Información | Backend responsable | Mecanismo |
+| Información | Responsable de migraciones | Responsable del equipo |
 | --- | --- | --- |
-| Cuentas y perfiles de adoptantes | Spring Boot (`backend_usuario`) | Flyway, historial propio en `src/main/resources/db/migration/` |
-| Albergues y mascotas | Django (`backend-admin`) | Migraciones por aplicación en `apps/<app>/migrations/` |
-| Solicitudes, adopciones y seguimientos | Sin definir | Definir antes de sus sprints |
+| Cuentas, credenciales, roles globales y recuperación | Spring Boot (Flyway) | Angie |
+| Perfil, convivencia, preferencias, disponibilidad y consentimiento | Spring Boot (Flyway) | Angie; Meliton integra Android |
+| Favoritos, compatibilidad y configuración de sus criterios | Spring Boot (Flyway) | Angie; Meliton integra Android |
+| Identidad KYC, documentos privados y fotos de vivienda del adoptante | Spring Boot (Flyway) | Angie; Meliton integra Android |
+| Albergues, infraestructura y pertenencia de trabajadores | Django (migraciones por aplicación) | Mayra |
+| Mascotas, fotos públicas y ficha médica | Django (migraciones por aplicación) | Mayra |
+| Solicitudes, eventos de su línea de tiempo, adopciones y contratos | Django (migraciones por aplicación) | Mayra; Angie integra el acceso del adoptante |
+| Seguimientos posteriores y sus evidencias | Django (migraciones por aplicación) | Mayra; Meliton integra la carga móvil |
+| Publicaciones y borradores IA, afiches, eventos y donaciones del albergue | Django (migraciones por aplicación) | Mayra |
+| Notificaciones de usuario, mensajería y reseñas | Spring Boot (Flyway) | Angie; Meliton integra Android |
+
+Detalle del diseño propuesto: [propiedad de tablas](../docs/propiedad-tablas.md). Incluye estado real, tablas heredadas y fronteras de escritura.
 
 Hibernate no crea ni actualiza tablas (`ddl-auto: none`).
 
-## Entidades previstas (sin implementar)
+## Entidades de referencia (algunas ya implementadas; ver esquema vigente)
 
-### Spring Boot
+### Spring Boot (dominio previsto)
 
 - **Cuenta de usuario:** id, correo (único), contraseña (hash), rol, estado de bloqueo, intentos fallidos, fechas.
 - **Perfil de adoptante:** vínculo con la cuenta; vivienda, horas fuera de casa, presupuesto (US-16).
@@ -30,7 +39,7 @@ Hibernate no crea ni actualiza tablas (`ddl-auto: none`).
 - **Autorización de consulta:** adoptante ↔ albergue específico, estado y fechas de autorización/revocación (US-18).
 - **Token de recuperación:** valor, expiración (15 min), usado el/la (US-24).
 
-### Django
+### Django (dominio previsto)
 
 - **Albergue:** nombre, ubicación, capacidad, información institucional, vínculo con la cuenta que lo administra (US-46).
 - **Mascota:** nombre, especie, tamaño, edad, energía, comportamiento, temperamento (categoría predefinida, con «Por evaluar»), estado (`Disponible` / `En Proceso` / `Adoptado`), fotografía (referencia al archivo), albergue propietario (US-11, US-12, US-13).
@@ -47,10 +56,10 @@ La frontera todavía está por detallar antes de los sprints que la usan:
 
 `database/modelo-datos.md` y `database/seeds/` contienen el detalle y datos de demostración. **No** duplican ni sustituyen las migraciones.
 
-## Esquema implementado para integración de Persona C
+## Esquema vigente comprobado en el código
 
-Spring/Flyway: V1 usuarios; V2 amplía la cuenta y añade perfiles_adoptantes (nullable para borradores), autorizaciones_perfil (clave compuesta usuario/albergue) y password_resets (hash, expiración, consumo). Django no migra estas tablas.
+Spring/Flyway: `usuarios` (V1), `tokens_recuperacion` (V2), ampliación de usuarios (V3), `autorizaciones_consulta` (V4) y versión de sesión/perfiles_adoptantes (V5). No se crean `password_resets` ni `autorizaciones_perfil`; las referencias anteriores a esos nombres estaban desactualizadas.
 
-Django: acceso_user conserva su ID local y añade spring_id único nullable para identidad Spring; albergues_albergue conserva la relación con ese espejo; mascotas_mascota añade energía además del temperamento existente. Se añade una unión sin operaciones del grafo acceso. No se eliminan migraciones ni datos anteriores. Spring consulta estas tablas con JDBC sin entidades que generen esquema.
+Django: `acceso_user` conserva un ID propio y `spring_id` único nullable; `albergues_albergue` referencia ese espejo, `albergues_infraestructura` contiene sus áreas y `mascotas_mascota` conserva ficha, foto y disponibilidad. Hay modelos heredados de perfil, autorización, postulante y solicitud; no equivalen a autoridad vigente ni a un flujo de solicitudes entregado. Ver el tratamiento detallado de cada tabla en `docs/propiedad-tablas.md`.
 
-En una base vacía, Flyway primero y migraciones Django después. La base existente del equipo requiere revisar historiales/esquema y decidir cualquier baseline explícitamente; ver docs/instalacion.md. La comprobación real se hizo en una base aislada MariaDB 11.8.8, no en XAMPP del equipo.
+Spring consulta albergues y mascotas con JDBC de solo lectura. En una base vacía se ejecuta Flyway antes de las migraciones Django. Una base existente exige revisar historiales y datos antes de aplicar migraciones; esta actualización documental no inspecciona una instancia en ejecución ni modifica datos.

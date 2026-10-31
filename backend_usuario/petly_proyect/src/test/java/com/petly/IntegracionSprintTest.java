@@ -111,6 +111,39 @@ class IntegracionSprintTest {
     .contentType(MediaType.APPLICATION_JSON).content("{\"pesos\":{\"vivienda\":40,\"rutina\":30,\"convivencia\":30}}"))
    .andExpect(status().isForbidden());
  }
+ @Test void weightsRejectFractionsAndSheltersAndKeepAudit() throws Exception {
+  String admin=token("ADMIN");
+  for(String role:List.of("ADOPTANTE","ALBERGUE")) {
+   String auth="Bearer "+token(role);
+   mvc.perform(get("/api/admin/compatibilidad/reglas").header("Authorization",auth)).andExpect(status().isForbidden());
+   mvc.perform(put("/api/admin/compatibilidad/reglas").header("Authorization",auth).contentType(MediaType.APPLICATION_JSON)
+    .content("{\"pesos\":{\"vivienda\":40,\"rutina\":30,\"convivencia\":30}}")).andExpect(status().isForbidden());
+   if(role.equals("ALBERGUE")) mvc.perform(get("/api/v1/matches/mascota/1").header("Authorization",auth)).andExpect(status().isForbidden());
+  }
+  for(String body:List.of("{\"vivienda\":30.5,\"rutina\":35,\"convivencia\":34.5}",
+    "{\"vivienda\":-1,\"rutina\":50,\"convivencia\":51}","{\"vivienda\":null,\"rutina\":50,\"convivencia\":50}")) {
+   mvc.perform(put("/api/admin/compatibilidad/reglas").header("Authorization","Bearer "+admin)
+    .contentType(MediaType.APPLICATION_JSON).content("{\"pesos\":"+body+"}")).andExpect(status().isBadRequest());
+  }
+  assertEquals(1,db.queryForObject("SELECT version_reglas FROM mascotas_reglacompatibilidad WHERE id=1",Integer.class));
+  mvc.perform(put("/api/admin/compatibilidad/reglas").header("Authorization","Bearer "+admin).contentType(MediaType.APPLICATION_JSON)
+   .content("{\"pesos\":{\"vivienda\":40,\"rutina\":30,\"convivencia\":30}}")).andExpect(status().isOk());
+  assertEquals(uid(admin),db.queryForObject("SELECT actualizado_por_spring_id FROM mascotas_reglacompatibilidad WHERE id=1",Long.class));
+  assertNotNull(db.queryForObject("SELECT actualizado_en FROM mascotas_reglacompatibilidad WHERE id=1",java.sql.Timestamp.class));
+ }
+ @Test void matchEndpointUsesOwnProfileAndInvalidSaveKeepsPreviousScore() throws Exception {
+  String a=token("ADOPTANTE"), b=token("ADOPTANTE");
+  db.update("UPDATE mascotas_mascota SET tamanio='GRANDE',energia='ALTA',temperamento='SOCIABLE' WHERE id=1");
+  mvc.perform(patch("/api/perfil").header("Authorization","Bearer "+a).contentType(MediaType.APPLICATION_JSON)
+   .content("{\"vivienda\":\"Casa\",\"horasFuera\":3,\"presupuesto\":100,\"tieneNinos\":false,\"tieneOtrasMascotas\":false,\"finalizado\":true}")).andExpect(status().isOk());
+  mvc.perform(get("/api/v1/matches/mascota/1").header("Authorization","Bearer "+a)).andExpect(status().isOk())
+   .andExpect(jsonPath("$.compatibilidad.porcentaje").value(100)).andExpect(jsonPath("$.compatibilidad.criterios.length()").value(3))
+   .andExpect(jsonPath("$.compatibilidad.versionReglas").value("petly-compat-v1"));
+  mvc.perform(patch("/api/perfil").header("Authorization","Bearer "+a).contentType(MediaType.APPLICATION_JSON)
+   .content("{\"horasFuera\":25}")).andExpect(status().isBadRequest());
+  mvc.perform(get("/api/v1/matches/mascota/1").header("Authorization","Bearer "+a)).andExpect(jsonPath("$.compatibilidad.porcentaje").value(100));
+  mvc.perform(get("/api/v1/matches/mascota/1").header("Authorization","Bearer "+b)).andExpect(jsonPath("$.compatibilidad.porcentaje").isEmpty());
+ }
  @Test void consentSpecificAndRevoked() throws Exception {
   String adopt=token("ADOPTANTE"), shelter=token("ALBERGUE"), other=token("ALBERGUE");
   db.update("UPDATE acceso_user SET spring_id=? WHERE id=100",uid(shelter));
@@ -212,5 +245,24 @@ class IntegracionSprintTest {
    .contentType(MediaType.APPLICATION_JSON).content("{\"correo\":\"nombre@gmail\",\"password\":\"x\"}"))
    .andExpect(status().isBadRequest());
   assertEquals(0,users.findById(id).orElseThrow().getIntentosFallidos());
+ }
+
+ @Test void favoritosPersistenSinDuplicadosYSonDelTitular() throws Exception {
+  String a=token("ADOPTANTE"), b=token("ADOPTANTE");
+  for(int n=0;n<2;n++) mvc.perform(put("/api/perfil/favoritos/1").header("Authorization","Bearer "+a)).andExpect(status().isNoContent());
+  mvc.perform(get("/api/perfil/favoritos").header("Authorization","Bearer "+a)).andExpect(jsonPath("$.length()").value(1));
+  mvc.perform(get("/api/perfil/favoritos").header("Authorization","Bearer "+b)).andExpect(jsonPath("$.length()").value(0));
+  db.update("UPDATE mascotas_mascota SET estado='ADOPTADO' WHERE id=1");
+  mvc.perform(get("/api/perfil/favoritos").header("Authorization","Bearer "+a)).andExpect(jsonPath("$[0].estado").value("Adoptado"));
+  mvc.perform(delete("/api/perfil/favoritos/1").header("Authorization","Bearer "+a)).andExpect(status().isNoContent());
+  mvc.perform(get("/api/perfil/favoritos").header("Authorization","Bearer "+token("ALBERGUE"))).andExpect(status().isForbidden());
+ }
+ @Test void disponibilidadInvalidaNoReemplazaLaGuardada() throws Exception {
+  String a=token("ADOPTANTE"), b=token("ADOPTANTE");
+  String franja="{\"diaSemana\":\"Lunes\",\"horaInicio\":\"09:00\",\"horaFin\":\"11:00\",\"descripcion\":\"Visita\"}";
+  mvc.perform(post("/api/perfil/disponibilidad").header("Authorization","Bearer "+a).contentType(MediaType.APPLICATION_JSON).content("["+franja+"]")).andExpect(status().isOk());
+  mvc.perform(post("/api/perfil/disponibilidad").header("Authorization","Bearer "+a).contentType(MediaType.APPLICATION_JSON).content("["+franja+","+franja+"]")).andExpect(status().isBadRequest());
+  mvc.perform(get("/api/perfil/disponibilidad").header("Authorization","Bearer "+a)).andExpect(jsonPath("$.length()").value(1));
+  mvc.perform(get("/api/perfil/disponibilidad").header("Authorization","Bearer "+b)).andExpect(jsonPath("$.length()").value(0));
  }
 }

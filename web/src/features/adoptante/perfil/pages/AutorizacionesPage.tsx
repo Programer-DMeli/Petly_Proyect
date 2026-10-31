@@ -1,3 +1,4 @@
+import { useDialogFocus } from '../../../../services/useDialogFocus';
 import { useCallback, useEffect, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
 import { spring, json, errorMessage } from '../../../../services/http';
@@ -17,6 +18,7 @@ export default function AutorizacionesPage() {
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<Shelter | null>(null);
+  useDialogFocus(selected !== null, () => { if (!busy) setSelected(null); });
   const load = useCallback(async () => {
     setError('');
     try {
@@ -77,7 +79,7 @@ export default function AutorizacionesPage() {
         );
       })}
       {selected && (
-        <div
+        <div className="consent-backdrop"><div
           role="dialog"
           aria-modal="true"
           aria-label="Confirmar autorización"
@@ -96,7 +98,7 @@ export default function AutorizacionesPage() {
               Cancelar
             </button>
           </div>
-        </div>
+        </div></div>
       )}
     </section>
   );

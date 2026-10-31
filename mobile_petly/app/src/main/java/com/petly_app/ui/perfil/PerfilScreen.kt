@@ -40,7 +40,9 @@ fun PerfilScreen(
     state: PerfilUiState,
     preview: Boolean,
     onOpenQuestionnaire: () -> Unit,
+    onOpenDisponibilidad: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
+    onOpenKyc: () -> Unit = {},
     onDetailPet: (Long) -> Unit = {},
     onExit: () -> Unit = {}
 ) {
@@ -71,9 +73,14 @@ fun PerfilScreen(
         // CARD 2: CUESTIONARIO DE ADOPCIÓN BANNER
         AdoptionQuestionnaireBannerCard(onOpenQuestionnaire = onOpenQuestionnaire)
 
+        OutlinedButton(onClick = onOpenKyc, modifier = Modifier.fillMaxWidth()) {
+            Text("Verificación de identidad (DNI)")
+        }
+
         // CARD 3: MENU OPTIONS CARD
         ProfileMenuOptionsCard(
             onOpenFavorites = { showFavoritesDialog = true },
+            onOpenDisponibilidad = onOpenDisponibilidad,
             onOpenNotifications = onOpenNotifications,
             onExit = onExit
         )
@@ -399,6 +406,7 @@ private fun AdoptionQuestionnaireBannerCard(onOpenQuestionnaire: () -> Unit) {
 @Composable
 private fun ProfileMenuOptionsCard(
     onOpenFavorites: () -> Unit,
+    onOpenDisponibilidad: () -> Unit,
     onOpenNotifications: () -> Unit,
     onExit: () -> Unit
 ) {
@@ -421,7 +429,19 @@ private fun ProfileMenuOptionsCard(
 
             HorizontalDivider(color = Color(0xFFF0F5F2), thickness = 1.dp)
 
-            // Option 2: Notificaciones
+            // Option 2: Horarios de Disponibilidad (US-20)
+            ProfileMenuItem(
+                icon = HomeIcons.Clock,
+                iconBg = Color(0xFF8DE2BA),
+                iconTint = ProfileDarkGreen,
+                title = "Horarios de Disponibilidad",
+                titleColor = ProfileTextDark,
+                onClick = onOpenDisponibilidad
+            )
+
+            HorizontalDivider(color = Color(0xFFF0F5F2), thickness = 1.dp)
+
+            // Option 3: Notificaciones
             ProfileMenuItem(
                 icon = HomeIcons.Bell,
                 iconBg = Color(0xFF8DE2BA),
@@ -433,7 +453,7 @@ private fun ProfileMenuOptionsCard(
 
             HorizontalDivider(color = Color(0xFFF0F5F2), thickness = 1.dp)
 
-            // Option 3: Cerrar sesión
+            // Option 4: Cerrar sesión
             ProfileMenuItem(
                 icon = HomeIcons.Logout,
                 iconBg = Color(0xFFFDE8E8),

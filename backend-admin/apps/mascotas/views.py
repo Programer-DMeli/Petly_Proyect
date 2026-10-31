@@ -85,7 +85,21 @@ class MascotaViewSet(viewsets.ModelViewSet):
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
         except DescripcionIAError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"borrador": borrador}, status=status.HTTP_200_OK)
+        return Response({"borrador": borrador, "guardado": False}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="sugerir-temperamento")
+    def sugerir_temperamento(self, request, pk=None):
+        mascota = self.get_object()
+        from .gemini import temperamento
+        from .descripcion_ia import DescripcionIAError, ErrorProveedorDescripcion, ProveedorDescripcionNoConfigurado
+        try:
+            return Response(temperamento(mascota))
+        except ProveedorDescripcionNoConfigurado as exc:
+            return Response({"detail": str(exc)}, status=503)
+        except ErrorProveedorDescripcion as exc:
+            return Response({"detail": str(exc)}, status=502)
+        except DescripcionIAError as exc:
+            return Response({"detail": str(exc)}, status=400)
 
     @action(detail=False, methods=["get"], url_path="compatibilidad")
     def compatibilidad(self, request):

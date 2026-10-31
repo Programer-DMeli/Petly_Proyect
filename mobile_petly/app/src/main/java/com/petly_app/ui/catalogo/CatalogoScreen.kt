@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,7 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.petly_app.data.model.CatalogoFilters
 import com.petly_app.data.model.CatalogoOptions
 import com.petly_app.data.model.Mascota
@@ -54,6 +55,8 @@ fun CatalogoScreen(
     onExit: () -> Unit
 ) {
     val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
+    val favoritoError by FavoritosManager.error.collectAsStateWithLifecycle()
+    val favoritesScope = rememberCoroutineScope()
     var showFavoritesDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -63,10 +66,11 @@ fun CatalogoScreen(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        if (favoritoError.isNotBlank()) Text(favoritoError)
         // 1. Header Superior
         CatalogoHeaderBar(
             onProfile = onProfile,
-            onOpenFavorites = { showFavoritesDialog = true },
+            onOpenFavorites = { showFavoritesDialog = true; favoritesScope.launch { FavoritosManager.cargar() } },
             favoritesCount = favorites.size
         )
 
@@ -446,16 +450,20 @@ fun PetCard(
                     .height(145.dp)
             ) {
                 val imageUrl = mascota.fotografiaUrl?.takeIf { it.isNotBlank() }
-                    ?: getFallbackImageUrl(mascota.nombre, mascota.especie)
-
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "Fotografía de ${mascota.nombre}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                )
+                if (imageUrl == null) {
+                    PhotoUnavailable("Fotografía no registrada")
+                } else {
+                    SubcomposeAsyncImage(
+                        model = imageUrl,
+                        contentDescription = "Fotografía de ${mascota.nombre}",
+                        contentScale = ContentScale.Crop,
+                        loading = { PhotoUnavailable("Cargando fotografía…") },
+                        error = { PhotoUnavailable("No se pudo cargar la fotografía") },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                    )
+                }
 
                 // Icono Favorito superior izquierda (US-14)
                 Surface(
@@ -514,10 +522,15 @@ fun PetCard(
                 mascota.compatibilidad?.let { compatibilidad ->
                     Text(
                         text = compatibilidad.porcentaje?.let { "$it% compatible" }
-                            ?: "Información insuficiente",
+                            ?: compatibilidad.mensaje.ifBlank { "Información insuficiente" },
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = CatalogTextDark,
+                        color = when {
+                            compatibilidad.porcentaje == null -> Color(0xFF555555)
+                            compatibilidad.porcentaje >= 80 -> Color(0xFF126858)
+                            compatibilidad.porcentaje >= 60 -> Color(0xFF806000)
+                            else -> Color(0xFFA5440A)
+                        },
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
@@ -526,18 +539,15 @@ fun PetCard(
     }
 }
 
-private fun getFallbackImageUrl(nombre: String, especie: String): String {
-    return when (nombre.lowercase()) {
-        "luna" -> "https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=1000"
-        "rocky" -> "https://images.unsplash.com/photo-1589941013453-ec89f33b5e95?q=80&w=1000"
-        "milo" -> "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=1000"
-        "canela" -> "https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=1000"
-        "simba" -> "https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=1000"
-        "bella" -> "https://images.unsplash.com/photo-1534361960057-19889db9621e?q=80&w=1000"
-        "thor" -> "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?q=80&w=1000"
-        "nala" -> "https://images.unsplash.com/photo-1513245543132-31f507417b26?q=80&w=1000"
-        else -> if (especie.lowercase().contains("gato")) "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=1000"
-        else "https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=1000"
+@Composable
+private fun PhotoUnavailable(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF1F5F1)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(message, color = Color(0xFF60736A), fontSize = 12.sp)
     }
 }
 

@@ -42,10 +42,15 @@ public class SolicitudDecisionService {
         headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
         headers.set(HttpHeaders.AUTHORIZATION, authorization);
 
+        byte[] jsonBody;
+        try { jsonBody = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsBytes(payload); }
+        catch (com.fasterxml.jackson.core.JsonProcessingException ex) { throw new ApiException(400, "No se pudo serializar la solicitud."); }
+        // El servidor WSGI de desarrollo necesita Content-Length, no transferencia chunked.
+        headers.setContentLength(jsonBody.length);
         try {
             ResponseEntity<String> response = restTemplate.postForEntity(
                     djangoApiBaseUrl + "/api/acceso/solicitudes/{solicitudId}/cambiar-estado/",
-                    new HttpEntity<>(payload, headers),
+                    new HttpEntity<>(jsonBody, headers),
                     String.class,
                     solicitudId);
             return ResponseEntity.status(response.getStatusCode())

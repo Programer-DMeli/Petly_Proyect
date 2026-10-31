@@ -21,12 +21,15 @@ public class ReniecClient {
     private final String endpoint;
     private final String token;
     private final String provider;
+    private final ApiPeruDniClient apiPeru;
 
     public ReniecClient(
             @Value("${petly.reniec-api-url:}") String endpoint,
             @Value("${petly.reniec-api-token:}") String token,
             @Value("${petly.reniec-provider-name:RENIEC}") String provider,
-            @Value("${petly.reniec-timeout-ms:5000}") int timeoutMs) {
+            @Value("${petly.reniec-timeout-ms:5000}") int timeoutMs,
+            ApiPeruDniClient apiPeru) {
+        this.apiPeru = apiPeru;
         if (timeoutMs < 100 || timeoutMs > 60000) {
             throw new IllegalArgumentException("RENIEC_API_TIMEOUT_MS debe estar entre 100 y 60000.");
         }
@@ -39,18 +42,35 @@ public class ReniecClient {
         this.provider = provider == null || provider.isBlank() ? "RENIEC" : provider.trim();
     }
 
+    static String normalize(String value) {
+        return java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "").trim().replaceAll("\\s+", " ")
+                .toUpperCase(java.util.Locale.ROOT);
+    }
+
     public String getProvider() {
-        return provider;
+        return endpoint.isBlank() ? "ApiPeruDev" : provider;
     }
 
     public ReniecResponse consultar(String dni, String nombres, String apellidos) {
-        if (!StringUtils.hasText(endpoint) || !StringUtils.hasText(token)) {
-            throw new ReniecNoConfiguradoException();
-        }
         if (dni == null || !dni.matches("[0-9]{8}")
                 || !StringUtils.hasText(nombres) || !StringUtils.hasText(apellidos)) {
             throw new IllegalArgumentException("El DNI debe tener ocho dígitos y los nombres son obligatorios.");
         }
+
+        if (!StringUtils.hasText(endpoint)) {
+            final ApiPeruDniResult person;
+            try {
+                person = apiPeru.consultar(dni);
+            } catch (com.petly.common.exception.ApiException ex) {
+                throw new ReniecNoDisponibleException();
+            }
+            boolean matches = normalize(nombres).equals(normalize(person.nombres()))
+                    && normalize(apellidos).equals(normalize(person.apellidos()));
+            // Referencia interna de esta comprobación; no se atribuye al proveedor.
+            return new ReniecResponse(matches, "petly-apiperu-" + java.util.UUID.randomUUID());
+        }
+        if (!StringUtils.hasText(token)) throw new ReniecNoConfiguradoException();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

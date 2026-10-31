@@ -28,7 +28,7 @@ public class CompatibilidadService {
 
     public Map<String, Object> listar(long userId, String search, String especie, String tamano,
             String temperamento, Integer min, Integer max, int page, int pageSize) {
-        if (page < 1 || pageSize < 1 || pageSize > 100) throw new ApiException(400, "paginación inválida");
+        if (page < 1 || page > 1000000 || pageSize < 1 || pageSize > 100) throw new ApiException(400, "paginación inválida");
         Map<String, Object> profile = perfiles.get(userId);
         List<Map<String, Object>> items = new ArrayList<>();
         Map<String, Object> first = catalogo.search(search, especie, tamano, temperamento, min, max, 1, 100);
@@ -36,7 +36,9 @@ public class CompatibilidadService {
         items.addAll((List<Map<String, Object>>) first.get("items"));
         for (int p = 2; items.size() < catalogTotal; p++) {
             Map<String, Object> next = catalogo.search(search, especie, tamano, temperamento, min, max, p, 100);
-            items.addAll((List<Map<String, Object>>) next.get("items"));
+            var batch = (List<Map<String, Object>>) next.get("items");
+            if (batch.isEmpty()) break; // El catálogo puede reducirse durante la consulta.
+            items.addAll(batch);
         }
         items.removeIf(item -> !"Disponible".equals(item.get("estado")));
         int total = items.size();
@@ -71,7 +73,8 @@ public class CompatibilidadService {
         boolean finalized = Boolean.TRUE.equals(profile.get("finalizado"));
         add(criteria, "vivienda", "Vivienda", rules.vivienda(),
                 finalized && profile.get("vivienda") instanceof String home && !home.isBlank()
-                        && pet.get("tamano") != null && !"Por evaluar".equals(pet.get("tamano")),
+                        && pet.get("tamano") != null && List.of("Pequeño", "Mediano", "Grande").contains(pet.get("tamano"))
+                        && pet.get("especie") != null,
                 housing(profile, pet), "Compara el tipo de vivienda y espacio con el tamaño de la mascota.");
         add(criteria, "rutina", "Rutina", rules.rutina(),
                 finalized && profile.get("horasFuera") instanceof Number && knownEnergy(pet.get("energia")),
@@ -85,7 +88,8 @@ public class CompatibilidadService {
         boolean insufficient = coverage < 100;
         Integer score = null;
         if (!insufficient) {
-            BigDecimal weighted = criteria.stream().map(c -> BigDecimal.valueOf(((Number) c.get("puntaje")).intValue())
+            BigDecimal weighted = criteria.stream().filter(c -> c.get("puntaje") != null)
+                    .map(c -> BigDecimal.valueOf(((Number) c.get("puntaje")).intValue())
                     .multiply(BigDecimal.valueOf(((Number) c.get("peso")).intValue()))
                     .divide(BigDecimal.valueOf(100)))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -119,8 +123,10 @@ public class CompatibilidadService {
         return apartment && largeDog ? 60 : 100;
     }
 
-    private static boolean knownEnergy(Object value) { return List.of("Baja", "Media", "Alta").contains(value); }
-    private static boolean knownTemperament(Object value) { return value != null && !"Por evaluar".equals(value); }
+    private static boolean knownEnergy(Object value) { return value != null && List.of("Baja", "Media", "Alta").contains(value); }
+    private static boolean knownTemperament(Object value) {
+        return value != null && List.of("Sociable", "Tranquilo", "Juguetón", "Activo", "Independiente", "Tímido").contains(value);
+    }
 
     private static int routine(Map<String, Object> p, Map<String, Object> pet) {
         // Los perfiles parciales y los registros previos pueden no tener horasFuera.

@@ -80,7 +80,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/solicitudes", "/api/solicitudes/**")
                         .hasRole("ADOPTANTE")
                         // Consulta de identidad RENIEC exclusiva del adoptante titular.
-                        .requestMatchers("/api/kyc/**")
+                        .requestMatchers("/api/v1/matches/**", "/api/kyc/**")
                         .hasRole("ADOPTANTE")
                         // endpoint interno Django -> Spring: el secreto lo exige InternalApiFilter (US-18)
                         .requestMatchers("/api/interno/**")

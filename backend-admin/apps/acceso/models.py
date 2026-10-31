@@ -522,3 +522,14 @@ class SolicitudEvento(models.Model):
 
     def __str__(self):
         return f"{self.solicitud_id}: {self.get_tipo_display()} ({self.ocurrido_en:%Y-%m-%d %H:%M})"
+
+
+class FotoHogar(models.Model):
+    solicitud = models.ForeignKey(SolicitudAdopcion, on_delete=models.CASCADE, related_name="fotos_hogar")
+    archivo = models.FileField(storage=PrivateKycStorage(), upload_to="hogares/%Y/%m")
+    sha256 = models.CharField(max_length=64)
+    tipo = models.CharField(max_length=10)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["solicitud", "sha256"], name="foto_hogar_unica")]

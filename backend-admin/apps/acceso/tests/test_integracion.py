@@ -35,6 +35,11 @@ class SpringIdentityTest(TestCase):
     @patch("apps.acceso.authentication.spring_get")
     def test_sharing_denied_after_revocation(self, authority, profiles):
         authority.return_value = self.identity
+        from apps.albergues.models import Albergue
+        owner = get_user_model().objects.create_user(
+            username="shelter-sharing", spring_id=101, rol="ALBERGUE"
+        )
+        Albergue.objects.create(usuario=owner, nombre="Refugio de prueba", direccion="Lima")
         self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token())
         owner, _ = get_user_model().objects.get_or_create(
             spring_id=101,

@@ -17,7 +17,7 @@ def puntuar_compatibilidad(perfil, mascota, reglas=None):
     perfil_finalizado = bool(perfil.cuestionario_completado)
 
     vivienda = perfil.tipo_vivienda.strip() if perfil.tipo_vivienda else ""
-    tamano_conocido = bool(mascota.tamanio)
+    tamano_conocido = mascota.tamanio in {"PEQUENO", "MEDIANO", "GRANDE"}
     if perfil_finalizado and vivienda and mascota.especie and tamano_conocido:
         vivienda_normalizada = vivienda.lower()
         departamento = "depart" in vivienda_normalizada or "apartamento" in vivienda_normalizada
