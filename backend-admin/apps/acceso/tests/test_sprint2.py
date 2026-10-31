@@ -2,10 +2,13 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 from rest_framework.test import APIClient
 
 from apps.acceso.models import AdoptanteProfile, Autorizacion, Postulante, SolicitudAdopcion, SolicitudEvento
+from apps.acceso.solicitudes import cambiar_estado_solicitud
 from apps.albergues.models import Albergue
+from apps.contratos.models import ContratoAdopcion
 from apps.mascotas.models import Mascota, ReglaCompatibilidad
 
 
@@ -293,6 +296,41 @@ class SolicitudAdopcionSprint2APITest(TestCase):
         self.assertEqual(response.status_code, 400)
         solicitud.refresh_from_db()
         self.assertEqual(solicitud.estado, SolicitudAdopcion.Estado.APROBADA)
+
+    def test_no_permite_entregar_sin_contrato_firmado(self):
+        solicitud = self._decision_request()
+        solicitud.estado = SolicitudAdopcion.Estado.APROBADA
+        solicitud.save(update_fields=["estado"])
+
+        with self.assertRaises(ValidationError):
+            cambiar_estado_solicitud(
+                solicitud.pk, SolicitudAdopcion.Estado.ENTREGADA, self.owner
+            )
+
+        solicitud.refresh_from_db()
+        self.assertEqual(solicitud.estado, SolicitudAdopcion.Estado.APROBADA)
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.estado, Mascota.Estado.DISPONIBLE)
+
+    def test_permite_entregar_con_contrato_firmado(self):
+        solicitud = self._decision_request()
+        solicitud.estado = SolicitudAdopcion.Estado.APROBADA
+        solicitud.save(update_fields=["estado"])
+        ContratoAdopcion.objects.create(
+            solicitud=solicitud,
+            estado=ContratoAdopcion.Estado.FIRMADO,
+            contenido_html="<p>Contrato</p>",
+            contenido_sha256="a" * 64,
+            documento_firmado="contratos/firmados/test.pdf",
+        )
+
+        cambiada = cambiar_estado_solicitud(
+            solicitud.pk, SolicitudAdopcion.Estado.ENTREGADA, self.owner
+        )
+
+        self.assertEqual(cambiada.estado, SolicitudAdopcion.Estado.ENTREGADA)
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.estado, Mascota.Estado.ADOPTADO)
 
     def test_albergue_observa_con_motivo_y_aprobacion_reserva_mascota(self):
         solicitud = self._decision_request()

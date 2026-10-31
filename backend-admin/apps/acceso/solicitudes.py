@@ -49,6 +49,19 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
             "transiciones_validas": TRANSICIONES.get(actual, []),
         })
 
+    if nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA:
+        from apps.contratos.models import ContratoAdopcion
+
+        contrato = getattr(solicitud, "contrato_adopcion", None)
+        if (
+            contrato is None
+            or contrato.estado != ContratoAdopcion.Estado.FIRMADO
+            or not contrato.documento_firmado
+        ):
+            raise ValidationError({
+                "estado": "La adopción solo puede cerrarse con un contrato firmado y entregado.",
+            })
+
     requiere_motivo = nuevo_estado in (
         SolicitudAdopcion.Estado.OBSERVADA,
         SolicitudAdopcion.Estado.RECHAZADA,
