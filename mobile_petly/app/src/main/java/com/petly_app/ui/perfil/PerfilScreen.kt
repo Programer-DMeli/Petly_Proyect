@@ -70,12 +70,18 @@ fun PerfilScreen(
         // CARD 1: PERFIL HEADER CARD
         UserProfileHeaderCard()
 
-        // CARD 2: CUESTIONARIO DE ADOPCIÓN BANNER
-        AdoptionQuestionnaireBannerCard(onOpenQuestionnaire = onOpenQuestionnaire)
-
-        OutlinedButton(onClick = onOpenKyc, modifier = Modifier.fillMaxWidth()) {
-            Text("Verificación de identidad (DNI)")
+        OutlinedButton(
+            onClick = onOpenKyc,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = ProfileDarkGreen),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+            Text("Verificación de identidad (DNI)", fontWeight = FontWeight.SemiBold)
         }
+
+        // CARD 2: CUESTIONARIO DE ESTILO DE VIDA
+        AdoptionQuestionnaireBannerCard(onOpenQuestionnaire = onOpenQuestionnaire)
 
         // CARD 3: MENU OPTIONS CARD
         ProfileMenuOptionsCard(
@@ -358,7 +364,7 @@ private fun AdoptionQuestionnaireBannerCard(onOpenQuestionnaire: () -> Unit) {
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Cuestionario de Adopción",
+                        text = "Cuestionario de Estilo de vida",
                         fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
