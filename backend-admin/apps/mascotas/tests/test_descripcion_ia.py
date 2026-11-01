@@ -9,7 +9,6 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, override_settings
 
 from apps.mascotas.descripcion_ia import (
-    DescripcionIAError,
     ErrorProveedorDescripcion,
     ProveedorDescripcionNoConfigurado,
     generar_borrador,
@@ -19,7 +18,14 @@ from apps.mascotas.descripcion_ia import (
 class ProveedorDescripcionTest(SimpleTestCase):
     def mascota_con_foto(self, filename="mascota.png", content=b"png-falso"):
         photo = SimpleUploadedFile(filename, content, content_type="image/png")
-        return SimpleNamespace(foto_principal=photo)
+        return SimpleNamespace(
+            nombre="Luna", especie="PERRO", raza="Mestiza", tamanio="MEDIANO",
+            edad_anos=2, edad_meses=3, temperamento="SOCIABLE", energia="MEDIA",
+            descripcion="Disfruta los paseos tranquilos.", foto_principal=photo,
+            get_especie_display=lambda: "Perro", get_tamanio_display=lambda: "Mediano",
+            get_temperamento_display=lambda: "Sociable", get_energia_display=lambda: "Media",
+            edad_texto="2 años 3 meses",
+        )
 
     @override_settings(
         PET_DESCRIPTION_API_URL="https://vision.example/api/draft",
@@ -41,6 +47,9 @@ class ProveedorDescripcionTest(SimpleTestCase):
         self.assertEqual(request.get_header("Authorization"), "Bearer test-token")
         self.assertEqual(payload["image"]["mimeType"], "image/png")
         self.assertEqual(base64.b64decode(payload["image"]["base64"]), b"png-falso")
+        self.assertEqual(payload["traits"]["nombre"], "Luna")
+        self.assertEqual(payload["traits"]["raza"], "Mestiza")
+        self.assertEqual(payload["traits"]["observaciones"], "Disfruta los paseos tranquilos.")
         self.assertEqual(urlopen.call_args.kwargs["timeout"], 4)
 
     @override_settings(
@@ -49,8 +58,8 @@ class ProveedorDescripcionTest(SimpleTestCase):
         DEBUG=False,
     )
     @patch("apps.mascotas.descripcion_ia.urlopen")
-    def test_rechaza_inferencias_de_raza_y_no_devuelve_el_texto(self, urlopen):
-        urlopen.return_value = BytesIO(json.dumps({"description": "Parece de raza labrador."}).encode())
+    def test_rechaza_inferencias_de_salud_y_no_devuelve_el_texto(self, urlopen):
+        urlopen.return_value = BytesIO(json.dumps({"description": "Luna está sana y saludable."}).encode())
 
         with self.assertRaisesRegex(ErrorProveedorDescripcion, "inferencias"):
             generar_borrador(self.mascota_con_foto())
@@ -74,6 +83,15 @@ class ProveedorDescripcionTest(SimpleTestCase):
         PET_DESCRIPTION_API_TOKEN="test-token",
         DEBUG=False,
     )
-    def test_rechaza_mascota_sin_fotografia(self):
-        with self.assertRaisesRegex(DescripcionIAError, "necesita una foto"):
-            generar_borrador(SimpleNamespace(foto_principal=None))
+    @patch("apps.mascotas.descripcion_ia.urlopen")
+    def test_genera_descripcion_con_rasgos_sin_fotografia(self, urlopen):
+        urlopen.return_value = BytesIO(json.dumps({"description": "Luna busca una familia."}).encode())
+        mascota = self.mascota_con_foto()
+        mascota.foto_principal = None
+
+        draft = generar_borrador(mascota)
+
+        self.assertEqual(draft, "Luna busca una familia.")
+        payload = json.loads(urlopen.call_args.args[0].data.decode())
+        self.assertNotIn("image", payload)
+        self.assertEqual(payload["traits"]["especie"], "Perro")
