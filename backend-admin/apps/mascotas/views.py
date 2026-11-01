@@ -101,6 +101,33 @@ class MascotaViewSet(viewsets.ModelViewSet):
         except DescripcionIAError as exc:
             return Response({"detail": str(exc)}, status=400)
 
+    @action(detail=True, methods=["post"], url_path="mejorar-foto")
+    def mejorar_foto(self, request, pk=None):
+        """Genera una previsualización IA; la foto original solo cambia al guardar explícitamente."""
+        mascota = self.get_object()
+        from .foto_ia import (
+            ErrorProveedorFoto,
+            FotoIAError,
+            ProveedorFotoNoConfigurado,
+            mejorar_foto,
+        )
+
+        try:
+            preview = mejorar_foto(mascota)
+        except ProveedorFotoNoConfigurado as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except ErrorProveedorFoto as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        except FotoIAError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        original_url = MascotaSerializer(mascota, context={"request": request}).data.get("foto_principal")
+        return Response({
+            "original": {"url": original_url},
+            "foto_mejorada": preview,
+            "guardada": False,
+        }, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=["get"], url_path="compatibilidad")
     def compatibilidad(self, request):
         """Devuelve mascotas disponibles ordenadas por compatibilidad del adoptante."""

@@ -7,14 +7,15 @@ from unittest.mock import patch
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
 from apps.mascotas.descripcion_ia import ProveedorDescripcionNoConfigurado
+from apps.mascotas.foto_ia import ProveedorFotoNoConfigurado
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 from io import BytesIO
 
-def foto_prueba():
+def foto_prueba(nombre="mascota.png"):
     out = BytesIO(); Image.new("RGB", (10,10)).save(out, format="PNG")
-    return SimpleUploadedFile("mascota.png", out.getvalue(), content_type="image/png")
+    return SimpleUploadedFile(nombre, out.getvalue(), content_type="image/png")
 
 User = get_user_model()
 
@@ -130,6 +131,70 @@ class MascotaAPITest(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
         generar.assert_called_once()
+
+    @patch("apps.mascotas.foto_ia.mejorar_foto", return_value={
+        "mime_type": "image/png", "nombre": "Firulais-mejorada.png",
+        "base64": "aW1hZ2Vu", "data_url": "data:image/png;base64,aW1hZ2Vu",
+        "ancho": 10, "alto": 10,
+    })
+    def test_mejorar_foto_devuelve_preview_sin_reemplazar_original(self, mejorar):
+        self.mascota.foto_principal = foto_prueba()
+        self.mascota.save(update_fields=["foto_principal"])
+        original = self.mascota.foto_principal.name
+        self._auth(self.user)
+
+        response = self.client.post(f"/api/mascotas/{self.mascota.pk}/mejorar-foto/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertFalse(response.data["guardada"])
+        self.assertEqual(response.data["foto_mejorada"]["data_url"], "data:image/png;base64,aW1hZ2Vu")
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.foto_principal.name, original)
+        mejorar.assert_called_once_with(self.mascota)
+
+    def test_confirmar_foto_mejorada_persiste_referencias_original_y_mejorada(self):
+        self._auth(self.user)
+        self.mascota.foto_principal = foto_prueba("original.png")
+        self.mascota.save(update_fields=["foto_principal"])
+        original_name = self.mascota.foto_principal.name
+
+        response = self.client.patch(
+            f"/api/mascotas/{self.mascota.pk}/",
+            {"foto_principal": foto_prueba("Firulais-mejorada.png"), "foto_mejorada_confirmada": "true"},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.mascota.refresh_from_db()
+        self.assertEqual(self.mascota.foto_original_ia.name, original_name)
+        self.assertEqual(self.mascota.foto_mejorada_ia.name, self.mascota.foto_principal.name)
+        self.assertTrue(self.mascota.foto_original_ia.storage.exists(original_name))
+        self.assertIn("foto_original_ia", response.data)
+        self.assertIn("foto_mejorada_ia", response.data)
+
+    @patch("apps.mascotas.foto_ia.mejorar_foto")
+    def test_otro_albergue_no_puede_mejorar_foto_ajena(self, mejorar):
+        Albergue.objects.create(
+            usuario=self.other_user, nombre="Otro albergue", direccion="Calle 2"
+        )
+        self._auth(self.other_user)
+
+        response = self.client.post(f"/api/mascotas/{self.mascota.pk}/mejorar-foto/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        mejorar.assert_not_called()
+
+    @patch(
+        "apps.mascotas.foto_ia.mejorar_foto",
+        side_effect=ProveedorFotoNoConfigurado("sin proveedor"),
+    )
+    def test_mejorar_foto_informa_servicio_no_configurado(self, mejorar):
+        self._auth(self.user)
+
+        response = self.client.post(f"/api/mascotas/{self.mascota.pk}/mejorar-foto/")
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        mejorar.assert_called_once_with(self.mascota)
 
     def test_cambiar_estado_transicion_valida(self):
         """Cambio DISPONIBLE -> EN_PROCESO permitido."""

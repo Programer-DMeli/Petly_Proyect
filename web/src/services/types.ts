@@ -142,6 +142,7 @@ export interface AdminPet {
   id: number;
   nombre: string;
   especie: string;
+  raza?: string;
   sexo: string;
   tamanio: string;
   temperamento: string;
@@ -151,6 +152,8 @@ export interface AdminPet {
   descripcion: string;
   estado: string;
   foto_principal: string | null;
+  foto_original_ia?: string | null;
+  foto_mejorada_ia?: string | null;
   edad_texto?: string;
 }
 export interface Page<T> {

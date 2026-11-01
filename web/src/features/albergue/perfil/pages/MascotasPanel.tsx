@@ -6,6 +6,7 @@ import PosterMascota from './PosterMascota';
 const initial = {
   nombre: '',
   especie: 'PERRO',
+  raza: '',
   sexo: 'POR_EVAL',
   tamanio: '',
   temperamento: 'POR_EVALUAR',
@@ -41,6 +42,8 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
   const [draft, setDraft] = useState(initial);
   const [id, setId] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [fileIsImproved, setFileIsImproved] = useState(false);
+  const [improvedPhoto, setImprovedPhoto] = useState<{ dataUrl: string; base64: string; mimeType: string; name: string; originalUrl: string | null } | null>(null);
   const [inputVersion, setInputVersion] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -78,6 +81,8 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
     setId(null);
     setDraft(initial);
     setFile(null);
+    setFileIsImproved(false);
+    setImprovedPhoto(null);
     setInputVersion(v => v + 1);
   }
   async function save() {
@@ -93,6 +98,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
         if (k !== 'edad_anos' && k !== 'edad_meses') form.append(k, v);
       });
       if (file) form.append('foto_principal', file);
+      if (fileIsImproved) form.append('foto_mejorada_confirmada', 'true');
       form.append('edad_anos', draft.edad_anos);
       form.append('edad_meses', draft.edad_meses);
       await django(id ? `/api/mascotas/${id}/` : '/api/mascotas/', {
@@ -128,6 +134,34 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
     } catch (e) { setError(errorMessage(e)); }
     finally { setBusy(false); }
   }
+  async function improvePhoto() {
+    if (!id) { setError('Guarda primero la mascota y su foto para proponer una mejora.'); return; }
+    if (file) { setError('Guarda primero la nueva foto; la mejora usará la foto almacenada.'); return; }
+    setBusy(true); setError(''); setSuccess(''); setImprovedPhoto(null);
+    try {
+      const result = await django<{ original: { url: string | null }; foto_mejorada: { data_url: string; base64: string; mime_type: string; nombre: string } }>(
+        `/api/mascotas/${id}/mejorar-foto/`, { method: 'POST', body: json({}) }
+      );
+      setImprovedPhoto({
+        dataUrl: result.foto_mejorada.data_url,
+        base64: result.foto_mejorada.base64,
+        mimeType: result.foto_mejorada.mime_type,
+        name: result.foto_mejorada.nombre,
+        originalUrl: result.original.url,
+      });
+      setSuccess('Vista previa generada. Compara el resultado y elige si quieres usarla. La foto original sigue guardada.');
+    } catch (e) { setError(errorMessage(e)); }
+    finally { setBusy(false); }
+  }
+  function selectImprovedPhoto() {
+    if (!improvedPhoto) return;
+    const binary = atob(improvedPhoto.base64);
+    const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+    setFile(new File([bytes], improvedPhoto.name, { type: improvedPhoto.mimeType }));
+    setFileIsImproved(true);
+    setInputVersion(v => v + 1);
+    setSuccess('Foto mejorada seleccionada. Pulsa Guardar cambios para reemplazar la original.');
+  }
   async function show(value: number, edit: boolean) {
     setBusy(true);
     setError('');
@@ -140,6 +174,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
         setDraft({
           nombre: pet.nombre,
           especie: pet.especie,
+          raza: pet.raza ?? '',
           sexo: pet.sexo,
           tamanio: pet.tamanio,
           temperamento: pet.temperamento,
@@ -149,6 +184,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
           descripcion: pet.descripcion,
         });
         setFile(null);
+        setFileIsImproved(false);
         setInputVersion(v => v + 1);
       } else setDetail(pet);
     } catch (e) {
@@ -257,6 +293,10 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
               />
             </label>
           </div>
+          <label>
+            Raza (opcional)
+            <input maxLength={100} value={draft.raza} onChange={e => setDraft({ ...draft, raza: e.target.value })} />
+          </label>
           <p className="muted">
             Deja la edad vacía cuando se desconozca. El comportamiento y energía desconocidos se
             registran como Por evaluar.
@@ -271,7 +311,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
           <p className="muted">Para sugerir temperamento se usa la foto y la descripción guardadas. Registra observaciones de conducta; una foto por sí sola deja el temperamento Por evaluar.</p>
           {id && <div className="actions">
             <button type="button" className="secondary" onClick={() => void generateDescription()}>
-              Generar borrador desde la foto
+              Sugerir descripción con IA
             </button>
             {descriptionSuggestion && <section aria-label="Borrador de descripción IA">
               <label>Borrador editable de Gemini<textarea value={descriptionSuggestion} maxLength={500} onChange={e => setDescriptionSuggestion(e.target.value)} /></label>
@@ -282,7 +322,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
             {suggestion && <section aria-label="Sugerencia de temperamento"><p>Sugerencia pendiente: {suggestion.etiqueta}</p><p>{suggestion.explicacion}</p><p>Observación: {suggestion.evidencia || 'Sin evidencia conductual'}</p>
               <button type="button" onClick={() => { setDraft(old => ({ ...old, temperamento: suggestion.etiqueta })); setSuggestion(null); setSuccess('Etiqueta aplicada al editor. Revisa y guarda para confirmar.'); }}>Aplicar al editor</button>
               <button type="button" onClick={() => setSuggestion(null)}>Descartar sugerencia</button></section>}
-            <span className="muted">La IA propone texto; no modifica la descripción guardada hasta que confirmes Guardar cambios.</span>
+            <span className="muted">Usa los rasgos guardados de la mascota. Revisa y edita el borrador; no se guarda hasta que confirmes Guardar cambios.</span>
           </div>}
           <label>
             {id ? 'Reemplazar fotografía (opcional)' : 'Fotografía JPEG/PNG, máximo 5 MB'}
@@ -291,9 +331,29 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
               type="file"
               accept="image/jpeg,image/png"
               required={!id}
-              onChange={e => setFile(e.target.files?.[0] ?? null)}
+              onChange={e => { setFile(e.target.files?.[0] ?? null); setFileIsImproved(false); setImprovedPhoto(null); }}
             />
           </label>
+          {id && <div className="actions">
+            <button type="button" className="secondary" onClick={() => void improvePhoto()}>
+              Proponer mejora de foto con IA
+            </button>
+            <span className="muted">La mejora aparece como vista previa; la original se conserva hasta que guardes.</span>
+          </div>}
+          {improvedPhoto && <div className="confirmation">
+            <h4>Comparar fotografía</h4>
+            <div className="grid">
+              {improvedPhoto.originalUrl && <figure>
+                <figcaption>Original</figcaption>
+                <img className="detail-photo" src={mediaUrl(improvedPhoto.originalUrl)} alt="Fotografía original" />
+              </figure>}
+              <figure>
+                <figcaption>Propuesta de IA</figcaption>
+                <img className="detail-photo" src={improvedPhoto.dataUrl} alt="Vista previa de fotografía mejorada" />
+              </figure>
+            </div>
+            <button type="button" className="secondary" onClick={selectImprovedPhoto}>Usar esta foto</button>
+          </div>}
           <div className="actions">
             <button>{id ? 'Guardar cambios de mascota' : 'Registrar mascota'}</button>
             {id && (

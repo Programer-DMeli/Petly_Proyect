@@ -83,6 +83,8 @@ class MascotaSerializer(serializers.ModelSerializer):
     temperamento_display = serializers.CharField(source="get_temperamento_display", read_only=True)
     edad_texto = serializers.CharField(read_only=True)
     albergue_nombre = serializers.CharField(source="albergue.nombre", read_only=True)
+    foto_original_ia = serializers.ImageField(read_only=True)
+    foto_mejorada_ia = serializers.ImageField(read_only=True)
 
     class Meta:
         model = Mascota
@@ -111,6 +113,8 @@ class MascotaSerializer(serializers.ModelSerializer):
             "desparasitado",
             "necesidades_especiales",
             "foto_principal",
+            "foto_original_ia",
+            "foto_mejorada_ia",
             "fotos_adicionales",
             "fecha_ingreso",
             "fecha_adopcion",
@@ -191,6 +195,7 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
         allow_null=False,
         validators=[validate_image_file]
     )
+    foto_mejorada_confirmada = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
         model = Mascota
@@ -210,8 +215,37 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             "desparasitado",
             "necesidades_especiales",
             "foto_principal",
+            "foto_mejorada_confirmada",
             "fotos_adicionales",
         ]
+
+    def validate(self, attrs):
+        confirmed = attrs.get("foto_mejorada_confirmada", False)
+        if confirmed and not attrs.get("foto_principal"):
+            raise serializers.ValidationError({
+                "foto_principal": "Envía la foto mejorada para registrar su referencia."
+            })
+        if confirmed and self.instance is None:
+            raise serializers.ValidationError({
+                "foto_mejorada_confirmada": "La mejora solo se puede confirmar al editar una mascota existente."
+            })
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop("foto_mejorada_confirmada", None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        improved_confirmed = validated_data.pop("foto_mejorada_confirmada", False)
+        original_photo_name = instance.foto_principal.name if improved_confirmed and instance.foto_principal else None
+        instance = super().update(instance, validated_data)
+        if improved_confirmed:
+            # Reuse the stored names: the original file remains in storage and
+            # the improved upload is already saved as foto_principal.
+            instance.foto_original_ia.name = original_photo_name
+            instance.foto_mejorada_ia.name = instance.foto_principal.name
+            instance.save(update_fields=["foto_original_ia", "foto_mejorada_ia"])
+        return instance
 
     def validate_foto_principal(self, photo):
         if photo is None:

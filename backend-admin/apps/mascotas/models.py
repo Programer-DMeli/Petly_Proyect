@@ -85,6 +85,8 @@ class Mascota(models.Model):
 
     # Imágenes (URLs o paths)
     foto_principal = models.ImageField("Foto principal", upload_to="mascotas/", blank=True, null=True)
+    foto_original_ia = models.ImageField("Foto original previa a mejora IA", upload_to="mascotas/originales/", blank=True, null=True)
+    foto_mejorada_ia = models.ImageField("Foto mejorada con IA", upload_to="mascotas/mejoradas/", blank=True, null=True)
     fotos_adicionales = models.JSONField("Fotos adicionales", default=list, blank=True)
 
     # Fechas relevantes
