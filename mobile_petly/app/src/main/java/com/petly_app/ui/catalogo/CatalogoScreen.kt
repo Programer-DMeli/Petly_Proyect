@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -297,7 +296,7 @@ private fun FilterSection(
     filters: CatalogoFilters,
     onEditFilter: (CatalogoFilters) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Fila 1: Especie
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
@@ -329,73 +328,83 @@ private fun FilterSection(
             }
         }
 
-        // Fila 2: Tamaño
-        options?.tamanos?.let { tamanos ->
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+        options?.let { available ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                item {
-                    Text(
-                        text = "Tamaño:",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CatalogTextDark,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-                }
-                item {
-                    FilterPill(
-                        label = "Todos",
-                        isSelected = filters.tamano == null,
-                        onClick = { onEditFilter(filters.copy(tamano = null)) }
-                    )
-                }
-                items(tamanos, key = { it }) { tam ->
-                    FilterPill(
-                        label = tam,
-                        isSelected = filters.tamano == tam,
-                        onClick = {
-                            val next = if (filters.tamano == tam) null else tam
-                            onEditFilter(filters.copy(tamano = next))
-                        }
-                    )
-                }
+                CatalogFilterDropdown(
+                    label = "Tamaño",
+                    options = available.tamanos,
+                    selected = filters.tamano,
+                    onSelect = { onEditFilter(filters.copy(tamano = it)) },
+                    modifier = Modifier.weight(1f)
+                )
+                CatalogFilterDropdown(
+                    label = "Temperamento",
+                    options = available.temperamentos,
+                    selected = filters.temperamento,
+                    onSelect = { onEditFilter(filters.copy(temperamento = it)) },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
+    }
+}
 
-        // Fila 3: Temperamento
-        options?.temperamentos?.let { temperamentos ->
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                item {
-                    Text(
-                        text = "Temperamento:",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CatalogTextDark,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-                }
-                item {
-                    FilterPill(
-                        label = "Todos",
-                        isSelected = filters.temperamento == null,
-                        onClick = { onEditFilter(filters.copy(temperamento = null)) }
-                    )
-                }
-                items(temperamentos, key = { it }) { temp ->
-                    FilterPill(
-                        label = temp,
-                        isSelected = filters.temperamento == temp,
-                        onClick = {
-                            val next = if (filters.temperamento == temp) null else temp
-                            onEditFilter(filters.copy(temperamento = next))
-                        }
-                    )
-                }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CatalogFilterDropdown(
+    label: String,
+    options: List<String>,
+    selected: String?,
+    onSelect: (String?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = selected ?: "Todos",
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            label = { Text(label, fontSize = 12.sp) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            shape = RoundedCornerShape(16.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedBorderColor = CatalogDarkGreen,
+                unfocusedBorderColor = Color(0xFFD4E4DB),
+                focusedTextColor = CatalogTextDark,
+                unfocusedTextColor = CatalogTextDark,
+                focusedLabelColor = CatalogDarkGreen,
+                unfocusedLabelColor = CatalogDarkGreen
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            (listOf<String?>(null) + options).forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            option ?: "Todos",
+                            fontWeight = if (option == selected) FontWeight.SemiBold else FontWeight.Normal,
+                            color = CatalogDarkGreen
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        if (option != selected) onSelect(option)
+                    }
+                )
             }
         }
     }
