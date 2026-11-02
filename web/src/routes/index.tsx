@@ -22,6 +22,7 @@ import MascotasPanel from '../features/albergue/perfil/pages/MascotasPanel';
 import SolicitudesPage from '../features/albergue/perfil/pages/SolicitudesPage';
 import AlberguesAdminPage from '../features/administracion/albergues/pages/AlberguesAdminPage';
 import VerificacionKycPage from '../features/adoptante/perfil/pages/VerificacionKycPage';
+import PreferenciasNotificacionPage from '../features/adoptante/perfil/pages/PreferenciasNotificacionPage';
 import VerificacionesKycAdminPage from '../features/administracion/kyc/pages/VerificacionesKycAdminPage';
 
 /**
@@ -59,6 +60,7 @@ export const router = createBrowserRouter([
           { path: 'autorizaciones', element: <AutorizacionesPage /> },
           { path: 'cuestionario', element: <CuestionarioPage /> },
           { path: 'verificacion-identidad', element: <VerificacionKycPage /> },
+          { path: 'preferencias-notificacion', element: <PreferenciasNotificacionPage /> },
           { path: 'solicitudes', element: <SolicitudesAdoptantePage /> },
           { path: 'solicitudes/:solicitudId', element: <SeguimientoSolicitudPage /> },
         ],

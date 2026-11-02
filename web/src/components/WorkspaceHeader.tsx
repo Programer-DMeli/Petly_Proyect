@@ -59,6 +59,11 @@ const groups: Record<string, Group[]> = {
           to: '/adoptante/verificacion-identidad',
           description: 'Consulta y gestiona tus documentos.',
         },
+        {
+          label: 'Notificaciones',
+          to: '/adoptante/preferencias-notificacion',
+          description: 'Elige los canales de tus alertas.',
+        },
       ],
     },
   ],
