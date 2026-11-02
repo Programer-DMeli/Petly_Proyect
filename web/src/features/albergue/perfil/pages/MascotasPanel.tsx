@@ -236,7 +236,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
     <section className="card">
       <h2>Mascotas de mi albergue</h2>
       <Feedback error={error} success={success} />
-      <form
+      <form className="pet-edit-form"
         onSubmit={e => {
           e.preventDefault();
           void save();
@@ -308,21 +308,28 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
               onChange={e => setDraft({ ...draft, descripcion: e.target.value })}
             />
           </label>
-          <p className="muted">Para sugerir temperamento se usa la foto y la descripción guardadas. Registra observaciones de conducta; una foto por sí sola deja el temperamento Por evaluar.</p>
-          {id && <div className="actions">
-            <button type="button" className="secondary" onClick={() => void generateDescription()}>
-              Sugerir descripción con IA
-            </button>
-            {descriptionSuggestion && <section aria-label="Borrador de descripción IA">
+          {id && <div className="pet-ai-tools">
+            <p className="muted">Para sugerir temperamento se usa la foto y la descripción guardadas. Registra observaciones de conducta; una foto por sí sola deja el temperamento Por evaluar.</p>
+            <div className="pet-ai-tools__buttons">
+              <button type="button" className="secondary" onClick={() => void generateDescription()}>
+                Sugerir descripción con IA
+              </button>
+              <button type="button" disabled={busy || !id || !!file} onClick={() => void suggestTemperament()}>Sugerir temperamento con Gemini</button>
+              <button type="button" className="secondary" onClick={() => void improvePhoto()}>
+                Proponer mejora de foto con IA
+              </button>
+            </div>
+            {descriptionSuggestion && <section className="pet-ai-result" aria-label="Borrador de descripción IA">
+              <div className="pet-ai-result__heading"><span className="pet-ai-result__eyebrow">Borrador de IA</span><h4>Revisa la descripción sugerida</h4><p className="muted">Puedes editarla antes de aplicarla a la descripción de la mascota.</p></div>
               <label>Borrador editable de Gemini<textarea value={descriptionSuggestion} maxLength={500} onChange={e => setDescriptionSuggestion(e.target.value)} /></label>
-              <button type="button" onClick={() => { setDraft(old => ({ ...old, descripcion: descriptionSuggestion })); setDescriptionSuggestion(''); }}>Aplicar descripción al editor</button>
-              <button type="button" onClick={() => setDescriptionSuggestion('')}>Descartar borrador</button>
+              <div className="pet-ai-result__actions"><button type="button" onClick={() => { setDraft(old => ({ ...old, descripcion: descriptionSuggestion })); setDescriptionSuggestion(''); }}>Aplicar descripción al editor</button>
+              <button type="button" className="secondary" onClick={() => setDescriptionSuggestion('')}>Descartar borrador</button></div>
             </section>}
-            <button type="button" disabled={busy || !id || !!file} onClick={() => void suggestTemperament()}>Sugerir temperamento con Gemini</button>
-            {suggestion && <section aria-label="Sugerencia de temperamento"><p>Sugerencia pendiente: {suggestion.etiqueta}</p><p>{suggestion.explicacion}</p><p>Observación: {suggestion.evidencia || 'Sin evidencia conductual'}</p>
+            {suggestion && <section className="pet-ai-result" aria-label="Sugerencia de temperamento"><div className="pet-ai-result__heading"><span className="pet-ai-result__eyebrow">Sugerencia pendiente</span><h4>{suggestion.etiqueta}</h4></div><p>{suggestion.explicacion}</p><p className="muted">Observación: {suggestion.evidencia || 'Sin evidencia conductual'}</p>
+              <div className="pet-ai-result__actions">
               <button type="button" onClick={() => { setDraft(old => ({ ...old, temperamento: suggestion.etiqueta })); setSuggestion(null); setSuccess('Etiqueta aplicada al editor. Revisa y guarda para confirmar.'); }}>Aplicar al editor</button>
-              <button type="button" onClick={() => setSuggestion(null)}>Descartar sugerencia</button></section>}
-            <span className="muted">Usa los rasgos guardados de la mascota. Revisa y edita el borrador; no se guarda hasta que confirmes Guardar cambios.</span>
+              <button type="button" className="secondary" onClick={() => setSuggestion(null)}>Descartar sugerencia</button></div></section>}
+            <p className="muted pet-ai-tools__note">Las sugerencias no se guardan automáticamente. Revisa los cambios y confirma con “Guardar cambios de mascota”.</p>
           </div>}
           <label>
             {id ? 'Reemplazar fotografía (opcional)' : 'Fotografía JPEG/PNG, máximo 5 MB'}
@@ -334,12 +341,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
               onChange={e => { setFile(e.target.files?.[0] ?? null); setFileIsImproved(false); setImprovedPhoto(null); }}
             />
           </label>
-          {id && <div className="actions">
-            <button type="button" className="secondary" onClick={() => void improvePhoto()}>
-              Proponer mejora de foto con IA
-            </button>
-            <span className="muted">La mejora aparece como vista previa; la original se conserva hasta que guardes.</span>
-          </div>}
+          {id && <p className="muted pet-photo-note">La mejora aparece como vista previa; la original se conserva hasta que guardes.</p>}
           {improvedPhoto && <div className="confirmation">
             <h4>Comparar fotografía</h4>
             <div className="grid">
