@@ -162,3 +162,9 @@ export interface Page<T> {
   previous: string | null;
   count: number;
 }
+
+export interface PreferenciasNotificacion {
+  email: boolean;
+  whatsapp: boolean;
+  push: boolean;
+}
