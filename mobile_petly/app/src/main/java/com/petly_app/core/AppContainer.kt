@@ -13,6 +13,7 @@ class AppContainer(private val contentResolver: ContentResolver) {
     private val privateApi = ApiClient.authenticatedApi(session)
     val healthRepository = HealthRepository(publicApi.create(HealthApi::class.java))
     val authRepository = AuthRepository(publicApi.create(AuthApi::class.java), session)
+    val chatRepository: ChatRepository = RemoteChatRepository(privateApi.create(ChatApi::class.java))
     val usuarioRepository = UsuarioRepository(privateApi.create(UsuarioApi::class.java), session)
     private val previewPerfil = PreviewPerfilRepository()
     private val previewCatalogo = PreviewCatalogoRepository()

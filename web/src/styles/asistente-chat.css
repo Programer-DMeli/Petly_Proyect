@@ -1,0 +1,101 @@
+.petly-chat-launcher {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 40;
+  border-radius: 28px;
+  background: #17634f;
+  color: white;
+  box-shadow: 0 4px 16px #163c3433;
+}
+.petly-chat-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #163c3455;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 24px;
+}
+.petly-chat {
+  width: min(420px, 100%);
+  height: min(680px, calc(100dvh - 48px));
+  background: #fff;
+  color: #21463d;
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 8px 40px #163c3444;
+  overflow: auto;
+}
+.petly-chat header,
+.petly-chat-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.petly-chat h2,
+.petly-chat p {
+  margin: 0;
+}
+.petly-chat-intro,
+.petly-chat small {
+  font-size: 0.85rem;
+}
+.petly-chat-messages {
+  flex: 1;
+  min-height: 100px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.petly-chat-message {
+  padding: 12px;
+  background: #eaf5ef;
+  border-radius: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 92%;
+  align-self: flex-start;
+}
+.petly-chat-message strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.8rem;
+}
+.petly-chat-message--user {
+  background: #17634f;
+  color: white;
+  align-self: flex-end;
+}
+.petly-chat form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.petly-chat textarea {
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+}
+.petly-chat-error {
+  color: #8a2323;
+}
+@media (max-width: 480px) {
+  .petly-chat-backdrop {
+    padding: 8px;
+  }
+  .petly-chat {
+    height: calc(100dvh - 16px);
+    padding: 16px;
+  }
+  .petly-chat-launcher {
+    right: 16px;
+    bottom: 16px;
+  }
+}

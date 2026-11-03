@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.petly_app.ui.asistente.*
 import com.petly_app.data.model.CatalogoFilters
 import com.petly_app.data.model.PerfilDraft
 import com.petly_app.ui.auth.AccessIcons
@@ -44,11 +45,20 @@ fun MainAppScreen(
     onSaveDisponibilidad: () -> Unit = {},
     onShareAutorizaciones: (() -> Unit)?,
     onOpenKyc: () -> Unit,
-    onExit: () -> Unit
+    onExit: () -> Unit,
+    chatState: ChatUiState = ChatUiState(),
+    onOpenChat: (Boolean) -> Unit = {},
+    onEditChat: (String) -> Unit = {},
+    onSendChat: () -> Unit = {},
+    onRetryChat: () -> Unit = {},
+    onEditFailedChat: () -> Unit = {},
+    onClearChat: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(PetlyTab.INICIO) }
 
+    ChatPanel(chatState, onOpenChat, onEditChat, onSendChat, onRetryChat, onEditFailedChat, onClearChat)
     Scaffold(
+        floatingActionButton = { if (!isPreview && !chatState.open) ChatButton { onOpenChat(true) } },
         bottomBar = {
             PetlyBottomNavigationBar(
                 selectedTab = selectedTab,

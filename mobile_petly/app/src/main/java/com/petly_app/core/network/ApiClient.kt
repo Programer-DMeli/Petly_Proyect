@@ -42,7 +42,7 @@ object ApiClient {
                 val request = original.newBuilder().apply {
                     if (token != null) header("Authorization", "Bearer $token")
                 }.build()
-                val activeChain = if (original.url.encodedPath.endsWith("/explicacion")) chain.withReadTimeout(65, TimeUnit.SECONDS) else chain
+                val activeChain = if (original.url.encodedPath.endsWith("/explicacion") || original.url.encodedPath == "/api/asistente/chat") chain.withReadTimeout(65, TimeUnit.SECONDS) else chain
                 val response = activeChain.proceed(request)
                 if (response.code == 401 && token != null) {
                     session.clearIfMatches(token)

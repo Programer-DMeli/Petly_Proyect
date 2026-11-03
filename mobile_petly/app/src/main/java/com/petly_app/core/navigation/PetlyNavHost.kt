@@ -11,6 +11,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.compose.*
 import com.petly_app.BuildConfig
 import com.petly_app.core.AppContainer
+import com.petly_app.ui.asistente.ChatViewModel
 import com.petly_app.ui.auth.*
 import com.petly_app.ui.catalogo.*
 import com.petly_app.ui.perfil.*
@@ -89,6 +90,12 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                         viewModelFactory { initializer { DisponibilidadViewModel(container.disponibilidad(isPreview), isPreview) } }
                     }
 
+                    val chatFactory = remember(container) {
+                        viewModelFactory { initializer { ChatViewModel(container.chatRepository, container.session.authenticated) } }
+                    }
+                    val chatVm: ChatViewModel = viewModel(factory = chatFactory)
+                    val chatState by chatVm.state.collectAsStateWithLifecycle()
+
                     val catalogVm: CatalogoViewModel = viewModel(factory = catalogFactory)
                     val perfilVm: PerfilViewModel = viewModel(factory = perfilFactory)
                     val disponibilidadVm: DisponibilidadViewModel = viewModel(factory = disponibilidadFactory)
@@ -105,6 +112,13 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     }
 
                     MainAppScreen(
+                        chatState = chatState,
+                        onOpenChat = chatVm::open,
+                        onEditChat = chatVm::edit,
+                        onSendChat = chatVm::send,
+                        onRetryChat = chatVm::retry,
+                        onEditFailedChat = chatVm::editFailed,
+                        onClearChat = chatVm::clear,
                         catalogoState = catalogState,
                         perfilState = perfilState,
                         disponibilidadState = disponibilidadState,
