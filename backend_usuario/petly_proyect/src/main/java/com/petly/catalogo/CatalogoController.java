@@ -15,7 +15,7 @@ public class CatalogoController {
  @RequestParam(required=false) String temperamento,@RequestParam(required=false) Integer edadMinimaMeses,
  @RequestParam(required=false) Integer edadMaximaMeses,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="20") int pageSize, Authentication auth){
  if(auth != null && auth.getPrincipal() instanceof Claims claims && "ADOPTANTE".equals(claims.get("rol", String.class))) {
-  return compatibilidad.listar(Long.parseLong(claims.getSubject()),search,especie,tamano,temperamento,edadMinimaMeses,edadMaximaMeses,page,pageSize);
+  return compatibilidad.listar(Long.parseLong(claims.getSubject()),search,especie,tamano,temperamento,edadMinimaMeses,edadMaximaMeses,page,pageSize,true);
  }
  return service.search(search,especie,tamano,temperamento,edadMinimaMeses,edadMaximaMeses,page,pageSize);}
  @GetMapping("/{id}") public Map<String,Object> detail(@PathVariable long id, Authentication auth){

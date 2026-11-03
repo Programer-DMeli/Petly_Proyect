@@ -28,6 +28,11 @@ public class CompatibilidadService {
 
     public Map<String, Object> listar(long userId, String search, String especie, String tamano,
             String temperamento, Integer min, Integer max, int page, int pageSize) {
+        return listar(userId, search, especie, tamano, temperamento, min, max, page, pageSize, false);
+    }
+
+    public Map<String, Object> listar(long userId, String search, String especie, String tamano,
+            String temperamento, Integer min, Integer max, int page, int pageSize, boolean incluirNoDisponibles) {
         if (page < 1 || page > 1000000 || pageSize < 1 || pageSize > 100) throw new ApiException(400, "paginación inválida");
         Map<String, Object> profile = perfiles.get(userId);
         List<Map<String, Object>> items = new ArrayList<>();
@@ -40,7 +45,7 @@ public class CompatibilidadService {
             if (batch.isEmpty()) break; // El catálogo puede reducirse durante la consulta.
             items.addAll(batch);
         }
-        items.removeIf(item -> !"Disponible".equals(item.get("estado")));
+        if (!incluirNoDisponibles) items.removeIf(item -> !"Disponible".equals(item.get("estado")));
         int total = items.size();
         ReglasCompatibilidadService.Reglas version = reglas.obtener();
         items.replaceAll(item -> withScore(item, profile, version));

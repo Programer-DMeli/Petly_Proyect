@@ -153,6 +153,23 @@ fun CatalogoScreen(
                 }
             }
         }
+        if (!state.loading && state.error == null && state.totalPages > 1) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = { onPage(state.page - 1) },
+                    enabled = state.page > 1 && !state.pendingFilters
+                ) { Text("Anterior") }
+                Text("${state.page} de ${state.totalPages}", color = CatalogTextDark)
+                TextButton(
+                    onClick = { onPage(state.page + 1) },
+                    enabled = state.page < state.totalPages && !state.pendingFilters
+                ) { Text("Siguiente") }
+            }
+        }
     }
 
     if (showFavoritesDialog) {

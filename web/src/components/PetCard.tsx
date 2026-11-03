@@ -50,13 +50,15 @@ export default function PetCard({ pet }: { pet: Pet }) {
           <span>Ver detalle</span>
           <span aria-hidden="true">↗</span>
         </Link>
-        <Link
-          className="button secondary pet-card__link"
-          to={`/adoptante/catalogo/${pet.id}`}
-          aria-label={`Solicitar adopción de ${pet.nombre}`}
-        >
-          Solicitar adopción
-        </Link>
+        {pet.estado === 'Disponible' && (
+          <Link
+            className="button secondary pet-card__link"
+            to={`/adoptante/catalogo/${pet.id}`}
+            aria-label={`Solicitar adopción de ${pet.nombre}`}
+          >
+            Solicitar adopción
+          </Link>
+        )}
       </div>
     </article>
   );

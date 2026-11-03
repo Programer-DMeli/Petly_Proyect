@@ -47,7 +47,7 @@ class CatalogoViewModel(private val repository: CatalogoRepository) : ViewModel(
         job = viewModelScope.launch {
             try {
                 val options = _state.value.options ?: repository.options()
-                val result = repository.search(filters, page, 3)
+                val result = repository.search(filters, page, 12)
                 if (current == generation) _state.update { it.copy(options = options, items = result.items,
                     loading = false, total = result.total, page = result.page, totalPages = result.totalPages) }
             } catch (e: Exception) {

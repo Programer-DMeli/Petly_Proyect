@@ -116,3 +116,27 @@ test('Simulada: borrador editable y etiquetas se descartan o confirman sin guard
  await expect(original).toHaveValue('Descripción revisada.');
  await expect(page.getByLabel('Temperamento',{exact:true})).toHaveValue('TRANQUILO');
 });
+
+
+test('Simulada: catálogo conserva todos los estados y permite solicitar solo disponibles', async ({ page }) => {
+  const animals = ['Disponible', 'En Proceso', 'Adoptado'].map((estado, index) => ({
+    ...pet, id: index + 1, nombre: `Mascota estado ${index + 1}`, estado,
+  }));
+  await login(page, 'ADOPTANTE', async (route, path) => {
+    if (path !== '/api/catalogo') return false;
+    await route.fulfill({ json: { items: animals, total: animals.length, page: 1, pageSize: 12 } });
+    return true;
+  });
+  await nav(page, '/adoptante/catalogo');
+  await expect(page.locator('article.pet-card')).toHaveCount(3);
+  for (const animal of animals) {
+    const card = page.locator('article.pet-card').filter({
+      has: page.getByRole('heading', { name: animal.nombre, exact: true }),
+    });
+    await expect(card.getByText(animal.estado, { exact: true })).toBeVisible();
+    await expect(card.getByText('100% compatible', { exact: true })).toBeVisible();
+    await expect(card.getByRole('link', { name: `Ver detalle de ${animal.nombre}`, exact: true })).toBeVisible();
+    await expect(card.getByRole('link', { name: `Solicitar adopción de ${animal.nombre}`, exact: true }))
+      .toHaveCount(animal.estado === 'Disponible' ? 1 : 0);
+  }
+});

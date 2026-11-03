@@ -75,8 +75,8 @@ assert next(p for p in new if p['id'] == pets[2])['compatibilidad']['porcentaje'
 checks.append('US-03: formulario inválido no cambia datos; guardar vivienda/rutina/convivencia recalcula con perfil poco compatible')
 call('PATCH', S, '/api/perfil', a, json=profile)
 call('POST', D, f'/api/mascotas/{pets[1]}/cambiar-estado/', owner, json={'estado': 'EN_PROCESO'})
-assert pets[1] not in [p['id'] for p in catalog()['items']]
-checks.append('US-02/03: mascota recién reservada se excluye del recálculo')
+assert next(p for p in catalog()['items'] if p['id'] == pets[1])['estado'] == 'En Proceso'
+checks.append('Catálogo: mascota recién reservada sigue visible con su estado En Proceso')
 for token in [a, owner]:
     call('PUT', S, '/api/admin/compatibilidad/reglas', token, expected=403, json={'pesos': {'vivienda': 40, 'rutina': 30, 'convivencia': 30}})
 previous = call('GET', S, '/api/admin/compatibilidad/reglas', admin)

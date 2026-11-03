@@ -10,6 +10,23 @@ import com.petly.perfiles.PerfilService;
 
 class CompatibilidadServiceTest {
     @Test
+    void catalogoIncluyeTodosLosEstadosSinCambiarElPuntaje() {
+        var disponible = petWithId(1, "Mediano", "Alta", "Sociable", "Perro");
+        var enProceso = petWithId(2, "Mediano", "Alta", "Sociable", "Perro");
+        enProceso.put("estado", "En Proceso");
+        var adoptado = petWithId(3, "Mediano", "Alta", "Sociable", "Perro");
+        adoptado.put("estado", "Adoptado");
+        var service = serviceWith(disponible, enProceso, adoptado);
+        var result = service.listar(7, "", null, null, null, null, null, 1, 12, true);
+        assertEquals(List.of(1L, 2L, 3L), ids(result));
+        assertEquals(3, result.get("total"));
+        for (var item : (List<Map<String, Object>>) result.get("items")) {
+            assertEquals(100, compatibility(item).get("porcentaje"));
+        }
+        assertEquals(List.of(1L), ids(service.listar(7, "", null, null, null, null, null, 1, 12)));
+    }
+
+    @Test
     void listaOrdenaPuntajeDescendenteEmpatesPorIdYDatosIncompletosAlFinal() {
         CompatibilidadService service = serviceWith(petWithId(8, "Grande", "Alta", "Tímido", "Perro"),
                 petWithId(4, "Mediano", "Media", "Sociable", "Perro"),
