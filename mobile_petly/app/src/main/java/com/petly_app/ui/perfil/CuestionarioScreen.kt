@@ -1,6 +1,7 @@
 package com.petly_app.ui.perfil
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -23,7 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontFamily
@@ -35,6 +35,7 @@ import coil.compose.AsyncImage
 import com.petly_app.data.model.PerfilDraft
 import com.petly_app.ui.common.PreviewNotice
 import com.petly_app.ui.screen.HomeIcons
+import kotlinx.coroutines.delay
 
 private val defaultHomePhotoSamples = listOf(
     "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?q=80&w=1000",
@@ -57,12 +58,14 @@ fun CuestionarioScreen(
     onAddFranja: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onRemoveFranja: (Long) -> Unit = {},
     onSaveDisponibilidad: () -> Unit = {},
+    onRefreshProfile: () -> Unit = {},
     onExit: () -> Unit = {}
 ) {
     var currentSubScreen by rememberSaveable { mutableStateOf("DASHBOARD") }
 
     when (currentSubScreen) {
         "DASHBOARD" -> {
+            LaunchedEffect(Unit) { onRefreshProfile() }
             PerfilScreen(
                 state = state,
                 preview = preview,
@@ -105,7 +108,19 @@ private fun CuestionarioFormScreen(
     onRetry: () -> Unit, onBack: () -> Unit, onShare: (() -> Unit)? = null
 ) {
     var confirmExit by remember { mutableStateOf(false) }
-    val busy = state.loading || state.saving
+    var finishingRevision by rememberSaveable { mutableStateOf<Long?>(null) }
+    var celebrating by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    LaunchedEffect(state.saveRevision) {
+        if (celebrating || (finishingRevision != null && state.saveRevision > finishingRevision!! && state.form.finalizado)) {
+            finishingRevision = null
+            celebrating = true
+            Toast.makeText(context, "¡Felicitaciones! Completaste tu cuestionario.", Toast.LENGTH_LONG).show()
+            delay(2500)
+            onBack()
+        }
+    }
+    val busy = state.loading || state.saving || celebrating
     val editable = !busy && state.loaded
     val requestBack = { if (state.dirty) confirmExit = true else onBack() }
 
@@ -122,20 +137,16 @@ private fun CuestionarioFormScreen(
     // Cálculo del porcentaje de avance
     val form = state.form
     val questionsAnswered = listOf(
-        form.vivienda.isNotBlank(),
-        form.espacioExterior.isNotBlank(),
-        form.horasFuera.isNotBlank(),
-        form.tiempoPaseos.isNotBlank(),
-        form.rutinaHabitual.isNotBlank(),
-        form.ninosDetalle.isNotBlank() || form.tieneNinos != null,
+        form.vivienda.isNotBlank(), form.espacioExterior.isNotBlank(),
+        form.horasFuera.isNotBlank(), form.tiempoPaseos.isNotBlank(),
+        form.rutinaHabitual.isNotBlank(), form.ninosDetalle.isNotBlank() || form.tieneNinos != null,
         form.otrosAnimales.isNotBlank() || form.tieneOtrasMascotas != null,
-        form.experienciaMascotas.isNotBlank(),
-        form.cuidadosAsumibles.isNotEmpty(),
+        form.experienciaMascotas.isNotBlank(), form.cuidadosAsumibles.isNotEmpty(),
         form.presupuesto.isNotBlank()
     ).count { it }
-    val progressFraction = (questionsAnswered.toFloat() / 10f).coerceIn(0.1f, 1f)
+    val progressFraction = questionsAnswered / 10f
 
-    BackHandler { if (!state.saving) requestBack() }
+    BackHandler { if (!state.saving && !celebrating) requestBack() }
 
     if (confirmExit) AlertDialog(
         onDismissRequest = { confirmExit = false },
@@ -154,7 +165,7 @@ private fun CuestionarioFormScreen(
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        TextButton(onClick = requestBack, enabled = !state.saving) {
+        TextButton(onClick = requestBack, enabled = !state.saving && !celebrating) {
             Text("← Volver a mi perfil", fontWeight = FontWeight.Bold, color = Color(0xFF13614B))
         }
 
@@ -203,15 +214,6 @@ private fun CuestionarioFormScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text(
-                    text = "Tus respuestas nos permitirán calcular el nivel de compatibilidad con las mascotas disponibles para encontrar tu compañero ideal.",
-                    fontSize = 13.sp,
-                    color = Color(0xFF4A6258),
-                    lineHeight = 18.sp
-                )
-
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Row(
@@ -254,14 +256,12 @@ private fun CuestionarioFormScreen(
 
         // BLOQUE 1: ESPACIO E INSTALACIONES (P1, P2)
         FormCardSection(
-            title = "1. Espacio e Instalaciones del Hogar",
-            description = "Determina el espacio físico y seguridad disponible para la mascota."
+            title = "1. Espacio e Instalaciones del Hogar"
         ) {
             // Pregunta 1
             QuestionItem(
                 number = "1",
-                question = "¿En qué tipo de vivienda vives?",
-                purpose = "Compara necesidades de espacio"
+                question = "¿En qué tipo de vivienda vives?"
             ) {
                 SingleChoicePills(
                     options = listOf("Departamento", "Casa", "Otro"),
@@ -275,8 +275,7 @@ private fun CuestionarioFormScreen(
             // Pregunta 2
             QuestionItem(
                 number = "2",
-                question = "¿Con qué espacio exterior seguro cuentas?",
-                purpose = "Compara seguridad y necesidades de entorno"
+                question = "¿Con qué espacio exterior seguro cuentas?"
             ) {
                 SingleChoicePills(
                     options = listOf("Ninguno", "Patio amplio", "Jardín cercado", "Jardín sin cercar"),
@@ -290,14 +289,12 @@ private fun CuestionarioFormScreen(
 
         // BLOQUE 2: TIEMPO Y RUTINA (P3, P4, P5)
         FormCardSection(
-            title = "2. Tiempo, Rutina y Nivel de Actividad",
-            description = "Analiza el ritmo de vida y la presencia diaria en el hogar."
+            title = "2. Tiempo, Rutina y Nivel de Actividad"
         ) {
             // Pregunta 3
             QuestionItem(
                 number = "3",
-                question = "¿Cuántas horas al día estaría sola la mascota?",
-                purpose = "Indica las horas diarias reales para calcular la compatibilidad de rutina."
+                question = "¿Cuántas horas al día estaría sola la mascota?"
             ) {
                 OutlinedTextField(
                     value = form.horasFuera,
@@ -315,8 +312,7 @@ private fun CuestionarioFormScreen(
             // Pregunta 4
             QuestionItem(
                 number = "4",
-                question = "¿Cuánto tiempo diario puedes dedicar a paseos y juego?",
-                purpose = "Compara nivel de energía y estimulación"
+                question = "¿Cuánto tiempo diario puedes dedicar a paseos y juego?"
             ) {
                 SingleChoicePills(
                     options = listOf("< 30 min", "30–60 min", "1–2 horas", "+ de 2 horas"),
@@ -330,8 +326,7 @@ private fun CuestionarioFormScreen(
             // Pregunta 5
             QuestionItem(
                 number = "5",
-                question = "¿Cómo describes tu rutina habitual?",
-                purpose = "Compara temperamento e intensidad"
+                question = "¿Cómo describes tu rutina habitual?"
             ) {
                 SingleChoicePills(
                     options = listOf("Tranquila", "Moderadamente activa", "Muy activa"),
@@ -345,14 +340,12 @@ private fun CuestionarioFormScreen(
 
         // BLOQUE 3: CONVIVENCIA E INTEGRANTES (P6, P7)
         FormCardSection(
-            title = "3. Convivencia e Integrantes del Hogar",
-            description = "Garantiza una adaptación segura con niños y otras mascotas."
+            title = "3. Convivencia e Integrantes del Hogar"
         ) {
             // Pregunta 6
             QuestionItem(
                 number = "6",
-                question = "¿Viven niños en tu hogar o te visitan frecuentemente?",
-                purpose = "Compara compatibilidad conocida con niños"
+                question = "¿Viven niños en tu hogar o te visitan frecuentemente?"
             ) {
                 SingleChoicePills(
                     options = listOf("No", "Menores de 6 años", "De 6 a 12 años", "Adolescentes"),
@@ -369,8 +362,7 @@ private fun CuestionarioFormScreen(
             // Pregunta 7
             QuestionItem(
                 number = "7",
-                question = "¿Qué otros animales viven contigo?",
-                purpose = "Compara compatibilidad con otras mascotas"
+                question = "¿Qué otros animales viven contigo?"
             ) {
                 SingleChoicePills(
                     options = listOf("Ninguno", "Perros", "Gatos", "Otros"),
@@ -387,14 +379,12 @@ private fun CuestionarioFormScreen(
 
         // BLOQUE 4: EXPERIENCIA Y CUIDADOS (P8, P9)
         FormCardSection(
-            title = "4. Experiencia y Cuidados Especiales",
-            description = "Evalúa la capacidad de asumir requerimientos específicos."
+            title = "4. Experiencia y Cuidados Especiales"
         ) {
             // Pregunta 8
             QuestionItem(
                 number = "8",
-                question = "¿Qué experiencia tienes cuidando mascotas?",
-                purpose = "Compara nivel de manejo requerido"
+                question = "¿Qué experiencia tienes cuidando mascotas?"
             ) {
                 SingleChoicePills(
                     options = listOf("Ninguna", "Básica", "Amplia (perros/gatos)"),
@@ -408,8 +398,7 @@ private fun CuestionarioFormScreen(
             // Pregunta 9
             QuestionItem(
                 number = "9",
-                question = "¿Qué cuidados puedes asumir?",
-                purpose = "Compara necesidades especiales de salud y conducta"
+                question = "¿Qué cuidados puedes asumir?"
             ) {
                 MultiChoicePills(
                     options = listOf("Medicación", "Cuidados adulto mayor", "Entrenamiento", "Adaptación conductual", "Ninguno adicional"),
@@ -430,14 +419,12 @@ private fun CuestionarioFormScreen(
 
         // BLOQUE 5: PRESUPUESTO Y FOTOS DEL HOGAR (P10 & US-19)
         FormCardSection(
-            title = "5. Presupuesto y Fotos de la Vivienda",
-            description = "Verificación de entorno seguro y disponibilidad de recursos."
+            title = "5. Presupuesto y Fotos de la Vivienda"
         ) {
             // Pregunta 10
             QuestionItem(
                 number = "10",
-                question = "¿Qué presupuesto mensual puedes destinar a su cuidado?",
-                purpose = "Estimación de alimentación y atención médica"
+                question = "¿Qué presupuesto mensual puedes destinar a su cuidado?"
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -465,15 +452,10 @@ private fun CuestionarioFormScreen(
             // Fotografías de Vivienda (US-19)
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Fotografías de tu hogar (US-19)",
+                    text = "Fotografías de tu hogar",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
                     color = Color(0xFF0F3A2E)
-                )
-                Text(
-                    text = "Sube fotos de la sala, patio o el área donde vivirá la mascota para verificar la seguridad del ambiente.",
-                    fontSize = 12.sp,
-                    color = Color(0xFF4A6258)
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -545,54 +527,13 @@ private fun CuestionarioFormScreen(
             }
         }
 
-        // MATCH CARD PREVIEW
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF9F4)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFF8DE2BA),
-                    modifier = Modifier.size(42.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = HomeIcons.CompanionHeart,
-                            contentDescription = null,
-                            tint = Color(0xFF13614B),
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "✨ Match de Compatibilidad Activo",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Color(0xFF0F3A2E)
-                    )
-                    Text(
-                        text = "Tus respuestas permiten filtrar mascotas cuyo temperamento y energía se adapten idealmente a tu hogar.",
-                        fontSize = 12.sp,
-                        color = Color(0xFF4A6258)
-                    )
-                }
-            }
-        }
-
         onShare?.let { TextButton(onClick = it, enabled = editable && !state.dirty) { Text("Compartir mi perfil con un albergue") } }
 
         state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
 
         // BOTONES DE ENVÍO
         Button(
-            onClick = { onSave(true) },
+            onClick = { finishingRevision = state.saveRevision; onSave(true) },
             enabled = editable,
             shape = CircleShape,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF13614B)),
@@ -602,7 +543,7 @@ private fun CuestionarioFormScreen(
                 .semantics { contentDescription = "Finalizar cuestionario" }
         ) {
             Text(
-                if (state.saving) "Guardando…" else "Finalizar Cuestionario y Ver Matches 🐾",
+                if (state.saving) "Guardando…" else "Finalizar Cuestionario 🐾",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -626,7 +567,6 @@ private fun CuestionarioFormScreen(
 @Composable
 private fun FormCardSection(
     title: String,
-    description: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
@@ -646,11 +586,6 @@ private fun FormCardSection(
                 fontSize = 18.sp,
                 color = Color(0xFF0F3A2E)
             )
-            Text(
-                text = description,
-                fontSize = 12.sp,
-                color = Color(0xFF4A6258)
-            )
             HorizontalDivider(color = Color(0xFFEFF5F2), thickness = 1.dp)
             content()
         }
@@ -661,7 +596,6 @@ private fun FormCardSection(
 private fun QuestionItem(
     number: String,
     question: String,
-    purpose: String,
     content: @Composable () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -670,11 +604,6 @@ private fun QuestionItem(
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
             color = Color(0xFF0F3A2E)
-        )
-        Text(
-            text = "💡 $purpose",
-            fontSize = 11.sp,
-            color = Color(0xFF2E6C58)
         )
         content()
     }

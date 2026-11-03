@@ -29,6 +29,15 @@ public class AuthService {
     @Autowired
     private UsuarioRepository usuarios;
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> perfilActual(Long id) {
+        Usuario usuario = usuarios.findById(id).orElseThrow();
+        return Map.of(
+            "id", usuario.getId().toString(), "correo", usuario.getCorreo(), "rol", usuario.getRol().name(),
+            "firstName", usuario.getFirstName() == null ? "" : usuario.getFirstName(),
+            "lastName", usuario.getLastName() == null ? "" : usuario.getLastName());
+    }
+
     @Autowired
     private PasswordEncoder passwordEncoder;
 

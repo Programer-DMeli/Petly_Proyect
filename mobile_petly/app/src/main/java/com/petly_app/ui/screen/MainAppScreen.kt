@@ -38,6 +38,7 @@ fun MainAppScreen(
     onEditPerfil: (PerfilDraft) -> Unit,
     onSavePerfil: (Boolean) -> Unit,
     onLoadPerfil: () -> Unit,
+    onRefreshProfile: () -> Unit = {},
     onAddFranja: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onRemoveFranja: (Long) -> Unit = {},
     onSaveDisponibilidad: () -> Unit = {},
@@ -91,6 +92,7 @@ fun MainAppScreen(
                 PetlyTab.PERFIL -> {
                     CuestionarioScreen(
                         state = perfilState,
+                        onRefreshProfile = onRefreshProfile,
                         disponibilidadState = disponibilidadState,
                         preview = isPreview,
                         onEdit = onEditPerfil,

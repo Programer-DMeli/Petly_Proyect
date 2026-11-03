@@ -83,7 +83,7 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                         viewModelFactory { initializer { CatalogoViewModel(container.catalogo(isPreview)) } }
                     }
                     val perfilFactory = remember(container, isPreview) {
-                        viewModelFactory { initializer { PerfilViewModel(container.perfil(isPreview), isPreview) } }
+                        viewModelFactory { initializer { createPerfilViewModel(container, isPreview) } }
                     }
                     val disponibilidadFactory = remember(container, isPreview) {
                         viewModelFactory { initializer { DisponibilidadViewModel(container.disponibilidad(isPreview), isPreview) } }
@@ -118,6 +118,7 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                         onEditPerfil = perfilVm::edit,
                         onSavePerfil = perfilVm::save,
                         onLoadPerfil = perfilVm::load,
+                        onRefreshProfile = perfilVm::refreshSummary,
                         onAddFranja = disponibilidadVm::addFranja,
                         onRemoveFranja = disponibilidadVm::removeFranja,
                         onSaveDisponibilidad = disponibilidadVm::save,
@@ -130,11 +131,11 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                 }
                 composable(Routes.PROFILE) {
                     val factory = remember(container, isPreview) {
-                        viewModelFactory { initializer { PerfilViewModel(container.perfil(isPreview), isPreview) } }
+                        viewModelFactory { initializer { createPerfilViewModel(container, isPreview) } }
                     }
                     val vm: PerfilViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    CuestionarioScreen(state, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }))
+                    CuestionarioScreen(state, onRefreshProfile = vm::refreshSummary, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }))
                 }
                 composable("autorizaciones") {
                     val factory = remember(container) { viewModelFactory { initializer { AutorizacionViewModel(container.autorizaciones) } } }
@@ -166,3 +167,20 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
         }
     }
 }
+
+private fun createPerfilViewModel(container: AppContainer, preview: Boolean) = PerfilViewModel(
+    container.perfil(preview), preview,
+    loadUser = { container.usuarioRepository.currentUser() },
+    loadApplications = {
+        var count = 0
+        var page = 1
+        do {
+            val response = container.solicitudesApi.listar(page++)
+            count += if (response.isJsonArray) response.asJsonArray.size()
+                else response.asJsonObject.getAsJsonArray("results").size()
+            val more = !response.isJsonArray && response.asJsonObject.get("next")?.let { !it.isJsonNull } == true
+        } while (more)
+        count
+    },
+    loadVerified = { container.kycRepository.load()?.estado in listOf("VERIFICADO", "APROBADO_MANUAL") }
+)

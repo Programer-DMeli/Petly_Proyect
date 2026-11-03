@@ -11,9 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
@@ -22,7 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import com.petly_app.data.model.completionPercent
 import com.petly_app.data.repository.FavoritosManager
 import com.petly_app.ui.auth.AccessIcons
 import com.petly_app.ui.catalogo.FavoritosDialog
@@ -68,7 +66,10 @@ fun PerfilScreen(
         }
 
         // CARD 1: PERFIL HEADER CARD
-        UserProfileHeaderCard()
+        UserProfileHeaderCard(state)
+        state.summaryError?.let {
+            Text(it, color = MaterialTheme.colorScheme.error)
+        }
 
         OutlinedButton(
             onClick = onOpenKyc,
@@ -197,7 +198,7 @@ private fun PerfilHeaderBar(
 }
 
 @Composable
-private fun UserProfileHeaderCard() {
+private fun UserProfileHeaderCard(state: PerfilUiState) {
     Surface(
         shape = RoundedCornerShape(32.dp),
         color = Color.White,
@@ -214,14 +215,11 @@ private fun UserProfileHeaderCard() {
                 modifier = Modifier.size(110.dp),
                 contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1000",
-                    contentDescription = "Foto de perfil de Camila Torres",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                )
+                Surface(shape = CircleShape, color = ProfileMintPill, modifier = Modifier.size(100.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(AccessIcons.Person, contentDescription = "Foto de perfil", tint = ProfileDarkGreen, modifier = Modifier.size(52.dp))
+                    }
+                }
 
                 Surface(
                     shape = CircleShape,
@@ -246,7 +244,7 @@ private fun UserProfileHeaderCard() {
 
             // User Name
             Text(
-                text = "Camila Torres",
+                text = state.user?.let { listOfNotNull(it.firstName, it.lastName).filter(String::isNotBlank).joinToString(" ").ifBlank { "Mi perfil" } } ?: "Mi perfil",
                 fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.Bold,
                 fontSize = 22.sp,
@@ -257,7 +255,7 @@ private fun UserProfileHeaderCard() {
 
             // Email
             Text(
-                text = "camila.torres@refugiopetly.pe",
+                text = state.user?.email.orEmpty(),
                 fontSize = 13.sp,
                 color = Color(0xFF6B7D73)
             )
@@ -275,13 +273,13 @@ private fun UserProfileHeaderCard() {
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(
-                        imageVector = HomeIcons.Check,
+                        imageVector = if (state.verified == true) HomeIcons.Check else AccessIcons.Person,
                         contentDescription = null,
                         tint = ProfileDarkGreen,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
-                        text = "Adoptante verificado",
+                        text = when (state.verified) { true -> "Adoptante verificado"; false -> "Identidad pendiente de verificar"; null -> "Verificación sin datos" },
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = ProfileDarkGreen
@@ -304,9 +302,9 @@ private fun UserProfileHeaderCard() {
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    MetricItem(value = "3", label = "Postulaciones")
-                    MetricItem(value = "100%", label = "Perfil listo")
-                    MetricItem(value = "1", label = "Visitas agendadas")
+                    MetricItem(value = state.applications?.toString() ?: "—", label = "Postulaciones")
+                    MetricItem(value = if (state.loaded) "${state.form.completionPercent()}%" else "—", label = "Perfil listo")
+                    MetricItem(value = "Sin datos", label = "Visitas agendadas")
                 }
             }
         }

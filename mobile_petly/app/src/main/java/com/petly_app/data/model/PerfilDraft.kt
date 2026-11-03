@@ -19,6 +19,12 @@ data class PerfilDraft(
     val fotosViviendaUrls: List<String> = emptyList()
 )
 
+fun PerfilDraft.completionPercent(): Int = listOf(
+    vivienda.isNotBlank(), horasFuera.isNotBlank(), presupuesto.isNotBlank(),
+    tieneNinos != null || ninosDetalle.isNotBlank(),
+    tieneOtrasMascotas != null || otrosAnimales.isNotBlank()
+).count { it } * 100 / 5
+
 object PerfilValidation {
     fun validate(form: PerfilDraft, finalizar: Boolean): Map<String, String> = buildMap {
         if (finalizar && form.vivienda.isBlank()) put("vivienda", "Indica tu tipo de vivienda.")

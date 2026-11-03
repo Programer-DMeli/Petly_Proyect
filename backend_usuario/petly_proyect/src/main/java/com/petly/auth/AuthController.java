@@ -47,10 +47,7 @@ public class AuthController {
     public ResponseEntity<?> me() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Claims claims = (Claims) auth.getPrincipal();
-        Map<String, Object> cuerpo = Map.of(
-            "id", claims.getSubject(),
-            "correo", claims.get("email"),
-            "rol", claims.get("rol"));
+        Map<String, Object> cuerpo = authService.perfilActual(Long.valueOf(claims.getSubject()));
         return ResponseEntity.ok(cuerpo);
     }
 

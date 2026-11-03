@@ -30,7 +30,9 @@ data class UserDto(
     val id: Long? = null,
     @SerializedName("correo") val email: String? = null,
     val role: String? = null,
-    val rol: String? = null
+    val rol: String? = null,
+    val firstName: String? = null,
+    val lastName: String? = null
 ) {
     fun getEffectiveRole(): String? = role ?: rol
 }
