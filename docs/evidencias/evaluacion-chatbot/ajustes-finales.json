@@ -1,0 +1,68 @@
+{
+  "alcance": "Evaluación de contenido del adaptador real; autenticación e interfaz se verifican por separado.",
+  "instruccionesSha256": "f884b56d1e5aeb4e3b2126d2eda187decddfdb222f974a365c58a5e8ddb8bfdc",
+  "modelo": "gemini-3.5-flash-lite",
+  "fecha": "2026-11-03T07:02:28.083869125-05:00[America/Lima]",
+  "proveedor": "Gemini real mediante ChatGeminiService Java",
+  "casos": [
+    {
+      "id": "CAT04",
+      "area": "catalogo",
+      "messages": [
+        {
+          "role": "user",
+          "text": "Busco un husky de raza pura en Lima. ¿Qué botones uso para filtrar por raza y ciudad?"
+        }
+      ],
+      "criterios": [
+        "Aclara que la pantalla actual no tiene filtros de raza ni ciudad.",
+        "Ofrece filtros reales y revisar la ficha o preguntar al albergue."
+      ],
+      "respuesta": "La aplicación Petly en la barra de navegación inferior solo contiene Inicio, Catálogo, Novedades y Perfil. En la pantalla Catálogo no existen filtros específicos para raza ni ciudad. Puedes utilizar el campo Buscar... para intentar localizar albergues o nombres de mascotas. Te sugiero revisar directamente las fichas disponibles en el Catálogo para conocer los detalles de cada peludo y confirmar la información con el albergue, ya que no contamos con fichas en tiempo real. ¿Te gustaría saber cómo avanzar con el cuestionario de estilo de vida?",
+      "estado": "respuesta_recibida",
+      "duracionMs": 5803,
+      "evaluacion": "cumple",
+      "justificacion": "Ubica Catálogo en la barra inferior y aclara que no existen filtros de raza ni ciudad; propone revisar fichas reales."
+    },
+    {
+      "id": "CAT05",
+      "area": "catalogo",
+      "messages": [
+        {
+          "role": "user",
+          "text": "No encuentro resultados en el catálogo. ¿Qué hago?"
+        }
+      ],
+      "criterios": [
+        "Sugiere quitar filtros o elegir Todos, revisar texto Buscar y reintentar.",
+        "No atribuye sin evidencia el problema a que todas las mascotas fueron adoptadas."
+      ],
+      "respuesta": "Para solucionar esto en la aplicación, ve a la pantalla Catálogo, selecciona la opción Todos, deja los filtros de Tamaño y Temperamento sin selección y borra cualquier texto en Buscar... Si experimentaste un error de carga, usa el botón Reintentar. \n\n¿Estás buscando algún tipo de mascota en particular?",
+      "estado": "respuesta_recibida",
+      "duracionMs": 7493,
+      "evaluacion": "cumple",
+      "justificacion": "Ubica Todos y los filtros dentro de Catálogo, permite limpiar la búsqueda y usar Reintentar ante error de carga."
+    },
+    {
+      "id": "CUI04",
+      "area": "cuidados",
+      "messages": [
+        {
+          "role": "user",
+          "text": "Quiero un perro grande y vivo en un departamento. ¿Eso asegura que no lo puedo adoptar?"
+        }
+      ],
+      "criterios": [
+        "Evita rechazo o aprobación automática por tamaño/vivienda.",
+        "Considera energía, paseos, tiempo, seguridad y valoración del albergue."
+      ],
+      "respuesta": "Tener un departamento no te descarta automáticamente para adoptar un perro grande. La compatibilidad depende principalmente de la energía, la edad y el estado de salud de la mascota, así como del tiempo diario que puedas dedicarle a sus paseos, ejercicio y estimulación en el espacio disponible. \n\nCada albergue evalúa el caso de manera integral y no existe una regla única que impida la adopción por vivir en departamento. ¿Qué nivel de actividad diaria o tiempo de paseos estimas que podrías ofrecerle a tu perro?",
+      "estado": "respuesta_recibida",
+      "duracionMs": 4771,
+      "evaluacion": "cumple",
+      "justificacion": "Valora energía, edad, salud y tiempo disponible; no exige paseos largos por tamaño ni rechaza automáticamente."
+    }
+  ],
+  "datos": "preguntas sintéticas; sin cuentas ni datos personales",
+  "metodo_revision": "Revisión manual de contenido contra criterios definidos antes de ejecutar, pantallas y validaciones de Petly y fuentes veterinarias primarias. No es una encuesta de satisfacción ni una calificación automática del modelo."
+}

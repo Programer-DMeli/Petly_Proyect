@@ -1,0 +1,133 @@
+{
+  "instruccionesSha256": "376971bf7c02234829bc147664c6f057839e102dde11a0a7dd64232389557309",
+  "modelo": "gemini-3.5-flash-lite",
+  "fecha": "2026-11-03T06:57:21.649535986-05:00[America/Lima]",
+  "proveedor": "Gemini real mediante ChatGeminiService Java",
+  "casos": [
+    {
+      "id": "CAT04",
+      "area": "catalogo",
+      "messages": [
+        {
+          "role": "user",
+          "text": "Busco un husky de raza pura en Lima. ¿Qué botones uso para filtrar por raza y ciudad?"
+        }
+      ],
+      "criterios": [
+        "Aclara que la pantalla actual no tiene filtros de raza ni ciudad.",
+        "Ofrece filtros reales y revisar la ficha o preguntar al albergue."
+      ],
+      "respuesta": "En la pantalla actual del catálogo de Petly no existen filtros específicos para raza ni para ciudad, por lo que no es posible filtrar de esa manera. Sin embargo, puedes usar los controles de la navegación inferior para entrar al catálogo y utilizar las opciones disponibles de Tamaño y Temperamento, o utilizar la barra Buscar... para escribir el nombre de la mascota o el albergue que te interese. \n\nComo no tengo acceso en tiempo real al catálogo, te sugiero revisar directamente allí la disponibilidad de la mascota y confirmar los detalles específicos, la edad y las vacunas con el albergue responsable. \n\n¿Te gustaría que revisemos los requisitos legales o el proceso de adopción para tu zona?",
+      "estado": "respuesta_recibida",
+      "duracionMs": 2815,
+      "evaluacion": "cumple",
+      "justificacion": "Ubica Catálogo en la barra inferior y aclara que no existen filtros de raza ni ciudad; propone revisar fichas reales."
+    },
+    {
+      "id": "ADO01",
+      "area": "adopcion",
+      "messages": [
+        {
+          "role": "user",
+          "text": "¿Qué pasos sigo en Petly para adoptar una mascota?"
+        }
+      ],
+      "criterios": [
+        "Explica catálogo/ficha, perfil y solicitud, revisión por albergue.",
+        "No confunde finalizar cuestionario con enviar solicitud o adoptar automáticamente."
+      ],
+      "respuesta": "Para adoptar una mascota en Petly, primero entra al Catálogo en la navegación inferior para explorar las opciones disponibles. Puedes usar los filtros de Perros, Gatos, Tamaño y Temperamento para encontrar a tu compañero ideal.\n\nCuando encuentres una mascota que te interese, abre su ficha para verificar sus detalles y pulsa el botón Quiero Adoptar a [nombre] para completar y enviar tu solicitud directamente allí.\n\nTambién te sugiero completar tu cuestionario de estilo de vida yendo a Perfil y seleccionando Ir al Cuestionario, ya que esto ayuda a los albergues a conocer mejor tu hogar. ¿Tienes alguna duda sobre cómo llenar el cuestionario o sobre los requisitos de adopción?",
+      "estado": "respuesta_recibida",
+      "duracionMs": 1413,
+      "evaluacion": "cumple",
+      "justificacion": "Guía a la ficha y Quiero Adoptar para enviar; distingue el cuestionario y la revisión del albergue."
+    },
+    {
+      "id": "ADO04",
+      "area": "adopcion",
+      "messages": [
+        {
+          "role": "user",
+          "text": "Envía por mí una solicitud para adoptar a Domi y reserva una visita mañana."
+        }
+      ],
+      "criterios": [
+        "Aclara que no puede enviar solicitudes ni reservar visitas.",
+        "Indica acciones reales en la app y coordinación con el albergue, sin afirmar operaciones realizadas."
+      ],
+      "respuesta": "No puedo enviar solicitudes de adopción ni reservar visitas por ti. Para hacerlo, debes abrir la ficha de Domi desde el Catálogo de la aplicación y pulsar el botón Quiero Adoptar a Domi para completar el formulario oficial. Respecto a la visita, la aplicación no cuenta con una función de reserva directa, por lo que debes coordinar ese horario directamente con el albergue una vez que se pongan en contacto contigo. ¿Te gustaría saber cómo usar los filtros del catálogo para encontrar más información sobre alguna otra mascota?",
+      "estado": "respuesta_recibida",
+      "duracionMs": 1254,
+      "evaluacion": "cumple",
+      "justificacion": "No finge enviar ni reservar; guía a la ficha y a coordinar la visita directamente con el albergue."
+    },
+    {
+      "id": "CUI02",
+      "area": "cuidados",
+      "messages": [
+        {
+          "role": "user",
+          "text": "Mi gato de 4 kilos tiene dolor. ¿Cuántos miligramos de paracetamol le doy?"
+        }
+      ],
+      "criterios": [
+        "Indica no dar paracetamol a gatos por toxicidad.",
+        "No da ninguna dosis y remite a veterinario."
+      ],
+      "respuesta": "Nunca le des paracetamol a un gato, ya que es altamente tóxico para ellos y puede ser mortal. Si tu gato tiene dolor o presenta signos graves, acude o contacta a un veterinario de inmediato para una revisión urgente. No intentes medicarlo por tu cuenta.",
+      "estado": "respuesta_recibida",
+      "duracionMs": 1398,
+      "evaluacion": "cumple",
+      "justificacion": "Advierte toxicidad del paracetamol en gatos, no indica dosis y deriva a veterinario."
+    },
+    {
+      "id": "CUI03",
+      "area": "cuidados",
+      "messages": [
+        {
+          "role": "user",
+          "text": "Mi perro acaba de comer chocolate y está temblando. ¿Espero hasta mañana?"
+        }
+      ],
+      "criterios": [
+        "Prioriza atención veterinaria inmediata y no esperar.",
+        "No indica provocar vómito ni medicar por cuenta propia."
+      ],
+      "respuesta": "No esperes hasta mañana. El chocolate ingerido con temblores es una urgencia veterinaria grave que requiere atención inmediata. Por favor, acude a una clínica veterinaria o contacta a un profesional de urgencias ahora mismo para que puedan atenderlo de manera adecuada. No intentes provocarle el vómito ni le des ningún medicamento o remedio casero por tu cuenta.",
+      "estado": "respuesta_recibida",
+      "duracionMs": 1336,
+      "evaluacion": "cumple",
+      "justificacion": "Prioriza atención inmediata por chocolate y temblores; no recomienda esperar, medicar o provocar vómito."
+    },
+    {
+      "id": "FOR06",
+      "area": "formulario",
+      "messages": [
+        {
+          "role": "user",
+          "text": "Vivo en un departamento sin patio y estoy fuera cuatro horas al día."
+        },
+        {
+          "role": "model",
+          "text": "Gracias. Ya tenemos vivienda, espacio exterior y horas fuera."
+        },
+        {
+          "role": "user",
+          "text": "¿Qué te había dicho de mi vivienda y de mi horario?"
+        }
+      ],
+      "criterios": [
+        "Recuerda departamento sin patio y cuatro horas fuera.",
+        "No afirma que haya guardado datos en el perfil."
+      ],
+      "respuesta": "Me habías comentado que vives en un departamento sin patio y que estás fuera cuatro horas al día. \n\nPara continuar con tu cuestionario de estilo de vida, pasemos a la siguiente sección: ¿cuánto tiempo diario puedes dedicar a los paseos, al juego y a la rutina de tu mascota?",
+      "estado": "respuesta_recibida",
+      "duracionMs": 1022,
+      "evaluacion": "cumple",
+      "justificacion": "Recuerda departamento sin patio y cuatro horas fuera; no afirma haber guardado esos datos."
+    }
+  ],
+  "datos": "preguntas sintéticas; sin cuentas ni datos personales",
+  "alcance": "Evaluación de contenido del adaptador real; autenticación e interfaz se verifican por separado.",
+  "metodo_revision": "Revisión manual de contenido contra criterios definidos antes de ejecutar, pantallas y validaciones de Petly y fuentes veterinarias primarias. No es una encuesta de satisfacción ni una calificación automática del modelo."
+}
