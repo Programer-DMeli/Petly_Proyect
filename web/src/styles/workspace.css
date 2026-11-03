@@ -1394,3 +1394,15 @@
 .pet-card__compatibility.is-high { color: #126858; }
 .pet-card__compatibility.is-medium { color: #806000; }
 .pet-card__compatibility.is-low { color: #a5440a; }
+
+@media (max-width: 600px) {
+  .workspace--albergue .pet-ai-tools__buttons,
+  .workspace--albergue .pet-ai-result__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .workspace--albergue .pet-ai-tools__buttons > button,
+  .workspace--albergue .pet-ai-result__actions > button {
+    width: 100%;
+  }
+}
