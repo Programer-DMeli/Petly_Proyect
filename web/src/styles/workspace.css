@@ -84,6 +84,80 @@
 .workspace .actions {
   flex-wrap: wrap;
 }
+.workspace--albergue .pet-edit-form {
+  --pet-form-ink: #183d32;
+  --pet-form-muted: #667b71;
+}
+.workspace--albergue .pet-edit-form > fieldset > label[for='descripcion-mascota'] {
+  margin-top: 1.5rem;
+}
+.workspace--albergue #descripcion-mascota {
+  min-height: 7rem;
+  line-height: 1.55;
+  resize: vertical;
+}
+.workspace--albergue .pet-ai-tools {
+  display: grid;
+  gap: 1rem;
+  margin: 1.1rem 0 1.5rem;
+  padding: 1.15rem;
+  border: 1px solid #dce9df;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f5faf5, #fbfcf8);
+}
+.workspace--albergue .pet-ai-tools > .muted,
+.workspace--albergue .pet-ai-tools__note {
+  margin: 0;
+  color: var(--pet-form-muted);
+  line-height: 1.55;
+}
+.workspace--albergue .pet-ai-tools__buttons,
+.workspace--albergue .pet-ai-result__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+.workspace--albergue .pet-ai-result {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1rem;
+  border: 1px solid #d9e8df;
+  border-left: 4px solid var(--petly-primary);
+  border-radius: 12px;
+  background: #fff;
+}
+.workspace--albergue .pet-ai-result__heading h4 {
+  margin: 0.15rem 0 0.25rem;
+  color: var(--pet-form-ink);
+  font-size: 1.05rem;
+}
+.workspace--albergue .pet-ai-result__heading p,
+.workspace--albergue .pet-ai-result > p {
+  margin: 0;
+  line-height: 1.55;
+}
+.workspace--albergue .pet-ai-result__eyebrow {
+  color: var(--petly-primary-dark);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.workspace--albergue .pet-ai-result textarea {
+  min-height: 7rem;
+  resize: vertical;
+  line-height: 1.55;
+}
+.workspace--albergue .pet-photo-note {
+  margin-top: -0.35rem;
+  color: var(--pet-form-muted);
+}
+.workspace--albergue .pet-edit-form > fieldset > .actions:last-child {
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid #e3ebe5;
+}
 .app--workspace :where(button, a, input, textarea, select, summary):focus-visible {
   outline: 3px solid var(--petly-primary-dark);
   outline-offset: 4px;
