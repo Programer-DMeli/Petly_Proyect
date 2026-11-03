@@ -151,20 +151,32 @@ fun DetalleMascotaScreen(
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(score.porcentaje?.let { "$it% compatible" } ?: "Información insuficiente", style = MaterialTheme.typography.titleMedium)
-                                Text(score.mensaje)
-                                Text("Cobertura: ${score.cobertura}% · ${score.versionReglas}")
-                                score.criterios.forEach { criterion ->
-                                    Text("${criterion.nombre}: peso ${criterion.peso}% · " + (criterion.aporte?.let { "aporte %.2f puntos".format(it) } ?: "Dato desconocido"))
-                                    Text(criterion.explicacion)
-                                }
-                                Text("El total ponderado se redondea al entero más cercano. El albergue decide cada adopción.")
-                                if (!preview) {
-                                    OutlinedButton(onClick = onConsejos, enabled = !state.consultandoIA) { Text(if (state.consultandoIA) "Consultando…" else "Consultar o reintentar consejos Gemini") }
-                                    state.consejos?.let { advice ->
-                                        Text("Sugerencias complementarias · ${advice.estado}")
-                                        Text(advice.explicacion)
-                                        advice.recomendaciones.forEach { Text("• $it") }
+                                if (score.porcentaje == null) {
+                                    Text("Completa tu cuestionario para conocer cómo encajan tu hogar y ${mascota.nombre}.")
+                                } else if (preview) {
+                                    Text("Inicia sesión para ver una explicación personalizada de tu compatibilidad con ${mascota.nombre}.")
+                                } else {
+                                    LaunchedEffect(mascota.id, score) {
+                                        if (state.consejos == null && !state.consultandoIA) onConsejos()
                                     }
+                                    Text("¿Qué significa este match para ti?", fontWeight = FontWeight.SemiBold)
+                                    when {
+                                        state.consultandoIA -> {
+                                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = DetailDarkGreen)
+                                            Text("Estamos preparando tu explicación personalizada…")
+                                        }
+                                        state.consejos?.estado == "DISPONIBLE" -> {
+                                            val explanation = state.consejos
+                                            Text(explanation.explicacion)
+                                            explanation.recomendaciones.forEach { Text("• $it") }
+                                            Text("Explicación generada con IA", style = MaterialTheme.typography.labelSmall)
+                                        }
+                                        else -> {
+                                            Text("No pudimos preparar tu explicación en este momento.")
+                                            OutlinedButton(onClick = onConsejos) { Text("Volver a intentar") }
+                                        }
+                                    }
+                                    Text("La compatibilidad es orientativa. Conoce a ${mascota.nombre} y conversa con su albergue.", style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                         }

@@ -24,13 +24,30 @@ class GeminiConsejosServiceTest {
         var server = MockRestServiceServer.bindTo((RestTemplate) ReflectionTestUtils.getField(service,"http")).build();
         server.expect(requestTo("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"))
             .andExpect(header("x-goog-api-key", "fake"))
+            .andExpect(request -> {
+                String body = ((org.springframework.mock.http.client.MockClientHttpRequest) request).getBodyAsString();
+                var payload = new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
+                String prompt = payload.path("contents").get(0).path("parts").get(0).path("text").asText();
+                assertTrue(prompt.contains("Casa"));
+                assertTrue(prompt.contains("Luna"));
+                assertTrue(prompt.contains("Habla de tú"));
+                assertFalse(prompt.contains("privado@petly.test"));
+                assertFalse(prompt.contains("clave-privada"));
+            })
             .andRespond(withSuccess("{\"candidates\":[{\"finishReason\":\"STOP\",\"content\":{\"parts\":[{\"text\":\"{\\\"explicacion\\\":\\\"Rutina compatible.\\\",\\\"recomendaciones\\\":[\\\"Planifica paseos.\\\"],\\\"score\\\":1}\"}]}}]}", MediaType.APPLICATION_JSON));
-        var original = detail(); var result = service.explicar(original);
+        var original = detail();
+        original.put("nombre", "Luna");
+        original.put("hogar", Map.of("vivienda", "Casa", "horasFuera", 3,
+                "correo", "privado@petly.test", "password", "clave-privada"));
+        var result = service.explicar(original);
         assertEquals("DISPONIBLE", result.get("estado")); assertFalse(result.containsKey("score"));
         assertEquals(100, ((Map<?,?>) original.get("compatibilidad")).get("porcentaje")); server.verify();
     }
     @Test void invalidHttpAndTransportResponsesAreOptional() {
-        for (var response : List.of(withServerError(), withSuccess("{}", MediaType.APPLICATION_JSON),
+        for (var response : List.of(withServerError(),
+                withStatus(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"error\":{\"status\":\"UNAVAILABLE\",\"message\":\"This model is currently experiencing high demand.\"}}"), withSuccess("{}", MediaType.APPLICATION_JSON),
                 withSuccess("not-json", MediaType.APPLICATION_JSON), withException(new java.net.SocketTimeoutException()))) {
             var service = new GeminiConsejosService("fake", "gemini-2.5-flash", 1);
             var server = MockRestServiceServer.bindTo((RestTemplate) ReflectionTestUtils.getField(service,"http")).build();

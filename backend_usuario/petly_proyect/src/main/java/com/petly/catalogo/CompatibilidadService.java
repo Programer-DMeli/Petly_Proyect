@@ -67,6 +67,17 @@ public class CompatibilidadService {
         return withScore(catalogo.detail(mascotaId), perfiles.get(userId), reglas.obtener());
     }
 
+    public Map<String, Object> detalleParaExplicacion(long userId, long mascotaId) {
+        Map<String, Object> profile = perfiles.get(userId);
+        Map<String, Object> detail = withScore(catalogo.detail(mascotaId), profile, reglas.obtener());
+        Map<String, Object> household = new LinkedHashMap<>();
+        for (String field : List.of("vivienda", "horasFuera", "tieneNinos", "tieneOtrasMascotas")) {
+            if (profile.get(field) != null) household.put(field, profile.get(field));
+        }
+        detail.put("hogar", household);
+        return detail;
+    }
+
     static Map<String, Object> withScore(Map<String, Object> pet, Map<String, Object> profile) {
         return withScore(pet, profile, new ReglasCompatibilidadService.Reglas(30, 35, 35, 1));
     }

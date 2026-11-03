@@ -10,6 +10,30 @@ import com.petly.perfiles.PerfilService;
 
 class CompatibilidadServiceTest {
     @Test
+    void explicacionUsaSoloRespuestasDelUsuarioAutenticado() {
+        var catalogo = new CatalogoService(null, "") {
+            @Override public Map<String, Object> detail(long id) {
+                return petWithId(id, "Grande", "Alta", "Sociable", "Perro");
+            }
+        };
+        var perfiles = new PerfilService(null) {
+            @Override public Map<String, Object> get(long userId) {
+                var result = new LinkedHashMap<>(profile(true, userId == 7 ? "Casa" : "Departamento", 3, false, false));
+                result.put("correo", "privado@petly.test");
+                result.put("presupuesto", 350);
+                return result;
+            }
+        };
+        var service = new CompatibilidadService(catalogo, perfiles, defaultRules());
+        var first = service.detalleParaExplicacion(7, 1);
+        var second = service.detalleParaExplicacion(8, 1);
+        assertEquals(Map.of("vivienda", "Casa", "horasFuera", 3, "tieneNinos", false, "tieneOtrasMascotas", false), first.get("hogar"));
+        assertEquals("Departamento", ((Map<?, ?>) second.get("hogar")).get("vivienda"));
+        assertEquals(service.detalle(7, 1).get("compatibilidad"), first.get("compatibilidad"));
+        assertFalse(service.detalle(7, 1).containsKey("hogar"));
+    }
+
+    @Test
     void catalogoIncluyeTodosLosEstadosSinCambiarElPuntaje() {
         var disponible = petWithId(1, "Mediano", "Alta", "Sociable", "Perro");
         var enProceso = petWithId(2, "Mediano", "Alta", "Sociable", "Perro");

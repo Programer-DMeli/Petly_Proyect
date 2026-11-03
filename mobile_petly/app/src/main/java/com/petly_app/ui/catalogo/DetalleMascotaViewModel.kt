@@ -24,7 +24,7 @@ class DetalleMascotaViewModel(private val repository: CatalogoRepository, privat
             try { _state.value = _state.value.copy(consejos = repository.consejos(id), consultandoIA = false) }
             catch (e: Exception) {
                 if (e is CancellationException) throw e
-                _state.value = _state.value.copy(consultandoIA = false, consejos = com.petly_app.data.model.ConsejosIA("NO_DISPONIBLE", "No se pudo consultar Gemini. Puedes reintentar; el cálculo sigue disponible."))
+                _state.value = _state.value.copy(consultandoIA = false, consejos = com.petly_app.data.model.ConsejosIA("NO_DISPONIBLE", "No pudimos preparar tu explicación en este momento. Inténtalo de nuevo."))
             }
         }
     }

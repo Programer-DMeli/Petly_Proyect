@@ -17,6 +17,7 @@ public class MatchesController {
     }
     @PostMapping("/{id}/explicacion")
     public Map<String, Object> explicar(@PathVariable long id, Authentication auth) {
-        return gemini.explicar(detalle(id, auth));
+        return gemini.explicar(scores.detalleParaExplicacion(
+                Long.parseLong(((Claims) auth.getPrincipal()).getSubject()), id));
     }
 }
