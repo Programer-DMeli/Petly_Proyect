@@ -7,6 +7,7 @@ export default function CuestionarioPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
   const load = useCallback(async () => {
     setError('');
     try {
@@ -54,6 +55,31 @@ export default function CuestionarioPage() {
       {!profile ? (
         <button onClick={() => void load()}>Cargar cuestionario</button>
       ) : (
+        <>
+        <aside className="card" aria-labelledby="cuestionario-guia-titulo">
+          <h2 id="cuestionario-guia-titulo">Guía para completar el cuestionario</h2>
+          <p className="muted">
+            Avanza campo por campo. Tus respuestas se conservan mientras completas el formulario;
+            puedes guardar un borrador y continuar después.
+          </p>
+          <button
+            type="button"
+            className="secondary"
+            aria-expanded={showGuide}
+            aria-controls="cuestionario-pasos-guia"
+            onClick={() => setShowGuide(value => !value)}
+          >
+            {showGuide ? 'Ocultar guía' : 'Mostrar guía'}
+          </button>
+          {showGuide && (
+            <ol id="cuestionario-pasos-guia">
+              <li><strong>Vivienda:</strong> indica dónde vivirá la mascota y el espacio disponible.</li>
+              <li><strong>Horas fuera:</strong> estima cuántas horas al día estará sola, de 0 a 24.</li>
+              <li><strong>Presupuesto:</strong> señala un monto mensual aproximado en soles.</li>
+              <li><strong>Convivencia:</strong> responde si hay niños u otras mascotas en casa.</li>
+            </ol>
+          )}
+        </aside>
         <form
           onSubmit={e => {
             e.preventDefault();
@@ -63,6 +89,7 @@ export default function CuestionarioPage() {
           <fieldset disabled={busy}>
             <label>
               Vivienda
+              <span className="muted">Describe casa o departamento y el espacio accesible para la mascota.</span>
               <input
                 maxLength={120}
                 value={profile.vivienda ?? ''}
@@ -72,6 +99,7 @@ export default function CuestionarioPage() {
             </label>
             <label>
               Horas fuera de casa por día
+              <span className="muted">Cuenta el tiempo habitual en que no habrá una persona en casa.</span>
               <input
                 type="number"
                 min={0}
@@ -85,6 +113,7 @@ export default function CuestionarioPage() {
             </label>
             <label>
               Presupuesto mensual (S/)
+              <span className="muted">Incluye alimento, higiene y cuidados veterinarios previsibles.</span>
               <input
                 type="number"
                 min={0}
@@ -99,6 +128,7 @@ export default function CuestionarioPage() {
             {(['tieneNinos', 'tieneOtrasMascotas'] as const).map(key => (
               <label key={key}>
                 {key === 'tieneNinos' ? '¿Viven niños en tu hogar?' : '¿Tienes otras mascotas?'}
+                <span className="muted">Responde según las personas y animales que convivirán con la mascota.</span>
                 <select
                   value={profile[key] === null ? '' : String(profile[key])}
                   onChange={e =>
@@ -120,6 +150,7 @@ export default function CuestionarioPage() {
             <p>Estado: {profile.finalizado ? 'Finalizado' : 'Borrador'}</p>
           </fieldset>
         </form>
+        </>
       )}
     </section>
   );
