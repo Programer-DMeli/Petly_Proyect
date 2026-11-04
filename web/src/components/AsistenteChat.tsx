@@ -16,6 +16,8 @@ export default function AsistenteChat() {
 function Conversation({ shelter }: { shelter: boolean }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
+  const [careSpecies, setCareSpecies] = useState('');
+  const [careBreed, setCareBreed] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -83,6 +85,14 @@ function Conversation({ shelter }: { shelter: boolean }) {
     setError('');
   }
 
+  function askForCare() {
+    const especie = careSpecies === 'perro' ? 'perro' : 'gato';
+    const raza = careBreed.trim();
+    setDraft(
+      `¿Qué cuidados básicos debo considerar para un ${especie}${raza ? ` de raza ${raza}` : ''}? Incluye alimentación general, actividad, adaptación del hogar y cuándo consultar al veterinario. No diagnostiques ni indiques medicamentos.`
+    );
+  }
+
   return (
     <>
       <button
@@ -114,6 +124,32 @@ function Conversation({ shelter }: { shelter: boolean }) {
                 ? 'Te ayudo con tu panel, solicitudes y cuidados de las mascotas.'
                 : 'Te ayudo con el catálogo, tu cuestionario, adopción y cuidados básicos.'}
             </p>
+            {!shelter && (
+              <fieldset className="petly-chat-care" disabled={sending || !!error}>
+                <legend>Cuidados según especie y raza</legend>
+                <label htmlFor="petly-care-species">Especie</label>
+                <select
+                  id="petly-care-species"
+                  value={careSpecies}
+                  onChange={event => setCareSpecies(event.target.value)}
+                >
+                  <option value="">Selecciona</option>
+                  <option value="perro">Perro</option>
+                  <option value="gato">Gato</option>
+                </select>
+                <label htmlFor="petly-care-breed">Raza (opcional)</label>
+                <input
+                  id="petly-care-breed"
+                  value={careBreed}
+                  maxLength={80}
+                  onChange={event => setCareBreed(event.target.value)}
+                  placeholder="Ej. mestizo, labrador"
+                />
+                <button type="button" disabled={!careSpecies} onClick={askForCare}>
+                  Preparar consulta de cuidados
+                </button>
+              </fieldset>
+            )}
             <div
               className="petly-chat-messages"
               role="log"

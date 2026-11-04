@@ -46,6 +46,29 @@
 .petly-chat small {
   font-size: 0.85rem;
 }
+.petly-chat-care {
+  border: 1px solid #cfe2d8;
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  align-items: center;
+  gap: 8px;
+}
+.petly-chat-care legend {
+  font-weight: 600;
+  padding: 0 4px;
+}
+.petly-chat-care input,
+.petly-chat-care select {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.petly-chat-care button {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
 .petly-chat-messages {
   flex: 1;
   min-height: 100px;
