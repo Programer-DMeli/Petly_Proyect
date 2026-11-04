@@ -1,10 +1,53 @@
 """Reglas transaccionales para las decisiones de solicitudes de adopción."""
 from django.db import transaction
+from django.conf import settings
+from django.core.mail import send_mail
+from django.db import connection
+from django.utils.html import strip_tags
 from django.utils import timezone
+import logging
 from rest_framework.exceptions import ValidationError
 
 from apps.mascotas.models import Mascota
 from .models import AdoptanteProfile, Autorizacion, SolicitudAdopcion, SolicitudEvento
+
+logger = logging.getLogger(__name__)
+
+
+def _notificar_cambio_estado_por_email(evento_id):
+    """Envía email tras confirmar la transición, respetando la preferencia Spring."""
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT email FROM preferencias_notificacion WHERE usuario_id = %s",
+                [SolicitudEvento.objects.select_related("solicitud").get(pk=evento_id).solicitud.adoptante_id],
+            )
+            preferencia = cursor.fetchone()
+        evento = SolicitudEvento.objects.select_related(
+            "solicitud__adoptante", "solicitud__mascota", "solicitud__albergue"
+        ).get(pk=evento_id)
+        usuario = evento.solicitud.adoptante
+        if not usuario or not usuario.email:
+            return
+        # Si aún no hay fila de preferencias, coincide con el default de Spring: canales activos.
+        if preferencia and not preferencia[0]:
+            return
+        mensaje = (
+            f"{evento.get_tipo_display()} para {evento.solicitud.mascota.nombre}.\n\n"
+            f"{evento.descripcion or 'El estado de tu solicitud cambió a ' + evento.estado_nuevo + '.'}\n"
+            f"Albergue: {evento.solicitud.albergue.nombre}.\n"
+            f"Consulta el detalle en Petly: {settings.FRONTEND_URL}/adoptante/solicitudes/{evento.solicitud_id}"
+        )
+        send_mail(
+            subject=f"Actualización de tu solicitud de adopción — {evento.solicitud.mascota.nombre}",
+            message=strip_tags(mensaje),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[usuario.email],
+            fail_silently=False,
+        )
+    except Exception:
+        # Una falla del correo no debe revertir la transición ya guardada.
+        logger.exception("No se pudo enviar el correo de actualización de solicitud evento=%s", evento_id)
 
 
 TRANSICIONES = {
@@ -129,7 +172,7 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         SolicitudAdopcion.Estado.CANCELADA: SolicitudEvento.Tipo.CANCELADA,
         SolicitudAdopcion.Estado.ENTREGADA: SolicitudEvento.Tipo.ENTREGADA,
     }[nuevo_estado]
-    SolicitudEvento.objects.create(
+    evento = SolicitudEvento.objects.create(
         solicitud=solicitud,
         tipo=tipo_evento,
         estado_anterior=actual,
@@ -139,4 +182,5 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         actor=usuario,
         visible_adoptante=True,
     )
+    transaction.on_commit(lambda evento_id=evento.pk: _notificar_cambio_estado_por_email(evento_id))
     return solicitud
