@@ -21,6 +21,7 @@ import com.petly_app.ui.catalogo.CatalogoUiState
 import com.petly_app.ui.perfil.CuestionarioScreen
 import com.petly_app.ui.perfil.DisponibilidadUiState
 import com.petly_app.ui.perfil.PerfilUiState
+import com.petly_app.ui.perfil.NotificacionesState
 
 enum class PetlyTab { INICIO, CATALOGO, NOVEDADES, PERFIL }
 
@@ -52,7 +53,9 @@ fun MainAppScreen(
     onSendChat: () -> Unit = {},
     onRetryChat: () -> Unit = {},
     onEditFailedChat: () -> Unit = {},
-    onClearChat: () -> Unit = {}
+    onClearChat: () -> Unit = {},
+    notificacionesState: NotificacionesState = NotificacionesState(),
+    onOpenNotifications: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(PetlyTab.INICIO) }
 
@@ -62,6 +65,7 @@ fun MainAppScreen(
         bottomBar = {
             PetlyBottomNavigationBar(
                 selectedTab = selectedTab,
+                unreadNotifications = notificacionesState.noLeidas,
                 onSelectTab = { selectedTab = it }
             )
         },
@@ -97,7 +101,7 @@ fun MainAppScreen(
                     )
                 }
                 PetlyTab.NOVEDADES -> {
-                    NovedadesScreen()
+                    NovedadesScreen(onOpenNotifications, notificacionesState.noLeidas)
                 }
                 PetlyTab.PERFIL -> {
                     CuestionarioScreen(
@@ -111,6 +115,7 @@ fun MainAppScreen(
                         onBack = { selectedTab = PetlyTab.INICIO },
                         onShare = onShareAutorizaciones,
                         onOpenKyc = onOpenKyc,
+                        onOpenNotifications = onOpenNotifications,
                         onDetailPet = onDetailPet,
                         onAddFranja = onAddFranja,
                         onRemoveFranja = onRemoveFranja,
@@ -126,6 +131,7 @@ fun MainAppScreen(
 @Composable
 fun PetlyBottomNavigationBar(
     selectedTab: PetlyTab,
+    unreadNotifications: Int = 0,
     onSelectTab: (PetlyTab) -> Unit
 ) {
     Surface(
@@ -155,7 +161,7 @@ fun PetlyBottomNavigationBar(
                 onClick = { onSelectTab(PetlyTab.CATALOGO) }
             )
             BottomNavItem(
-                label = "Novedades",
+                label = if (unreadNotifications > 0) "Novedades ($unreadNotifications)" else "Novedades",
                 icon = HomeIcons.Bell,
                 isSelected = selectedTab == PetlyTab.NOVEDADES,
                 onClick = { onSelectTab(PetlyTab.NOVEDADES) }

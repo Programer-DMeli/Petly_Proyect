@@ -513,6 +513,7 @@ class SolicitudEvento(models.Model):
         related_name="eventos_solicitud_registrados",
     )
     visible_adoptante = models.BooleanField(default=True)
+    leido_en = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Evento de solicitud"

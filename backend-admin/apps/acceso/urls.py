@@ -17,6 +17,7 @@ from .views import (
     UserRegistrationView,
 )
 from .kyc_views import VerificacionKycViewSet
+from .notificaciones import NotificacionViewSet
 from .integracion import (
     PerfilCompartidoView,
     PerfilesCompartidosListView,
@@ -24,6 +25,7 @@ from .integracion import (
 )
 
 router = DefaultRouter()
+router.register("notificaciones", NotificacionViewSet, basename="notificacion")
 router.register("postulantes", PostulanteViewSet, basename="postulante")
 router.register("solicitudes", SolicitudAdopcionViewSet, basename="solicitud")
 router.register("verificaciones-kyc", VerificacionKycViewSet, basename="verificacion-kyc")

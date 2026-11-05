@@ -2,7 +2,12 @@ package com.petly_app.core.navigation
 
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -16,6 +21,7 @@ import com.petly_app.ui.auth.*
 import com.petly_app.ui.catalogo.*
 import com.petly_app.ui.perfil.*
 import com.petly_app.ui.screen.MainAppScreen
+import kotlinx.coroutines.delay
 
 private object Routes {
     const val LOGIN = "login"
@@ -46,6 +52,28 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
     key(authenticated, isPreview, resetToken) {
         val nav = rememberNavController()
         val privateGraph = resetToken == null && (authenticated || isPreview)
+        val notificationsFactory = remember(container, isPreview) {
+            viewModelFactory { initializer { NotificacionesViewModel(container.notificacionesApi, isPreview) } }
+        }
+        // Este almacén pertenece a la sesión; cerrar sesión elimina también los avisos en memoria.
+        val notificationsStore = remember { ViewModelStore() }
+        val notificationsOwner = remember {
+            object : ViewModelStoreOwner {
+                override val viewModelStore = notificationsStore
+            }
+        }
+        DisposableEffect(notificationsStore) { onDispose { notificationsStore.clear() } }
+        val notificationsVm: NotificacionesViewModel = viewModel(viewModelStoreOwner = notificationsOwner, factory = notificationsFactory)
+        val notificationsState by notificationsVm.state.collectAsStateWithLifecycle()
+        val lifecycle = LocalLifecycleOwner.current.lifecycle
+        LaunchedEffect(privateGraph, lifecycle) {
+            if (privateGraph) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    notificationsVm.load()
+                    delay(30_000)
+                }
+            }
+        }
         NavHost(navController = nav, startDestination = if (privateGraph) Routes.CATALOG else if (resetToken != null) "recuperacion" else Routes.LOGIN) {
             if (!privateGraph) {
                 composable(Routes.LOGIN) {
@@ -112,6 +140,8 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     }
 
                     MainAppScreen(
+                        notificacionesState = notificationsState,
+                        onOpenNotifications = { nav.navigate("notificaciones") { launchSingleTop = true } },
                         chatState = chatState,
                         onOpenChat = chatVm::open,
                         onEditChat = chatVm::edit,
@@ -149,7 +179,13 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     }
                     val vm: PerfilViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    CuestionarioScreen(state, onRefreshProfile = vm::refreshSummary, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }))
+                    CuestionarioScreen(state, onRefreshProfile = vm::refreshSummary, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }), onOpenNotifications = { nav.navigate("notificaciones") { launchSingleTop = true } })
+                }
+                composable("notificaciones") {
+                    LaunchedEffect(Unit) { notificationsVm.load() }
+                    NotificacionesScreen(notificationsState, { notificationsVm.load() }, notificationsVm::read,
+                        notificationsVm::readAll, { notificationsVm.load(more = true) },
+                        onBack = { nav.popBackStack() })
                 }
                 composable("autorizaciones") {
                     val factory = remember(container) { viewModelFactory { initializer { AutorizacionViewModel(container.autorizaciones) } } }

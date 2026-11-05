@@ -55,6 +55,7 @@ fun CuestionarioScreen(
     onShare: (() -> Unit)? = null,
     onDetailPet: (Long) -> Unit = {},
     onOpenKyc: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
     onAddFranja: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onRemoveFranja: (Long) -> Unit = {},
     onSaveDisponibilidad: () -> Unit = {},
@@ -72,6 +73,7 @@ fun CuestionarioScreen(
                 onOpenQuestionnaire = { currentSubScreen = "QUESTIONNAIRE" },
                 onOpenDisponibilidad = { currentSubScreen = "DISPONIBILIDAD" },
                 onOpenKyc = onOpenKyc,
+                onOpenNotifications = onOpenNotifications,
                 onDetailPet = onDetailPet,
                 onExit = onExit
             )

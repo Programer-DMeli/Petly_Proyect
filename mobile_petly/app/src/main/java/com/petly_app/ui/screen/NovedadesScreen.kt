@@ -50,13 +50,18 @@ private val novedadesDemo = listOf(
 )
 
 @Composable
-fun NovedadesScreen() {
+fun NovedadesScreen(onOpenNotifications: () -> Unit = {}, unreadNotifications: Int = 0) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(ScreenMintBackground)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
+        OutlinedButton(onClick = onOpenNotifications, modifier = Modifier.fillMaxWidth()) {
+            Icon(HomeIcons.Bell, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(if (unreadNotifications > 0) "Notificaciones · $unreadNotifications sin leer" else "Mis notificaciones")
+        }
         Text(
             text = "Novedades Petly",
             fontSize = 24.sp,
