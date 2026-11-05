@@ -115,11 +115,16 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
     }
   }
   async function generateDescription() {
-    if (!id) { setError('Guarda primero la mascota y su foto para pedir un borrador.'); return; }
-    if (file) { setError('Guarda primero la nueva foto; el proveedor usa la foto almacenada.'); return; }
     setBusy(true); setError(''); setSuccess('');
     try {
-      const result = await django<{ borrador: string }>(`/api/mascotas/${id}/generar-descripcion/`, { method: 'POST', body: json({}) });
+      const result = await django<{ borrador: string }>('/api/mascotas/generar-descripcion-borrador/', {
+        method: 'POST',
+        body: json({
+          ...draft,
+          edad_anos: draft.edad_anos === '' ? null : Number(draft.edad_anos),
+          edad_meses: draft.edad_meses === '' ? null : Number(draft.edad_meses),
+        }),
+      });
       setDescriptionSuggestion(result.borrador);
       setSuccess('Borrador generado. Puedes editarlo, descartarlo o aplicarlo al editor antes de guardar.');
     } catch (e) { setError(errorMessage(e)); }
@@ -308,14 +313,16 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
               onChange={e => setDraft({ ...draft, descripcion: e.target.value })}
             />
           </label>
-          {id && <div className="pet-ai-tools">
-            <p className="muted">Para sugerir temperamento se usa la foto y la descripción guardadas. Registra observaciones de conducta; una foto por sí sola deja el temperamento Por evaluar.</p>
+          <div className="pet-ai-tools">
+            <p className="muted">{id
+              ? 'La descripción IA usa los datos actuales del formulario. Para temperamento y mejora de foto se requiere la mascota y su foto guardadas.'
+              : 'Puedes sugerir la descripción con los datos del formulario antes de guardar. Temperamento y mejora de foto se habilitan después de guardar la mascota y su fotografía.'}</p>
             <div className="pet-ai-tools__buttons">
-              <button type="button" className="secondary" onClick={() => void generateDescription()}>
+              <button type="button" className="secondary" disabled={busy || !draft.nombre.trim()} onClick={() => void generateDescription()}>
                 Sugerir descripción con IA
               </button>
               <button type="button" disabled={busy || !id || !!file} onClick={() => void suggestTemperament()}>Sugerir temperamento con Gemini</button>
-              <button type="button" className="secondary" onClick={() => void improvePhoto()}>
+              <button type="button" className="secondary" disabled={busy || !id || !!file} onClick={() => void improvePhoto()}>
                 Proponer mejora de foto con IA
               </button>
             </div>
@@ -330,7 +337,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
               <button type="button" onClick={() => { setDraft(old => ({ ...old, temperamento: suggestion.etiqueta })); setSuggestion(null); setSuccess('Etiqueta aplicada al editor. Revisa y guarda para confirmar.'); }}>Aplicar al editor</button>
               <button type="button" className="secondary" onClick={() => setSuggestion(null)}>Descartar sugerencia</button></div></section>}
             <p className="muted pet-ai-tools__note">Las sugerencias no se guardan automáticamente. Revisa los cambios y confirma con “Guardar cambios de mascota”.</p>
-          </div>}
+          </div>
           <label>
             {id ? 'Reemplazar fotografía (opcional)' : 'Fotografía JPEG/PNG, máximo 5 MB'}
             <input

@@ -263,6 +263,23 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Usa una fotografía JPEG o PNG válida.")
         return photo
 
+
+class MascotaDescripcionBorradorSerializer(serializers.Serializer):
+    """Rasgos del formulario usados para generar una descripción antes de guardar."""
+
+    nombre = serializers.CharField(max_length=100)
+    especie = serializers.ChoiceField(choices=Mascota.Especie.choices)
+    raza = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    tamanio = serializers.ChoiceField(choices=Mascota.Tamanio.choices, required=False, allow_blank=True)
+    edad_anos = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=50)
+    edad_meses = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=11)
+    temperamento = serializers.ChoiceField(choices=Mascota.Temperamento.choices, required=False)
+    energia = serializers.ChoiceField(
+        choices=[("BAJA", "Baja"), ("MEDIA", "Media"), ("ALTA", "Alta"), ("POR_EVALUAR", "Por evaluar")],
+        required=False,
+    )
+    descripcion = serializers.CharField(max_length=2000, required=False, allow_blank=True)
+
     def validate(self, attrs):
         years = attrs.get("edad_anos", getattr(self.instance, "edad_anos", None))
         months = attrs.get("edad_meses", getattr(self.instance, "edad_meses", None))

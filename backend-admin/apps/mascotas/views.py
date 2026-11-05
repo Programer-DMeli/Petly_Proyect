@@ -26,6 +26,7 @@ from .serializers import (
     MascotaCreateUpdateSerializer,
     MascotaEstadoSerializer,
     MascotaFilter,
+    MascotaDescripcionBorradorSerializer,
 )
 
 
@@ -70,6 +71,30 @@ class MascotaViewSet(viewsets.ModelViewSet):
     def generar_descripcion(self, request, pk=None):
         """Solicita un borrador visual al proveedor; no guarda ni publica el texto."""
         mascota = self.get_object()
+        from .descripcion_ia import (
+            DescripcionIAError,
+            ErrorProveedorDescripcion,
+            ProveedorDescripcionNoConfigurado,
+            generar_borrador,
+        )
+
+        try:
+            borrador = generar_borrador(mascota)
+        except ProveedorDescripcionNoConfigurado as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except ErrorProveedorDescripcion as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        except DescripcionIAError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"borrador": borrador, "guardado": False}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"], url_path="generar-descripcion-borrador")
+    def generar_descripcion_borrador(self, request):
+        """Genera un borrador desde los campos del formulario sin crear la mascota."""
+        serializer = MascotaDescripcionBorradorSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        mascota = Mascota(**serializer.validated_data)
+
         from .descripcion_ia import (
             DescripcionIAError,
             ErrorProveedorDescripcion,
