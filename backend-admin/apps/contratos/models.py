@@ -68,3 +68,50 @@ class EventoWebhookFirma(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=["proveedor", "evento_id"], name="uniq_signature_provider_event")]
         ordering = ["recibido_en"]
+
+
+class SeguimientoPostAdopcion(models.Model):
+    """Visita o llamada programada para una adopción ya entregada (US-36)."""
+
+    class Modalidad(models.TextChoices):
+        VISITA = "VISITA", "Visita"
+        LLAMADA = "LLAMADA", "Llamada"
+
+    class Estado(models.TextChoices):
+        PROGRAMADO = "PROGRAMADO", "Programado"
+        REALIZADO = "REALIZADO", "Realizado"
+        CANCELADO = "CANCELADO", "Cancelado"
+
+    solicitud = models.ForeignKey(
+        "acceso.SolicitudAdopcion",
+        on_delete=models.PROTECT,
+        related_name="seguimientos_post_adopcion",
+        limit_choices_to={"estado": "ENTREGADA"},
+    )
+    programado_para = models.DateTimeField(db_index=True)
+    modalidad = models.CharField(max_length=10, choices=Modalidad.choices)
+    estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PROGRAMADO, db_index=True)
+    notas = models.CharField(max_length=500, blank=True)
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="seguimientos_post_adopcion_creados",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["programado_para", "id"]
+        indexes = [models.Index(fields=["estado", "programado_para"])]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+        if self.solicitud_id and self.solicitud.estado != "ENTREGADA":
+            raise ValidationError({"solicitud": "El seguimiento requiere una adopción entregada."})
+
+    def __str__(self):
+        return f"Seguimiento {self.get_modalidad_display()} · solicitud {self.solicitud_id} · {self.programado_para:%Y-%m-%d %H:%M}"
