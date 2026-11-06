@@ -70,7 +70,10 @@ def mejorar_foto(mascota):
     use_gemini = not endpoint and not token
     if use_gemini:
         token = settings.GEMINI_API_KEY
-        model = os.getenv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image").strip()
+        model = os.getenv(
+            "US27_GEMINI_IMAGE_MODEL",
+            os.getenv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image"),
+        ).strip()
         if not token:
             raise ProveedorFotoNoConfigurado("La mejora de fotografías no está disponible. Contacta al administrador.")
         if not re.fullmatch(r"[a-zA-Z0-9.-]+", model):
