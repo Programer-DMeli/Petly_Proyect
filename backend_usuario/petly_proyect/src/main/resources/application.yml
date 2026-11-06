@@ -6,6 +6,11 @@ spring:
     # Se conserva el nombre original del proyecto.
     name: petly_proyect
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 21MB
+
   datasource:
     # Base compartida `database_petly` en XAMPP (MariaDB 10.4.32, puerto 3306).
     # Sobrescribir por variables de entorno en Windows; ver .env.example.
