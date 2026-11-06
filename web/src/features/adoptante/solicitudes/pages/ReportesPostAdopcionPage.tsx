@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Feedback from '../../../../components/Feedback';
 import PrivateDjangoImage from '../../../../components/PrivateDjangoImage';
-import { django, errorMessage } from '../../../../services/http';
+import { errorMessage, spring } from '../../../../services/http';
 
 type Bienestar = 'EXCELENTE' | 'BUENO' | 'REGULAR' | 'PREOCUPANTE';
 type Foto = { id: number; mime_type: string; tamaño_bytes: number; descarga_url: string };
@@ -47,7 +47,7 @@ export default function ReportesPostAdopcionPage() {
 
   async function load() {
     try {
-      const result = await django<Seguimiento[] | { results: Seguimiento[] }>('/api/contratos/seguimientos/');
+      const result = await spring<Seguimiento[] | { results: Seguimiento[] }>('/api/seguimientos/adoptante');
       setRows(Array.isArray(result) ? result : result.results);
       setError('');
     } catch (cause) { setError(errorMessage(cause)); }
@@ -77,7 +77,7 @@ export default function ReportesPostAdopcionPage() {
       body.append('estado_bienestar', bienestar);
       body.append('observaciones', observaciones.trim());
       fotos.forEach(file => body.append('fotos', file));
-      await django('/api/contratos/reportes-seguimiento/', { method: 'POST', body });
+      await spring('/api/seguimientos/adoptante', { method: 'POST', body });
       setActiveId(null); setFotos([]); setBienestar('BUENO'); setObservaciones('');
       setSuccess('Reporte enviado al albergue.'); await load();
     } catch (cause) { setError(errorMessage(cause)); }
