@@ -37,6 +37,21 @@ class NotificacionesScreenTest {
         ui.onNodeWithText("0 sin leer").performScrollTo().assertIsDisplayed()
     }
 
+    @Test fun avisoDeCoincidenciaAbrePerfilSinMostrarSolicitud() {
+        var opened: Long? = null
+        var read: Long? = null
+        val aviso = NotificacionDto(2, null, 25, "Luna", "Huellitas", "Nueva mascota para ti",
+            "Una nueva mascota coincide con tus criterios guardados.", "", "DISPONIBLE", "2026-11-05T05:00:00Z", null, "NUEVA_COINCIDENCIA")
+        ui.setContent {
+            MaterialTheme {
+                NotificacionesScreen(NotificacionesState(items = listOf(aviso)), {}, { read = it }, {}, {}, onOpenPet = { opened = it })
+            }
+        }
+        ui.onNodeWithText("Solicitud #", substring = true).assertDoesNotExist()
+        ui.onNodeWithText("Nueva · Nueva mascota para ti").performScrollTo().performClick()
+        ui.runOnIdle { assertEquals(25L, opened); assertEquals(2L, read) }
+    }
+
     @Test fun errorDeRedOfreceReintentoYNoMuestraFalsoEstadoVacio() {
         var retries = 0
         ui.setContent {

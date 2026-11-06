@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from apps.mascotas.models import Mascota
 from .kyc_storage import PrivateKycStorage, nombre_archivo_kyc
 
 
@@ -478,9 +479,10 @@ class SolicitudAdopcion(models.Model):
 
 
 class SolicitudEvento(models.Model):
-    """Evento inmutable del seguimiento cronológico de una solicitud (US-08)."""
+    """Evento de solicitud o aviso de una nueva mascota coincidente."""
 
     class Tipo(models.TextChoices):
+        NUEVA_COINCIDENCIA = "NUEVA_COINCIDENCIA", "Nueva mascota para ti"
         REGISTRO_HISTORICO = "REGISTRO_HISTORICO", "Registro histórico"
         SOLICITUD_CREADA = "SOLICITUD_CREADA", "Solicitud creada"
         OBSERVADA = "OBSERVADA", "Solicitud observada"
@@ -499,7 +501,10 @@ class SolicitudEvento(models.Model):
         on_delete=models.CASCADE,
         related_name="eventos",
         verbose_name="Solicitud",
+        null=True, blank=True,
     )
+    destinatario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name="avisos_mascotas")
+    mascota_coincidente = models.ForeignKey("mascotas.Mascota", on_delete=models.CASCADE, null=True, blank=True, related_name="avisos_coincidencia")
     tipo = models.CharField(max_length=24, choices=Tipo.choices, db_index=True)
     estado_anterior = models.CharField(max_length=15, blank=True)
     estado_nuevo = models.CharField(max_length=15, blank=True)
@@ -516,13 +521,15 @@ class SolicitudEvento(models.Model):
     leido_en = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        constraints = [models.UniqueConstraint(fields=["destinatario", "mascota_coincidente"], name="aviso_unico_adoptante_mascota")]
         verbose_name = "Evento de solicitud"
         verbose_name_plural = "Eventos de solicitudes"
         ordering = ["ocurrido_en", "id"]
         indexes = [models.Index(fields=["solicitud", "ocurrido_en"])]
 
     def __str__(self):
-        return f"{self.solicitud_id}: {self.get_tipo_display()} ({self.ocurrido_en:%Y-%m-%d %H:%M})"
+        titular = self.solicitud_id or f"adoptante {self.destinatario_id}"
+        return f"{titular}: {self.get_tipo_display()} ({self.ocurrido_en:%Y-%m-%d %H:%M})"
 
 
 class FotoHogar(models.Model):
@@ -534,3 +541,14 @@ class FotoHogar(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["solicitud", "sha256"], name="foto_hogar_unica")]
+
+
+class CriteriosAviso(models.Model):
+    """Una búsqueda guardada por cuenta; todos los filtros se combinan con AND."""
+    adoptante = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    activo = models.BooleanField(default=False)
+    especie = models.CharField(max_length=10, blank=True, choices=Mascota.Especie.choices)
+    tamanio = models.CharField(max_length=10, blank=True, choices=Mascota.Tamanio.choices)
+    temperamento = models.CharField(max_length=20, blank=True, choices=Mascota.Temperamento.choices)
+    edad_min_meses = models.PositiveSmallIntegerField(null=True, blank=True)
+    edad_max_meses = models.PositiveSmallIntegerField(null=True, blank=True)

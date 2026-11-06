@@ -117,6 +117,11 @@ class Mascota(models.Model):
     def __str__(self):
         return f"{self.nombre} ({self.get_especie_display()}) - {self.get_estado_display()}"
 
+    def save(self, *args, **kwargs):
+        from django.db import transaction
+        with transaction.atomic():
+            return super().save(*args, **kwargs)
+
     @property
     def edad_texto(self):
         """Edad legible: '2 años 3 meses'."""

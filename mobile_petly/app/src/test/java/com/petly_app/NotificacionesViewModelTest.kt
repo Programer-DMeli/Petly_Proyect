@@ -18,6 +18,9 @@ class NotificacionesViewModelTest {
     @After fun tearDown() { Dispatchers.resetMain() }
 
     private class FakeApi : NotificacionesApi {
+        var saved = CriteriosAvisoDto()
+        override suspend fun criterios() = saved
+        override suspend fun guardarCriterios(criterios: CriteriosAvisoDto): CriteriosAvisoDto { saved = criterios; return saved }
         val pages = mutableListOf<Int>()
         var rows = (1L..3L).map { id -> NotificacionDto(id, 10, 20, "Luna", "Huellitas",
             "Solicitud aprobada", "Tu solicitud fue aprobada", "", "APROBADA", "2026-11-05T05:10:00Z", null) }
@@ -79,10 +82,21 @@ class NotificacionesViewModelTest {
         assertEquals(2, vm.state.value.noLeidas)
     }
 
+    @Test fun criteriosPersistidosSeCarganYGuardan() = runTest {
+        val api = FakeApi()
+        val vm = NotificacionesViewModel(api)
+        vm.loadCriterios(); advanceUntilIdle()
+        assertFalse(vm.state.value.criterios!!.activo)
+        vm.saveCriterios(CriteriosAvisoDto(activo = true, especie = "GATO")); advanceUntilIdle()
+        assertTrue(vm.state.value.criteriosGuardados)
+        vm.loadCriterios(); advanceUntilIdle()
+        assertEquals("GATO", vm.state.value.criterios!!.especie)
+    }
+
     @Test fun previewNoConsultaDatosPrivados() = runTest {
         val api = FakeApi()
         val vm = NotificacionesViewModel(api, preview = true)
-        vm.load(); vm.read(1); vm.readAll(); advanceUntilIdle()
+        vm.load(); vm.read(1); vm.readAll(); vm.loadCriterios(); vm.saveCriterios(CriteriosAvisoDto(activo = true)); advanceUntilIdle()
         assertTrue(api.pages.isEmpty())
         assertTrue(vm.state.value.preview)
         assertTrue(vm.state.value.items.isEmpty())

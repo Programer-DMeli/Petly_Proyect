@@ -6,3 +6,6 @@ class AccesoConfig(AppConfig):
     name = "apps.acceso"
     label = "acceso"
     verbose_name = "Acceso"
+
+    def ready(self):
+        from . import avisos_mascotas  # noqa: F401

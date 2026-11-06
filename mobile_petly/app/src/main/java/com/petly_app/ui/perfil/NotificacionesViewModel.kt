@@ -3,6 +3,7 @@ package com.petly_app.ui.perfil
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.petly_app.core.network.apiErrorMessage
+import com.petly_app.data.remote.CriteriosAvisoDto
 import com.petly_app.data.remote.NotificacionDto
 import com.petly_app.data.remote.NotificacionesApi
 import kotlinx.coroutines.CancellationException
@@ -17,7 +18,9 @@ data class NotificacionesState(
     val busy: Boolean = false,
     val error: String? = null,
     val hasMore: Boolean = false,
-    val preview: Boolean = false
+    val preview: Boolean = false,
+    val criterios: CriteriosAvisoDto? = null,
+    val criteriosGuardados: Boolean = false
 )
 
 class NotificacionesViewModel(
@@ -43,6 +46,16 @@ class NotificacionesViewModel(
             items = (if (more) it.items + rows else rows).distinctBy { row -> row.id },
             noLeidas = response.no_leidas, hasMore = response.next != null
         ) }
+    }
+
+    fun loadCriterios() = execute {
+        val criterios = api.criterios()
+        mutable.update { it.copy(criterios = criterios, criteriosGuardados = false) }
+    }
+
+    fun saveCriterios(criterios: CriteriosAvisoDto) = execute {
+        val saved = api.guardarCriterios(criterios)
+        mutable.update { it.copy(criterios = saved, criteriosGuardados = true) }
     }
 
     fun read(id: Long) = execute {

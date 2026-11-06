@@ -185,7 +185,10 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     LaunchedEffect(Unit) { notificationsVm.load() }
                     NotificacionesScreen(notificationsState, { notificationsVm.load() }, notificationsVm::read,
                         notificationsVm::readAll, { notificationsVm.load(more = true) },
-                        onBack = { nav.popBackStack() })
+                        onBack = { nav.popBackStack() },
+                        onOpenPet = { nav.navigate("mascota/$it") { launchSingleTop = true } },
+                        onLoadCriterios = notificationsVm::loadCriterios,
+                        onSaveCriterios = notificationsVm::saveCriterios)
                 }
                 composable("autorizaciones") {
                     val factory = remember(container) { viewModelFactory { initializer { AutorizacionViewModel(container.autorizaciones) } } }
