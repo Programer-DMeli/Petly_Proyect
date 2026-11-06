@@ -2,8 +2,10 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import ContratoViewSet, GenerarContratoView, RegistrarEntregaContratoView, WebhookFirmaView
+from .seguimientos import SeguimientoPostAdopcionViewSet
 
 router = DefaultRouter()
+router.register("seguimientos", SeguimientoPostAdopcionViewSet, basename="seguimiento-post-adopcion")
 router.register("", ContratoViewSet, basename="contrato")
 
 urlpatterns = [

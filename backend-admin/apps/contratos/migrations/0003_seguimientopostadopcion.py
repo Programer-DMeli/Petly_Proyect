@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("acceso", "0017_revision_manual_kyc"),
+        ("acceso", "0019_solicitudevento_leido_en"),
         ("contratos", "0002_contratoadopcion_documento_firmado"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
