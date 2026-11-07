@@ -128,3 +128,29 @@ class SolicitudAsesoriaVeterinaria(models.Model):
 
     class Meta:
         ordering = ["-creado_en", "-id"]
+
+
+class ExpedientePostAdopcion(models.Model):
+    """Calificación y cierre formal del expediente de una adopción entregada (US-38)."""
+
+    solicitud = models.OneToOneField(
+        "acceso.SolicitudAdopcion",
+        on_delete=models.PROTECT,
+        related_name="expediente_post_adopcion",
+    )
+    calificacion_adaptacion = models.PositiveSmallIntegerField()
+    observaciones_cierre = models.TextField(blank=True)
+    cerrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="expedientes_post_adopcion_cerrados",
+    )
+    cerrado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-cerrado_en"]
+        constraints = [models.CheckConstraint(
+            check=models.Q(calificacion_adaptacion__gte=1, calificacion_adaptacion__lte=5),
+            name="contratos_exp_calif_1_5",
+        )]

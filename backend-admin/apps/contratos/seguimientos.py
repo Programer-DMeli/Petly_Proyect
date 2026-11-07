@@ -1,10 +1,12 @@
 from django.utils import timezone
+from django.db import IntegrityError, transaction
 from rest_framework import permissions, serializers, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from apps.acceso.models import SolicitudAdopcion, User
-from .models import SeguimientoPostAdopcion, SolicitudAsesoriaVeterinaria
+from .models import ExpedientePostAdopcion, SeguimientoPostAdopcion, SolicitudAsesoriaVeterinaria
 
 
 class SolicitudAsesoriaVeterinariaSerializer(serializers.ModelSerializer):
@@ -51,19 +53,44 @@ class GestionarSeguimientoPermission(permissions.BasePermission):
         return request.method in permissions.SAFE_METHODS or request.user.rol == User.Rol.ALBERGUE
 
 
+class CerrarExpedienteSerializer(serializers.Serializer):
+    calificacion_adaptacion = serializers.IntegerField(min_value=1, max_value=5)
+    observaciones_cierre = serializers.CharField(max_length=2000, required=False, allow_blank=True)
+    confirmar = serializers.BooleanField()
+
+    def validate_confirmar(self, value):
+        if not value:
+            raise serializers.ValidationError("Confirma el cierre del expediente.")
+        return value
+
+
+class ExpedientePostAdopcionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExpedientePostAdopcion
+        fields = ["id", "calificacion_adaptacion", "observaciones_cierre", "cerrado_en"]
+
+
 class SeguimientoPostAdopcionSerializer(serializers.ModelSerializer):
     solicitud_id = serializers.IntegerField()
     mascota_nombre = serializers.CharField(source="solicitud.mascota.nombre", read_only=True)
     adoptante_email = serializers.EmailField(source="solicitud.adoptante.email", read_only=True, allow_null=True)
     albergue_nombre = serializers.CharField(source="solicitud.albergue.nombre", read_only=True)
     asesorias_veterinarias = SolicitudAsesoriaVeterinariaSerializer(many=True, read_only=True)
+    expediente_cierre = serializers.SerializerMethodField()
 
     class Meta:
         model = SeguimientoPostAdopcion
         fields = ["id", "solicitud_id", "mascota_nombre", "adoptante_email", "programado_para",
                   "modalidad", "estado", "notas", "creado_en", "actualizado_en",
-                  "albergue_nombre", "asesorias_veterinarias"]
+                  "albergue_nombre", "asesorias_veterinarias", "expediente_cierre"]
         read_only_fields = ["id", "estado", "creado_en", "actualizado_en"]
+
+    def get_expediente_cierre(self, obj):
+        try:
+            expediente = obj.solicitud.expediente_post_adopcion
+        except ExpedientePostAdopcion.DoesNotExist:
+            return None
+        return ExpedientePostAdopcionSerializer(expediente).data
 
     def validate_solicitud_id(self, value):
         request = self.context["request"]
@@ -91,6 +118,8 @@ class SeguimientoPostAdopcionSerializer(serializers.ModelSerializer):
                 raise ValidationError({"solicitud_id": "El seguimiento requiere una adopción entregada."})
             if user.rol == User.Rol.ALBERGUE and solicitud.albergue.usuario_id != user.pk:
                 raise PermissionDenied("La adopción no pertenece a tu albergue.")
+            if hasattr(solicitud, "expediente_post_adopcion"):
+                raise ValidationError({"solicitud_id": "El expediente ya está cerrado; no se puede editar su seguimiento."})
         return attrs
 
 
@@ -102,7 +131,8 @@ class SeguimientoPostAdopcionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         qs = SeguimientoPostAdopcion.objects.select_related(
-            "solicitud__mascota", "solicitud__adoptante", "solicitud__albergue"
+            "solicitud__mascota", "solicitud__adoptante", "solicitud__albergue",
+            "solicitud__expediente_post_adopcion",
         ).prefetch_related("asesorias_veterinarias")
         if user.rol == User.Rol.ALBERGUE and hasattr(user, "albergue"):
             return qs.filter(solicitud__albergue=user.albergue)
@@ -116,8 +146,48 @@ class SeguimientoPostAdopcionViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         serializer.save()
 
+    @action(detail=True, methods=["post"], url_path="cerrar-expediente")
+    def cerrar_expediente(self, request, pk=None):
+        seguimiento = self.get_object()
+        if request.user.rol != User.Rol.ALBERGUE:
+            raise PermissionDenied("Solo el albergue responsable puede cerrar el expediente.")
+        if seguimiento.estado == SeguimientoPostAdopcion.Estado.CANCELADO:
+            return Response({"detail": "No se puede cerrar desde un seguimiento cancelado."}, status=409)
+        serializer = CerrarExpedienteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        solicitud = seguimiento.solicitud
+        otros_pendientes = SeguimientoPostAdopcion.objects.filter(
+            solicitud=solicitud,
+            estado=SeguimientoPostAdopcion.Estado.PROGRAMADO,
+        ).exclude(pk=seguimiento.pk)
+        if otros_pendientes.exists():
+            return Response({
+                "detail": "Cancela los otros seguimientos programados antes de cerrar el expediente."
+            }, status=409)
+        if hasattr(solicitud, "expediente_post_adopcion"):
+            return Response({"detail": "El expediente de esta adopción ya está cerrado."}, status=409)
+        try:
+            with transaction.atomic():
+                expediente = ExpedientePostAdopcion.objects.create(
+                    solicitud=solicitud,
+                    cerrado_por=request.user,
+                    calificacion_adaptacion=serializer.validated_data["calificacion_adaptacion"],
+                    observaciones_cierre=serializer.validated_data.get("observaciones_cierre", "").strip(),
+                )
+                if seguimiento.estado == SeguimientoPostAdopcion.Estado.PROGRAMADO:
+                    seguimiento.estado = SeguimientoPostAdopcion.Estado.REALIZADO
+                    seguimiento.save(update_fields=["estado", "actualizado_en"])
+        except IntegrityError:
+            return Response({"detail": "El expediente de esta adopción ya está cerrado."}, status=409)
+        return Response({
+            "detail": "Expediente de adopción cerrado.",
+            "expediente_cierre": ExpedientePostAdopcionSerializer(expediente).data,
+        }, status=status.HTTP_201_CREATED)
+
     def destroy(self, request, *args, **kwargs):
         seguimiento = self.get_object()
+        if hasattr(seguimiento.solicitud, "expediente_post_adopcion"):
+            return Response({"detail": "El expediente está cerrado; no se puede cancelar el seguimiento."}, status=409)
         if seguimiento.estado != SeguimientoPostAdopcion.Estado.PROGRAMADO:
             return Response({"detail": "Solo se pueden cancelar seguimientos programados."}, status=409)
         seguimiento.estado = SeguimientoPostAdopcion.Estado.CANCELADO
