@@ -55,7 +55,8 @@ fun MainAppScreen(
     onEditFailedChat: () -> Unit = {},
     onClearChat: () -> Unit = {},
     notificacionesState: NotificacionesState = NotificacionesState(),
-    onOpenNotifications: () -> Unit = {}
+    onOpenNotifications: () -> Unit = {},
+    onOpenSeguimientos: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(PetlyTab.INICIO) }
 
@@ -116,6 +117,7 @@ fun MainAppScreen(
                         onShare = onShareAutorizaciones,
                         onOpenKyc = onOpenKyc,
                         onOpenNotifications = onOpenNotifications,
+                        onOpenSeguimientos = onOpenSeguimientos,
                         onDetailPet = onDetailPet,
                         onAddFranja = onAddFranja,
                         onRemoveFranja = onRemoveFranja,

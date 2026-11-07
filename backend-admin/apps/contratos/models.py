@@ -104,7 +104,7 @@ class SeguimientoPostAdopcion(models.Model):
 
     class Meta:
         ordering = ["programado_para", "id"]
-        indexes = [models.Index(fields=["estado", "programado_para"])]
+        indexes = [models.Index(fields=["estado", "programado_para"], name="contratos_se_estado_992825_idx")]
 
     def clean(self):
         from django.core.exceptions import ValidationError
@@ -115,3 +115,16 @@ class SeguimientoPostAdopcion(models.Model):
 
     def __str__(self):
         return f"Seguimiento {self.get_modalidad_display()} · solicitud {self.solicitud_id} · {self.programado_para:%Y-%m-%d %H:%M}"
+
+
+class SolicitudAsesoriaVeterinaria(models.Model):
+    """Problema de adaptación comunicado al albergue durante el seguimiento."""
+
+    seguimiento = models.ForeignKey(
+        SeguimientoPostAdopcion, on_delete=models.PROTECT, related_name="asesorias_veterinarias",
+    )
+    problema = models.CharField(max_length=2000)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-creado_en", "-id"]

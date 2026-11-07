@@ -21,6 +21,8 @@ import com.petly_app.ui.auth.*
 import com.petly_app.ui.catalogo.*
 import com.petly_app.ui.perfil.*
 import com.petly_app.ui.screen.MainAppScreen
+import com.petly_app.ui.seguimiento.SeguimientosScreen
+import com.petly_app.ui.seguimiento.SeguimientosViewModel
 import kotlinx.coroutines.delay
 
 private object Routes {
@@ -140,6 +142,7 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     }
 
                     MainAppScreen(
+                        onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
                         notificacionesState = notificationsState,
                         onOpenNotifications = { nav.navigate("notificaciones") { launchSingleTop = true } },
                         chatState = chatState,
@@ -179,7 +182,15 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     }
                     val vm: PerfilViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    CuestionarioScreen(state, onRefreshProfile = vm::refreshSummary, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }), onOpenNotifications = { nav.navigate("notificaciones") { launchSingleTop = true } })
+                    CuestionarioScreen(state, onRefreshProfile = vm::refreshSummary, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }), onOpenNotifications = { nav.navigate("notificaciones") { launchSingleTop = true } }, onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } })
+                }
+                composable("seguimientos") {
+                    val factory = remember(container, isPreview) {
+                        viewModelFactory { initializer { SeguimientosViewModel(container.seguimientosApi, isPreview) } }
+                    }
+                    val vm: SeguimientosViewModel = viewModel(factory = factory)
+                    val state by vm.state.collectAsStateWithLifecycle()
+                    SeguimientosScreen(state, vm::load, vm::select, vm::edit, vm::submit, onBack = { nav.popBackStack() })
                 }
                 composable("notificaciones") {
                     LaunchedEffect(Unit) { notificationsVm.load() }

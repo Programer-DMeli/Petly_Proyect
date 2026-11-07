@@ -60,7 +60,8 @@ fun CuestionarioScreen(
     onRemoveFranja: (Long) -> Unit = {},
     onSaveDisponibilidad: () -> Unit = {},
     onRefreshProfile: () -> Unit = {},
-    onExit: () -> Unit = {}
+    onExit: () -> Unit = {},
+    onOpenSeguimientos: () -> Unit = {}
 ) {
     var currentSubScreen by rememberSaveable { mutableStateOf("DASHBOARD") }
 
@@ -74,6 +75,7 @@ fun CuestionarioScreen(
                 onOpenDisponibilidad = { currentSubScreen = "DISPONIBILIDAD" },
                 onOpenKyc = onOpenKyc,
                 onOpenNotifications = onOpenNotifications,
+                onOpenSeguimientos = onOpenSeguimientos,
                 onDetailPet = onDetailPet,
                 onExit = onExit
             )

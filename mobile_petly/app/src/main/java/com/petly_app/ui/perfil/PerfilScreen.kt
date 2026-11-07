@@ -42,7 +42,8 @@ fun PerfilScreen(
     onOpenNotifications: () -> Unit = {},
     onOpenKyc: () -> Unit = {},
     onDetailPet: (Long) -> Unit = {},
-    onExit: () -> Unit = {}
+    onExit: () -> Unit = {},
+    onOpenSeguimientos: () -> Unit = {}
 ) {
     val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
     var showFavoritesDialog by remember { mutableStateOf(false) }
@@ -79,6 +80,10 @@ fun PerfilScreen(
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
         ) {
             Text("Verificación de identidad (DNI)", fontWeight = FontWeight.SemiBold)
+        }
+
+        OutlinedButton(onClick = onOpenSeguimientos, modifier = Modifier.fillMaxWidth()) {
+            Text("Seguimiento y asesoría veterinaria gratuita")
         }
 
         // CARD 2: CUESTIONARIO DE ESTILO DE VIDA

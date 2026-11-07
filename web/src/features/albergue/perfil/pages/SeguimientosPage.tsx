@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
 import { django, json, errorMessage } from '../../../../services/http';
 
-type Seguimiento = { id: number; solicitud_id: number; mascota_nombre: string; adoptante_email: string | null; programado_para: string; modalidad: 'VISITA' | 'LLAMADA'; estado: string; notas: string };
+type Seguimiento = { id: number; solicitud_id: number; mascota_nombre: string; adoptante_email: string | null; programado_para: string; modalidad: 'VISITA' | 'LLAMADA'; estado: string; notas: string; asesorias_veterinarias?: { id: number; problema: string; creado_en: string }[] };
 type Draft = { solicitud_id: string; programado_para: string; modalidad: 'VISITA' | 'LLAMADA'; notas: string };
 const empty: Draft = { solicitud_id: '', programado_para: '', modalidad: 'VISITA', notas: '' };
 
@@ -55,6 +55,10 @@ export default function SeguimientosPage() {
     {rows.length === 0 ? <p>No tienes seguimientos programados.</p> : <ul>{rows.map(row => <li key={row.id}>
       <strong>{row.mascota_nombre}</strong> · Solicitud #{row.solicitud_id} · {row.modalidad === 'VISITA' ? 'Visita' : 'Llamada'} · {new Date(row.programado_para).toLocaleString('es-PE')} · {row.estado}
       {row.notas && <p>{row.notas}</p>}
+      {row.asesorias_veterinarias?.map(asesoria => <div key={asesoria.id}>
+        <strong>Asesoría veterinaria gratuita solicitada · {new Date(asesoria.creado_en).toLocaleString('es-PE')}</strong>
+        <p style={{ whiteSpace: 'pre-wrap' }}>{asesoria.problema}</p>
+      </div>)}
       {row.estado === 'PROGRAMADO' && <><button type="button" onClick={() => { setEditing(row.id); setDraft({ solicitud_id: String(row.solicitud_id), programado_para: new Date(Date.parse(row.programado_para) - 5 * 3600000).toISOString().slice(0, 16), modalidad: row.modalidad, notas: row.notas }); }}>Editar</button><button type="button" className="secondary" onClick={() => void remove(row.id)}>Cancelar</button></>}
     </li>)}</ul>}
   </section>;
