@@ -3,7 +3,7 @@ from django.core.files.storage import FileSystemStorage
 
 
 class PrivateContractStorage(FileSystemStorage):
-    """Contract files live outside MEDIA_ROOT and are served only by the authorized API."""
+    """Private contract and follow-up files outside MEDIA_ROOT, served only by authorized APIs."""
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("location", settings.PRIVATE_FILES_ROOT)

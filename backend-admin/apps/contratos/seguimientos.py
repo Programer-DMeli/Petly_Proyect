@@ -6,7 +6,13 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from apps.acceso.models import SolicitudAdopcion, User
-from .models import ExpedientePostAdopcion, SeguimientoPostAdopcion, SolicitudAsesoriaVeterinaria
+from .models import (
+    ExpedientePostAdopcion,
+    ReporteBienestarPostAdopcion,
+    SeguimientoPostAdopcion,
+    SolicitudAsesoriaVeterinaria,
+)
+from .reportes import ReporteBienestarReadSerializer
 
 
 class SolicitudAsesoriaVeterinariaSerializer(serializers.ModelSerializer):
@@ -77,12 +83,13 @@ class SeguimientoPostAdopcionSerializer(serializers.ModelSerializer):
     albergue_nombre = serializers.CharField(source="solicitud.albergue.nombre", read_only=True)
     asesorias_veterinarias = SolicitudAsesoriaVeterinariaSerializer(many=True, read_only=True)
     expediente_cierre = serializers.SerializerMethodField()
+    reporte_bienestar = serializers.SerializerMethodField()
 
     class Meta:
         model = SeguimientoPostAdopcion
         fields = ["id", "solicitud_id", "mascota_nombre", "adoptante_email", "programado_para",
                   "modalidad", "estado", "notas", "creado_en", "actualizado_en",
-                  "albergue_nombre", "asesorias_veterinarias", "expediente_cierre"]
+                  "albergue_nombre", "asesorias_veterinarias", "expediente_cierre", "reporte_bienestar"]
         read_only_fields = ["id", "estado", "creado_en", "actualizado_en"]
 
     def get_expediente_cierre(self, obj):
@@ -91,6 +98,13 @@ class SeguimientoPostAdopcionSerializer(serializers.ModelSerializer):
         except ExpedientePostAdopcion.DoesNotExist:
             return None
         return ExpedientePostAdopcionSerializer(expediente).data
+
+    def get_reporte_bienestar(self, obj):
+        try:
+            reporte = obj.reporte_bienestar
+        except ReporteBienestarPostAdopcion.DoesNotExist:
+            return None
+        return ReporteBienestarReadSerializer(reporte, context=self.context).data
 
     def validate_solicitud_id(self, value):
         request = self.context["request"]
@@ -118,6 +132,8 @@ class SeguimientoPostAdopcionSerializer(serializers.ModelSerializer):
                 raise ValidationError({"solicitud_id": "El seguimiento requiere una adopción entregada."})
             if user.rol == User.Rol.ALBERGUE and solicitud.albergue.usuario_id != user.pk:
                 raise PermissionDenied("La adopción no pertenece a tu albergue.")
+            if self.instance and hasattr(self.instance, "reporte_bienestar"):
+                raise ValidationError({"solicitud_id": "No se puede editar un seguimiento con un reporte ya enviado."})
             if hasattr(solicitud, "expediente_post_adopcion"):
                 raise ValidationError({"solicitud_id": "El expediente ya está cerrado; no se puede editar su seguimiento."})
         return attrs
@@ -132,8 +148,8 @@ class SeguimientoPostAdopcionViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs = SeguimientoPostAdopcion.objects.select_related(
             "solicitud__mascota", "solicitud__adoptante", "solicitud__albergue",
-            "solicitud__expediente_post_adopcion",
-        ).prefetch_related("asesorias_veterinarias")
+            "solicitud__expediente_post_adopcion", "reporte_bienestar",
+        ).prefetch_related("asesorias_veterinarias", "reporte_bienestar__fotos")
         if user.rol == User.Rol.ALBERGUE and hasattr(user, "albergue"):
             return qs.filter(solicitud__albergue=user.albergue)
         if user.rol == User.Rol.ADOPTANTE:
@@ -186,6 +202,8 @@ class SeguimientoPostAdopcionViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         seguimiento = self.get_object()
+        if hasattr(seguimiento, "reporte_bienestar"):
+            return Response({"detail": "No se puede cancelar un seguimiento con un reporte ya enviado."}, status=409)
         if hasattr(seguimiento.solicitud, "expediente_post_adopcion"):
             return Response({"detail": "El expediente está cerrado; no se puede cancelar el seguimiento."}, status=409)
         if seguimiento.estado != SeguimientoPostAdopcion.Estado.PROGRAMADO:

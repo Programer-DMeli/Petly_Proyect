@@ -154,3 +154,46 @@ class ExpedientePostAdopcion(models.Model):
             check=models.Q(calificacion_adaptacion__gte=1, calificacion_adaptacion__lte=5),
             name="contratos_exp_calif_1_5",
         )]
+
+
+class ReporteBienestarPostAdopcion(models.Model):
+    """Un reporte del adoptante asociado a una fecha del cronograma (US-37)."""
+
+    class EstadoBienestar(models.TextChoices):
+        EXCELENTE = "EXCELENTE", "Excelente"
+        BUENO = "BUENO", "Bueno"
+        REGULAR = "REGULAR", "Requiere atención"
+        PREOCUPANTE = "PREOCUPANTE", "Preocupante"
+
+    seguimiento = models.OneToOneField(
+        SeguimientoPostAdopcion,
+        on_delete=models.PROTECT,
+        related_name="reporte_bienestar",
+    )
+    estado_bienestar = models.CharField(max_length=12, choices=EstadoBienestar.choices)
+    observaciones = models.TextField(max_length=2000, blank=True)
+    enviado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-enviado_en"]
+
+    def __str__(self):
+        return f"Reporte {self.get_estado_bienestar_display()} · seguimiento {self.seguimiento_id}"
+
+
+class FotoReporteBienestar(models.Model):
+    reporte = models.ForeignKey(
+        ReporteBienestarPostAdopcion,
+        on_delete=models.CASCADE,
+        related_name="fotos",
+    )
+    archivo = models.ImageField(
+        upload_to="seguimientos/reportes/",
+        storage=PrivateContractStorage(),
+    )
+    mime_type = models.CharField(max_length=20, choices=[("image/jpeg", "JPEG"), ("image/png", "PNG")])
+    tamaño_bytes = models.PositiveIntegerField()
+    subido_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]

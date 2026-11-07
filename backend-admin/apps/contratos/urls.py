@@ -3,9 +3,11 @@ from rest_framework.routers import DefaultRouter
 
 from .views import ContratoViewSet, GenerarContratoView, RegistrarEntregaContratoView, WebhookFirmaView
 from .seguimientos import SeguimientoPostAdopcionViewSet, SolicitudAsesoriaVeterinariaViewSet
+from .reportes import ReporteBienestarPostAdopcionViewSet
 
 router = DefaultRouter()
 router.register("asesorias-veterinarias", SolicitudAsesoriaVeterinariaViewSet, basename="asesoria-veterinaria")
+router.register("reportes-seguimiento", ReporteBienestarPostAdopcionViewSet, basename="reporte-seguimiento")
 router.register("seguimientos", SeguimientoPostAdopcionViewSet, basename="seguimiento-post-adopcion")
 router.register("", ContratoViewSet, basename="contrato")
 
