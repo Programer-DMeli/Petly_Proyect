@@ -48,12 +48,21 @@ export async function request<T>(
         detail?: string;
         campos?: Record<string, unknown>;
         reintentarEnSegundos?: number;
+        [field: string]: unknown;
       };
       retryAfter = Number(data.reintentarEnSegundos) || retryAfter;
-      const fields = Object.entries(data.campos ?? {})
-        .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`)
+      const labels: Record<string, string> = {
+        foto_principal: 'Fotografía', nombre: 'Nombre de la mascota', especie: 'Especie',
+        sexo: 'Sexo', tamanio: 'Tamaño', temperamento: 'Temperamento', energia: 'Energía',
+        edad_anos: 'Edad: años', edad_meses: 'Edad: meses adicionales', raza: 'Raza',
+        descripcion: 'Descripción', non_field_errors: 'Formulario',
+      };
+      const validationFields = data.campos ?? (response.status === 400 ?
+        Object.fromEntries(Object.entries(data).filter(([, value]) => Array.isArray(value))) : {});
+      const fields = Object.entries(validationFields)
+        .map(([key, value]) => `${labels[key] ?? key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`)
         .join(' · ');
-      message = [data.message ?? data.error ?? data.detail ?? message, fields].filter(Boolean).join(' · ');
+      message = [data.message ?? data.error ?? data.detail ?? (fields ? '' : message), fields].filter(Boolean).join(' · ');
     } catch {
       /* conservar mensaje sin divulgar respuesta HTML */
     }

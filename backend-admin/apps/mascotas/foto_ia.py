@@ -6,8 +6,10 @@ Contrato del proveedor: POST JSON con ``prompt``, ``image`` (mimeType/base64) y
 temporal; Petly no lo persiste hasta que el albergue lo envía como
 ``foto_principal`` en la edición normal de la mascota.
 
-Configuración por variables de entorno: US27_IMAGE_API_URL, US27_IMAGE_API_TOKEN
-y US27_IMAGE_API_TIMEOUT_SECONDS. El endpoint debe usar HTTPS, excepto HTTP en
+Sin proveedor externo se utiliza la clave GEMINI_API_KEY existente y un modelo
+de imagen independiente (GEMINI_IMAGE_MODEL). Configuración externa opcional:
+US27_IMAGE_API_URL, US27_IMAGE_API_TOKEN y US27_IMAGE_API_TIMEOUT_SECONDS.
+El endpoint debe usar HTTPS, excepto HTTP en
 DEBUG. El proveedor debe realizar edición/encuadre real de imagen; no se aplica
 un filtro local que se presente como mejora de IA.
 """
@@ -15,6 +17,7 @@ import base64
 import binascii
 import json
 import os
+import re
 from io import BytesIO
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -64,7 +67,16 @@ def mejorar_foto(mascota):
     """Genera una versión mejorada temporal y conserva intacta la original."""
     endpoint = os.getenv("US27_IMAGE_API_URL", "").strip()
     token = os.getenv("US27_IMAGE_API_TOKEN", "").strip()
-    if not endpoint or not token:
+    use_gemini = not endpoint and not token
+    if use_gemini:
+        token = settings.GEMINI_API_KEY
+        model = os.getenv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image").strip()
+        if not token:
+            raise ProveedorFotoNoConfigurado("La mejora de fotografías no está disponible. Contacta al administrador.")
+        if not re.fullmatch(r"[a-zA-Z0-9.-]+", model):
+            raise ProveedorFotoNoConfigurado("El modelo de mejora de fotografías no es válido.")
+        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    elif not endpoint or not token:
         raise ProveedorFotoNoConfigurado(
             "Configura US27_IMAGE_API_URL y US27_IMAGE_API_TOKEN para mejorar fotografías."
         )
@@ -99,23 +111,40 @@ def mejorar_foto(mascota):
         "ni alteres partes de la mascota; no agregues texto, accesorios ni marcas. Mantén un resultado "
         "fotográfico realista y devuelve únicamente la imagen editada."
     )
-    payload = json.dumps({
+    image_base64 = base64.b64encode(original).decode("ascii")
+    body = {
         "prompt": prompt,
-        "image": {"mimeType": mime_type, "base64": base64.b64encode(original).decode("ascii")},
+        "image": {"mimeType": mime_type, "base64": image_base64},
         "outputMimeType": mime_type,
-    }).encode("utf-8")
+    }
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    if use_gemini:
+        body = {
+            "contents": [{"parts": [
+                {"text": prompt},
+                {"inlineData": {"mimeType": mime_type, "data": image_base64}},
+            ]}],
+            "generationConfig": {"responseModalities": ["TEXT", "IMAGE"]},
+        }
+        headers["x-goog-api-key"] = token
+    else:
+        headers["Authorization"] = f"Bearer {token}"
+    payload = json.dumps(body).encode("utf-8")
     try:
-        timeout = max(1, min(int(os.getenv("US27_IMAGE_API_TIMEOUT_SECONDS", "30")), 90))
-        request = Request(endpoint, data=payload, headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }, method="POST")
+        timeout = max(1, min(int(os.getenv("US27_IMAGE_API_TIMEOUT_SECONDS", "60" if use_gemini else "30")), 90))
+        request = Request(endpoint, data=payload, headers=headers, method="POST")
         with urlopen(request, timeout=timeout) as response:
             raw = response.read(64 * 1024 * 1024 + 1)
         if len(raw) > 64 * 1024 * 1024:
             raise ValueError("respuesta demasiado grande")
         result = json.loads(raw.decode("utf-8"))
+        if use_gemini:
+            candidate = result.get("candidates", [{}])[0]
+            if candidate.get("finishReason") != "STOP":
+                raise ValueError("respuesta incompleta")
+            image = next((part["inlineData"] for part in candidate.get("content", {}).get("parts", [])
+                          if not part.get("thought") and "inlineData" in part), {})
+            result = {"imageBase64": image.get("data"), "mimeType": image.get("mimeType")}
         if not isinstance(result, dict) or not isinstance(result.get("imageBase64"), str):
             raise ValueError("faltan campos de imagen")
         output_mime = result.get("mimeType")
@@ -124,10 +153,12 @@ def mejorar_foto(mascota):
             raise ValueError("imagen de salida demasiado grande")
         width, height = _validar_imagen(improved, output_mime)
     except HTTPError as exc:
+        if use_gemini and exc.code == 429:
+            raise ErrorProveedorFoto("Gemini no tiene cuota disponible para mejorar fotografías. Revisa la cuota del proyecto e inténtalo más tarde.") from exc
         raise ErrorProveedorFoto(f"El proveedor de imágenes respondió HTTP {exc.code}.") from exc
     except (URLError, TimeoutError, OSError) as exc:
         raise ErrorProveedorFoto("No fue posible conectar con el proveedor de imágenes.") from exc
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError, TypeError, binascii.Error) as exc:
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError, TypeError, KeyError, IndexError, AttributeError, binascii.Error) as exc:
         raise ErrorProveedorFoto("El proveedor no devolvió una imagen válida.") from exc
 
     extension = "jpg" if output_mime == "image/jpeg" else "png"

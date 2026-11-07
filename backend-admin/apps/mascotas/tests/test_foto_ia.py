@@ -5,6 +5,7 @@ import os
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, override_settings
@@ -97,7 +98,7 @@ class ProveedorFotoTest(SimpleTestCase):
             mejorar_foto(self.mascota_con_foto())
         urlopen.assert_called_once()
 
-    @override_settings(DEBUG=False)
+    @override_settings(DEBUG=False, GEMINI_API_KEY="")
     @patch.dict(os.environ, {"US27_IMAGE_API_URL": "", "US27_IMAGE_API_TOKEN": ""})
     @patch("apps.mascotas.foto_ia.urlopen")
     def test_sin_proveedor_no_intenta_procesar(self, urlopen):
@@ -106,6 +107,48 @@ class ProveedorFotoTest(SimpleTestCase):
         with self.assertRaises(ProveedorFotoNoConfigurado):
             mejorar_foto(self.mascota_con_foto())
         urlopen.assert_not_called()
+
+    @override_settings(GEMINI_API_KEY="test-gemini-key")
+    @patch.dict(os.environ, {"US27_IMAGE_API_URL": "", "US27_IMAGE_API_TOKEN": "",
+                             "GEMINI_IMAGE_MODEL": "gemini-2.5-flash-image"})
+    @patch("apps.mascotas.foto_ia.urlopen")
+    def test_usa_gemini_existente_para_editar_sin_proveedor_externo(self, urlopen):
+        improved = png_bytes("green")
+        urlopen.return_value = BytesIO(json.dumps({"candidates": [{
+            "finishReason": "STOP", "content": {"parts": [
+                {"text": "Fotografía mejorada"},
+                {"inlineData": {"mimeType": "image/png", "data": base64.b64encode(improved).decode()}},
+            ]},
+        }]}).encode())
+        mascota = self.mascota_con_foto()
+        result = mejorar_foto(mascota)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent")
+        self.assertEqual(request.get_header("X-goog-api-key"), "test-gemini-key")
+        self.assertIsNone(request.get_header("Authorization"))
+        body = json.loads(request.data)
+        self.assertEqual(base64.b64decode(body["contents"][0]["parts"][1]["inlineData"]["data"]), png_bytes())
+        self.assertEqual(body["generationConfig"]["responseModalities"], ["TEXT", "IMAGE"])
+        self.assertEqual(base64.b64decode(result["base64"]), improved)
+        self.assertEqual(mascota.foto_principal.name, "original.png")
+
+    @override_settings(GEMINI_API_KEY="test-gemini-key")
+    @patch.dict(os.environ, {"US27_IMAGE_API_URL": "", "US27_IMAGE_API_TOKEN": ""})
+    @patch("apps.mascotas.foto_ia.urlopen")
+    def test_gemini_sin_imagen_o_bloqueada_no_finge_una_mejora(self, urlopen):
+        for response in ({"candidates": []}, {"candidates": [{"finishReason": "SAFETY"}]},
+                         {"candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": "Sin imagen"}]}}]}):
+            with self.subTest(response=response):
+                urlopen.return_value = BytesIO(json.dumps(response).encode())
+                with self.assertRaises(ErrorProveedorFoto):
+                    mejorar_foto(self.mascota_con_foto())
+
+    @override_settings(GEMINI_API_KEY="test-gemini-key")
+    @patch.dict(os.environ, {"US27_IMAGE_API_URL": "", "US27_IMAGE_API_TOKEN": ""})
+    @patch("apps.mascotas.foto_ia.urlopen", side_effect=HTTPError("https://example.test", 429, "quota", {}, None))
+    def test_gemini_informa_falta_de_cuota_sin_exponer_respuesta_del_proveedor(self, urlopen):
+        with self.assertRaisesRegex(ErrorProveedorFoto, "cuota disponible"):
+            mejorar_foto(self.mascota_con_foto())
 
     @override_settings(DEBUG=False)
     @patch.dict(os.environ, {
