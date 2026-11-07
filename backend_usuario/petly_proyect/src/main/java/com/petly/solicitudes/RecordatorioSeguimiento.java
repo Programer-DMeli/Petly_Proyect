@@ -105,7 +105,8 @@ public class RecordatorioSeguimiento {
         return updatedAt;
     }
 
-    public void actualizarFechaLimite(LocalDateTime fechaLimite) {
+    public void actualizarDatos(Long adoptanteId, LocalDateTime fechaLimite) {
+        this.adoptanteId = adoptanteId;
         this.fechaLimite = fechaLimite;
     }
 

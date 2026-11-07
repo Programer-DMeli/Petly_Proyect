@@ -7,11 +7,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.acceso.models import SolicitudAdopcion
-from .models import ReporteBienestarPostAdopcion, SeguimientoPostAdopcion
+from .models import ExpedientePostAdopcion, ReporteBienestarPostAdopcion, SeguimientoPostAdopcion
 
 
 class FeedRecordatoriosSeguimientoView(APIView):
-    """Feed interno mínimo para que Spring programe recordatorios postadopción."""
+    """Feed interno mínimo para sincronizar el estado de recordatorios postadopción."""
 
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
@@ -30,15 +30,16 @@ class FeedRecordatoriosSeguimientoView(APIView):
         seguimientos = (
             SeguimientoPostAdopcion.objects.filter(
                 solicitud__estado=SolicitudAdopcion.Estado.ENTREGADA,
-                solicitud__expediente_post_adopcion__isnull=True,
                 solicitud__adoptante__spring_id__isnull=False,
             )
-            .exclude(estado=SeguimientoPostAdopcion.Estado.CANCELADO)
             .select_related("solicitud", "solicitud__adoptante")
             .annotate(
                 reporte_enviado=Exists(
                     ReporteBienestarPostAdopcion.objects.filter(seguimiento_id=OuterRef("pk"))
-                )
+                ),
+                expediente_cerrado=Exists(
+                    ExpedientePostAdopcion.objects.filter(solicitud_id=OuterRef("solicitud_id"))
+                ),
             )
             .order_by("programado_para", "id")
         )
@@ -50,6 +51,7 @@ class FeedRecordatoriosSeguimientoView(APIView):
                 "programado_para": seguimiento.programado_para,
                 "estado": seguimiento.estado,
                 "reporte_enviado": seguimiento.reporte_enviado,
+                "expediente_cerrado": seguimiento.expediente_cerrado,
             }
             for seguimiento in seguimientos
         ])
