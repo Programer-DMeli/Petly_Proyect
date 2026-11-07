@@ -31,9 +31,10 @@ class FeedRecordatoriosSeguimientoView(APIView):
             SeguimientoPostAdopcion.objects.filter(
                 solicitud__estado=SolicitudAdopcion.Estado.ENTREGADA,
                 solicitud__expediente_post_adopcion__isnull=True,
+                solicitud__adoptante__spring_id__isnull=False,
             )
             .exclude(estado=SeguimientoPostAdopcion.Estado.CANCELADO)
-            .select_related("solicitud")
+            .select_related("solicitud", "solicitud__adoptante")
             .annotate(
                 reporte_enviado=Exists(
                     ReporteBienestarPostAdopcion.objects.filter(seguimiento_id=OuterRef("pk"))
@@ -45,7 +46,7 @@ class FeedRecordatoriosSeguimientoView(APIView):
         return Response([
             {
                 "id": seguimiento.pk,
-                "adoptante_id": seguimiento.solicitud.adoptante_id,
+                "adoptante_spring_id": seguimiento.solicitud.adoptante.spring_id,
                 "programado_para": seguimiento.programado_para,
                 "estado": seguimiento.estado,
                 "reporte_enviado": seguimiento.reporte_enviado,
