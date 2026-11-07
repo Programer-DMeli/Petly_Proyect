@@ -88,6 +88,28 @@ class Infraestructura(models.Model):
     def __str__(self):
         return f"{self.albergue.nombre} - {self.get_tipo_display()}: {self.nombre}"
 
+
+class RespuestaAutomaticaChatbot(models.Model):
+    """Respuesta pública reutilizable, propiedad de un único albergue (US-33)."""
+
+    albergue = models.ForeignKey(Albergue, on_delete=models.CASCADE, related_name="respuestas_chatbot")
+    pregunta_clave = models.CharField(max_length=180)
+    disparadores = models.JSONField(default=list, blank=True)
+    respuesta = models.CharField(max_length=1200)
+    activa = models.BooleanField(default=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["pregunta_clave", "id"]
+        constraints = [models.UniqueConstraint(
+            fields=["albergue", "pregunta_clave"],
+            name="albergue_chatbot_pregunta_unica",
+        )]
+
+    def __str__(self):
+        return f"{self.albergue.nombre} · {self.pregunta_clave}"
+
 class EventoAdopcion(models.Model):
     albergue = models.ForeignKey(Albergue, on_delete=models.CASCADE, related_name="eventos_adopcion")
     titulo = models.CharField(max_length=150)
