@@ -16,6 +16,7 @@ import AutorizacionesPage from '../features/adoptante/perfil/pages/Autorizacione
 import CatalogoPage, { DetallePage } from '../features/adoptante/catalogo/pages/CatalogoPage';
 import CuestionarioPage from '../features/adoptante/perfil/pages/CuestionarioPage';
 import SeguimientoSolicitudPage from '../features/adoptante/solicitudes/pages/SeguimientoSolicitudPage';
+import ReportesPostAdopcionPage from '../features/adoptante/solicitudes/pages/ReportesPostAdopcionPage';
 import SolicitudesAdoptantePage from '../features/adoptante/solicitudes/pages/SolicitudesAdoptantePage';
 import PanelAlberguePage from '../features/albergue/perfil/pages/PanelAlberguePage';
 import MascotasPanel from '../features/albergue/perfil/pages/MascotasPanel';
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
           { path: 'preferencias-notificacion', element: <PreferenciasNotificacionPage /> },
           { path: 'solicitudes', element: <SolicitudesAdoptantePage /> },
           { path: 'solicitudes/:solicitudId', element: <SeguimientoSolicitudPage /> },
+          { path: 'seguimientos-postadopcion', element: <ReportesPostAdopcionPage /> },
         ],
       },
       {

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
+import PrivateDjangoImage from '../../../../components/PrivateDjangoImage';
 import { django, json, errorMessage } from '../../../../services/http';
 
-type Seguimiento = { id: number; solicitud_id: number; mascota_nombre: string; adoptante_email: string | null; programado_para: string; modalidad: 'VISITA' | 'LLAMADA'; estado: string; notas: string; asesorias_veterinarias?: { id: number; problema: string; creado_en: string }[]; expediente_cierre?: { id: number; calificacion_adaptacion: number; observaciones_cierre: string; cerrado_en: string } | null };
+type Seguimiento = { id: number; solicitud_id: number; mascota_nombre: string; adoptante_email: string | null; programado_para: string; modalidad: 'VISITA' | 'LLAMADA'; estado: string; notas: string; asesorias_veterinarias?: { id: number; problema: string; creado_en: string }[]; expediente_cierre?: { id: number; calificacion_adaptacion: number; observaciones_cierre: string; cerrado_en: string } | null; reporte_bienestar?: { id: number; estado_bienestar: string; estado_bienestar_display: string; observaciones: string; enviado_en: string; fotos: { id: number; mime_type: string; tamaño_bytes: number; descarga_url: string }[] } | null };
 type Draft = { solicitud_id: string; programado_para: string; modalidad: 'VISITA' | 'LLAMADA'; notas: string };
 const empty: Draft = { solicitud_id: '', programado_para: '', modalidad: 'VISITA', notas: '' };
 
@@ -76,6 +77,13 @@ export default function SeguimientosPage() {
         <strong>Asesoría veterinaria gratuita solicitada · {new Date(asesoria.creado_en).toLocaleString('es-PE')}</strong>
         <p style={{ whiteSpace: 'pre-wrap' }}>{asesoria.problema}</p>
       </div>)}
+      {row.reporte_bienestar && <article>
+        <strong>Reporte de bienestar · {row.reporte_bienestar.estado_bienestar_display} · {new Date(row.reporte_bienestar.enviado_en).toLocaleString('es-PE')}</strong>
+        {row.reporte_bienestar.observaciones && <p style={{ whiteSpace: 'pre-wrap' }}>{row.reporte_bienestar.observaciones}</p>}
+        <div className="actions">{row.reporte_bienestar.fotos.map(photo => <div key={photo.id} style={{ maxWidth: 220 }}>
+          <PrivateDjangoImage src={photo.descarga_url} alt={`Foto del reporte de ${row.mascota_nombre}`} />
+        </div>)}</div>
+      </article>}
       {row.expediente_cierre ? <div>
         <strong>Expediente cerrado · adaptación {row.expediente_cierre.calificacion_adaptacion}/5 · {new Date(row.expediente_cierre.cerrado_en).toLocaleString('es-PE')}</strong>
         {row.expediente_cierre.observaciones_cierre && <p style={{ whiteSpace: 'pre-wrap' }}>{row.expediente_cierre.observaciones_cierre}</p>}

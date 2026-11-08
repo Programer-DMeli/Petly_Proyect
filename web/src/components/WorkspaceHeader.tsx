@@ -20,6 +20,11 @@ const groups: Record<string, Group[]> = {
           description: 'Consulta el estado de cada encuentro.',
         },
         {
+          label: 'Seguimiento postadopción',
+          to: '/adoptante/seguimientos-postadopcion',
+          description: 'Envía reportes de bienestar y fotos de tu mascota adoptada.',
+        },
+        {
           label: 'Favoritos',
           to: '/adoptante/favoritos',
           description: 'Los compañeros que te robaron el corazón.',
