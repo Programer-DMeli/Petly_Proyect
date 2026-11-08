@@ -72,6 +72,11 @@ const groups: Record<string, Group[]> = {
       label: 'Mi albergue',
       items: [
         {
+          label: 'Respuestas del chatbot',
+          to: '/albergue/respuestas-chatbot',
+          description: 'Configura respuestas para preguntas frecuentes sobre tu albergue.',
+        },
+        {
           label: 'Datos del albergue',
           to: '/albergue?seccion=datos',
           description: 'Información institucional y contacto.',
