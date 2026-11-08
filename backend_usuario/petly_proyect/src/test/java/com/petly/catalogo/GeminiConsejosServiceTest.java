@@ -31,6 +31,9 @@ class GeminiConsejosServiceTest {
                 assertTrue(prompt.contains("Casa"));
                 assertTrue(prompt.contains("Luna"));
                 assertTrue(prompt.contains("Habla de tú"));
+                assertTrue(prompt.contains("2 frases cortas y 220 caracteres"));
+                assertTrue(prompt.contains("máximo 100 caracteres cada una"));
+                assertTrue(prompt.contains("No repitas el porcentaje"));
                 assertFalse(prompt.contains("privado@petly.test"));
                 assertFalse(prompt.contains("clave-privada"));
             })
@@ -54,6 +57,24 @@ class GeminiConsejosServiceTest {
             server.expect(anything()).andRespond(response);
             var original = detail(); assertEquals("NO_DISPONIBLE",service.explicar(original).get("estado"));
             assertEquals(100, ((Map<?,?>) original.get("compatibilidad")).get("porcentaje")); server.verify();
+        }
+    }
+
+    @Test void rejectsVerboseResponsesInsteadOfTruncatingTheirMeaning() throws Exception {
+        for (var answer : List.of(
+                Map.of("explicacion", "x".repeat(221), "recomendaciones", List.of()),
+                Map.of("explicacion", "Rutina compatible.", "recomendaciones", List.of("x".repeat(101))),
+                Map.of("explicacion", "Rutina compatible.", "recomendaciones", List.of("Pasea.", "Juega.", "Supervisa.")))) {
+            var service = new GeminiConsejosService("fake", "gemini-2.5-flash", 1);
+            var server = MockRestServiceServer.bindTo((RestTemplate) ReflectionTestUtils.getField(service, "http")).build();
+            var json = new com.fasterxml.jackson.databind.ObjectMapper();
+            String response = json.writeValueAsString(Map.of("candidates", List.of(Map.of(
+                    "finishReason", "STOP", "content", Map.of("parts", List.of(Map.of("text", json.writeValueAsString(answer))))))));
+            server.expect(anything()).andRespond(withSuccess(response, MediaType.APPLICATION_JSON));
+            var original = detail();
+            assertEquals("NO_DISPONIBLE", service.explicar(original).get("estado"));
+            assertEquals(100, ((Map<?, ?>) original.get("compatibilidad")).get("porcentaje"));
+            server.verify();
         }
     }
 }
