@@ -11,6 +11,8 @@ public interface RecordatorioSeguimientoRepository extends JpaRepository<Recorda
 
     Optional<RecordatorioSeguimiento> findBySeguimientoId(Long seguimientoId);
 
+    List<RecordatorioSeguimiento> findByAdoptanteIdOrderByFechaLimiteAsc(Long adoptanteId);
+
     List<RecordatorioSeguimiento> findByAdoptanteIdAndEstadoOrderByFechaLimiteAsc(
             Long adoptanteId, RecordatorioSeguimiento.Estado estado);
 
