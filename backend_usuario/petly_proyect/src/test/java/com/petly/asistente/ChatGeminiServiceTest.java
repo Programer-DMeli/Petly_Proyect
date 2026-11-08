@@ -3,10 +3,14 @@ package com.petly.asistente;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petly.common.exception.ApiException;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.http.client.MockClientHttpRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
@@ -94,7 +98,17 @@ class ChatGeminiServiceTest {
     }
 
     @Test void metricsClassifyOnlyTopicsAndLimiterIsPerUser() {
-        var metrics = new ChatMetrics();
+        Map<String, Long> counts = new HashMap<>();
+        JdbcTemplate db = new JdbcTemplate() {
+            @Override public int update(String sql, Object... args) {
+                counts.merge((String) args[0], 1L, Long::sum);
+                return 1;
+            }
+            @Override public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+                return requiredType.cast(counts.getOrDefault((String) args[0], 0L));
+            }
+        };
+        var metrics = new ChatMetrics(db);
         metrics.record("¿Cómo lleno mi perfil para adoptar y qué vacunas necesita?");
         var snapshot = metrics.snapshot();
         assertEquals(1L, ((java.util.Map<?, ?>) snapshot.get("temas")).get("perfil_cuestionario"));
