@@ -167,6 +167,11 @@ const groups: Record<string, Group[]> = {
           description: 'Administra las cuentas y sus permisos en Petly.',
         },
         {
+          label: 'Registro de actividad',
+          to: '/administracion/auditoria',
+          description: 'Consulta acciones sensibles y su trazabilidad.',
+        },
+        {
           label: 'Analítica de adopciones',
           to: '/administracion/analitica/adopciones',
           description: 'Consulta las adopciones entregadas por mes y especie.',
