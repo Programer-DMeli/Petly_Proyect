@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { setSession, type Session } from '../services/session';
+import NotificacionesAdoptanteMenu from './NotificacionesAdoptanteMenu';
 
 type Item = { label: string; to: string; description: string };
 type Group = { label: string; items: Item[] };
@@ -275,6 +276,12 @@ export default function WorkspaceHeader({ session }: { session: Session }) {
             </div>
           ))}
         </nav>
+        {role === 'ADOPTANTE' && (
+          <NotificacionesAdoptanteMenu
+            open={open === 'avisos'}
+            onToggle={button => toggle('avisos', button)}
+          />
+        )}
         <div className="workspace-account workspace-dropdown">
           <button
             type="button"
