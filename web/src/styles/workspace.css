@@ -347,6 +347,27 @@
   border-left: 3px solid var(--petly-primary);
   background: #f2f8f2;
 }
+.workspace-notifications__item--action {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.workspace-notifications__item--action:hover {
+  border-color: var(--petly-primary);
+}
+.workspace-notifications__mark-all {
+  width: 100%;
+  min-height: 38px !important;
+  margin: 0.1rem 0 0.55rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--petly-border);
+  border-radius: 9px;
+  color: var(--petly-primary-dark);
+  background: #edf6ef;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: left;
+}
 .workspace-notifications__item p,
 .workspace-notifications__item span,
 .workspace-notifications__item time {
