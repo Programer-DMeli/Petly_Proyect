@@ -45,6 +45,7 @@ htmlcov/
 # Migrations (keep __init__.py)
 migrations/*.py
 !migrations/__init__.py
+!apps/mensajeria/migrations/*.py
 
 # Type checking
 .mypy_cache/

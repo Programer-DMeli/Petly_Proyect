@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.albergues",
     "apps.mascotas",
     "apps.contratos",
+    "apps.mensajeria",
 ]
 
 MIDDLEWARE = [
