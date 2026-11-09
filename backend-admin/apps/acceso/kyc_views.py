@@ -11,6 +11,7 @@ from rest_framework.response import Response
 
 from .models import User, VerificacionKyc
 from .kyc_serializers import VerificacionKycSerializer
+from .auditoria import registrar_evento_auditoria
 
 
 class VerificacionKycViewSet(viewsets.ModelViewSet):
@@ -60,6 +61,13 @@ class VerificacionKycViewSet(viewsets.ModelViewSet):
             verificacion.save(update_fields=[
                 "estado", "motivo_revision", "fecha_revision", "revisado_por", "actualizado_en",
             ])
+            registrar_evento_auditoria(
+                request.user,
+                accion=f"KYC_{decision}",
+                recurso_tipo="VERIFICACION_KYC",
+                recurso_id=verificacion.pk,
+                ocurrido_en=verificacion.fecha_revision,
+            )
         return Response(self.get_serializer(verificacion).data)
 
     @action(detail=True, methods=["get"], url_path=r"documentos/(?P<tipo>anverso|reverso)")

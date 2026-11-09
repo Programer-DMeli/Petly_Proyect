@@ -77,6 +77,8 @@ petly:
     cookie-same-site: ${PETLY_SESSION_COOKIE_SAME_SITE:Lax}
     refresh-days: ${PETLY_SESSION_REFRESH_DAYS:30}
   django-api-base-url: ${DJANGO_API_BASE_URL:http://localhost:8000}
+  auditoria:
+    intervalo-ms: ${AUDITORIA_SINCRONIZACION_MS:60000}
   recordatorios:
     intervalo-ms: ${RECORDATORIOS_SINCRONIZACION_MS:60000}
     url-reportes: ${PETLY_URL_REPORTES:http://localhost:5173/adoptante/seguimientos-postadopcion}

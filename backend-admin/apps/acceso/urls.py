@@ -21,6 +21,7 @@ from .dispositivos import GestionarPushView, VincularPushView
 from .eventos_avisos import eventos_avisos
 from .analitica import AnaliticaAdopcionesView
 from .roles_internos import SincronizarRolInternoView
+from .auditoria_interna import FeedEventosAuditoriaInternoView
 from .notificaciones import FeedInternoCoincidenciasView, NotificacionViewSet
 from .integracion import (
     PerfilCompartidoView,
@@ -44,6 +45,7 @@ urlpatterns = [
     path("notificaciones/dispositivos/revocar/", GestionarPushView.as_view(), {"operacion": "revocar"}),
     path("interno/notificaciones/coincidencias/", FeedInternoCoincidenciasView.as_view(), name="feed_interno_coincidencias"),
     path("interno/roles/", SincronizarRolInternoView.as_view(), name="sincronizar_rol_interno"),
+    path("interno/auditoria/eventos/", FeedEventosAuditoriaInternoView.as_view(), name="feed_eventos_auditoria_interno"),
     path("solicitudes/<int:pk>/fotos-hogar/", FotosHogarView.as_view()),
     path("solicitudes/<int:pk>/fotos-hogar/<int:foto_id>/", FotoHogarView.as_view()),
     path("", include(router.urls)),

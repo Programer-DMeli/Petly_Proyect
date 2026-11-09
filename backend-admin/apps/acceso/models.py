@@ -690,6 +690,7 @@ class EventoAuditoria(models.Model):
     recurso_tipo = models.CharField(max_length=80, blank=True)
     recurso_id = models.CharField(max_length=100, blank=True)
     ocurrido_en = models.DateTimeField(default=timezone.now, editable=False)
+    sincronizado_spring_en = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
         db_table = "acceso_eventoauditoria"
@@ -700,4 +701,5 @@ class EventoAuditoria(models.Model):
             models.Index(fields=["actor_usuario_id", "ocurrido_en"], name="acceso_audit_actor_dt"),
             models.Index(fields=["accion", "ocurrido_en"], name="acceso_audit_accion_dt"),
             models.Index(fields=["ocurrido_en"], name="acceso_audit_fecha"),
+            models.Index(fields=["sincronizado_spring_en", "ocurrido_en"], name="acceso_audit_sync_dt"),
         ]

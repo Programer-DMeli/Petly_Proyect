@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.petly.common.exception.ApiException;
+import com.petly.auditoria.AuditoriaService;
 import com.petly.usuarios.dto.ActualizarRolRequest;
 import com.petly.usuarios.dto.UsuarioAdministracionResponse;
 
@@ -14,10 +15,15 @@ public class AdministracionUsuariosService {
 
     private final UsuarioRepository usuarios;
     private final SincronizarRolDjango sincronizadorDjango;
+    private final AuditoriaService auditoria;
 
-    public AdministracionUsuariosService(UsuarioRepository usuarios, SincronizarRolDjango sincronizadorDjango) {
+    public AdministracionUsuariosService(
+            UsuarioRepository usuarios,
+            SincronizarRolDjango sincronizadorDjango,
+            AuditoriaService auditoria) {
         this.usuarios = usuarios;
         this.sincronizadorDjango = sincronizadorDjango;
+        this.auditoria = auditoria;
     }
 
     @Transactional(readOnly = true)
@@ -60,6 +66,14 @@ public class AdministracionUsuariosService {
             objetivo.setTokenVersion(objetivo.getTokenVersion() + 1);
             usuarios.saveAndFlush(objetivo);
             sincronizadorDjango.sincronizar(objetivo);
+            Usuario actor = usuarios.findById(actorId)
+                    .orElseThrow(() -> new ApiException(401, "La sesión no identifica una cuenta válida."));
+            auditoria.registrar(
+                    actorId,
+                    actor.getRol().name(),
+                    "USUARIO_ROL_ACTUALIZADO",
+                    "USUARIO",
+                    Long.toString(usuarioId));
         }
         return UsuarioAdministracionResponse.desde(objetivo);
     }
