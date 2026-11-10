@@ -4,8 +4,8 @@ import Feedback from '../../components/Feedback';
 import { django, downloadDjango, errorMessage, json } from '../../services/http';
 import { getSession } from '../../services/session';
 
-type Message = { id: number; remitente_id: number; texto: string; creado_en: string; bienvenida_automatica: boolean; adjuntos: { id: number; nombre_original: string; descarga: string }[] };
-type Conversation = { id: number; solicitud_id: number; mascota: string; nombre_contacto: string; no_leidos: number; promedio_respuesta_horas: number | null; ultimo_mensaje: Message | null };
+type Message = { id: number; remitente_id: number; texto: string; creado_en: string; bienvenida_automatica: boolean; leido: boolean; adjuntos: { id: number; nombre_original: string; descarga: string }[] };
+type Conversation = { id: number; solicitud_id: number; mascota: string; nombre_contacto: string; no_leidos: number; promedio_respuesta_horas: number | null; ultimo_mensaje: Message | null; bloqueada: boolean; puede_enviar: boolean };
 type Thread = { conversacion: Conversation; mensajes: Message[] };
 
 export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGUE' }) {
@@ -71,9 +71,10 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
     setError(''); setSuccess('');
     try {
       if (action === 'bloquear') {
-        if (!window.confirm('¿Bloquear esta conversación? Se detendrán los mensajes para ambas personas.')) return;
+        if (!window.confirm('¿Bloquear a esta persona? Ya no podrá enviarte nuevos mensajes.')) return;
         await django(`/api/mensajeria/conversaciones/${id}/bloquear/`, { method: 'POST', body: json({}) });
-        setSuccess('Conversación bloqueada. No se aceptarán nuevos mensajes.');
+        setSuccess('Conversación bloqueada. La otra persona no podrá enviarte nuevos mensajes.');
+        await loadThread(); await loadList();
       } else {
         await django(`/api/mensajeria/conversaciones/${id}/reportar/`, { method: 'POST', body: json({ motivo: reason }) });
         setSuccess('El reporte quedó registrado para revisión.');
@@ -100,9 +101,10 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
       <div className="chat-directo-thread">
         {thread ? <>
           <header><h2>{thread.conversacion.nombre_contacto} · {thread.conversacion.mascota}</h2><p>Tiempo promedio de respuesta: {thread.conversacion.promedio_respuesta_horas == null ? 'sin datos' : `${thread.conversacion.promedio_respuesta_horas} h`}</p></header>
-          <div className="chat-directo-messages" aria-live="polite">{thread.mensajes.map(message => <article key={message.id} className={message.remitente_id === currentUserId ? 'chat-directo-message mine' : 'chat-directo-message'}><p>{message.texto}</p>{message.adjuntos.map(fileItem => <button key={fileItem.id} type="button" className="secondary" onClick={() => void downloadAttachment(fileItem.descarga, fileItem.nombre_original)}>{fileItem.nombre_original} · descargar</button>)}<small>{message.bienvenida_automatica ? 'Bienvenida automática · ' : ''}{new Date(message.creado_en).toLocaleString('es-PE')}</small></article>)}</div>
-          <form onSubmit={e => void send(e)}><label htmlFor="chat-directo-draft">Mensaje</label><textarea id="chat-directo-draft" maxLength={4000} value={draft} onChange={e => setDraft(e.target.value)} /><label>Adjunto (JPG, PNG o PDF; máximo 10 MB)<input type="file" accept="image/jpeg,image/png,application/pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} /></label>{file && <p>{file.name}</p>}<button disabled={busy || (!draft.trim() && !file)}>{busy ? 'Enviando…' : 'Enviar'}</button></form>
-          <div className="chat-directo-actions"><label>Motivo del reporte<select value={reason} onChange={e => setReason(e.target.value)}><option value="ACOSO">Acoso o amenazas</option><option value="FRAUDE">Fraude o suplantación</option><option value="CONTENIDO">Contenido inapropiado</option><option value="OTRO">Otro motivo</option></select></label><button type="button" className="secondary" onClick={() => void moderate('reportar')}>Reportar conversación</button><button type="button" className="danger" onClick={() => void moderate('bloquear')}>Bloquear conversación</button></div>
+          {thread.conversacion.bloqueada && <p role="status">Esta conversación tiene un bloqueo. {thread.conversacion.puede_enviar ? 'La otra persona no puede enviarte mensajes nuevos.' : 'Esta persona te bloqueó y no puedes enviarle mensajes.'}</p>}
+          <div className="chat-directo-messages" aria-live="polite">{thread.mensajes.map(message => <article key={message.id} className={message.remitente_id === currentUserId ? 'chat-directo-message mine' : 'chat-directo-message'}><p>{message.texto}</p>{message.adjuntos.map(fileItem => <button key={fileItem.id} type="button" className="secondary" onClick={() => void downloadAttachment(fileItem.descarga, fileItem.nombre_original)}>{fileItem.nombre_original} · descargar</button>)}<small>{message.bienvenida_automatica ? 'Bienvenida automática · ' : ''}{new Date(message.creado_en).toLocaleString('es-PE')}{message.remitente_id === currentUserId && message.leido ? ' · Leído' : ''}</small></article>)}</div>
+          <form onSubmit={e => void send(e)}><label htmlFor="chat-directo-draft">Mensaje</label><textarea id="chat-directo-draft" maxLength={4000} value={draft} onChange={e => setDraft(e.target.value)} disabled={!thread.conversacion.puede_enviar} /><label>Adjunto (JPG, PNG o PDF; máximo 10 MB)<input type="file" accept="image/jpeg,image/png,application/pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} disabled={!thread.conversacion.puede_enviar} /></label>{file && <p>{file.name}</p>}<button disabled={!thread.conversacion.puede_enviar || busy || (!draft.trim() && !file)}>{busy ? 'Enviando…' : 'Enviar'}</button></form>
+          <div className="chat-directo-actions"><label>Motivo del reporte<select value={reason} onChange={e => setReason(e.target.value)}><option value="ACOSO">Acoso o amenazas</option><option value="FRAUDE">Fraude o suplantación</option><option value="CONTENIDO">Contenido inapropiado</option><option value="OTRO">Otro motivo</option></select></label><button type="button" className="secondary" onClick={() => void moderate('reportar')}>Reportar conversación</button><button type="button" className="danger" disabled={thread.conversacion.bloqueada} onClick={() => void moderate('bloquear')}>{thread.conversacion.bloqueada ? 'Conversación bloqueada' : 'Bloquear conversación'}</button></div>
         </> : <p>Selecciona una conversación para ver los mensajes.</p>}
       </div>
     </div>

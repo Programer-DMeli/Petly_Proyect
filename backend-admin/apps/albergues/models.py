@@ -111,57 +111,6 @@ class RespuestaAutomaticaChatbot(models.Model):
         return f"{self.albergue.nombre} · {self.pregunta_clave}"
 
 
-class ConversacionAdopcion(models.Model):
-    """Canal privado entre un adoptante y un albergue (US-51)."""
-
-    adoptante = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="conversaciones_adopcion",
-        limit_choices_to={"rol": "ADOPTANTE"},
-    )
-    albergue = models.ForeignKey(
-        Albergue,
-        on_delete=models.CASCADE,
-        related_name="conversaciones_adopcion",
-    )
-    creada_en = models.DateTimeField(auto_now_add=True)
-    actualizada_en = models.DateTimeField(auto_now=True, db_index=True)
-
-    class Meta:
-        ordering = ["-actualizada_en", "-id"]
-        constraints = [models.UniqueConstraint(
-            fields=["adoptante", "albergue"],
-            name="conversacion_adoptante_albergue_unica",
-        )]
-
-    def __str__(self):
-        return f"Conversación {self.adoptante_id} · {self.albergue_id}"
-
-
-class MensajeConversacion(models.Model):
-    """Mensaje persistente dentro de una conversación de adopción (US-51)."""
-
-    conversacion = models.ForeignKey(
-        ConversacionAdopcion,
-        on_delete=models.CASCADE,
-        related_name="mensajes",
-    )
-    remitente = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="mensajes_adopcion",
-    )
-    contenido = models.CharField(max_length=4000)
-    creado_en = models.DateTimeField(auto_now_add=True, db_index=True)
-
-    class Meta:
-        ordering = ["creado_en", "id"]
-        indexes = [models.Index(fields=["conversacion", "creado_en"])]
-
-    def __str__(self):
-        return f"Mensaje {self.pk} · conversación {self.conversacion_id}"
-
 class EventoAdopcion(models.Model):
     albergue = models.ForeignKey(Albergue, on_delete=models.CASCADE, related_name="eventos_adopcion")
     titulo = models.CharField(max_length=150)
