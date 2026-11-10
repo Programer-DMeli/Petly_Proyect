@@ -34,17 +34,15 @@ public class SolicitudAdopcionService {
     private final RestTemplate restTemplate;
     private final String djangoApiBaseUrl;
     private final AlertaCompatibilidadService alertasCompatibilidad;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public SolicitudAdopcionService(
             RestTemplate restTemplate,
             @Value("${petly.django-api-base-url}") String djangoApiBaseUrl,
-            AlertaCompatibilidadService alertasCompatibilidad,
-            ObjectMapper objectMapper) {
+            AlertaCompatibilidadService alertasCompatibilidad) {
         this.restTemplate = restTemplate;
         this.djangoApiBaseUrl = djangoApiBaseUrl.replaceAll("/+$", "");
         this.alertasCompatibilidad = alertasCompatibilidad;
-        this.objectMapper = objectMapper;
     }
 
     public ResponseEntity<String> crear(CrearSolicitudAdopcionRequest request, String authorization, long adoptanteId) {
