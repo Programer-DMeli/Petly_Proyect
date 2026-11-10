@@ -1,13 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
 import { spring, json, errorMessage } from '../../../../services/http';
 import type { Profile } from '../../../../services/types';
+
+type QuestionnaireGuide = { campo: string; pregunta: string; orientacion: string; orden: number };
+const GUIDE_FIELDS = ['vivienda', 'horas_fuera', 'presupuesto', 'ninos', 'otras_mascotas'];
+
 export default function CuestionarioPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
+  const [guides, setGuides] = useState<QuestionnaireGuide[]>([]);
+  const [guideError, setGuideError] = useState('');
+  const [guideLoading, setGuideLoading] = useState(true);
+  const [guideIndex, setGuideIndex] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
   const load = useCallback(async () => {
     setError('');
     try {
@@ -19,6 +28,24 @@ export default function CuestionarioPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void spring<QuestionnaireGuide[]>('/api/asistente/cuestionario/guia', { signal: controller.signal })
+      .then(items => {
+        const available = new Map(items.map(item => [item.campo, item]));
+        setGuides(GUIDE_FIELDS.flatMap(field => {
+          const item = available.get(field);
+          return item ? [item] : [];
+        }));
+      })
+      .catch(cause => {
+        if (!controller.signal.aborted) setGuideError(errorMessage(cause));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setGuideLoading(false);
+      });
+    return () => controller.abort();
+  }, []);
   async function save(finalizado: boolean) {
     if (!profile) return;
     setBusy(true);
@@ -44,6 +71,17 @@ export default function CuestionarioPage() {
       setSuccess('');
     }
   };
+  const currentGuide = guides[guideIndex];
+  function moveGuide(nextIndex: number) {
+    const boundedIndex = Math.max(0, Math.min(guides.length - 1, nextIndex));
+    setGuideIndex(boundedIndex);
+    const field = guides[boundedIndex]?.campo;
+    if (field) {
+      formRef.current
+        ?.querySelector<HTMLElement>(`[data-guide-field="${field}"] input, [data-guide-field="${field}"] select`)
+        ?.focus();
+    }
+  }
   return (
     <section className="card">
       <h1>Mi cuestionario</h1>
@@ -72,22 +110,49 @@ export default function CuestionarioPage() {
             {showGuide ? 'Ocultar guía' : 'Mostrar guía'}
           </button>
           {showGuide && (
-            <ol id="cuestionario-pasos-guia">
-              <li><strong>Vivienda:</strong> indica dónde vivirá la mascota y el espacio disponible.</li>
-              <li><strong>Horas fuera:</strong> estima cuántas horas al día estará sola, de 0 a 24.</li>
-              <li><strong>Presupuesto:</strong> señala un monto mensual aproximado en soles.</li>
-              <li><strong>Convivencia:</strong> responde si hay niños u otras mascotas en casa.</li>
-            </ol>
+            <div id="cuestionario-pasos-guia" aria-live="polite">
+              {guideLoading && <p role="status">Cargando orientación…</p>}
+              {guideError && <p role="alert">No se pudo cargar la guía: {guideError}</p>}
+              {!guideLoading && !guideError && currentGuide && (
+                <div className="questionnaire-guide-step">
+                  <p><strong>Paso {guideIndex + 1} de {guides.length}</strong></p>
+                  <h3>{currentGuide.pregunta}</h3>
+                  <p>{currentGuide.orientacion}</p>
+                  <div className="actions">
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={guideIndex === 0}
+                      onClick={() => moveGuide(guideIndex - 1)}
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={guideIndex === guides.length - 1}
+                      onClick={() => moveGuide(guideIndex + 1)}
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!guideLoading && !guideError && !currentGuide && (
+                <p>No hay orientaciones disponibles para este cuestionario.</p>
+              )}
+            </div>
           )}
         </aside>
         <form
+          ref={formRef}
           onSubmit={e => {
             e.preventDefault();
             void save(true);
           }}
         >
           <fieldset disabled={busy}>
-            <label>
+            <label data-guide-field="vivienda">
               Vivienda
               <span className="muted">Describe casa o departamento y el espacio accesible para la mascota.</span>
               <input
@@ -97,7 +162,7 @@ export default function CuestionarioPage() {
                 placeholder="Casa, departamento…"
               />
             </label>
-            <label>
+            <label data-guide-field="horas_fuera">
               Horas fuera de casa por día
               <span className="muted">Cuenta el tiempo habitual en que no habrá una persona en casa.</span>
               <input
@@ -111,7 +176,7 @@ export default function CuestionarioPage() {
                 }
               />
             </label>
-            <label>
+            <label data-guide-field="presupuesto">
               Presupuesto mensual (S/)
               <span className="muted">Incluye alimento, higiene y cuidados veterinarios previsibles.</span>
               <input
@@ -126,7 +191,7 @@ export default function CuestionarioPage() {
               />
             </label>
             {(['tieneNinos', 'tieneOtrasMascotas'] as const).map(key => (
-              <label key={key}>
+              <label key={key} data-guide-field={key === 'tieneNinos' ? 'ninos' : 'otras_mascotas'}>
                 {key === 'tieneNinos' ? '¿Viven niños en tu hogar?' : '¿Tienes otras mascotas?'}
                 <span className="muted">Responde según las personas y animales que convivirán con la mascota.</span>
                 <select

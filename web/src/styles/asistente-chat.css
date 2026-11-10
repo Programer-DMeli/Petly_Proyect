@@ -69,6 +69,54 @@
   grid-column: 1 / -1;
   justify-self: start;
 }
+.petly-chat-faq {
+  border: 1px solid #cfe2d8;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.petly-chat-faq h3,
+.petly-chat-faq h4,
+.petly-chat-faq p,
+.petly-chat-care-results h4,
+.petly-chat-care-results p {
+  margin: 0;
+}
+.petly-chat-faq-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.petly-chat-faq-categories button,
+.petly-chat-faq-question {
+  text-align: left;
+  white-space: normal;
+}
+.petly-chat-faq-category,
+.petly-chat-faq-answer,
+.petly-chat-care-results article {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.petly-chat-faq-answer,
+.petly-chat-care-results {
+  border-radius: 10px;
+  padding: 10px;
+  background: #f1f8f4;
+}
+.petly-chat-care-results {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.petly-chat-inline-error {
+  grid-column: 1 / -1;
+  color: #8a2323;
+}
 .petly-chat-messages {
   flex: 1;
   min-height: 100px;

@@ -82,6 +82,12 @@ public class SecurityConfig {
                         // Los seguimientos reportables pertenecen al adoptante autenticado (US-37).
                         .requestMatchers("/api/seguimientos/adoptante", "/api/seguimientos/adoptante/**")
                         .hasRole("ADOPTANTE")
+                        // El contenido guiado del asistente forma parte del espacio adoptante.
+                        .requestMatchers("/api/asistente/preguntas-frecuentes",
+                                "/api/asistente/preguntas-frecuentes/**",
+                                "/api/asistente/cuidados", "/api/asistente/cuidados/**",
+                                "/api/asistente/cuestionario/guia", "/api/asistente/cuestionario/guia/**")
+                        .hasRole("ADOPTANTE")
                         // Asistente compartido por los clientes autenticados de ambos perfiles.
                         .requestMatchers("/api/asistente/**").hasAnyRole("ADOPTANTE", "ALBERGUE")
                         // Compatibilidad e identidad siguen siendo exclusivas del adoptante.
