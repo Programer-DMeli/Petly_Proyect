@@ -69,3 +69,11 @@ CREATE TABLE IF NOT EXISTS preferencias_notificacion (
  push BOOLEAN NOT NULL DEFAULT TRUE,
  actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Controller tests use H2; V8 and the actual upsert are verified separately in ChatMetricsMariaDbTest.
+CREATE TABLE IF NOT EXISTS asistente_metricas_diarias (
+    fecha DATE NOT NULL,
+    tema VARCHAR(40) NOT NULL,
+    consultas BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (fecha, tema)
+);

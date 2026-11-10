@@ -92,18 +92,4 @@ class ChatGeminiServiceTest {
         assertFalse(error.getMessage().contains("MAX_TOKENS"));
         server.verify();
     }
-
-    @Test void metricsClassifyOnlyTopicsAndLimiterIsPerUser() {
-        var metrics = new ChatMetrics();
-        metrics.record("¿Cómo lleno mi perfil para adoptar y qué vacunas necesita?");
-        var snapshot = metrics.snapshot();
-        assertEquals(1L, ((java.util.Map<?, ?>) snapshot.get("temas")).get("perfil_cuestionario"));
-        assertEquals(1L, ((java.util.Map<?, ?>) snapshot.get("temas")).get("proceso_adopcion"));
-        assertEquals(1L, ((java.util.Map<?, ?>) snapshot.get("temas")).get("cuidados"));
-        assertFalse(snapshot.toString().contains("vacunas"));
-        var limiter = new ChatRateLimiter();
-        for (int i = 0; i < 12; i++) limiter.acquire(1);
-        assertEquals(429, assertThrows(ApiException.class, () -> limiter.acquire(1)).status);
-        assertDoesNotThrow(() -> limiter.acquire(2));
-    }
 }

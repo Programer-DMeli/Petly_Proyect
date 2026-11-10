@@ -27,6 +27,7 @@ class ChatControllerTest {
     @Autowired UsuarioRepository users;
     @Autowired JwtService jwt;
     @MockitoBean ChatGeminiService gemini;
+    @MockitoBean RespuestaAutomaticaChatbotClient respuestasAutomaticas;
 
     private String token(String name, Usuario.Rol role) {
         return jwt.generarToken(users.save(new Usuario(name, name + "@petly.test", "unused-test-password", role)));
@@ -44,7 +45,7 @@ class ChatControllerTest {
         mvc.perform(get("/api/admin/asistente/metricas").header("Authorization", "Bearer " + adopter))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/admin/asistente/metricas").header("Authorization", "Bearer " + admin))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.persistencia").value("memoria_del_servidor"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.persistencia").value("base_de_datos"));
         verifyNoInteractions(gemini);
     }
 
