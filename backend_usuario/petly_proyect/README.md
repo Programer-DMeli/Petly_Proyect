@@ -18,16 +18,35 @@ curl http://localhost:8080/api/health/
 ## Configuración
 
 - `src/main/resources/application.yml` — puertos, base de datos y Flyway.
+- `src/main/resources/application-local-legacy-db.yml` — perfil local para
+  conservar el historial Flyway legado de `database_petly`.
 - `.env.example` — variables de entorno de ejemplo (sin secretos).
 
-Spring Boot **no** lee `.env` automáticamente; ver el procedimiento de
-Windows documentado en `.env.example` y en `../../docs/instalacion.md`.
+`application.yml` importa `.env` de forma opcional desde el directorio de
+ejecución. Ver las variables de ejemplo y el procedimiento de Windows en
+`.env.example` y `../../docs/instalacion.md`.
 
 | Variable | Defecto | Descripción |
 | --- | --- | --- |
 | `DB_URL` | `jdbc:mariadb://127.0.0.1:3306/database_petly` | Conexión a XAMPP (MariaDB) |
 | `DB_USERNAME` | `root` | Usuario local |
 | `DB_PASSWORD` | vacío | Contraseña local (nunca en Git) |
+
+### Base local con historial Flyway legado
+
+Si `database_petly` ya tiene una V2 antigua llamada
+`cuentas_perfiles_autorizaciones_reset`, usa este perfil local para no reescribir
+ese historial. El perfil crea un historial separado, toma como baseline el
+esquema existente hasta V5 y aplica las migraciones pendientes. Incluye V12 para
+crear `tokens_recuperacion` cuando falta.
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = "local-legacy-db"
+.\mvnw.cmd spring-boot:run
+```
+
+Este perfil es solo para esa base local ya migrada hasta V5; no lo uses en una
+base vacía ni en producción.
 
 ## Estructura de paquetes
 

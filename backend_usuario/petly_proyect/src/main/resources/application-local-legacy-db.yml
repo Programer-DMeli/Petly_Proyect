@@ -1,0 +1,9 @@
+# Solo para la base local database_petly, cuyo historial antiguo de Flyway
+# agrupó el esquema equivalente a V1-V5 en una migración V2 distinta.
+# Conserva flyway_schema_history y continúa en una tabla de historial aislada.
+spring:
+  flyway:
+    enabled: true
+    table: flyway_schema_history_petly_dev
+    baseline-on-migrate: true
+    baseline-version: 5
