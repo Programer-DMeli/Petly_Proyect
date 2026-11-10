@@ -9,7 +9,8 @@ data class AsesoriaVeterinariaDto(
     val id: Long,
     val seguimiento: Long,
     val problema: String,
-    val creado_en: String
+    val creado_en: String,
+    val estado: String = "PENDIENTE"
 )
 
 data class SolicitarAsesoriaDto(val seguimiento: Long, val problema: String)
@@ -28,9 +29,9 @@ data class SeguimientoDto(
 data class SeguimientosPagina(val results: List<SeguimientoDto>, val next: String?)
 
 interface SeguimientosApi {
-    @GET("api/contratos/seguimientos/")
+    @GET("api/seguimientos/adoptante")
     suspend fun listar(@Query("page") page: Int = 1): SeguimientosPagina
 
-    @POST("api/contratos/asesorias-veterinarias/")
+    @POST("api/seguimientos/adoptante/asesorias")
     suspend fun solicitarAsesoria(@Body solicitud: SolicitarAsesoriaDto): AsesoriaVeterinariaDto
 }

@@ -51,6 +51,7 @@ class SeguimientosViewModelTest {
         assertNull(vm.state.value.selectedId)
         assertEquals("", vm.state.value.problema)
         assertEquals(1, vm.state.value.items.first().asesorias_veterinarias.size)
+        assertEquals("PENDIENTE", vm.state.value.items.first().asesorias_veterinarias.single().estado)
         assertTrue(vm.state.value.items.last().asesorias_veterinarias.isEmpty())
     }
 

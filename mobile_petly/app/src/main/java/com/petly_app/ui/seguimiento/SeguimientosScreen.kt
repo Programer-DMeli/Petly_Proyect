@@ -26,7 +26,7 @@ fun SeguimientosScreen(
         item {
             TextButton(onClick = onBack) { Text("Volver") }
             Text("Seguimiento postadopción", style = MaterialTheme.typography.headlineMedium)
-            Text("Si tu mascota presenta problemas de adaptación, solicita asesoría veterinaria gratuita al albergue responsable.")
+            Text("Si tu mascota presenta problemas de adaptación, solicita asesoría técnica o veterinaria gratuita al albergue responsable.")
             if (!state.preview) TextButton(onClick = onRefresh, enabled = !state.busy) { Text("Actualizar seguimientos") }
         }
         if (state.preview) item { Text("Inicia sesión para consultar tus seguimientos y solicitar asesoría.") }
@@ -46,6 +46,12 @@ fun SeguimientosScreen(
                     row.asesorias_veterinarias.forEach { asesoria ->
                         Text("Asesoría solicitada · ${notificationDate(asesoria.creado_en)}", style = MaterialTheme.typography.labelLarge)
                         Text(asesoria.problema)
+                        Text("Estado de asesoría: ${when (asesoria.estado) {
+                            "PENDIENTE" -> "Pendiente"
+                            "EN_ATENCION" -> "En atención"
+                            "ATENDIDA" -> "Atendida"
+                            else -> asesoria.estado
+                        }}")
                     }
                     if (row.estado != "CANCELADO") {
                         if (state.selectedId == row.id) {
