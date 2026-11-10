@@ -35,7 +35,7 @@ class ConversacionViewSet(viewsets.ViewSet):
     def list(self, request):
         if request.user.rol not in ("ADOPTANTE", "ALBERGUE"):
             raise PermissionDenied()
-        conversations = Conversacion.objects.filter(Q(adoptante=request.user) | Q(albergue__usuario=request.user)).select_related("albergue", "adoptante", "solicitud__mascota")
+        conversations = Conversacion.objects.filter(Q(adoptante=request.user) | Q(albergue__usuario=request.user)).select_related("albergue", "albergue__usuario", "adoptante", "solicitud__mascota").prefetch_related("bloqueos", "participantes")
         return Response(ConversacionSerializer(conversations, many=True, context={"request": request}).data)
 
     def create(self, request):
@@ -98,12 +98,12 @@ class ConversacionViewSet(viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         conversation = self._get(request, pk)
-        messages = conversation.mensajes.prefetch_related("adjuntos").all()
+        messages = conversation.mensajes.select_related("conversacion__albergue__usuario").prefetch_related("adjuntos", "conversacion__participantes").all()
         return Response({"conversacion": ConversacionSerializer(conversation, context={"request": request}).data,
                          "mensajes": MensajeSerializer(messages, many=True, context={"request": request}).data})
 
     def _get(self, request, pk):
-        conversation = get_object_or_404(Conversacion.objects.select_related("albergue", "adoptante", "solicitud__mascota"), pk=pk)
+        conversation = get_object_or_404(Conversacion.objects.select_related("albergue", "albergue__usuario", "adoptante", "solicitud__mascota").prefetch_related("bloqueos", "participantes"), pk=pk)
         if not is_participant(conversation, request.user):
             raise PermissionDenied()
         return conversation
@@ -112,8 +112,8 @@ class ConversacionViewSet(viewsets.ViewSet):
     @action(detail=True, methods=["post"], url_path="mensajes", parser_classes=[MultiPartParser, FormParser, JSONParser])
     def mensajes(self, request, pk=None):
         conversation = self._get(request, pk)
-        if conversation.bloqueos.exists():
-            return Response({"detail": "No se pueden enviar mensajes en una conversación bloqueada."}, status=423)
+        if conversation.bloqueos.exclude(bloqueador=request.user).exists():
+            return Response({"detail": "No puedes enviar mensajes a una persona que te bloqueó."}, status=423)
         text = str(request.data.get("texto", request.data.get("contenido", ""))).strip()
         upload = request.FILES.get("archivo")
         if not text and not upload:

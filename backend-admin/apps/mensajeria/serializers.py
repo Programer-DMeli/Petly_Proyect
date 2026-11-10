@@ -19,10 +19,11 @@ class MensajeSerializer(serializers.ModelSerializer):
     remitente_nombre = serializers.SerializerMethodField()
     adjuntos = AdjuntoSerializer(many=True, read_only=True)
     propio = serializers.SerializerMethodField()
+    leido = serializers.SerializerMethodField()
 
     class Meta:
         model = Mensaje
-        fields = ["id", "remitente_id", "remitente_spring_id", "remitente_nombre", "texto", "contenido", "creado_en", "bienvenida_automatica", "adjuntos", "propio"]
+        fields = ["id", "remitente_id", "remitente_spring_id", "remitente_nombre", "texto", "contenido", "creado_en", "bienvenida_automatica", "adjuntos", "propio", "leido"]
 
     def get_contenido(self, obj):
         return obj.texto
@@ -36,6 +37,24 @@ class MensajeSerializer(serializers.ModelSerializer):
     def get_remitente_nombre(self, obj):
         return obj.remitente.get_full_name().strip() or ("Albergue" if obj.remitente.rol == "ALBERGUE" else "Adoptante")
 
+    def get_leido(self, obj):
+        request = self.context.get("request")
+        if not request:
+            return False
+        conversation = obj.conversacion
+        recipient_id = (
+            conversation.albergue.usuario_id
+            if request.user.pk == conversation.adoptante_id
+            else conversation.adoptante_id
+        )
+        read_states_by_conversation = self.context.setdefault("read_states_by_conversation", {})
+        read_states = read_states_by_conversation.get(conversation.pk)
+        if read_states is None:
+            read_states = dict(conversation.participantes.values_list("usuario_id", "leido_hasta"))
+            read_states_by_conversation[conversation.pk] = read_states
+        read_at = read_states.get(recipient_id)
+        return bool(read_at and obj.creado_en <= read_at)
+
 
 class ConversacionSerializer(serializers.ModelSerializer):
     solicitud_id = serializers.IntegerField(read_only=True)
@@ -47,14 +66,29 @@ class ConversacionSerializer(serializers.ModelSerializer):
     ultimo_mensaje = serializers.SerializerMethodField()
     no_leidos = serializers.SerializerMethodField()
     promedio_respuesta_horas = serializers.SerializerMethodField()
+    bloqueada = serializers.SerializerMethodField()
+    puede_enviar = serializers.SerializerMethodField()
 
     class Meta:
         model = Conversacion
-        fields = ["id", "solicitud_id", "mascota", "nombre_contacto", "albergue_id", "albergue_nombre", "interlocutor", "creada_en", "actualizada_en", "ultimo_mensaje", "no_leidos", "promedio_respuesta_horas"]
+        fields = ["id", "solicitud_id", "mascota", "nombre_contacto", "albergue_id", "albergue_nombre", "interlocutor", "creada_en", "actualizada_en", "ultimo_mensaje", "no_leidos", "promedio_respuesta_horas", "bloqueada", "puede_enviar"]
 
     def get_nombre_contacto(self, obj):
         request = self.context["request"]
-        return obj.albergue.nombre if request.user.pk == obj.adoptante_id else (obj.adoptante.get_full_name() or obj.adoptante.email or obj.adoptante.username)
+        if request.user.pk == obj.adoptante_id:
+            return obj.albergue.nombre
+        return obj.adoptante.get_full_name().strip() or "Adoptante"
+
+    def get_bloqueada(self, obj):
+        if hasattr(obj, "tiene_bloqueos"):
+            return obj.tiene_bloqueos
+        return bool(obj.bloqueos.all())
+
+    def get_puede_enviar(self, obj):
+        request = self.context.get("request")
+        if not request:
+            return False
+        return not obj.bloqueos.exclude(bloqueador=request.user).exists()
 
     def get_mascota(self, obj):
         return obj.solicitud.mascota.nombre if obj.solicitud_id else "Consulta general"
@@ -85,6 +119,12 @@ class ConversacionSerializer(serializers.ModelSerializer):
                 runs.append({"remitente_id": message["remitente_id"], "primero": message["creado_en"], "ultimo": message["creado_en"]})
             else:
                 runs[-1]["ultimo"] = message["creado_en"]
+        adoptante_id = obj.adoptante_id
+        albergue_id = obj.albergue.usuario_id
         for current, following in zip(runs, runs[1:]):
-            waits.append((following["primero"] - current["ultimo"]).total_seconds() / 3600)
+            if current["remitente_id"] != adoptante_id or following["remitente_id"] != albergue_id:
+                continue
+            elapsed = (following["primero"] - current["ultimo"]).total_seconds() / 3600
+            if elapsed >= 0:
+                waits.append(elapsed)
         return round(sum(waits) / len(waits), 1) if waits else None

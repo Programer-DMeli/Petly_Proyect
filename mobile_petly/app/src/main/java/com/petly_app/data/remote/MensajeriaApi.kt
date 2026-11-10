@@ -12,11 +12,15 @@ data class ConversacionDto(
     @SerializedName("nombre_contacto") val nombreContacto: String,
     @SerializedName("no_leidos") val noLeidos: Int,
     @SerializedName("promedio_respuesta_horas") val promedioRespuestaHoras: Double?,
-    @SerializedName("ultimo_mensaje") val ultimoMensaje: MensajeDto?
+    @SerializedName("ultimo_mensaje") val ultimoMensaje: MensajeDto?,
+    val bloqueada: Boolean = false,
+    @SerializedName("puede_enviar") val puedeEnviar: Boolean = true
 )
 data class AdjuntoMensajeDto(val id: Long, @SerializedName("nombre_original") val nombreOriginal: String, val descarga: String)
 data class MensajeDto(val id: Long, @SerializedName("remitente_id") val remitenteId: Long, val texto: String,
-    @SerializedName("creado_en") val creadoEn: String, val adjuntos: List<AdjuntoMensajeDto> = emptyList(), val propio: Boolean = false)
+    @SerializedName("creado_en") val creadoEn: String, val adjuntos: List<AdjuntoMensajeDto> = emptyList(),
+    val propio: Boolean = false, val leido: Boolean = false,
+    @SerializedName("bienvenida_automatica") val bienvenidaAutomatica: Boolean = false)
 data class ConversacionDetalleDto(val conversacion: ConversacionDto, val mensajes: List<MensajeDto>)
 
 interface MensajeriaApi {

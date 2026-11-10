@@ -67,11 +67,17 @@ fun MensajesScreen(api: MensajeriaApi, resolver: android.content.ContentResolver
             }
         } else {
             TextButton(onClick = { selected = null; refresh() }) { Text("← Conversaciones") }
+            val activeConversation = conversations.firstOrNull { it.id == selected }
+            if (activeConversation?.bloqueada == true) {
+                Text(if (activeConversation.puedeEnviar) "La otra persona no puede enviarte mensajes nuevos." else "Esta persona te bloqueó; no puedes enviarle mensajes.", color = MaterialTheme.colorScheme.error)
+            }
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(messages) { message ->
                     ElevatedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
                         Text(if (message.propio) "Tú" else "Albergue", style = MaterialTheme.typography.labelMedium)
+                        if (message.bienvenidaAutomatica) Text("Mensaje de bienvenida", style = MaterialTheme.typography.labelSmall)
                         if (message.texto.isNotBlank()) Text(message.texto)
+                        if (message.propio && message.leido) Text("Leído", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                         message.adjuntos.forEach { attachment -> TextButton(onClick = {
                             scope.launch { runCatching { pendingDownload = api.descargar(attachment.descarga).bytes(); pendingFilename = attachment.nombreOriginal; saveFile.launch(pendingFilename) }
                                 .onFailure { error = "No se pudo descargar el adjunto." } }
@@ -79,10 +85,10 @@ fun MensajesScreen(api: MensajeriaApi, resolver: android.content.ContentResolver
                     } }
                 }
             }
-            OutlinedTextField(draft, { draft = it.take(4000) }, label = { Text("Escribe un mensaje") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(draft, { draft = it.take(4000) }, label = { Text("Escribe un mensaje") }, modifier = Modifier.fillMaxWidth(), enabled = activeConversation?.puedeEnviar != false)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { filePicker.launch(arrayOf("image/jpeg", "image/png", "application/pdf")) }) { Text(if (fileUri == null) "Adjuntar" else "Adjunto listo") }
-                Button(enabled = !busy && (draft.isNotBlank() || fileUri != null), onClick = {
+                OutlinedButton(enabled = activeConversation?.puedeEnviar != false, onClick = { filePicker.launch(arrayOf("image/jpeg", "image/png", "application/pdf")) }) { Text(if (fileUri == null) "Adjuntar" else "Adjunto listo") }
+                Button(enabled = activeConversation?.puedeEnviar != false && !busy && (draft.isNotBlank() || fileUri != null), onClick = {
                     val id = selected ?: return@Button
                     busy = true
                     scope.launch {
@@ -105,7 +111,7 @@ fun MensajesScreen(api: MensajeriaApi, resolver: android.content.ContentResolver
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { selected?.let { id -> scope.launch { runCatching { api.reportar(id, mapOf("motivo" to "OTRO")); error = "Reporte enviado." }.onFailure { error = "No se pudo reportar." } } } }) { Text("Reportar") }
-                TextButton(onClick = { selected?.let { id -> scope.launch { runCatching { api.bloquear(id); error = "Conversación bloqueada." }.onFailure { error = "No se pudo bloquear." } } } }) { Text("Bloquear") }
+                TextButton(enabled = activeConversation?.bloqueada != true, onClick = { selected?.let { id -> scope.launch { runCatching { api.bloquear(id); error = "Conversación bloqueada. La otra persona no podrá enviarte nuevos mensajes."; refresh() }.onFailure { error = "No se pudo bloquear." } } } }) { Text("Bloquear") }
             }
         }
     }
