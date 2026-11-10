@@ -12,6 +12,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.petly.notificaciones.AlertaCompatibilidadService;
+import static org.mockito.Mockito.mock;
 
 class SolicitudAdopcionServiceTest {
     @Test
@@ -19,7 +22,7 @@ class SolicitudAdopcionServiceTest {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
         SolicitudAdopcionService service = new SolicitudAdopcionService(
-                restTemplate, "http://localhost:8000/");
+                restTemplate, "http://localhost:8000/", mock(AlertaCompatibilidadService.class), new ObjectMapper());
         String historial = "{\"solicitudId\":17,\"estadoActual\":\"PENDIENTE\",\"eventos\":[]}";
 
         server.expect(requestTo(

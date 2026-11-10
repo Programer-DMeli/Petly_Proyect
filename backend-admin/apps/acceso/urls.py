@@ -17,7 +17,7 @@ from .views import (
     UserRegistrationView,
 )
 from .kyc_views import VerificacionKycViewSet
-from .notificaciones import NotificacionViewSet
+from .notificaciones import FeedInternoCoincidenciasView, NotificacionViewSet
 from .integracion import (
     PerfilCompartidoView,
     PerfilesCompartidosListView,
@@ -33,6 +33,7 @@ router.register("verificaciones-kyc", VerificacionKycViewSet, basename="verifica
 from .fotos_hogar import FotosHogarView, FotoHogarView
 
 urlpatterns = [
+    path("interno/notificaciones/coincidencias/", FeedInternoCoincidenciasView.as_view(), name="feed_interno_coincidencias"),
     path("solicitudes/<int:pk>/fotos-hogar/", FotosHogarView.as_view()),
     path("solicitudes/<int:pk>/fotos-hogar/<int:foto_id>/", FotoHogarView.as_view()),
     path("", include(router.urls)),

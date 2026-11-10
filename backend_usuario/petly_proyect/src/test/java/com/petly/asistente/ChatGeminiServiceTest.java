@@ -92,4 +92,5 @@ class ChatGeminiServiceTest {
         assertFalse(error.getMessage().contains("MAX_TOKENS"));
         server.verify();
     }
+
 }

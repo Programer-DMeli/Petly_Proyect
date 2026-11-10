@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import io.jsonwebtoken.Claims;
 
 import com.petly.solicitudes.dto.CrearSolicitudAdopcionRequest;
 
@@ -28,8 +30,10 @@ public class SolicitudAdopcionController {
     @PostMapping
     public ResponseEntity<String> crear(
             @Valid @RequestBody CrearSolicitudAdopcionRequest request,
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
-        return solicitudService.crear(request, authorization);
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+            Authentication authentication) {
+        long adoptanteId = Long.parseLong(((Claims) authentication.getPrincipal()).getSubject());
+        return solicitudService.crear(request, authorization, adoptanteId);
     }
 
     @GetMapping

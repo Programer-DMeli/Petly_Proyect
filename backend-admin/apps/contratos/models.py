@@ -117,6 +117,29 @@ class SeguimientoPostAdopcion(models.Model):
         return f"Seguimiento {self.get_modalidad_display()} · solicitud {self.solicitud_id} · {self.programado_para:%Y-%m-%d %H:%M}"
 
 
+class AlertaIncumplimientoSeguimiento(models.Model):
+    """Alerta idempotente para el albergue si vence un reporte postadopción (US-39)."""
+
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        RESUELTA = "RESUELTA", "Resuelta"
+
+    seguimiento = models.OneToOneField(
+        SeguimientoPostAdopcion,
+        on_delete=models.PROTECT,
+        related_name="alerta_incumplimiento",
+    )
+    estado = models.CharField(max_length=10, choices=Estado.choices, default=Estado.PENDIENTE, db_index=True)
+    generada_en = models.DateTimeField(auto_now_add=True)
+    resuelta_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-generada_en", "-id"]
+
+    def __str__(self):
+        return f"Incumplimiento · seguimiento {self.seguimiento_id} · {self.estado}"
+
+
 class SolicitudAsesoriaVeterinaria(models.Model):
     """Problema de adaptación comunicado al albergue durante el seguimiento."""
 

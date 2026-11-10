@@ -1,5 +1,34 @@
-import { spring } from './http';
-import type { PreferenciasNotificacion } from './types';
+import { django, spring } from './http';
+import type {
+  AvisoAdoptante,
+  AlertaCompatibilidadAlbergue,
+  AvisosLeidosResponse,
+  BandejaCompatibilidadAlbergue,
+  BandejaAvisosAdoptante,
+  PreferenciasNotificacion,
+} from './types';
+
+export function getAvisosAdoptante() {
+  return django<BandejaAvisosAdoptante>('/api/acceso/notificaciones/');
+}
+
+export function marcarAvisoComoLeido(id: number) {
+  return django<AvisoAdoptante>(`/api/acceso/notificaciones/${id}/leer/`, { method: 'POST' });
+}
+
+export function marcarTodosLosAvisosComoLeidos() {
+  return django<AvisosLeidosResponse>('/api/acceso/notificaciones/leer-todas/', { method: 'POST' });
+}
+
+export function getAlertasCompatibilidadAlbergue() {
+  return spring<BandejaCompatibilidadAlbergue>('/api/albergue/alertas-compatibilidad');
+}
+
+export function marcarAlertaCompatibilidadComoLeida(id: number) {
+  return spring<AlertaCompatibilidadAlbergue>(`/api/albergue/alertas-compatibilidad/${id}/leer`, {
+    method: 'POST',
+  });
+}
 
 export function getPreferenciasNotificacion() {
   return spring<PreferenciasNotificacion>('/api/notificaciones/preferencias');
