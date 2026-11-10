@@ -109,9 +109,42 @@ class ConversacionViewSet(viewsets.ViewSet):
         return conversation
 
     @transaction.atomic
-    @action(detail=True, methods=["post"], url_path="mensajes", parser_classes=[MultiPartParser, FormParser, JSONParser])
+    @action(detail=True, methods=["get", "post"], url_path="mensajes", parser_classes=[MultiPartParser, FormParser, JSONParser])
     def mensajes(self, request, pk=None):
         conversation = self._get(request, pk)
+        if request.method == "GET":
+            raw_cursor = request.query_params.get("despues_de_id", "0")
+            try:
+                cursor = int(raw_cursor)
+            except (TypeError, ValueError):
+                raise ValidationError({"despues_de_id": "El cursor debe ser un identificador entero no negativo."})
+            if cursor < 0:
+                raise ValidationError({"despues_de_id": "El cursor debe ser un identificador entero no negativo."})
+
+            nuevos = conversation.mensajes.filter(pk__gt=cursor).select_related(
+                "remitente", "conversacion__albergue__usuario"
+            ).prefetch_related("adjuntos", "conversacion__participantes")
+            destinatario_id = (
+                conversation.albergue.usuario_id
+                if request.user.pk == conversation.adoptante_id
+                else conversation.adoptante_id
+            )
+            leido_hasta = conversation.participantes.filter(
+                usuario_id=destinatario_id
+            ).values_list("leido_hasta", flat=True).first()
+            leidos_hasta_id = None
+            if leido_hasta:
+                leidos_hasta_id = conversation.mensajes.filter(
+                    remitente=request.user,
+                    creado_en__lte=leido_hasta,
+                ).order_by("-pk").values_list("pk", flat=True).first()
+            response = Response({
+                "mensajes": MensajeSerializer(nuevos, many=True, context={"request": request}).data,
+                "leidos_hasta_id": leidos_hasta_id,
+            })
+            response["Cache-Control"] = "private, no-store"
+            return response
+
         if conversation.bloqueos.exclude(bloqueador=request.user).exists():
             return Response({"detail": "No puedes enviar mensajes a una persona que te bloqueó."}, status=423)
         text = str(request.data.get("texto", request.data.get("contenido", ""))).strip()
@@ -141,10 +174,35 @@ class ConversacionViewSet(viewsets.ViewSet):
         conversation.save(update_fields=["actualizada_en"])
         return Response(MensajeSerializer(message, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
+    @transaction.atomic
     @action(detail=True, methods=["post"], url_path="leer")
     def leer(self, request, pk=None):
         conversation = self._get(request, pk)
-        ParticipanteConversacion.objects.update_or_create(conversacion=conversation, usuario=request.user, defaults={"leido_hasta": timezone.now()})
+        raw_cursor = request.data.get("hasta_id")
+        if raw_cursor is None:
+            leido_hasta = timezone.now()
+        else:
+            try:
+                message_id = int(raw_cursor)
+            except (TypeError, ValueError):
+                raise ValidationError({"hasta_id": "Indica el identificador del último mensaje visible."})
+            if message_id < 1:
+                raise ValidationError({"hasta_id": "El identificador debe ser positivo."})
+            leido_hasta = conversation.mensajes.filter(pk=message_id).values_list(
+                "creado_en", flat=True
+            ).first()
+            if leido_hasta is None:
+                raise ValidationError({"hasta_id": "El mensaje no pertenece a esta conversación."})
+
+        participante, creado = ParticipanteConversacion.objects.get_or_create(
+            conversacion=conversation,
+            usuario=request.user,
+            defaults={"leido_hasta": leido_hasta},
+        )
+        if not creado:
+            ParticipanteConversacion.objects.filter(pk=participante.pk).filter(
+                Q(leido_hasta__isnull=True) | Q(leido_hasta__lt=leido_hasta)
+            ).update(leido_hasta=leido_hasta)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], url_path="bloquear")

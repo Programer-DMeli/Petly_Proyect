@@ -44,7 +44,7 @@ class MensajeSerializer(serializers.ModelSerializer):
         conversation = obj.conversacion
         recipient_id = (
             conversation.albergue.usuario_id
-            if request.user.pk == conversation.adoptante_id
+            if obj.remitente_id == conversation.adoptante_id
             else conversation.adoptante_id
         )
         read_states_by_conversation = self.context.setdefault("read_states_by_conversation", {})
