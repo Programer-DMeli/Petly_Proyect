@@ -2,6 +2,7 @@ package com.petly.notificaciones;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.List;
 
 import com.petly.catalogo.CompatibilidadService;
 import com.petly.usuarios.Usuario;
@@ -14,6 +15,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import com.petly.common.exception.ApiException;
 
 /** Genera y persiste el aviso de US-42 después de registrar una solicitud. */
 @Service
@@ -76,6 +79,23 @@ public class AlertaCompatibilidadService {
             return;
         }
         enviarCorreoSiHabilitado(alerta, albergue);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> listarParaAlbergue(long albergueUsuarioId) {
+        List<AlertaCompatibilidadResponse> results = alertas
+                .findAllByAlbergueUsuarioIdOrderByOcurridoEnDescIdDesc(albergueUsuarioId)
+                .stream().map(AlertaCompatibilidadResponse::desde).toList();
+        return Map.of("results", results,
+                "no_leidas", alertas.countByAlbergueUsuarioIdAndLeidoEnIsNull(albergueUsuarioId));
+    }
+
+    @Transactional
+    public AlertaCompatibilidadResponse marcarLeida(long albergueUsuarioId, long alertaId) {
+        AlertaCompatibilidadAlbergue alerta = alertas.findByIdAndAlbergueUsuarioId(alertaId, albergueUsuarioId)
+                .orElseThrow(() -> new ApiException(404, "No se encontró la alerta de este albergue."));
+        alerta.marcarLeida(LocalDateTime.now());
+        return AlertaCompatibilidadResponse.desde(alertas.save(alerta));
     }
 
     private Long springIdDelAlbergue(long mascotaId) {
