@@ -19,6 +19,7 @@ const groups: Record<string, Group[]> = {
           to: '/adoptante/solicitudes',
           description: 'Consulta el estado de cada encuentro.',
         },
+        { label: 'Mensajes', to: '/adoptante/mensajes', description: 'Conversa con los albergues sobre tus solicitudes.' },
         {
           label: 'Seguimiento postadopción',
           to: '/adoptante/seguimientos-postadopcion',
@@ -106,6 +107,7 @@ const groups: Record<string, Group[]> = {
           to: '/albergue/solicitudes',
           description: 'Acompaña y evalúa cada postulación.',
         },
+        { label: 'Mensajes', to: '/albergue/mensajes', description: 'Responde a las consultas de las personas postulantes.' },
         {
           label: 'Perfiles autorizados',
           to: '/albergue?seccion=perfiles',

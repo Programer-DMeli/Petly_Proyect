@@ -115,6 +115,12 @@ export default function SolicitudesPage() {
               </details>
             )}
             <FotosHogar solicitudId={row.id} />
+            <button type="button" className="secondary" onClick={() => { void (async () => {
+              try {
+                const conversation = await django<{ id: number }>('/api/mensajeria/conversaciones/', { method: 'POST', body: json({ solicitud_id: row.id }) });
+                window.location.href = `/albergue/mensajes/${conversation.id}`;
+              } catch (e) { setError(errorMessage(e)); }
+            })(); }}>Conversar con el adoptante</button>
             {row.observaciones_revision && <p>Observación: {row.observaciones_revision}</p>}
             {['PENDIENTE', 'OBSERVADA'].includes(row.estado) && (
               <>

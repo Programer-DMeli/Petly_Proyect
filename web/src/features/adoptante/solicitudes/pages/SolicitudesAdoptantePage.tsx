@@ -65,6 +65,12 @@ export default function SolicitudesAdoptantePage() {
           {contract.documento_disponible && <button className="secondary" onClick={() => void downloadContract(contract)}>Descargar contrato firmado</button>}
         </div>)}
         <Link className="button" to={`/adoptante/solicitudes/${item.id}`}>Ver seguimiento</Link>
+        <button type="button" className="secondary" onClick={() => { void (async () => {
+          try {
+            const conversation = await django<{ id: number }>('/api/mensajeria/conversaciones/', { method: 'POST', body: JSON.stringify({ solicitud_id: item.id }) });
+            window.location.href = `/adoptante/mensajes/${conversation.id}`;
+          } catch (e) { setError(errorMessage(e)); }
+        })(); }}>Abrir chat con el albergue</button>
       </article>)}
   </section>;
 }

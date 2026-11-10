@@ -22,8 +22,10 @@ import com.petly_app.ui.perfil.CuestionarioScreen
 import com.petly_app.ui.perfil.DisponibilidadUiState
 import com.petly_app.ui.perfil.PerfilUiState
 import com.petly_app.ui.perfil.NotificacionesState
+import com.petly_app.data.remote.MensajeriaApi
+import com.petly_app.ui.mensajes.MensajesScreen
 
-enum class PetlyTab { INICIO, CATALOGO, NOVEDADES, PERFIL }
+enum class PetlyTab { INICIO, CATALOGO, NOVEDADES, MENSAJES, PERFIL }
 
 @Composable
 fun MainAppScreen(
@@ -56,7 +58,10 @@ fun MainAppScreen(
     onClearChat: () -> Unit = {},
     notificacionesState: NotificacionesState = NotificacionesState(),
     onOpenNotifications: () -> Unit = {},
-    onOpenSeguimientos: () -> Unit = {}
+    onOpenSeguimientos: () -> Unit = {},
+    mensajeriaApi: MensajeriaApi? = null,
+    contentResolver: android.content.ContentResolver? = null,
+    solicitudesChat: List<Triple<Long, Long, String>> = emptyList()
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(PetlyTab.INICIO) }
 
@@ -103,6 +108,10 @@ fun MainAppScreen(
                 }
                 PetlyTab.NOVEDADES -> {
                     NovedadesScreen(onOpenNotifications, notificacionesState.noLeidas)
+                }
+                PetlyTab.MENSAJES -> {
+                    if (mensajeriaApi != null && contentResolver != null) MensajesScreen(mensajeriaApi, contentResolver, solicitudesChat)
+                    else Text("Inicia sesión para ver tus conversaciones.")
                 }
                 PetlyTab.PERFIL -> {
                     CuestionarioScreen(
@@ -167,6 +176,12 @@ fun PetlyBottomNavigationBar(
                 icon = HomeIcons.Bell,
                 isSelected = selectedTab == PetlyTab.NOVEDADES,
                 onClick = { onSelectTab(PetlyTab.NOVEDADES) }
+            )
+            BottomNavItem(
+                label = "Mensajes",
+                icon = HomeIcons.Bell,
+                isSelected = selectedTab == PetlyTab.MENSAJES,
+                onClick = { onSelectTab(PetlyTab.MENSAJES) }
             )
             BottomNavItem(
                 label = "Perfil",

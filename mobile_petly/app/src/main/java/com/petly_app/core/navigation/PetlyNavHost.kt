@@ -133,6 +133,7 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     val catalogState by catalogVm.state.collectAsStateWithLifecycle()
                     val perfilState by perfilVm.state.collectAsStateWithLifecycle()
                     val disponibilidadState by disponibilidadVm.state.collectAsStateWithLifecycle()
+                    val submittedApplications by com.petly_app.data.repository.SolicitudAdopcionManager.submitted.collectAsStateWithLifecycle()
                     LaunchedEffect(perfilState.saveRevision) {
                         if (perfilState.saveRevision > 0) catalogVm.retry()
                     }
@@ -143,6 +144,12 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
 
                     MainAppScreen(
                         onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
+                        mensajeriaApi = if (isPreview) null else container.mensajeriaApi,
+                        contentResolver = container.resolver,
+                        solicitudesChat = submittedApplications.mapNotNull { draft ->
+                            com.petly_app.data.repository.SolicitudAdopcionManager.solicitudesActivas()
+                                .firstOrNull { it.second == draft.mascotaId }
+                        },
                         notificacionesState = notificationsState,
                         onOpenNotifications = { nav.navigate("notificaciones") { launchSingleTop = true } },
                         chatState = chatState,

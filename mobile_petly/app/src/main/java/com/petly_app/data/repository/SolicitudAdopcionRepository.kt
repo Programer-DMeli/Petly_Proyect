@@ -53,6 +53,9 @@ object SolicitudAdopcionManager {
     private var draftMap = mutableMapOf<Long, SolicitudAdopcionDraft>()
     private val _submitted = MutableStateFlow<List<SolicitudAdopcionDraft>>(emptyList())
     val submitted: StateFlow<List<SolicitudAdopcionDraft>> = _submitted.asStateFlow()
+    fun solicitudesActivas(): List<Triple<Long, Long, String>> = _submitted.value.mapNotNull { draft ->
+        ids[draft.mascotaId]?.let { Triple(it, draft.mascotaId, draft.mascotaNombre) }
+    }
 
     fun getDraft(mascotaId: Long, mascotaNombre: String): SolicitudAdopcionDraft {
         return draftMap[mascotaId] ?: SolicitudAdopcionDraft(mascotaId = mascotaId, mascotaNombre = mascotaNombre)
