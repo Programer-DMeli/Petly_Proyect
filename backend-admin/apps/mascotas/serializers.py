@@ -229,6 +229,16 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 "foto_mejorada_confirmada": "La mejora solo se puede confirmar al editar una mascota existente."
             })
+        years = attrs.get("edad_anos", getattr(self.instance, "edad_anos", None))
+        months = attrs.get("edad_meses", getattr(self.instance, "edad_meses", None))
+        if years is not None and not 0 <= years <= 50:
+            raise serializers.ValidationError({"edad_anos": "Entre 0 y 50."})
+        if months is not None and not 0 <= months <= 11:
+            raise serializers.ValidationError({"edad_meses": "Resto de meses entre 0 y 11."})
+        if (years or 0) * 12 + (months or 0) > 600:
+            raise serializers.ValidationError({"edad_anos": "Edad total máxima: 600 meses."})
+        if attrs.get("fotos_adicionales"):
+            raise serializers.ValidationError({"fotos_adicionales": "Sprint 1 admite una sola fotografía."})
         return attrs
 
     def create(self, validated_data):

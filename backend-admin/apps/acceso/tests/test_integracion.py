@@ -41,16 +41,15 @@ class SpringIdentityTest(TestCase):
         )
         Albergue.objects.create(usuario=owner, nombre="Refugio de prueba", direccion="Lima")
         self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token())
-        owner, _ = get_user_model().objects.get_or_create(
-            spring_id=101,
-            defaults={"username": "shelter-101", "email": self.identity["correo"], "rol": "ALBERGUE"},
-        )
-        from apps.albergues.models import Albergue
-        Albergue.objects.create(usuario=owner, nombre="Hogar autorizado", direccion="Lima")
         profiles.return_value = {"vivienda": "Departamento", "tieneNinos": False}
         self.assertEqual(self.client.get("/api/acceso/perfiles-compartidos/202/").status_code, 200)
         profiles.side_effect = urllib.error.HTTPError("local", 403, "forbidden", {}, None)
         self.assertEqual(self.client.get("/api/acceso/perfiles-compartidos/202/").status_code, 403)
+        from apps.acceso.authentication import AuthorityUnavailable
+        profiles.side_effect = AuthorityUnavailable(status=403)
+        self.assertEqual(self.client.get("/api/acceso/perfiles-compartidos/202/").status_code, 403)
+        profiles.side_effect = AuthorityUnavailable()
+        self.assertEqual(self.client.get("/api/acceso/perfiles-compartidos/202/").status_code, 503)
     def test_retired_business_auth_not_available(self):
         for route in ["negocio/auth/registro/", "negocio/auth/login/", "negocio/postulantes/", "negocio/solicitudes/", "negocio/interno/autorizacion/"]:
             self.assertEqual(self.client.post("/api/acceso/"+route, {}, format="json").status_code, 410)

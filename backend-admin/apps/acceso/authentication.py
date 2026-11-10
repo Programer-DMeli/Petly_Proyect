@@ -155,7 +155,9 @@ from django.conf import settings
 
 class AuthorityUnavailable(Exception):
     """Spring Boot no responde o devuelve error."""
-    pass
+    def __init__(self, message="Spring no está disponible.", status=None):
+        super().__init__(message)
+        self.status = status
 
 
 def spring_get(path: str, auth_header: str | None = None, timeout: float = 3.0):
@@ -175,7 +177,7 @@ def spring_get(path: str, auth_header: str | None = None, timeout: float = 3.0):
                 return json.loads(data) if data else {}
             raise AuthorityUnavailable(f"Spring {resp.status}: {resp.read().decode()}")
     except urllib.error.HTTPError as e:
-        raise AuthorityUnavailable(f"Spring HTTP {e.code}: {e.read().decode()}")
+        raise AuthorityUnavailable(f"Spring HTTP {e.code}", status=e.code) from e
     except Exception as e:
         raise AuthorityUnavailable(f"Spring inalcanzable: {e}")
 

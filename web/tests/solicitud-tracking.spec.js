@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  // Keep unrelated header requests isolated even when a real backend is running.
+  await page.route('**/api/**', route => route.fulfill({ status: 404, json: { detail: 'Sin fixture' } }));
+});
+
 async function loginAsAdopter(page) {
   await page.route('http://localhost:8080/api/catalogo?**', route =>
     route.fulfill({ json: { items: [], total: 0 } })

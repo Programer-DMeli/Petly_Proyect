@@ -57,7 +57,7 @@ assert check('GET',spring,'/api/catalogo/'+str(pets[0]),token=adopt)['estado']==
 check('POST',django,'/api/mascotas/'+str(pets[0])+'/cambiar-estado/',404,other,json={'estado':'ADOPTADO'})
 shared='/api/acceso/perfiles-compartidos/'+str(aid)+'/'
 check('GET',django,shared,403,shelter)
-check('PUT',spring,'/api/autorizaciones/'+str(s1),token=adopt)
+check('POST',spring,'/api/autorizaciones',201,adopt,json={'albergueId':s1})
 assert check('GET',django,shared,token=shelter)['tieneNinos'] is False
 check('GET',django,shared,403,other)
 check('DELETE',spring,'/api/autorizaciones/'+str(s1),token=adopt)
@@ -77,7 +77,7 @@ text=message.get_body(preferencelist=('plain',)).get_content() if message.is_mul
 reset=re.search(r'token=([A-Za-z0-9_-]+)',text).group(1)
 with db.cursor() as cursor:
     from hashlib import sha256
-    cursor.execute('SELECT TIMESTAMPDIFF(SECOND,CURRENT_TIMESTAMP,expires_at) FROM password_resets WHERE token_hash=%s',(sha256(reset.encode()).hexdigest(),))
+    cursor.execute('SELECT TIMESTAMPDIFF(SECOND,CURRENT_TIMESTAMP,expira_en) FROM tokens_recuperacion WHERE token_hash=%s',(sha256(reset.encode()).hexdigest(),))
     assert 0 < cursor.fetchone()[0] <= 900
 newpassword=secrets.token_urlsafe(24)
 body={'token':reset,'nuevaPassword':newpassword,'nuevaPasswordConfirm':newpassword}

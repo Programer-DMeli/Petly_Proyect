@@ -3,7 +3,7 @@ from django.db.models import F
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .authentication import spring_get
+from .authentication import AuthorityUnavailable, spring_get
 from .models import SolicitudAdopcion
 from apps.albergues.models import Albergue
 
@@ -29,8 +29,9 @@ class PerfilCompartidoView(APIView):
                 )
             )
             return Response(profile)
-        except urllib.error.HTTPError as error:
-            return Response({"error": "perfil no autorizado", "campos": {}}, status=403 if error.code in (403,404) else 503)
+        except (urllib.error.HTTPError, AuthorityUnavailable) as error:
+            code = getattr(error, "code", getattr(error, "status", None))
+            return Response({"error": "perfil no autorizado", "campos": {}}, status=403 if code in (403,404) else 503)
 
 class PerfilesCompartidosListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -39,8 +40,9 @@ class PerfilesCompartidosListView(APIView):
             return Response({"error": "perfil no autorizado", "campos": {}}, status=403)
         try:
             return Response(spring_get("/api/albergue/perfiles", request.headers.get("Authorization")))
-        except urllib.error.HTTPError as error:
-            return Response({"error": "consulta no disponible", "campos": {}}, status=403 if error.code in (403,404) else 503)
+        except (urllib.error.HTTPError, AuthorityUnavailable) as error:
+            code = getattr(error, "code", getattr(error, "status", None))
+            return Response({"error": "consulta no disponible", "campos": {}}, status=403 if code in (403,404) else 503)
 
 class RetiredBusinessAccessView(APIView):
     authentication_classes = []

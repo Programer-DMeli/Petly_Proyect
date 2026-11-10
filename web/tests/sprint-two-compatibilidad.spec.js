@@ -47,7 +47,7 @@ test('Simulada: desglose, reintento IA sin cambiar puntaje y recálculo tras gua
  await expect(page.getByText('Coordina paseos.')).toBeVisible();
  await expect(detail.getByText('100%',{exact:true})).toBeVisible();
  await nav(page,'/adoptante/cuestionario');
- await page.getByLabel('Vivienda',{exact:true}).fill('Departamento');
+ await page.getByRole('textbox',{name:/^Vivienda/}).fill('Departamento');
  await page.getByRole('button',{name:'Finalizar cuestionario',exact:true}).click();
  await expect(page.getByText('Cuestionario finalizado.',{exact:true})).toBeVisible();
  await nav(page,'/adoptante/catalogo');
@@ -84,7 +84,7 @@ test('Simulada: borrador editable y etiquetas se descartan o confirman sin guard
     writes++;const body=route.request().postData();expect(body).toContain('Descripción revisada.');expect(body).toContain('TRANQUILO');
     animal.descripcion='Descripción revisada.';animal.temperamento='TRANQUILO';
    }result=animal;
-  }else if(path.endsWith('/generar-descripcion/')){
+  }else if(path.endsWith('/generar-descripcion-borrador/')){
    generates++;
    if(generates===1){await route.fulfill({status:502,json:{detail:'Gemini no disponible. Reintenta.'}});return true;}
    result={borrador:'Pelaje marrón.',guardado:false};
@@ -95,7 +95,7 @@ test('Simulada: borrador editable y etiquetas se descartan o confirman sin guard
  await nav(page,'/albergue/mascotas');
  await page.getByRole('button',{name:'Editar mascota',exact:true}).click();
  const original=page.getByRole('textbox',{name:'Descripción de la mascota',exact:true});
- const generate=page.getByRole('button',{name:'Generar borrador desde la foto'});
+ const generate=page.getByRole('button',{name:'Sugerir descripción con IA',exact:true});
  await generate.click();await expect(page.getByText('Gemini no disponible. Reintenta.',{exact:true})).toBeVisible();
  await expect(original).toHaveValue(animal.descripcion);
  await generate.click();await expect(page.getByLabel('Borrador editable de Gemini')).toHaveValue('Pelaje marrón.');

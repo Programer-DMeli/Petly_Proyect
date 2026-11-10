@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/**', route => route.fulfill({ status: 404, json: { detail: 'Sin fixture' } }));
+});
+
 const pets = [
   {
     id: 4,
