@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { setSession, type Session } from '../services/session';
 import NotificacionesAdoptanteMenu from './NotificacionesAdoptanteMenu';
+import AlertasCompatibilidadAlbergueMenu from './AlertasCompatibilidadAlbergueMenu';
 
 type Item = { label: string; to: string; description: string };
 type Group = { label: string; items: Item[] };
@@ -278,6 +279,12 @@ export default function WorkspaceHeader({ session }: { session: Session }) {
         </nav>
         {role === 'ADOPTANTE' && (
           <NotificacionesAdoptanteMenu
+            open={open === 'avisos'}
+            onToggle={button => toggle('avisos', button)}
+          />
+        )}
+        {role === 'ALBERGUE' && (
+          <AlertasCompatibilidadAlbergueMenu
             open={open === 'avisos'}
             onToggle={button => toggle('avisos', button)}
           />

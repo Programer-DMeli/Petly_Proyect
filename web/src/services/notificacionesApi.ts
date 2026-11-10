@@ -1,7 +1,9 @@
 import { django, spring } from './http';
 import type {
   AvisoAdoptante,
+  AlertaCompatibilidadAlbergue,
   AvisosLeidosResponse,
+  BandejaCompatibilidadAlbergue,
   BandejaAvisosAdoptante,
   PreferenciasNotificacion,
 } from './types';
@@ -16,6 +18,16 @@ export function marcarAvisoComoLeido(id: number) {
 
 export function marcarTodosLosAvisosComoLeidos() {
   return django<AvisosLeidosResponse>('/api/acceso/notificaciones/leer-todas/', { method: 'POST' });
+}
+
+export function getAlertasCompatibilidadAlbergue() {
+  return spring<BandejaCompatibilidadAlbergue>('/api/albergue/alertas-compatibilidad');
+}
+
+export function marcarAlertaCompatibilidadComoLeida(id: number) {
+  return spring<AlertaCompatibilidadAlbergue>(`/api/albergue/alertas-compatibilidad/${id}/leer`, {
+    method: 'POST',
+  });
 }
 
 export function getPreferenciasNotificacion() {

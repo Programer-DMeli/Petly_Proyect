@@ -192,3 +192,20 @@ export interface BandejaAvisosAdoptante extends Page<AvisoAdoptante> {
 export interface AvisosLeidosResponse {
   actualizadas: number;
 }
+
+export interface AlertaCompatibilidadAlbergue {
+  id: number;
+  solicitudId: number;
+  adoptanteId: number;
+  mascotaId: number;
+  adoptanteNombre: string;
+  mascotaNombre: string;
+  porcentaje: number;
+  ocurridoEn: string;
+  leidoEn: string | null;
+}
+
+export interface BandejaCompatibilidadAlbergue {
+  results: AlertaCompatibilidadAlbergue[];
+  no_leidas: number;
+}
