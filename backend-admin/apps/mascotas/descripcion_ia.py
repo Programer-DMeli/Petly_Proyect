@@ -1,4 +1,4 @@
-"""Vision-provider adapter for human-reviewed pet description drafts (US-29)."""
+"""Provider adapter for human-reviewed trait-based description drafts (US-26)."""
 import base64
 import json
 from urllib.parse import urlsplit

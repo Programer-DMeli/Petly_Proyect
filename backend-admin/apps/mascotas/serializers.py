@@ -247,6 +247,7 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         improved_confirmed = validated_data.pop("foto_mejorada_confirmada", False)
+        photo_replaced = "foto_principal" in validated_data
         original_photo_name = instance.foto_principal.name if improved_confirmed and instance.foto_principal else None
         instance = super().update(instance, validated_data)
         if improved_confirmed:
@@ -254,6 +255,12 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             # the improved upload is already saved as foto_principal.
             instance.foto_original_ia.name = original_photo_name
             instance.foto_mejorada_ia.name = instance.foto_principal.name
+            instance.save(update_fields=["foto_original_ia", "foto_mejorada_ia"])
+        elif photo_replaced:
+            # A manually uploaded replacement is not the previously accepted
+            # IA proposal; avoid exposing stale provenance for the new photo.
+            instance.foto_original_ia = None
+            instance.foto_mejorada_ia = None
             instance.save(update_fields=["foto_original_ia", "foto_mejorada_ia"])
         return instance
 

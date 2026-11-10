@@ -172,6 +172,24 @@ class MascotaAPITest(TestCase):
         self.assertIn("foto_original_ia", response.data)
         self.assertIn("foto_mejorada_ia", response.data)
 
+    def test_reemplazar_foto_manualmente_limpia_referencias_ia_anteriores(self):
+        self._auth(self.user)
+        self.mascota.foto_principal = foto_prueba("original.png")
+        self.mascota.foto_original_ia = foto_prueba("ia-original.png")
+        self.mascota.foto_mejorada_ia = foto_prueba("ia-mejorada.png")
+        self.mascota.save()
+
+        response = self.client.patch(
+            f"/api/mascotas/{self.mascota.pk}/",
+            {"foto_principal": foto_prueba("reemplazo-manual.png")},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.mascota.refresh_from_db()
+        self.assertFalse(self.mascota.foto_original_ia.name)
+        self.assertFalse(self.mascota.foto_mejorada_ia.name)
+
     @patch("apps.mascotas.foto_ia.mejorar_foto")
     def test_otro_albergue_no_puede_mejorar_foto_ajena(self, mejorar):
         Albergue.objects.create(
