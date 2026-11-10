@@ -143,10 +143,16 @@ class AlertaIncumplimientoSeguimiento(models.Model):
 class SolicitudAsesoriaVeterinaria(models.Model):
     """Problema de adaptación comunicado al albergue durante el seguimiento."""
 
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        EN_ATENCION = "EN_ATENCION", "En atención"
+        ATENDIDA = "ATENDIDA", "Atendida"
+
     seguimiento = models.ForeignKey(
         SeguimientoPostAdopcion, on_delete=models.PROTECT, related_name="asesorias_veterinarias",
     )
     problema = models.CharField(max_length=2000)
+    estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PENDIENTE)
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:

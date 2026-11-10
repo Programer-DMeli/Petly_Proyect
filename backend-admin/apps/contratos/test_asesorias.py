@@ -42,6 +42,7 @@ class AsesoriaVeterinariaTest(APITestCase):
         saved = SolicitudAsesoriaVeterinaria.objects.get()
         self.assertEqual(saved.seguimiento_id, self.seguimiento.pk)
         self.assertEqual(saved.problema, "No se adapta al quedarse sola.")
+        self.assertEqual(saved.estado, "PENDIENTE")
         self.assertIsNotNone(saved.creado_en)
         for user in (self.adoptante, self.albergue_user):
             self.client.force_authenticate(user)
@@ -113,3 +114,29 @@ class AsesoriaVeterinariaTest(APITestCase):
         self.assertEqual(self.client.get(self.seguimientos_url).status_code, 401)
         self.assertEqual(self.client.get(self.url).status_code, 401)
         self.assertEqual(self.solicitar().status_code, 401)
+
+    def test_adoptante_no_elige_destinatario_ni_estado_inicial(self):
+        response = self.solicitar(estado="ATENDIDA", albergue=9999)
+        self.assertEqual(response.status_code, 201, response.data)
+        saved = SolicitudAsesoriaVeterinaria.objects.get()
+        self.assertEqual(saved.estado, "PENDIENTE")
+        self.assertEqual(saved.seguimiento.solicitud.albergue_id, self.albergue.pk)
+
+    def test_solo_albergue_responsable_gestiona_estado_y_adoptante_lo_consulta(self):
+        saved = self.solicitar().data
+        path = f"{self.url}{saved['id']}/cambiar-estado/"
+        self.assertEqual(self.client.post(path, {"estado": "EN_ATENCION"}).status_code, 403)
+        self.client.force_authenticate(self.otro_albergue_user)
+        self.assertEqual(self.client.post(path, {"estado": "EN_ATENCION"}).status_code, 404)
+        self.client.force_authenticate(self.albergue_user)
+        self.assertEqual(self.client.post(path, {"estado": "INVENTADO"}).status_code, 400)
+        self.assertEqual(self.client.post(path, {"estado": "ATENDIDA"}).status_code, 409)
+        for estado in ("EN_ATENCION", "ATENDIDA"):
+            self.client.force_authenticate(self.albergue_user)
+            response = self.client.post(path, {"estado": estado})
+            self.assertEqual(response.status_code, 200, response.data)
+            self.client.force_authenticate(self.adoptante)
+            response = self.client.get(f"{self.seguimientos_url}{self.seguimiento.pk}/")
+            self.assertEqual(response.data["asesorias_veterinarias"][0]["estado"], estado)
+        self.client.force_authenticate(self.albergue_user)
+        self.assertEqual(self.client.post(path, {"estado": "PENDIENTE"}).status_code, 409)

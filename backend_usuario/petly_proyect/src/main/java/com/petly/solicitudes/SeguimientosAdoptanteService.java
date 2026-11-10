@@ -2,6 +2,9 @@ package com.petly.solicitudes;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
@@ -36,14 +39,15 @@ public class SeguimientosAdoptanteService {
         this.djangoApiBaseUrl = djangoApiBaseUrl.replaceAll("/+$", "");
     }
 
-    public ResponseEntity<String> listarSeguimientos(String authorization) {
+    public ResponseEntity<String> listarSeguimientos(String authorization, int page) {
+        if (page < 1 || page > 100000) throw new ApiException(400, "Página inválida.");
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         headers.set(HttpHeaders.AUTHORIZATION, authorization);
 
         try {
             ResponseEntity<String> response = restTemplate.exchange(
-                    djangoApiBaseUrl + RUTA_DJANGO,
+                    djangoApiBaseUrl + RUTA_DJANGO + "?page=" + page,
                     HttpMethod.GET,
                     new HttpEntity<>(headers),
                     String.class);
@@ -56,6 +60,38 @@ public class SeguimientosAdoptanteService {
                     .body(ex.getResponseBodyAsString());
         } catch (ResourceAccessException ex) {
             throw new ApiException(503, "El servicio de seguimientos no está disponible.");
+        }
+    }
+
+    public ResponseEntity<String> solicitarAsesoria(String authorization,
+            SeguimientosAdoptanteController.SolicitarAsesoriaRequest solicitud) {
+        String motivo = solicitud.problema() == null ? "" : solicitud.problema().strip();
+        if (solicitud.seguimiento() <= 0 || motivo.isBlank() || motivo.length() > 2000)
+            throw new ApiException(400, "Selecciona un seguimiento y describe el motivo con hasta 2000 caracteres.");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set(HttpHeaders.AUTHORIZATION, authorization);
+        byte[] payload;
+        try {
+            payload = new ObjectMapper().writeValueAsBytes(Map.of(
+                    "seguimiento", solicitud.seguimiento(), "problema", motivo));
+        } catch (JsonProcessingException ex) {
+            throw new ApiException(400, "No se pudo preparar la solicitud de asesoría.");
+        }
+        headers.setContentLength(payload.length);
+        try {
+            // Django checks ownership and derives the shelter from the follow-up; clients cannot choose it.
+            ResponseEntity<String> response = restTemplate.exchange(
+                    djangoApiBaseUrl + "/api/contratos/asesorias-veterinarias/", HttpMethod.POST,
+                    new HttpEntity<>(payload, headers), String.class);
+            return ResponseEntity.status(response.getStatusCode()).contentType(MediaType.APPLICATION_JSON)
+                    .body(response.getBody());
+        } catch (HttpStatusCodeException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).contentType(MediaType.APPLICATION_JSON)
+                    .body(ex.getResponseBodyAsString());
+        } catch (ResourceAccessException ex) {
+            throw new ApiException(503, "No se pudo contactar con el albergue. Vuelve a intentar.");
         }
     }
 

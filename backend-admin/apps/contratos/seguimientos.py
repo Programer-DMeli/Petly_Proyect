@@ -20,8 +20,8 @@ from .reportes import ReporteBienestarReadSerializer
 class SolicitudAsesoriaVeterinariaSerializer(serializers.ModelSerializer):
     class Meta:
         model = SolicitudAsesoriaVeterinaria
-        fields = ["id", "seguimiento", "problema", "creado_en"]
-        read_only_fields = ["id", "creado_en"]
+        fields = ["id", "seguimiento", "problema", "estado", "creado_en"]
+        read_only_fields = ["id", "estado", "creado_en"]
 
     def get_fields(self):
         fields = super().get_fields()
@@ -54,6 +54,29 @@ class SolicitudAsesoriaVeterinariaViewSet(viewsets.ModelViewSet):
         if request.user.rol != User.Rol.ADOPTANTE:
             raise PermissionDenied("Solo el adoptante puede solicitar asesoría veterinaria.")
         return super().create(request, *args, **kwargs)
+
+    @action(detail=True, methods=["post"], url_path="cambiar-estado")
+    def cambiar_estado(self, request, pk=None):
+        if request.user.rol != User.Rol.ALBERGUE:
+            raise PermissionDenied("Solo el albergue responsable puede actualizar la asesoría.")
+        serializer = EstadoAsesoriaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            asesoria = self.get_queryset().select_for_update().get(pk=self.get_object().pk)
+            nuevo = serializer.validated_data["estado"]
+            transitions = {
+                SolicitudAsesoriaVeterinaria.Estado.PENDIENTE: {SolicitudAsesoriaVeterinaria.Estado.EN_ATENCION},
+                SolicitudAsesoriaVeterinaria.Estado.EN_ATENCION: {SolicitudAsesoriaVeterinaria.Estado.ATENDIDA},
+            }
+            if nuevo != asesoria.estado and nuevo not in transitions.get(asesoria.estado, set()):
+                return Response({"detail": "La asesoría debe pasar de pendiente a en atención y luego a atendida."}, status=409)
+            asesoria.estado = nuevo
+            asesoria.save(update_fields=["estado"])
+        return Response(self.get_serializer(asesoria).data)
+
+
+class EstadoAsesoriaSerializer(serializers.Serializer):
+    estado = serializers.ChoiceField(choices=SolicitudAsesoriaVeterinaria.Estado.choices)
 
 
 class GestionarSeguimientoPermission(permissions.BasePermission):

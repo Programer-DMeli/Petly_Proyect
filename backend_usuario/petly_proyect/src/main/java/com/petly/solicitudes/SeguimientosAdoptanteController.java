@@ -11,6 +11,11 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestBody;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import org.springframework.web.multipart.MultipartFile;
 
 /** API Spring para consultar los seguimientos postadopción del adoptante (US-37). */
@@ -26,8 +31,19 @@ public class SeguimientosAdoptanteController {
 
     @GetMapping
     public ResponseEntity<String> listarSeguimientos(
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
-        return seguimientosService.listarSeguimientos(authorization);
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+            @RequestParam(defaultValue = "1") int page) {
+        return seguimientosService.listarSeguimientos(authorization, page);
+    }
+
+    public record SolicitarAsesoriaRequest(@Positive long seguimiento,
+            @NotBlank @Size(max = 2000) String problema) {}
+
+    @PostMapping("/asesorias")
+    public ResponseEntity<String> solicitarAsesoria(
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+            @Valid @RequestBody SolicitarAsesoriaRequest solicitud) {
+        return seguimientosService.solicitarAsesoria(authorization, solicitud);
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
