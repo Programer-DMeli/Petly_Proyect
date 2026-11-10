@@ -111,6 +111,30 @@ class RespuestaAutomaticaChatbot(models.Model):
         return f"{self.albergue.nombre} · {self.pregunta_clave}"
 
 
+class MetricaRespuestaChatbot(models.Model):
+    """Conteo diario agregado; no conserva la consulta ni la identidad del adoptante."""
+
+    albergue = models.ForeignKey(
+        Albergue,
+        on_delete=models.CASCADE,
+        related_name="metricas_respuestas_chatbot",
+    )
+    pregunta_clave = models.CharField(max_length=180)
+    fecha = models.DateField()
+    consultas = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ["-fecha", "pregunta_clave"]
+        constraints = [models.UniqueConstraint(
+            fields=["albergue", "pregunta_clave", "fecha"],
+            name="albergue_chat_metric_dia_uniq",
+        )]
+        indexes = [models.Index(fields=["albergue", "fecha"], name="albergue_chat_metric_dia_idx")]
+
+    def __str__(self):
+        return f"{self.albergue.nombre} · {self.pregunta_clave} · {self.fecha}"
+
+
 class EventoAdopcion(models.Model):
     albergue = models.ForeignKey(Albergue, on_delete=models.CASCADE, related_name="eventos_adopcion")
     titulo = models.CharField(max_length=150)

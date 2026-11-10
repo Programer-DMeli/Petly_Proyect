@@ -1,13 +1,21 @@
+import logging
 import re
 import unicodedata
+from datetime import timedelta
 
+from django.db.models import F, Sum
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from .models import RespuestaAutomaticaChatbot
+from .models import MetricaRespuestaChatbot, RespuestaAutomaticaChatbot
+
+
+logger = logging.getLogger(__name__)
 
 
 class RespuestaAutomaticaChatbotSerializer(serializers.ModelSerializer):
@@ -96,6 +104,34 @@ class RespuestaAutomaticaChatbotViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Solo el albergue puede configurar sus respuestas automáticas.")
         serializer.save(albergue=self.request.user.albergue)
 
+    @action(detail=False, methods=["get"], url_path="metricas")
+    def metricas(self, request):
+        hoy = timezone.localdate()
+        desde = _parse_metric_date(request.query_params.get("desde"), "desde", hoy - timedelta(days=29))
+        hasta = _parse_metric_date(request.query_params.get("hasta"), "hasta", hoy)
+        if desde > hasta:
+            raise ValidationError({"desde": "La fecha inicial debe ser anterior o igual a la fecha final."})
+        if hasta > hoy:
+            raise ValidationError({"hasta": "La fecha final no puede estar en el futuro."})
+        if (hasta - desde).days > 365:
+            raise ValidationError({"desde": "El periodo máximo permitido es de 366 días."})
+
+        metricas = list(
+            MetricaRespuestaChatbot.objects.filter(
+                albergue=request.user.albergue,
+                fecha__range=(desde, hasta),
+            )
+            .values("pregunta_clave")
+            .annotate(consultas=Sum("consultas"))
+            .order_by("-consultas", "pregunta_clave")
+        )
+        return Response({
+            "desde": desde,
+            "hasta": hasta,
+            "total_consultas": sum(item["consultas"] for item in metricas),
+            "preguntas": metricas,
+        })
+
     @action(detail=False, methods=["post"], url_path="coincidencia")
     def coincidencia(self, request):
         question = request.data.get("pregunta", "")
@@ -125,4 +161,29 @@ class RespuestaAutomaticaChatbotViewSet(viewsets.ModelViewSet):
         if len(best) != 1:
             return Response({"respuesta": None, "albergue": None})
         rule = best[0]
+        try:
+            _registrar_consulta(rule.albergue_id, rule.pregunta_clave)
+        except Exception:
+            # Analytics must not prevent the chatbot from returning its configured answer.
+            logger.exception("No se pudo guardar el conteo agregado de una respuesta automática.")
         return Response({"respuesta": rule.respuesta, "albergue": rule.albergue.nombre})
+
+
+def _parse_metric_date(value, field, default):
+    if value is None:
+        return default
+    parsed = parse_date(value)
+    if parsed is None:
+        raise ValidationError({field: "Usa el formato de fecha YYYY-MM-DD."})
+    return parsed
+
+
+def _registrar_consulta(albergue_id, pregunta_clave):
+    metric, created = MetricaRespuestaChatbot.objects.get_or_create(
+        albergue_id=albergue_id,
+        pregunta_clave=pregunta_clave,
+        fecha=timezone.localdate(),
+        defaults={"consultas": 1},
+    )
+    if not created:
+        MetricaRespuestaChatbot.objects.filter(pk=metric.pk).update(consultas=F("consultas") + 1)

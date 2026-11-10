@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
 import { django, json, errorMessage } from '../../../../services/http';
 
@@ -10,7 +10,28 @@ type Rule = {
   activa: boolean;
 };
 type Draft = { pregunta_clave: string; disparadores: string; respuesta: string; activa: boolean };
+type QuestionMetric = { pregunta_clave: string; consultas: number };
+type MetricsSummary = {
+  desde: string;
+  hasta: string;
+  total_consultas: number;
+  preguntas: QuestionMetric[];
+};
 const empty: Draft = { pregunta_clave: '', disparadores: '', respuesta: '', activa: true };
+
+function localDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function defaultPeriod() {
+  const hasta = new Date();
+  const desde = new Date(hasta);
+  desde.setDate(desde.getDate() - 29);
+  return { desde: localDate(desde), hasta: localDate(hasta) };
+}
 
 export default function RespuestasChatbotPage() {
   const [rules, setRules] = useState<Rule[]>([]);
@@ -19,6 +40,12 @@ export default function RespuestasChatbotPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [initialPeriod] = useState(defaultPeriod);
+  const [metricsFrom, setMetricsFrom] = useState(initialPeriod.desde);
+  const [metricsTo, setMetricsTo] = useState(initialPeriod.hasta);
+  const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
+  const [metricsBusy, setMetricsBusy] = useState(false);
+  const [metricsError, setMetricsError] = useState('');
 
   async function load() {
     try {
@@ -28,6 +55,29 @@ export default function RespuestasChatbotPage() {
     } catch (cause) { setError(errorMessage(cause)); }
   }
   useEffect(() => { void load(); }, []);
+
+  const loadMetrics = useCallback(async (desde: string, hasta: string) => {
+    if (!desde || !hasta) {
+      setMetricsError('Selecciona las dos fechas del periodo.');
+      return;
+    }
+    setMetricsBusy(true);
+    setMetricsError('');
+    try {
+      const params = new URLSearchParams({ desde, hasta });
+      setMetrics(await django<MetricsSummary>(
+        `/api/albergues/respuestas-chatbot/metricas/?${params.toString()}`
+      ));
+    } catch (cause) {
+      setMetricsError(errorMessage(cause));
+    } finally {
+      setMetricsBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMetrics(initialPeriod.desde, initialPeriod.hasta);
+  }, [initialPeriod, loadMetrics]);
 
   async function save() {
     setBusy(true); setError(''); setSuccess('');
@@ -87,6 +137,59 @@ export default function RespuestasChatbotPage() {
       {editing !== null && <button type="button" className="secondary" disabled={busy}
         onClick={() => { setEditing(null); setDraft(empty); }}>Cancelar edición</button>}
     </form>
+
+    <section aria-labelledby="chatbot-metricas-titulo">
+      <h2 id="chatbot-metricas-titulo">Preguntas más consultadas</h2>
+      <p className="muted">
+        Se cuentan las consultas que activaron una respuesta configurada por tu albergue. Se guarda el conteo diario y la pregunta clave, no el mensaje libre ni la identidad del adoptante.
+      </p>
+      <form className="actions" onSubmit={event => {
+        event.preventDefault();
+        void loadMetrics(metricsFrom, metricsTo);
+      }}>
+        <label>
+          Desde
+          <input type="date" value={metricsFrom} max={metricsTo || undefined}
+            onChange={event => setMetricsFrom(event.target.value)} />
+        </label>
+        <label>
+          Hasta
+          <input type="date" value={metricsTo} min={metricsFrom || undefined}
+            onChange={event => setMetricsTo(event.target.value)} />
+        </label>
+        <button disabled={metricsBusy}>
+          {metricsBusy ? 'Consultando…' : 'Actualizar métricas'}
+        </button>
+      </form>
+      {metricsError && <p role="alert">{metricsError}</p>}
+      {metrics && !metricsBusy && (
+        <>
+          <p>
+            <strong>{new Intl.NumberFormat('es-PE').format(metrics.total_consultas)}</strong>{' '}
+            consultas respondidas entre {metrics.desde} y {metrics.hasta}.
+          </p>
+          {metrics.preguntas.length === 0 ? (
+            <p>Aún no hay consultas coincidentes en este periodo.</p>
+          ) : (
+            <ol className="chatbot-metrics-ranking">
+              {metrics.preguntas.map((metric, index) => (
+                <li key={metric.pregunta_clave}>
+                  <div>
+                    <strong>{metric.pregunta_clave}</strong>
+                    <span>{new Intl.NumberFormat('es-PE').format(metric.consultas)} consultas</span>
+                  </div>
+                  <progress
+                    value={metric.consultas}
+                    max={metrics.preguntas[0].consultas}
+                    aria-label={`Frecuencia ${index + 1}: ${metric.pregunta_clave}`}
+                  />
+                </li>
+              ))}
+            </ol>
+          )}
+        </>
+      )}
+    </section>
 
     <h2>Respuestas configuradas</h2>
     {rules.length === 0 ? <p>Aún no configuraste respuestas. Solo tu albergue puede ver y editar estas reglas.</p> :
