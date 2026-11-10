@@ -1,120 +1,85 @@
-"""API autenticada para conversaciones entre adoptantes y albergues (US-51)."""
-from django.db import transaction
-from django.db.models import Prefetch
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from rest_framework import permissions, serializers, status
-from rest_framework.exceptions import PermissionDenied
+"""Rutas compatibles con el primer contrato de mensajería.
+
+Todas las operaciones delegan al almacenamiento canónico de ``apps.mensajeria``.
+"""
+from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Albergue, ConversacionAdopcion, MensajeConversacion
+from apps.mensajeria.serializers import MensajeSerializer
+from apps.mensajeria.views import ConversacionViewSet
 
 
-class ConversacionSerializer(serializers.ModelSerializer):
-    albergue_nombre = serializers.CharField(source="albergue.nombre", read_only=True)
-    interlocutor = serializers.SerializerMethodField()
-    ultimo_mensaje = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ConversacionAdopcion
-        fields = ["id", "albergue_id", "albergue_nombre", "interlocutor", "ultimo_mensaje", "creada_en", "actualizada_en"]
-        read_only_fields = fields
-
-    def get_interlocutor(self, obj):
-        if self.context["request"].user.rol == "ADOPTANTE":
-            return obj.albergue.nombre
-        nombre = obj.adoptante.get_full_name().strip()
-        return nombre or "Adoptante"
-
-    def get_ultimo_mensaje(self, obj):
-        mensajes = getattr(obj, "_ultimos_mensajes", None)
-        mensaje = mensajes[0] if mensajes else None
-        return mensaje.contenido if mensaje else ""
+def _legacy_conversation(data):
+    latest = data.get("ultimo_mensaje")
+    return {
+        "id": data["id"],
+        "albergue_id": data["albergue_id"],
+        "albergue_nombre": data["albergue_nombre"],
+        "interlocutor": data["interlocutor"],
+        "ultimo_mensaje": (latest or {}).get("texto", "") if isinstance(latest, dict) else "",
+        "creada_en": data["creada_en"],
+        "actualizada_en": data["actualizada_en"],
+    }
 
 
-class MensajeSerializer(serializers.ModelSerializer):
-    remitente_spring_id = serializers.IntegerField(source="remitente.spring_id", read_only=True)
-    remitente_nombre = serializers.SerializerMethodField()
-
-    class Meta:
-        model = MensajeConversacion
-        fields = ["id", "remitente_spring_id", "remitente_nombre", "contenido", "creado_en"]
-        read_only_fields = ["id", "remitente_spring_id", "remitente_nombre", "creado_en"]
-
-    def validate_contenido(self, value):
-        value = value.strip()
-        if not value:
-            raise serializers.ValidationError("Escribe un mensaje antes de enviarlo.")
-        return value
-
-    def get_remitente_nombre(self, obj):
-        return obj.remitente.get_full_name().strip() or (
-            "Albergue" if obj.remitente.rol == "ALBERGUE" else "Adoptante"
-        )
-
-
-def _conversaciones_usuario(user):
-    if user.rol == "ADOPTANTE":
-        queryset = ConversacionAdopcion.objects.filter(adoptante=user)
-    elif user.rol == "ALBERGUE" and hasattr(user, "albergue"):
-        queryset = ConversacionAdopcion.objects.filter(albergue__usuario=user)
-    else:
-        raise PermissionDenied("Solo adoptantes y albergues pueden usar la mensajería.")
-    return queryset.select_related("albergue", "adoptante").prefetch_related(
-        Prefetch(
-            "mensajes",
-            queryset=MensajeConversacion.objects.order_by("-creado_en", "-id")[:1],
-            to_attr="_ultimos_mensajes",
-        )
-    )
+def _legacy_message(data):
+    return {
+        **data,
+        "contenido": data.get("texto", ""),
+    }
 
 
 class ConversacionesView(APIView):
-    """Lista las conversaciones propias; el adoptante puede iniciar una con un albergue."""
-
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        conversaciones = _conversaciones_usuario(request.user)
-        return Response(ConversacionSerializer(conversaciones, many=True, context={"request": request}).data)
+        result = ConversacionViewSet().list(request)
+        if result.status_code >= 400:
+            return result
+        return Response([_legacy_conversation(row) for row in result.data])
 
-    @transaction.atomic
     def post(self, request):
-        if request.user.rol != "ADOPTANTE":
-            raise PermissionDenied("Solo un adoptante puede iniciar una conversación.")
-        albergue_id = request.data.get("albergue_id")
-        if isinstance(albergue_id, bool) or not str(albergue_id or "").isdigit():
-            raise serializers.ValidationError({"albergue_id": "Selecciona un albergue válido."})
-        albergue = get_object_or_404(Albergue, pk=int(albergue_id), activo=True)
-        conversacion, creada = ConversacionAdopcion.objects.get_or_create(
-            adoptante=request.user,
-            albergue=albergue,
-        )
-        conversacion = _conversaciones_usuario(request.user).get(pk=conversacion.pk)
-        data = ConversacionSerializer(conversacion, context={"request": request}).data
-        return Response(data, status=status.HTTP_201_CREATED if creada else status.HTTP_200_OK)
+        result = ConversacionViewSet().create(request)
+        if result.status_code >= 400:
+            return result
+        return Response(_legacy_conversation(result.data), status=result.status_code)
 
 
 class MensajesConversacionView(APIView):
-    """Lee y envía mensajes; el filtro de participante devuelve 404 a terceros."""
-
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_conversation(self, request, pk):
-        return get_object_or_404(_conversaciones_usuario(request.user), pk=pk)
-
     def get(self, request, pk):
-        conversacion = self.get_conversation(request, pk)
-        mensajes = conversacion.mensajes.select_related("remitente").all()
-        return Response(MensajeSerializer(mensajes, many=True).data)
+        conversation = ConversacionViewSet()._get(request, pk)
+        messages = conversation.mensajes.select_related("remitente").prefetch_related("adjuntos").all()
+        return Response([
+            _legacy_message(row)
+            for row in MensajeSerializer(messages, many=True, context={"request": request}).data
+        ])
 
-    @transaction.atomic
     def post(self, request, pk):
-        conversacion = self.get_conversation(request, pk)
-        serializer = MensajeSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        mensaje = serializer.save(conversacion=conversacion, remitente=request.user)
-        conversacion.actualizada_en = timezone.now()
-        conversacion.save(update_fields=["actualizada_en"])
-        return Response(MensajeSerializer(mensaje).data, status=status.HTTP_201_CREATED)
+        result = ConversacionViewSet().mensajes(request, pk=pk)
+        if result.status_code >= 400:
+            return result
+        return Response(_legacy_message(result.data), status=result.status_code)
+
+
+class MensajeLeidoView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        return ConversacionViewSet().leer(request, pk=pk)
+
+
+class BloquearConversacionView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        return ConversacionViewSet().bloquear(request, pk=pk)
+
+
+class ReportarConversacionView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        return ConversacionViewSet().reportar(request, pk=pk)

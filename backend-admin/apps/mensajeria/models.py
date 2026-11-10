@@ -28,7 +28,7 @@ class BienvenidaAlbergue(models.Model):
 
 
 class Conversacion(models.Model):
-    solicitud = models.OneToOneField("acceso.SolicitudAdopcion", on_delete=models.PROTECT, related_name="conversacion")
+    solicitud = models.OneToOneField("acceso.SolicitudAdopcion", on_delete=models.PROTECT, related_name="conversacion", null=True, blank=True)
     adoptante = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="conversaciones_adoptante")
     albergue = models.ForeignKey("albergues.Albergue", on_delete=models.PROTECT, related_name="conversaciones")
     creada_en = models.DateTimeField(auto_now_add=True)
@@ -36,6 +36,10 @@ class Conversacion(models.Model):
 
     class Meta:
         ordering = ["-actualizada_en", "-id"]
+        constraints = [models.UniqueConstraint(
+            fields=["adoptante", "albergue"],
+            name="chat_adoptante_albergue_unico",
+        )]
 
 
 class ParticipanteConversacion(models.Model):

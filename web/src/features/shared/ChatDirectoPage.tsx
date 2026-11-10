@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Feedback from '../../components/Feedback';
 import { django, downloadDjango, errorMessage, json } from '../../services/http';
-import { getSession } from '../../services/session';
 
-type Message = { id: number; remitente_id: number; texto: string; creado_en: string; bienvenida_automatica: boolean; adjuntos: { id: number; nombre_original: string; descarga: string }[] };
+type Message = { id: number; remitente_id: number; propio: boolean; texto: string; creado_en: string; bienvenida_automatica: boolean; adjuntos: { id: number; nombre_original: string; descarga: string }[] };
 type Conversation = { id: number; solicitud_id: number; mascota: string; nombre_contacto: string; no_leidos: number; promedio_respuesta_horas: number | null; ultimo_mensaje: Message | null };
 type Thread = { conversacion: Conversation; mensajes: Message[] };
 
 export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGUE' }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const shelterParam = searchParams.get('albergue');
+  const shelterId = shelterParam && /^\d+$/.test(shelterParam) ? Number(shelterParam) : null;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [thread, setThread] = useState<Thread | null>(null);
   const [draft, setDraft] = useState('');
@@ -20,15 +22,13 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
-  const currentUserId = Number(getSession()?.identity.id);
-
   const loadList = useCallback(async () => {
     try {
       const result = await django<Conversation[]>('/api/mensajeria/conversaciones/');
       setConversations(result);
-      if (!id && result.length) void navigate(`/${role === 'ADOPTANTE' ? 'adoptante' : 'albergue'}/mensajes/${result[0].id}`, { replace: true });
+      if (!id && !shelterId && result.length) void navigate(`/${role === 'ADOPTANTE' ? 'adoptante' : 'albergue'}/mensajes/${result[0].id}`, { replace: true });
     } catch (e) { setError(errorMessage(e)); }
-  }, [id, navigate, role]);
+  }, [id, navigate, role, shelterId]);
 
   const loadThread = useCallback(async () => {
     if (!id) { setThread(null); return; }
@@ -41,6 +41,16 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
   }, [id]);
 
   useEffect(() => { void loadList(); }, [loadList]);
+  useEffect(() => {
+    if (role !== 'ADOPTANTE' || shelterId == null) return;
+    let active = true;
+    void django<Conversation>('/api/mensajeria/conversaciones/', {
+      method: 'POST', body: json({ albergue_id: shelterId }),
+    }).then(conversation => {
+      if (active) void navigate(`/adoptante/mensajes/${conversation.id}`, { replace: true });
+    }).catch(e => { if (active) setError(errorMessage(e)); });
+    return () => { active = false; };
+  }, [navigate, role, shelterId]);
   useEffect(() => {
     if (role !== 'ALBERGUE') return;
     void django<{ texto: string }>('/api/mensajeria/bienvenida/').then(v => setWelcome(v.texto)).catch(e => setError(errorMessage(e)));
@@ -100,7 +110,7 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
       <div className="chat-directo-thread">
         {thread ? <>
           <header><h2>{thread.conversacion.nombre_contacto} · {thread.conversacion.mascota}</h2><p>Tiempo promedio de respuesta: {thread.conversacion.promedio_respuesta_horas == null ? 'sin datos' : `${thread.conversacion.promedio_respuesta_horas} h`}</p></header>
-          <div className="chat-directo-messages" aria-live="polite">{thread.mensajes.map(message => <article key={message.id} className={message.remitente_id === currentUserId ? 'chat-directo-message mine' : 'chat-directo-message'}><p>{message.texto}</p>{message.adjuntos.map(fileItem => <button key={fileItem.id} type="button" className="secondary" onClick={() => void downloadAttachment(fileItem.descarga, fileItem.nombre_original)}>{fileItem.nombre_original} · descargar</button>)}<small>{message.bienvenida_automatica ? 'Bienvenida automática · ' : ''}{new Date(message.creado_en).toLocaleString('es-PE')}</small></article>)}</div>
+          <div className="chat-directo-messages" aria-live="polite">{thread.mensajes.map(message => <article key={message.id} className={message.propio ? 'chat-directo-message mine' : 'chat-directo-message'}><p>{message.texto}</p>{message.adjuntos.map(fileItem => <button key={fileItem.id} type="button" className="secondary" onClick={() => void downloadAttachment(fileItem.descarga, fileItem.nombre_original)}>{fileItem.nombre_original} · descargar</button>)}<small>{message.bienvenida_automatica ? 'Bienvenida automática · ' : ''}{new Date(message.creado_en).toLocaleString('es-PE')}</small></article>)}</div>
           <form onSubmit={e => void send(e)}><label htmlFor="chat-directo-draft">Mensaje</label><textarea id="chat-directo-draft" maxLength={4000} value={draft} onChange={e => setDraft(e.target.value)} /><label>Adjunto (JPG, PNG o PDF; máximo 10 MB)<input type="file" accept="image/jpeg,image/png,application/pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} /></label>{file && <p>{file.name}</p>}<button disabled={busy || (!draft.trim() && !file)}>{busy ? 'Enviando…' : 'Enviar'}</button></form>
           <div className="chat-directo-actions"><label>Motivo del reporte<select value={reason} onChange={e => setReason(e.target.value)}><option value="ACOSO">Acoso o amenazas</option><option value="FRAUDE">Fraude o suplantación</option><option value="CONTENIDO">Contenido inapropiado</option><option value="OTRO">Otro motivo</option></select></label><button type="button" className="secondary" onClick={() => void moderate('reportar')}>Reportar conversación</button><button type="button" className="danger" onClick={() => void moderate('bloquear')}>Bloquear conversación</button></div>
         </> : <p>Selecciona una conversación para ver los mensajes.</p>}

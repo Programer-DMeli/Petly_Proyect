@@ -1,7 +1,7 @@
 import mimetypes
 import os
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.acceso.models import SolicitudAdopcion
+from apps.albergues.models import Albergue
 from .models import (AdjuntoMensaje, BienvenidaAlbergue, BloqueoConversacion,
                      Conversacion, Mensaje, ParticipanteConversacion, ReporteConversacion)
 from .serializers import ConversacionSerializer, MensajeSerializer
@@ -40,20 +41,53 @@ class ConversacionViewSet(viewsets.ViewSet):
     def create(self, request):
         if request.user.rol not in ("ADOPTANTE", "ALBERGUE"):
             raise PermissionDenied()
-        try:
-            solicitud_id = int(request.data.get("solicitud_id"))
-        except (TypeError, ValueError):
-            raise ValidationError({"solicitud_id": "Indica una solicitud válida."})
-        solicitud = get_object_or_404(SolicitudAdopcion.objects.select_related("albergue", "mascota"), pk=solicitud_id)
-        allowed = (request.user.pk == solicitud.adoptante_id if request.user.rol == "ADOPTANTE"
-                   else request.user.pk == solicitud.albergue.usuario_id)
-        if not allowed:
-            raise PermissionDenied("Solo los participantes de la solicitud pueden iniciar el chat.")
+        solicitud_id = request.data.get("solicitud_id")
+        shelter_id = request.data.get("albergue_id")
+        solicitud = None
+        if solicitud_id not in (None, ""):
+            try:
+                solicitud_id = int(solicitud_id)
+            except (TypeError, ValueError):
+                raise ValidationError({"solicitud_id": "Indica una solicitud válida."})
+            solicitud = get_object_or_404(SolicitudAdopcion.objects.select_related("albergue", "mascota"), pk=solicitud_id)
+            if not solicitud.adoptante_id:
+                raise ValidationError({"solicitud_id": "Esta solicitud no está vinculada a una cuenta adoptante."})
+            allowed = (request.user.pk == solicitud.adoptante_id if request.user.rol == "ADOPTANTE"
+                       else request.user.pk == solicitud.albergue.usuario_id)
+            if not allowed:
+                raise PermissionDenied("Solo los participantes de la solicitud pueden iniciar el chat.")
+            albergue = solicitud.albergue
+            adoptante = solicitud.adoptante
+        else:
+            if request.user.rol != "ADOPTANTE":
+                raise ValidationError({"solicitud_id": "Un albergue debe iniciar el chat desde una solicitud."})
+            try:
+                shelter_id = int(shelter_id)
+            except (TypeError, ValueError):
+                raise ValidationError({"albergue_id": "Indica un albergue válido."})
+            albergue = get_object_or_404(Albergue, pk=shelter_id, activo=True)
+            adoptante = request.user
         with transaction.atomic():
-            conversation, created = Conversacion.objects.get_or_create(
-                solicitud=solicitud,
-                defaults={"adoptante_id": solicitud.adoptante_id, "albergue": solicitud.albergue},
-            )
+            conversation = Conversacion.objects.filter(adoptante=adoptante, albergue=albergue).order_by("id").first()
+            if conversation:
+                if solicitud and conversation.solicitud_id is None:
+                    conversation.solicitud = solicitud
+                    conversation.save(update_fields=["solicitud", "actualizada_en"])
+                created = False
+            else:
+                try:
+                    with transaction.atomic():
+                        conversation = Conversacion.objects.create(
+                            solicitud=solicitud,
+                            adoptante=adoptante,
+                            albergue=albergue,
+                        )
+                    created = True
+                except IntegrityError:
+                    conversation = Conversacion.objects.filter(adoptante=adoptante, albergue=albergue).order_by("id").first()
+                    if conversation is None:
+                        raise
+                    created = False
             ParticipanteConversacion.objects.get_or_create(conversacion=conversation, usuario_id=conversation.adoptante_id)
             ParticipanteConversacion.objects.get_or_create(conversacion=conversation, usuario=conversation.albergue.usuario)
             if created:
@@ -74,12 +108,13 @@ class ConversacionViewSet(viewsets.ViewSet):
             raise PermissionDenied()
         return conversation
 
+    @transaction.atomic
     @action(detail=True, methods=["post"], url_path="mensajes", parser_classes=[MultiPartParser, FormParser, JSONParser])
     def mensajes(self, request, pk=None):
         conversation = self._get(request, pk)
         if conversation.bloqueos.exists():
             return Response({"detail": "No se pueden enviar mensajes en una conversación bloqueada."}, status=423)
-        text = str(request.data.get("texto", "")).strip()
+        text = str(request.data.get("texto", request.data.get("contenido", ""))).strip()
         upload = request.FILES.get("archivo")
         if not text and not upload:
             raise ValidationError({"texto": "Escribe un mensaje o adjunta un archivo."})
