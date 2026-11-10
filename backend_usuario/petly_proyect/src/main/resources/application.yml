@@ -6,6 +6,11 @@ spring:
     # Se conserva el nombre original del proyecto.
     name: petly_proyect
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 21MB
+
   datasource:
     # Base compartida `database_petly` en XAMPP (MariaDB 10.4.32, puerto 3306).
     # Sobrescribir por variables de entorno en Windows; ver .env.example.
@@ -67,6 +72,12 @@ springdoc:
 
 petly:
   django-api-base-url: ${DJANGO_API_BASE_URL:http://localhost:8000}
+  recordatorios:
+    intervalo-ms: ${RECORDATORIOS_SINCRONIZACION_MS:60000}
+    url-reportes: ${PETLY_URL_REPORTES:http://localhost:5173/adoptante/seguimientos-postadopcion}
+  notificaciones-coincidencia:
+    intervalo-ms: ${AVISOS_COINCIDENCIA_INTERVALO_MS:60000}
+    url-catalogo: ${PETLY_URL_CATALOGO:http://localhost:5173/adoptante/catalogo}
   apiperu-dni-url: ${APIPERU_DNI_URL:https://api.apiperu.dev/dni}
   apiperu-api-token: ${APIPERU_API_TOKEN:}
   # Endpoint completo del proveedor autorizado; si falta token o URL se falla cerrado.

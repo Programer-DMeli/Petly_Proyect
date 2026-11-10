@@ -168,3 +168,44 @@ export interface PreferenciasNotificacion {
   whatsapp: boolean;
   push: boolean;
 }
+
+export interface AvisoAdoptante {
+  id: number;
+  solicitud_id: number | null;
+  mascota_id: number | null;
+  mascota_nombre: string;
+  albergue_nombre: string;
+  tipo: string;
+  titulo: string;
+  mensaje: string;
+  descripcion: string;
+  estado_nuevo: string;
+  estado_actual: string;
+  ocurrido_en: string;
+  leido_en: string | null;
+}
+
+export interface BandejaAvisosAdoptante extends Page<AvisoAdoptante> {
+  no_leidas: number;
+}
+
+export interface AvisosLeidosResponse {
+  actualizadas: number;
+}
+
+export interface AlertaCompatibilidadAlbergue {
+  id: number;
+  solicitudId: number;
+  adoptanteId: number;
+  mascotaId: number;
+  adoptanteNombre: string;
+  mascotaNombre: string;
+  porcentaje: number;
+  ocurridoEn: string;
+  leidoEn: string | null;
+}
+
+export interface BandejaCompatibilidadAlbergue {
+  results: AlertaCompatibilidadAlbergue[];
+  no_leidas: number;
+}

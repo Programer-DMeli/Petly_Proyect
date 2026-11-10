@@ -3,7 +3,7 @@ import Feedback from '../../../../components/Feedback';
 import PrivateDjangoImage from '../../../../components/PrivateDjangoImage';
 import { django, json, errorMessage } from '../../../../services/http';
 
-type Seguimiento = { id: number; solicitud_id: number; mascota_nombre: string; adoptante_email: string | null; programado_para: string; modalidad: 'VISITA' | 'LLAMADA'; estado: string; notas: string; asesorias_veterinarias?: { id: number; problema: string; creado_en: string }[]; expediente_cierre?: { id: number; calificacion_adaptacion: number; observaciones_cierre: string; cerrado_en: string } | null; reporte_bienestar?: { id: number; estado_bienestar: string; estado_bienestar_display: string; observaciones: string; enviado_en: string; fotos: { id: number; mime_type: string; tamaño_bytes: number; descarga_url: string }[] } | null };
+type Seguimiento = { id: number; solicitud_id: number; mascota_nombre: string; adoptante_email: string | null; programado_para: string; modalidad: 'VISITA' | 'LLAMADA'; estado: string; notas: string; alerta_incumplimiento?: { estado: 'PENDIENTE'; generada_en: string } | null; asesorias_veterinarias?: { id: number; problema: string; creado_en: string }[]; expediente_cierre?: { id: number; calificacion_adaptacion: number; observaciones_cierre: string; cerrado_en: string } | null; reporte_bienestar?: { id: number; estado_bienestar: string; estado_bienestar_display: string; observaciones: string; enviado_en: string; fotos: { id: number; mime_type: string; tamaño_bytes: number; descarga_url: string }[] } | null };
 type Draft = { solicitud_id: string; programado_para: string; modalidad: 'VISITA' | 'LLAMADA'; notas: string };
 const empty: Draft = { solicitud_id: '', programado_para: '', modalidad: 'VISITA', notas: '' };
 
@@ -72,6 +72,10 @@ export default function SeguimientosPage() {
     <button type="button" className="secondary" onClick={() => void load()}>Actualizar agenda</button>
     {rows.length === 0 ? <p>No tienes seguimientos programados.</p> : <ul>{rows.map(row => <li key={row.id}>
       <strong>{row.mascota_nombre}</strong> · Solicitud #{row.solicitud_id} · {row.modalidad === 'VISITA' ? 'Visita' : 'Llamada'} · {new Date(row.programado_para).toLocaleString('es-PE')} · {row.estado}
+      {row.alerta_incumplimiento && <div className="alert alert--error" role="alert" style={{ marginTop: '0.75rem' }}>
+        <strong>Alerta roja: reporte de bienestar vencido.</strong>
+        <p>El plazo venció el {new Date(row.programado_para).toLocaleString('es-PE')} y aún no se ha recibido el reporte.</p>
+      </div>}
       {row.notas && <p>{row.notas}</p>}
       {row.asesorias_veterinarias?.map(asesoria => <div key={asesoria.id}>
         <strong>Asesoría veterinaria gratuita solicitada · {new Date(asesoria.creado_en).toLocaleString('es-PE')}</strong>

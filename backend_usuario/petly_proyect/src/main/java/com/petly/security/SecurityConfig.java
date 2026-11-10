@@ -79,6 +79,9 @@ public class SecurityConfig {
                         // El envío de solicitudes es exclusivo del adoptante (US-06).
                         .requestMatchers("/api/solicitudes", "/api/solicitudes/**")
                         .hasRole("ADOPTANTE")
+                        // Los seguimientos reportables pertenecen al adoptante autenticado (US-37).
+                        .requestMatchers("/api/seguimientos/adoptante", "/api/seguimientos/adoptante/**")
+                        .hasRole("ADOPTANTE")
                         // Asistente compartido por los clientes autenticados de ambos perfiles.
                         .requestMatchers("/api/asistente/**").hasAnyRole("ADOPTANTE", "ALBERGUE")
                         // Compatibilidad e identidad siguen siendo exclusivas del adoptante.

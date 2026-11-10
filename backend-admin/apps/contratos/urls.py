@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import ContratoViewSet, GenerarContratoView, RegistrarEntregaContratoView, WebhookFirmaView
 from .seguimientos import SeguimientoPostAdopcionViewSet, SolicitudAsesoriaVeterinariaViewSet
 from .reportes import ReporteBienestarPostAdopcionViewSet
+from .recordatorios import FeedRecordatoriosSeguimientoView
 
 router = DefaultRouter()
 router.register("asesorias-veterinarias", SolicitudAsesoriaVeterinariaViewSet, basename="asesoria-veterinaria")
@@ -12,6 +13,7 @@ router.register("seguimientos", SeguimientoPostAdopcionViewSet, basename="seguim
 router.register("", ContratoViewSet, basename="contrato")
 
 urlpatterns = [
+    path("reportes/feed-recordatorios/", FeedRecordatoriosSeguimientoView.as_view(), name="feed_recordatorios_seguimiento"),
     path("webhooks/firma/", WebhookFirmaView.as_view(), name="webhook_firma"),
     path("solicitudes/<int:solicitud_id>/generar/", GenerarContratoView.as_view(), name="generar_contrato"),
     path("solicitudes/<int:solicitud_id>/entrega/", RegistrarEntregaContratoView.as_view(), name="registrar_entrega_contrato"),

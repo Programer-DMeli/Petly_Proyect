@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import FotosHogar from '../../../../components/FotosHogar';
 import Feedback from '../../../../components/Feedback';
 import { django, json, errorMessage } from '../../../../services/http';
@@ -22,6 +23,8 @@ function respuesta(value: unknown): string {
 type Page<T> = { results: T[] } | T[];
 
 export default function SolicitudesPage() {
+  const [searchParams] = useSearchParams();
+  const solicitudDestacada = searchParams.get('solicitud');
   const [rows, setRows] = useState<Solicitud[]>([]);
   const [reasons, setReasons] = useState<Record<number, string>>({});
   const [error, setError] = useState('');
@@ -39,6 +42,11 @@ export default function SolicitudesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!solicitudDestacada || rows.length === 0) return;
+    document.getElementById(`solicitud-${solicitudDestacada}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [solicitudDestacada, rows]);
 
   async function decidir(id: number, estado: 'OBSERVADA' | 'APROBADA' | 'RECHAZADA') {
     const motivo = reasons[id]?.trim() ?? '';
@@ -72,7 +80,7 @@ export default function SolicitudesPage() {
         <p>No hay solicitudes para revisar.</p>
       ) : (
         rows.map(row => (
-          <article className="card" key={row.id}>
+          <article className="card" id={`solicitud-${row.id}`} key={row.id}>
             <h2>
               {row.mascota_nombre} · {row.postulante_nombre}
             </h2>

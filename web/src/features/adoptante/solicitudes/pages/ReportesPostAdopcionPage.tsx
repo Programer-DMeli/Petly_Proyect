@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Feedback from '../../../../components/Feedback';
 import PrivateDjangoImage from '../../../../components/PrivateDjangoImage';
-import { django, errorMessage } from '../../../../services/http';
+import { errorMessage, spring } from '../../../../services/http';
 
 type Bienestar = 'EXCELENTE' | 'BUENO' | 'REGULAR' | 'PREOCUPANTE';
 type Foto = { id: number; mime_type: string; tamaño_bytes: number; descarga_url: string };
@@ -12,6 +12,13 @@ type Reporte = {
   observaciones: string;
   enviado_en: string;
   fotos: Foto[];
+};
+type Recordatorio = {
+  id: number;
+  seguimiento_id: number;
+  fecha_limite: string;
+  estado: 'PENDIENTE' | 'ENVIADO' | 'COMPLETADO' | 'CANCELADO';
+  enviado_en: string | null;
 };
 type Seguimiento = {
   id: number;
@@ -36,6 +43,7 @@ function fecha(value: string) {
 
 export default function ReportesPostAdopcionPage() {
   const [rows, setRows] = useState<Seguimiento[]>([]);
+  const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [bienestar, setBienestar] = useState<Bienestar>('BUENO');
   const [observaciones, setObservaciones] = useState('');
@@ -43,15 +51,21 @@ export default function ReportesPostAdopcionPage() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [recordatoriosError, setRecordatoriosError] = useState('');
   const [success, setSuccess] = useState('');
 
   async function load() {
     try {
-      const result = await django<Seguimiento[] | { results: Seguimiento[] }>('/api/contratos/seguimientos/');
+      const result = await spring<Seguimiento[] | { results: Seguimiento[] }>('/api/seguimientos/adoptante');
       setRows(Array.isArray(result) ? result : result.results);
       setError('');
     } catch (cause) { setError(errorMessage(cause)); }
-    finally { setLoading(false); }
+    try {
+      setRecordatorios(await spring<Recordatorio[]>('/api/seguimientos/adoptante/recordatorios'));
+      setRecordatoriosError('');
+    } catch (cause) {
+      setRecordatoriosError(errorMessage(cause));
+    } finally { setLoading(false); }
   }
   useEffect(() => { void load(); }, []);
 
@@ -77,7 +91,7 @@ export default function ReportesPostAdopcionPage() {
       body.append('estado_bienestar', bienestar);
       body.append('observaciones', observaciones.trim());
       fotos.forEach(file => body.append('fotos', file));
-      await django('/api/contratos/reportes-seguimiento/', { method: 'POST', body });
+      await spring('/api/seguimientos/adoptante', { method: 'POST', body });
       setActiveId(null); setFotos([]); setBienestar('BUENO'); setObservaciones('');
       setSuccess('Reporte enviado al albergue.'); await load();
     } catch (cause) { setError(errorMessage(cause)); }
@@ -88,9 +102,21 @@ export default function ReportesPostAdopcionPage() {
     <h1>Reportes de bienestar postadopción</h1>
     <p>Envía una actualización con fotos para cada seguimiento programado. El reporte solo lo ven tú y el albergue responsable.</p>
     <Feedback error={error} success={success} />
+    <section aria-labelledby="recordatorios-title">
+      <h2 id="recordatorios-title">Recordatorios de seguimiento</h2>
+      {recordatoriosError ? <p role="alert">No se pudieron cargar tus recordatorios.</p>
+        : recordatorios.length === 0 ? <p>No tienes recordatorios registrados por ahora.</p>
+          : <ul>{recordatorios.map(recordatorio => <li key={recordatorio.id}>
+            <strong>Seguimiento #{recordatorio.seguimiento_id}</strong>
+            <p>Fecha límite: {fecha(recordatorio.fecha_limite)}</p>
+            <p>Estado: <strong>{estadoRecordatorio(recordatorio.estado)}</strong></p>
+            {recordatorio.enviado_en && <p>Notificación enviada: {fecha(recordatorio.enviado_en)}</p>}
+            <a href={`#seguimiento-${recordatorio.seguimiento_id}`}>Ver seguimiento y enviar reporte</a>
+          </li>)}</ul>}
+    </section>
     {loading ? <p role="status">Cargando tu cronograma…</p> : rows.length === 0
       ? <p>Aún no tienes seguimientos postadopción programados.</p>
-      : <ul>{rows.map(row => <li key={row.id}>
+      : <ul>{rows.map(row => <li id={`seguimiento-${row.id}`} key={row.id}>
         <strong>{row.mascota_nombre}</strong> · Solicitud #{row.solicitud_id} · {row.albergue_nombre}
         <p>{row.modalidad === 'VISITA' ? 'Visita' : 'Llamada'} · {fecha(row.programado_para)} · {row.estado}</p>
         {row.notas && <p>{row.notas}</p>}
@@ -129,4 +155,13 @@ export default function ReportesPostAdopcionPage() {
         </> : <p>Este seguimiento no admite nuevos reportes.</p>}
       </li>)}</ul>}
   </section>;
+}
+
+function estadoRecordatorio(estado: Recordatorio['estado']) {
+  switch (estado) {
+    case 'PENDIENTE': return 'Pendiente de notificación';
+    case 'ENVIADO': return 'Notificación enviada';
+    case 'COMPLETADO': return 'Reporte completado';
+    case 'CANCELADO': return 'Cancelado';
+  }
 }

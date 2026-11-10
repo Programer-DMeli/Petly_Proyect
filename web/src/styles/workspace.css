@@ -300,6 +300,85 @@
 .workspace-menu a.active {
   background: #edf6ef;
 }
+.workspace-notifications__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 46px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgb(255 255 255 / 35%);
+  border-radius: 10px;
+  color: #fff;
+  background: transparent;
+  font-weight: 700;
+}
+.workspace-notifications__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  color: var(--petly-primary-dark);
+  background: #fff7e9;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.workspace-menu--notifications {
+  left: auto;
+  right: 0;
+  width: 370px;
+}
+.workspace-notifications__list {
+  display: grid;
+  gap: 0.45rem;
+  max-height: min(65vh, 480px);
+  overflow-y: auto;
+}
+.workspace-notifications__item {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e5ece5;
+}
+.workspace-notifications__item.is-unread {
+  border-left: 3px solid var(--petly-primary);
+  background: #f2f8f2;
+}
+.workspace-notifications__item--action {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.workspace-notifications__item--action:hover {
+  border-color: var(--petly-primary);
+}
+.workspace-notifications__mark-all {
+  width: 100%;
+  min-height: 38px !important;
+  margin: 0.1rem 0 0.55rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--petly-border);
+  border-radius: 9px;
+  color: var(--petly-primary-dark);
+  background: #edf6ef;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: left;
+}
+.workspace-notifications__item p,
+.workspace-notifications__item span,
+.workspace-notifications__item time {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--petly-text-secondary);
+}
+.workspace-notifications__item time {
+  font-size: 0.7rem;
+}
 .workspace-account {
   padding-left: 1.3rem;
   border-left: 1px solid rgb(255 255 255 / 25%);
@@ -1136,6 +1215,15 @@
   .workspace-account .workspace-menu {
     top: calc(100% + 1.25rem);
     right: 0;
+  }
+  .workspace-notifications__trigger {
+    min-height: 44px;
+    padding-inline: 0.55rem;
+  }
+  .workspace-menu--notifications {
+    top: calc(100% + 1.25rem);
+    right: 0;
+    width: min(370px, calc(100vw - 2rem));
   }
   .catalog-layout {
     grid-template-columns: minmax(0, 1fr);

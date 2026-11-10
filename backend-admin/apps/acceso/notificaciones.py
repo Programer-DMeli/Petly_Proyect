@@ -3,6 +3,9 @@
 El evento y la transición se guardan en la misma transacción: no se generan
 avisos duplicados ni se notifican decisiones que hayan sido revertidas.
 """
+import secrets
+
+from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import permissions, serializers, viewsets
@@ -10,8 +13,10 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import CriteriosAviso, SolicitudEvento, User
+from apps.mascotas.models import Mascota
 
 
 MENSAJES = {
@@ -80,6 +85,54 @@ class CriteriosAvisoSerializer(serializers.ModelSerializer):
 
 class NotificacionPagination(PageNumberPagination):
     page_size = 30
+
+
+class FeedInternoCoincidenciasView(APIView):
+    """Feed privado por cursor para que Spring entregue avisos nuevos por email."""
+
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        secreto_configurado = settings.INTERNAL_API_SECRET
+        secreto_recibido = request.headers.get("X-Internal-Secret", "")
+        if not secreto_configurado:
+            return Response(
+                {"detail": "La integración interna de avisos no está configurada."},
+                status=503,
+            )
+        if not secreto_recibido or not secrets.compare_digest(secreto_recibido, secreto_configurado):
+            return Response({"detail": "Credenciales de servicio inválidas."}, status=401)
+
+        try:
+            after_id = max(0, int(request.query_params.get("after_id", "0")))
+            limit = int(request.query_params.get("limit", "100"))
+        except (TypeError, ValueError):
+            return Response({"detail": "El cursor y el límite deben ser números enteros."}, status=400)
+        if not 1 <= limit <= 200:
+            return Response({"detail": "El límite debe estar entre 1 y 200."}, status=400)
+
+        eventos = (
+            SolicitudEvento.objects.filter(
+                pk__gt=after_id,
+                tipo=SolicitudEvento.Tipo.NUEVA_COINCIDENCIA,
+                destinatario__spring_id__isnull=False,
+                mascota_coincidente__estado=Mascota.Estado.DISPONIBLE,
+            )
+            .select_related("destinatario", "mascota_coincidente", "mascota_coincidente__albergue")
+            .order_by("pk")[:limit]
+        )
+        return Response([
+            {
+                "evento_id": evento.pk,
+                "adoptante_spring_id": evento.destinatario.spring_id,
+                "mascota_id": evento.mascota_coincidente_id,
+                "mascota_nombre": evento.mascota_coincidente.nombre,
+                "albergue_nombre": evento.mascota_coincidente.albergue.nombre,
+                "ocurrido_en": evento.ocurrido_en,
+            }
+            for evento in eventos
+        ])
 
 
 class NotificacionViewSet(viewsets.GenericViewSet):
