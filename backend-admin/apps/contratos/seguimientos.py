@@ -7,11 +7,13 @@ from rest_framework.response import Response
 
 from apps.acceso.models import SolicitudAdopcion, User
 from .models import (
+    AlertaIncumplimientoSeguimiento,
     ExpedientePostAdopcion,
     ReporteBienestarPostAdopcion,
     SeguimientoPostAdopcion,
     SolicitudAsesoriaVeterinaria,
 )
+from .alertas_incumplimiento import generar_alertas_incumplimiento
 from .reportes import ReporteBienestarReadSerializer
 
 
@@ -84,12 +86,14 @@ class SeguimientoPostAdopcionSerializer(serializers.ModelSerializer):
     asesorias_veterinarias = SolicitudAsesoriaVeterinariaSerializer(many=True, read_only=True)
     expediente_cierre = serializers.SerializerMethodField()
     reporte_bienestar = serializers.SerializerMethodField()
+    alerta_incumplimiento = serializers.SerializerMethodField()
 
     class Meta:
         model = SeguimientoPostAdopcion
         fields = ["id", "solicitud_id", "mascota_nombre", "adoptante_email", "programado_para",
                   "modalidad", "estado", "notas", "creado_en", "actualizado_en",
                   "albergue_nombre", "asesorias_veterinarias", "expediente_cierre", "reporte_bienestar"]
+        fields += ["alerta_incumplimiento"]
         read_only_fields = ["id", "estado", "creado_en", "actualizado_en"]
 
     def get_expediente_cierre(self, obj):
@@ -105,6 +109,17 @@ class SeguimientoPostAdopcionSerializer(serializers.ModelSerializer):
         except ReporteBienestarPostAdopcion.DoesNotExist:
             return None
         return ReporteBienestarReadSerializer(reporte, context=self.context).data
+
+    def get_alerta_incumplimiento(self, obj):
+        if self.context["request"].user.rol != User.Rol.ALBERGUE:
+            return None
+        try:
+            alerta = obj.alerta_incumplimiento
+        except AlertaIncumplimientoSeguimiento.DoesNotExist:
+            return None
+        if alerta.estado != AlertaIncumplimientoSeguimiento.Estado.PENDIENTE:
+            return None
+        return {"estado": alerta.estado, "generada_en": alerta.generada_en}
 
     def validate_solicitud_id(self, value):
         request = self.context["request"]
@@ -148,13 +163,20 @@ class SeguimientoPostAdopcionViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs = SeguimientoPostAdopcion.objects.select_related(
             "solicitud__mascota", "solicitud__adoptante", "solicitud__albergue",
-            "solicitud__expediente_post_adopcion", "reporte_bienestar",
+            "solicitud__expediente_post_adopcion", "reporte_bienestar", "alerta_incumplimiento",
         ).prefetch_related("asesorias_veterinarias", "reporte_bienestar__fotos")
         if user.rol == User.Rol.ALBERGUE and hasattr(user, "albergue"):
             return qs.filter(solicitud__albergue=user.albergue)
         if user.rol == User.Rol.ADOPTANTE:
             return qs.filter(solicitud__adoptante=user)
         return qs.none()
+
+    def list(self, request, *args, **kwargs):
+        if request.user.rol == User.Rol.ALBERGUE:
+            # La tarea programada es la fuente principal; reconciliar al abrir el panel
+            # también cubre instalaciones locales donde aún no configuraron el scheduler.
+            generar_alertas_incumplimiento()
+        return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(creado_por=self.request.user)
