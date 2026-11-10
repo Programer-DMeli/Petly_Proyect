@@ -22,6 +22,11 @@ const groups: Record<string, Group[]> = {
           description: 'Consulta el estado de cada encuentro.',
         },
         {
+          label: 'Mensajes',
+          to: '/adoptante/mensajes',
+          description: 'Conversa directamente con los albergues.',
+        },
+        {
           label: 'Seguimiento postadopción',
           to: '/adoptante/seguimientos-postadopcion',
           description: 'Envía reportes de bienestar y fotos de tu mascota adoptada.',
@@ -107,6 +112,11 @@ const groups: Record<string, Group[]> = {
           label: 'Solicitudes',
           to: '/albergue/solicitudes',
           description: 'Acompaña y evalúa cada postulación.',
+        },
+        {
+          label: 'Mensajes',
+          to: '/albergue/mensajes',
+          description: 'Coordina entrevistas y visitas con adoptantes.',
         },
         {
           label: 'Perfiles autorizados',

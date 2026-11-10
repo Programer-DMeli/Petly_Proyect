@@ -27,6 +27,7 @@ import AlberguesAdminPage from '../features/administracion/albergues/pages/Alber
 import VerificacionKycPage from '../features/adoptante/perfil/pages/VerificacionKycPage';
 import PreferenciasNotificacionPage from '../features/adoptante/perfil/pages/PreferenciasNotificacionPage';
 import VerificacionesKycAdminPage from '../features/administracion/kyc/pages/VerificacionesKycAdminPage';
+import MensajesPage from '../features/mensajeria/MensajesPage';
 
 /**
  * Rutas de Petly web. Estructura prevista según PLANNING v2 §9.2:
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
           { path: 'solicitudes', element: <SolicitudesAdoptantePage /> },
           { path: 'solicitudes/:solicitudId', element: <SeguimientoSolicitudPage /> },
           { path: 'seguimientos-postadopcion', element: <ReportesPostAdopcionPage /> },
+          { path: 'mensajes', element: <MensajesPage /> },
         ],
       },
       {
@@ -91,6 +93,7 @@ export const router = createBrowserRouter([
           { path: 'solicitudes', element: <SolicitudesPage /> },
           { path: 'seguimientos', element: <SeguimientosPage /> },
           { path: 'respuestas-chatbot', element: <RespuestasChatbotPage /> },
+          { path: 'mensajes', element: <MensajesPage /> },
           { path: 'eventos', element: <EventosPage gestionar /> },
           { path: 'necesidades', element: <NecesidadesPage gestionar /> },
         ],

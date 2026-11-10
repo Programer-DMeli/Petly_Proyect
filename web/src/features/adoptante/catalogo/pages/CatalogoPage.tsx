@@ -403,6 +403,12 @@ export function DetallePage() {
           <ConsejosCompatibilidad key={pet.id} id={pet.id} />
           <h2>{pet.albergue}</h2>
           <p>{pet.ubicacion}</p>
+          <Link
+            className="button secondary"
+            to={`/adoptante/mensajes?albergue=${pet.albergueId}`}
+          >
+            Escribir al albergue
+          </Link>
           <Link to="/adoptante/autorizaciones">Administrar autorizaciones de mi perfil</Link>
           <hr />
           <h2>Solicitar adopción</h2>
