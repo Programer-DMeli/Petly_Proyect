@@ -13,6 +13,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpStatus;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.petly.notificaciones.AlertaCompatibilidadService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.petly.common.exception.ApiException;
 import com.petly.solicitudes.dto.CrearSolicitudAdopcionRequest;
@@ -21,19 +27,27 @@ import com.petly.solicitudes.dto.CrearSolicitudAdopcionRequest;
 @Service
 public class SolicitudAdopcionService {
 
+    private static final Logger log = LoggerFactory.getLogger(SolicitudAdopcionService.class);
+
     private static final String RUTA_DJANGO = "/api/acceso/solicitudes/";
 
     private final RestTemplate restTemplate;
     private final String djangoApiBaseUrl;
+    private final AlertaCompatibilidadService alertasCompatibilidad;
+    private final ObjectMapper objectMapper;
 
     public SolicitudAdopcionService(
             RestTemplate restTemplate,
-            @Value("${petly.django-api-base-url}") String djangoApiBaseUrl) {
+            @Value("${petly.django-api-base-url}") String djangoApiBaseUrl,
+            AlertaCompatibilidadService alertasCompatibilidad,
+            ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
         this.djangoApiBaseUrl = djangoApiBaseUrl.replaceAll("/+$", "");
+        this.alertasCompatibilidad = alertasCompatibilidad;
+        this.objectMapper = objectMapper;
     }
 
-    public ResponseEntity<String> crear(CrearSolicitudAdopcionRequest request, String authorization) {
+    public ResponseEntity<String> crear(CrearSolicitudAdopcionRequest request, String authorization, long adoptanteId) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("mascota", request.mascotaId());
         payload.put("mensaje_postulante", request.mensajePostulante() == null ? "" : request.mensajePostulante());
@@ -55,6 +69,18 @@ public class SolicitudAdopcionService {
                     djangoApiBaseUrl + RUTA_DJANGO,
                     new HttpEntity<>(jsonBody, headers),
                     String.class);
+            if (response.getStatusCode() == HttpStatus.CREATED && response.getBody() != null) {
+                try {
+                    JsonNode body = objectMapper.readTree(response.getBody());
+                    if (body.path("id").canConvertToLong()) {
+                        alertasCompatibilidad.registrarSiSuperaUmbral(
+                                body.path("id").longValue(), adoptanteId, request.mascotaId());
+                    }
+                } catch (RuntimeException | com.fasterxml.jackson.core.JsonProcessingException ex) {
+                    // La solicitud ya quedó registrada; la alerta nunca debe invalidar esa respuesta.
+                    log.warn("No se pudo evaluar la compatibilidad de la solicitud creada.", ex);
+                }
+            }
             return ResponseEntity.status(response.getStatusCode())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(response.getBody());
