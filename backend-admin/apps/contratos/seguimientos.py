@@ -31,6 +31,7 @@ class SolicitudAsesoriaVeterinariaSerializer(serializers.ModelSerializer):
             queryset = SeguimientoPostAdopcion.objects.filter(
                 solicitud__adoptante=request.user,
                 solicitud__estado=SolicitudAdopcion.Estado.ENTREGADA,
+                solicitud__expediente_post_adopcion__isnull=True,
             ).exclude(estado=SeguimientoPostAdopcion.Estado.CANCELADO)
         fields["seguimiento"].queryset = queryset
         return fields

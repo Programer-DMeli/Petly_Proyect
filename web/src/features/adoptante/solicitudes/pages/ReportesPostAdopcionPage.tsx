@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Feedback from '../../../../components/Feedback';
 import PrivateDjangoImage from '../../../../components/PrivateDjangoImage';
-import { errorMessage, spring } from '../../../../services/http';
+import { errorMessage, json, spring } from '../../../../services/http';
 
 type Bienestar = 'EXCELENTE' | 'BUENO' | 'REGULAR' | 'PREOCUPANTE';
 type Foto = { id: number; mime_type: string; tamaño_bytes: number; descarga_url: string };
@@ -20,6 +20,7 @@ type Recordatorio = {
   estado: 'PENDIENTE' | 'ENVIADO' | 'COMPLETADO' | 'CANCELADO';
   enviado_en: string | null;
 };
+type Asesoria = { id: number; problema: string; estado: 'PENDIENTE' | 'EN_ATENCION' | 'ATENDIDA'; creado_en: string };
 type Seguimiento = {
   id: number;
   solicitud_id: number;
@@ -31,6 +32,7 @@ type Seguimiento = {
   notas: string;
   expediente_cierre: { cerrado_en: string } | null;
   reporte_bienestar: Reporte | null;
+  asesorias_veterinarias: Asesoria[];
 };
 
 const MAX_PHOTOS = 5;
@@ -45,6 +47,8 @@ export default function ReportesPostAdopcionPage() {
   const [rows, setRows] = useState<Seguimiento[]>([]);
   const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
+  const [activeAsesoriaId, setActiveAsesoriaId] = useState<number | null>(null);
+  const [problemaAsesoria, setProblemaAsesoria] = useState('');
   const [bienestar, setBienestar] = useState<Bienestar>('BUENO');
   const [observaciones, setObservaciones] = useState('');
   const [fotos, setFotos] = useState<File[]>([]);
@@ -98,6 +102,23 @@ export default function ReportesPostAdopcionPage() {
     finally { setBusy(false); }
   }
 
+  async function solicitarAsesoria(event: FormEvent<HTMLFormElement>, row: Seguimiento) {
+    event.preventDefault();
+    const problema = problemaAsesoria.trim();
+    if (!problema) { setError('Describe el problema de adaptación para solicitar asesoría.'); return; }
+    setBusy(true); setError(''); setSuccess('');
+    try {
+      await spring('/api/seguimientos/adoptante/asesorias', {
+        method: 'POST',
+        body: json({ seguimiento: row.id, problema }),
+      });
+      setActiveAsesoriaId(null); setProblemaAsesoria('');
+      setSuccess(`Solicitud de asesoría gratuita enviada al albergue de ${row.mascota_nombre}.`);
+      await load();
+    } catch (cause) { setError(errorMessage(cause)); }
+    finally { setBusy(false); }
+  }
+
   return <section className="card">
     <h1>Reportes de bienestar postadopción</h1>
     <p>Envía una actualización con fotos para cada seguimiento programado. El reporte solo lo ven tú y el albergue responsable.</p>
@@ -120,6 +141,30 @@ export default function ReportesPostAdopcionPage() {
         <strong>{row.mascota_nombre}</strong> · Solicitud #{row.solicitud_id} · {row.albergue_nombre}
         <p>{row.modalidad === 'VISITA' ? 'Visita' : 'Llamada'} · {fecha(row.programado_para)} · {row.estado}</p>
         {row.notas && <p>{row.notas}</p>}
+        <section aria-labelledby={`asesorias-title-${row.id}`}>
+          <h3 id={`asesorias-title-${row.id}`}>Asesoría técnica o veterinaria gratuita</h3>
+          {row.asesorias_veterinarias?.length > 0 && <ul>
+            {row.asesorias_veterinarias.map(asesoria => <li key={asesoria.id}>
+              <strong>{estadoAsesoria(asesoria.estado)}</strong> · {fecha(asesoria.creado_en)}
+              <p style={{ whiteSpace: 'pre-wrap' }}>{asesoria.problema}</p>
+            </li>)}
+          </ul>}
+          {row.estado !== 'CANCELADO' && !row.expediente_cierre && <>
+            {activeAsesoriaId === row.id ? <form onSubmit={event => void solicitarAsesoria(event, row)}>
+              <label htmlFor={`problema-asesoria-${row.id}`}>¿Qué dificultad tienes durante la adaptación?</label>
+              <textarea id={`problema-asesoria-${row.id}`} required maxLength={2000} value={problemaAsesoria}
+                onChange={event => setProblemaAsesoria(event.target.value)}
+                placeholder="Describe qué está ocurriendo y desde cuándo." />
+              <p className="muted">La solicitud se enviará al albergue responsable de este seguimiento. No tiene costo.</p>
+              <button disabled={busy || !problemaAsesoria.trim()}>Enviar solicitud de asesoría</button>
+              <button type="button" className="secondary" disabled={busy} onClick={() => {
+                setActiveAsesoriaId(null); setProblemaAsesoria(''); setError('');
+              }}>Cancelar</button>
+            </form> : <button type="button" className="secondary" disabled={busy} onClick={() => {
+              setActiveAsesoriaId(row.id); setProblemaAsesoria(''); setError(''); setSuccess('');
+            }}>Solicitar asesoría gratuita</button>}
+          </>}
+        </section>
         {row.reporte_bienestar ? <article>
           <h2>Reporte enviado · {fecha(row.reporte_bienestar.enviado_en)}</h2>
           <p>Estado de bienestar: <strong>{row.reporte_bienestar.estado_bienestar_display}</strong></p>
@@ -163,5 +208,13 @@ function estadoRecordatorio(estado: Recordatorio['estado']) {
     case 'ENVIADO': return 'Notificación enviada';
     case 'COMPLETADO': return 'Reporte completado';
     case 'CANCELADO': return 'Cancelado';
+  }
+}
+
+function estadoAsesoria(estado: Asesoria['estado']) {
+  switch (estado) {
+    case 'PENDIENTE': return 'Pendiente de atención';
+    case 'EN_ATENCION': return 'En atención';
+    case 'ATENDIDA': return 'Atendida';
   }
 }
