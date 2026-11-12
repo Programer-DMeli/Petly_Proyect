@@ -80,7 +80,7 @@ Respuesta básica, sin información sensible (versión, base de datos o rutas).
 - [`docs/arquitectura.md`](docs/arquitectura.md) — componentes, integración y responsables de datos.
 - [`docs/instalacion.md`](docs/instalacion.md) — requisitos y comandos en Windows.
 - [`docs/acuerdos-equipo.md`](docs/acuerdos-equipo.md) — reparto y revisión cruzada.
-- [`docs/api.md`](docs/api.md) — endpoints implementados y contrato previsto.
+- Los endpoints implementados se pueden consultar en Swagger de Spring y en la documentación OpenAPI de Django indicados arriba.
 - [`docs/sprint-01.md`](docs/sprint-01.md) — alcance del Sprint 1 (**implementación y revisión**).
 - [`docs/sprint-01.md`](sprint-02-descripcion-originales.md) — alcance del Sprint 2 (actualmente) (**implementación y revisión**).
 - [`database/modelo-datos.md`](database/modelo-datos.md) — modelo preliminar de datos.
@@ -106,4 +106,4 @@ Implementación en proceso de  Sprint 2 en main (27 de octubre de 2026):
 - Sin Docker ni microservicios adicionales.
 - Los commits/push se realizan cuando el usuario los solicita.
 
-Para esta máquina, la base y los respaldos permanentes se describen en [docs/base-permanente.md](docs/base-permanente.md). El arranque local utiliza `backend-admin/.venv/bin/python scripts/servicios-locales.py`; los datos MariaDB están fuera de `/tmp`, en `~/.local/share/petly/mariadb`.
+El [diccionario de datos](database/diccionario-datos.md) describe el esquema compartido. El arranque local utiliza `backend-admin/.venv/bin/python scripts/servicios-locales.py`. Los datos MariaDB están en `~/.local/share/petly/mariadb`. Consulta el [procedimiento de recuperación](database/auditoria-2026-11-14/ejecucion-retiro.md#recuperación) para el respaldo previo al retiro del chat antiguo.

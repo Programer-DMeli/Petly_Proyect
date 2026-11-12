@@ -61,8 +61,6 @@ permite desplazarse al abrir el teclado o aumentar el tamaño de fuente.
 Studio. El logo es una interpretación vectorial local de la marca mostrada en
 la referencia. La paleta de acceso permanece clara también en modo oscuro.
 
-[Captura de la pantalla en el emulador](../docs/evidencias/mobile-acceso-compose.png).
-
 Validación de interfaz sin cuentas ni backend:
 
 ```bash
@@ -85,8 +83,6 @@ fecha en las columnas existentes. Los clientes anteriores siguen siendo
 compatibles y no se les atribuye una aceptación que no enviaron. El nombre
 completo se conserva sin dividirlo en el campo opcional `firstName` del contrato
 actual; no se infieren apellidos.
-
-[Captura del registro en el emulador](../docs/evidencias/mobile-registro-compose.png).
 
 `RegisterReferencePreview` permite revisar la referencia del registro a
 352 × 796 dp. Para validar esta pantalla:

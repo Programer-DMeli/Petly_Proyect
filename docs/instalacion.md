@@ -109,8 +109,6 @@ Ejecutar las suites de navegador y Android secuencialmente: comparten la cuota l
 
 En desarrollo DEBUG, Django admite explícitamente Host 10.0.2.2 para servir las fotografías al emulador. Si se configura DJANGO_ALLOWED_HOSTS, incluir ese host local. Para teléfono físico incluir la IP LAN correspondiente; no se utiliza '*'. En producción configurar únicamente los dominios propios.
 
-Guía para compartir con compañeros, con instalación Windows/Linux, base nueva, correo y cuentas: [guia-companeros-sprint-01.md](guia-companeros-sprint-01.md).
-
 ## Mailpit de la instalación actual
 
 Configuración aplicada: MAIL_HOST=127.0.0.1, MAIL_PORT=1026. La bandeja se abre en http://localhost:8025; 8025 no es el puerto SMTP. Spring fue reiniciado cargando esas variables y se verificó la recepción de un correo de recuperación de una cuenta ficticia en Mailpit.
