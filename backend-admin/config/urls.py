@@ -91,6 +91,8 @@ urlpatterns = [
     path("panel/mascotas/<int:mascota_id>/detalle/", login_required(mascota_detalle), name="mascota_detalle"),
     
     # Panel web - Postulantes
+    path("panel/postulantes/", login_required(postulante_lista), name="postulante_lista"),
+    path("panel/postulantes/<int:postulante_id>/detalle/", login_required(postulante_detalle), name="postulante_detalle"),
     
     # Panel web - Solicitudes
     path("panel/solicitudes/", login_required(solicitud_lista), name="solicitud_lista"),
