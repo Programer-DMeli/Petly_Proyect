@@ -34,10 +34,10 @@ class IntegracionSprintTest {
  }
  long uid(String token) {return Long.parseLong(jwt.validarToken(token).getSubject());}
  @BeforeEach void fixtures() {
-  db.update("DELETE FROM autorizaciones_consulta");db.update("DELETE FROM mascotas_mascota");db.update("DELETE FROM albergues_albergue");db.update("DELETE FROM acceso_user");
+  db.update("DELETE FROM autorizaciones_consulta");db.update("DELETE FROM mascotas_mascota");db.update("DELETE FROM albergues");db.update("DELETE FROM acceso_user");
   db.update("UPDATE mascotas_reglacompatibilidad SET peso_vivienda=30,peso_rutina=35,peso_convivencia=35,version_reglas=1,actualizado_por_spring_id=NULL WHERE id=1");
   db.update("INSERT INTO acceso_user VALUES (100,100)");
-  db.update("INSERT INTO albergues_albergue VALUES (100,'Refugio ejemplo','Lima',100,TRUE)");
+  db.update("INSERT INTO albergues VALUES (100,'Refugio ejemplo','Lima',100,TRUE)");
   for(int i=1;i<=4;i++) db.update("INSERT INTO mascotas_mascota VALUES (?,?,'PERRO','MEDIANO',2,0,'POR_EVALUAR','MEDIA','Descripción',100,'DISPONIBLE','mascotas/luna.png')",i,"Luna "+i);
  }
  @Test void partialAndFinalPersistAndFalseIsNotNull() throws Exception {
@@ -146,7 +146,7 @@ class IntegracionSprintTest {
  }
  @Test void consentSpecificAndRevoked() throws Exception {
   String adopt=token("ADOPTANTE"), shelter=token("ALBERGUE"), other=token("ALBERGUE");
-  db.update("UPDATE acceso_user SET spring_id=? WHERE id=100",uid(shelter));
+  db.update("UPDATE acceso_user SET usuario_spring_id=? WHERE id=100",uid(shelter));
   String path="/api/albergue/perfiles/"+uid(adopt);
   mvc.perform(get(path).header("Authorization","Bearer "+shelter)).andExpect(status().isForbidden());
   mvc.perform(post("/api/autorizaciones").header("Authorization","Bearer "+adopt).contentType(MediaType.APPLICATION_JSON).content("{\"albergueId\":100}")).andExpect(status().isCreated());

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Feedback from '../../../components/Feedback';
 import { spring, json, errorMessage, ApiError } from '../../../services/http';
 import { setSession, roleHome } from '../../../services/session';
@@ -12,6 +12,7 @@ export default function AccesoPage({ register = false }: { register?: boolean })
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
+  const solicitud = useLocation().state?.solicitud;
   const [locks, setLocks] = useState<Record<string, number>>({});
   const [rateUntil, setRateUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
@@ -75,7 +76,10 @@ export default function AccesoPage({ register = false }: { register?: boolean })
           identity,
           expires: Date.now() + result.expiresIn * 1000,
         });
-        await navigate(roleHome(identity.rol));
+        const destino = identity.rol === 'ADOPTANTE' && typeof solicitud === 'string' && /^\d+$/.test(solicitud)
+          ? `/adoptante/solicitudes/${solicitud}`
+          : roleHome(identity.rol);
+        await navigate(destino, { replace: true });
       }
     } catch (e) {
       setError(errorMessage(e));

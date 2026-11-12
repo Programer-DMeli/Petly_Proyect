@@ -22,7 +22,7 @@ class SpringIdentityTest(TestCase):
         self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token())
         response = self.client.get("/api/albergues/")
         self.assertEqual(response.status_code, 200)
-        user = get_user_model().objects.get(spring_id=101)
+        user = get_user_model().objects.get(usuario_spring_id=101)
         self.assertFalse(user.has_usable_password())
         self.assertNotEqual(user.pk, 101)
     def test_expired_invalid_and_wrong_purpose_rejected(self):
@@ -37,7 +37,7 @@ class SpringIdentityTest(TestCase):
         authority.return_value = self.identity
         from apps.albergues.models import Albergue
         owner = get_user_model().objects.create_user(
-            username="shelter-sharing", spring_id=101, rol="ALBERGUE"
+            username="shelter-sharing", usuario_spring_id=101, rol="ALBERGUE"
         )
         Albergue.objects.create(usuario=owner, nombre="Refugio de prueba", direccion="Lima")
         self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token())

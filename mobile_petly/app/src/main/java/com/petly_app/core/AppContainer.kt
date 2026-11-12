@@ -35,6 +35,9 @@ class AppContainer(private val contentResolver: ContentResolver) {
     val favoritosApi = privateApi.create(FavoritosApi::class.java)
     val solicitudesApi = privateApi.create(SolicitudesApi::class.java)
     val seguimientosApi = privateApi.create(SeguimientosApi::class.java)
+    val reportesSeguimiento = ReportesSeguimientoRepository(
+        seguimientosApi, privateApi.create(ReportesSeguimientoApi::class.java), contentResolver
+    )
     val notificacionesApi = ApiClient.authenticatedAdminApi(session).create(NotificacionesApi::class.java)
     val mensajeriaApi = ApiClient.authenticatedAdminApi(session).create(MensajeriaApi::class.java)
     val autorizaciones = AutorizacionRepository(privateApi.create(AutorizacionApi::class.java))

@@ -1,0 +1,2 @@
+# Instalar en el proceso de entrega cuando se configure Firebase Cloud Messaging.
+google-auth[requests]>=2.38,<3

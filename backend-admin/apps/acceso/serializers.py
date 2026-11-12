@@ -265,7 +265,7 @@ class SolicitudCreateSerializer(serializers.ModelSerializer):
         from .eligibilidad import comprobar_elegibilidad
         comprobar_elegibilidad(user, mascota.albergue_id)
         postulante = None
-        if not user.spring_id:
+        if not user.usuario_spring_id:
             profile = user.adoptante_profile
             postulante = Postulante.objects.filter(documento_numero=profile.documento_numero).first()
             if not postulante or postulante.estado != Postulante.EstadoPostulante.ACTIVO:

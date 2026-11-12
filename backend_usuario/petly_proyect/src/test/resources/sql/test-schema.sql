@@ -2,14 +2,14 @@
 -- En produccion las crea Django; Spring solo las consulta por JDBC.
 CREATE TABLE IF NOT EXISTS acceso_user (
     id BIGINT PRIMARY KEY,
-    spring_id BIGINT NULL
+    usuario_spring_id BIGINT NULL
 );
 
-CREATE TABLE IF NOT EXISTS albergues_albergue (
+CREATE TABLE IF NOT EXISTS albergues (
     id BIGINT PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
     direccion VARCHAR(255) NOT NULL,
-    usuario_id BIGINT NULL,
+    propietario_django_id BIGINT NULL,
     activo BOOLEAN NOT NULL DEFAULT TRUE
 );
 

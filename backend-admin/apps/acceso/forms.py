@@ -5,5 +5,5 @@ from django.core.exceptions import ValidationError
 class TechnicalAdminLoginForm(AdminAuthenticationForm):
     def confirm_login_allowed(self, user):
         super().confirm_login_allowed(user)
-        if not user.is_superuser or user.spring_id is not None:
+        if not user.is_superuser or user.usuario_spring_id is not None:
             raise ValidationError("Utiliza el acceso de Petly para cuentas de negocio.", code="invalid_login")

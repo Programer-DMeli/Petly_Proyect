@@ -102,8 +102,8 @@ class AlbergueViewSet(viewsets.ModelViewSet):
         except urllib.error.HTTPError:
             raise AuthorityUnavailable()
         from django.contrib.auth import get_user_model
-        technical = set(get_user_model().objects.filter(models.Q(is_staff=True)|models.Q(is_superuser=True)).values_list('spring_id',flat=True))
-        assigned = set(Albergue.objects.values_list('usuario__spring_id',flat=True))
+        technical = set(get_user_model().objects.filter(models.Q(is_staff=True)|models.Q(is_superuser=True)).values_list('usuario_spring_id',flat=True))
+        assigned = set(Albergue.objects.values_list('usuario__usuario_spring_id',flat=True))
         return Response([dict(u, asignada=u['id'] in assigned) for u in identities if u['id'] not in technical])
 
     @action(detail=True, methods=["get", "post"], url_path="infraestructura")

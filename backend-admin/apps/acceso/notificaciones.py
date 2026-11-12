@@ -116,7 +116,7 @@ class FeedInternoCoincidenciasView(APIView):
             SolicitudEvento.objects.filter(
                 pk__gt=after_id,
                 tipo=SolicitudEvento.Tipo.NUEVA_COINCIDENCIA,
-                destinatario__spring_id__isnull=False,
+                destinatario__usuario_spring_id__isnull=False,
                 mascota_coincidente__estado=Mascota.Estado.DISPONIBLE,
             )
             .select_related("destinatario", "mascota_coincidente", "mascota_coincidente__albergue")
@@ -125,7 +125,7 @@ class FeedInternoCoincidenciasView(APIView):
         return Response([
             {
                 "evento_id": evento.pk,
-                "adoptante_spring_id": evento.destinatario.spring_id,
+                "adoptante_spring_id": evento.destinatario.usuario_spring_id,
                 "mascota_id": evento.mascota_coincidente_id,
                 "mascota_nombre": evento.mascota_coincidente.nombre,
                 "albergue_nombre": evento.mascota_coincidente.albergue.nombre,

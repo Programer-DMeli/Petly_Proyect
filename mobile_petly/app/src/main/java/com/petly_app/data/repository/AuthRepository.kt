@@ -29,7 +29,7 @@ class AuthRepository(
         if (user.id == null || user.email.isNullOrBlank() || user.getEffectiveRole() != "ADOPTANTE") {
             throw AdoptanteOnlyException()
         }
-        session.start(token, expiresIn)
+        session.start(token, expiresIn, user.id)
     }
 }
 

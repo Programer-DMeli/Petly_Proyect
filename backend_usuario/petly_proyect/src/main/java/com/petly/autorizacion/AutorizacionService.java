@@ -65,7 +65,7 @@ public class AutorizacionService {
     }
 
     private boolean albergueActivo(Long albergueId) {
-        return db.queryForObject("SELECT COUNT(*) FROM albergues_albergue WHERE id=? AND activo=TRUE", Integer.class, albergueId) > 0;
+        return db.queryForObject("SELECT COUNT(*) FROM albergues WHERE id=? AND activo=TRUE", Integer.class, albergueId) > 0;
     }
 
     private void validarAlbergue(Long albergueId) {

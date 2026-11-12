@@ -16,6 +16,15 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        mapOf(
+            "google_app_id" to "petlyFirebaseAppId",
+            "google_api_key" to "petlyFirebaseApiKey",
+            "gcm_defaultSenderId" to "petlyFirebaseSenderId",
+            "project_id" to "petlyFirebaseProjectId"
+        ).forEach { (resource, property) ->
+            providers.gradleProperty(property).orNull?.let { resValue("string", resource, it) }
+        }
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -64,6 +73,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
     }
     packagingOptions {
         resources {
@@ -73,6 +83,7 @@ android {
 }
 
 dependencies {
+    implementation("com.google.firebase:firebase-messaging:24.1.2")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)

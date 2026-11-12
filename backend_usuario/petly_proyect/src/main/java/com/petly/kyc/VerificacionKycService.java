@@ -32,7 +32,7 @@ public class VerificacionKycService {
                 "SELECT k.dni,k.nombres,k.apellidos,k.estado,k.coincide,k.referencia_reniec,k.fecha_consulta,"
                         + "k.documento_anverso,k.documento_reverso "
                         + "FROM acceso_verificacionkyc k JOIN acceso_user u ON u.id=k.adoptante_id "
-                        + "WHERE k.id=? AND u.spring_id=?",
+                        + "WHERE k.id=? AND u.usuario_spring_id=?",
                 (rs, row) -> candidato(rs), verificacionId, adoptanteSpringId)
                 .stream().findFirst()
                 .orElseThrow(() -> new ApiException(404, "No se encontró la verificación KYC del adoptante."));
@@ -63,7 +63,7 @@ public class VerificacionKycService {
                         + "SET k.estado=?,k.coincide=?,k.proveedor=?,k.referencia_reniec=?,"
                         + "k.fecha_consulta=CURRENT_TIMESTAMP,k.ultimo_intento_en=CURRENT_TIMESTAMP,"
                         + "k.error_servicio='',k.actualizado_en=CURRENT_TIMESTAMP "
-                        + "WHERE k.id=? AND u.spring_id=? AND k.estado NOT IN (" + ESTADOS_BLOQUEADOS_SQL + ") "
+                        + "WHERE k.id=? AND u.usuario_spring_id=? AND k.estado NOT IN (" + ESTADOS_BLOQUEADOS_SQL + ") "
                         + "AND k.dni=? AND k.nombres=? AND k.apellidos=?",
                 estado, resultado.coincide(), reniec.getProvider(), resultado.referencia(),
                 verificacionId, adoptanteSpringId, candidato.dni(), candidato.nombres(), candidato.apellidos());
@@ -89,7 +89,7 @@ public class VerificacionKycService {
                 "UPDATE acceso_verificacionkyc k JOIN acceso_user u ON u.id=k.adoptante_id "
                         + "SET k.ultimo_intento_en=CURRENT_TIMESTAMP,k.error_servicio=?,"
                         + "k.actualizado_en=CURRENT_TIMESTAMP "
-                        + "WHERE k.id=? AND u.spring_id=? AND k.estado NOT IN (" + ESTADOS_BLOQUEADOS_SQL + ") "
+                        + "WHERE k.id=? AND u.usuario_spring_id=? AND k.estado NOT IN (" + ESTADOS_BLOQUEADOS_SQL + ") "
                         + "AND k.dni=? AND k.nombres=? AND k.apellidos=?",
                 detalle, id, springId, candidato.dni(), candidato.nombres(), candidato.apellidos());
     }

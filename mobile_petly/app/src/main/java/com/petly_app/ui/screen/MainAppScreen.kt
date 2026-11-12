@@ -61,7 +61,8 @@ fun MainAppScreen(
     onOpenSeguimientos: () -> Unit = {},
     mensajeriaApi: MensajeriaApi? = null,
     contentResolver: android.content.ContentResolver? = null,
-    solicitudesChat: List<Triple<Long, Long, String>> = emptyList()
+    solicitudesChat: List<Triple<Long, Long, String>> = emptyList(),
+    reportReminders: @Composable () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(PetlyTab.INICIO) }
 
@@ -127,6 +128,7 @@ fun MainAppScreen(
                         onOpenKyc = onOpenKyc,
                         onOpenNotifications = onOpenNotifications,
                         onOpenSeguimientos = onOpenSeguimientos,
+                        reportReminders = reportReminders,
                         onDetailPet = onDetailPet,
                         onAddFranja = onAddFranja,
                         onRemoveFranja = onRemoveFranja,

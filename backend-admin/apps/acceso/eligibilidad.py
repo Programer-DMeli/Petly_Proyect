@@ -5,13 +5,13 @@ from .models import AdoptanteProfile, Autorizacion
 
 
 def comprobar_elegibilidad(user, albergue_id, bloquear=False):
-    if user.spring_id:
+    if user.usuario_spring_id:
         lock = " FOR UPDATE" if bloquear and connection.features.has_select_for_update else ""
         with connection.cursor() as cursor:
-            cursor.execute("SELECT finalizado FROM perfiles_adoptantes WHERE usuario_id=%s" + lock, [user.spring_id])
+            cursor.execute("SELECT finalizado FROM perfiles_adoptantes WHERE usuario_id=%s" + lock, [user.usuario_spring_id])
             perfil = cursor.fetchone()
             cursor.execute("SELECT estado FROM autorizaciones_consulta WHERE adoptante_id=%s AND albergue_id=%s" + lock,
-                           [user.spring_id, albergue_id])
+                           [user.usuario_spring_id, albergue_id])
             permiso = cursor.fetchone()
         if not perfil or not perfil[0]:
             raise ValidationError({"perfil": "Finaliza tu perfil de estilo de vida y convivencia."})

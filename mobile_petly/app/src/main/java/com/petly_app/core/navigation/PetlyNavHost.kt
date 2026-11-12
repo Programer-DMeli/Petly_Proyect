@@ -34,7 +34,13 @@ private object Routes {
 }
 
 @Composable
-fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHandled: () -> Unit = {}) {
+fun PetlyNavHost(
+    container: AppContainer,
+    resetToken: String? = null,
+    pushEvent: Long? = null,
+    onPushHandled: () -> Unit = {},
+    onResetHandled: () -> Unit = {}
+) {
     val authenticated by container.session.authenticated.collectAsStateWithLifecycle()
     var preview by rememberSaveable { mutableStateOf(false) }
     // La vista de prueba no crea tokens, no inicia una sesión real y solo existe en debug.
@@ -74,6 +80,12 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     notificationsVm.load()
                     delay(30_000)
                 }
+            }
+        }
+        LaunchedEffect(authenticated, resetToken, pushEvent) {
+            if (authenticated && !isPreview && resetToken == null && pushEvent != null) {
+                nav.navigate("notificaciones/$pushEvent") { launchSingleTop = true }
+                onPushHandled()
             }
         }
         NavHost(navController = nav, startDestination = if (privateGraph) Routes.CATALOG else if (resetToken != null) "recuperacion" else Routes.LOGIN) {
@@ -144,6 +156,7 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
 
                     MainAppScreen(
                         onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
+                        reportReminders = { RecordatoriosReporte(container.reportesSeguimiento) },
                         mensajeriaApi = if (isPreview) null else container.mensajeriaApi,
                         contentResolver = container.resolver,
                         solicitudesChat = submittedApplications.mapNotNull { draft ->
@@ -189,7 +202,8 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     }
                     val vm: PerfilViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    CuestionarioScreen(state, onRefreshProfile = vm::refreshSummary, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }), onOpenNotifications = { nav.navigate("notificaciones") { launchSingleTop = true } }, onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } })
+                    CuestionarioScreen(state, onRefreshProfile = vm::refreshSummary, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }), onOpenNotifications = { nav.navigate("notificaciones") { launchSingleTop = true } }, onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
+                        reportReminders = { RecordatoriosReporte(container.reportesSeguimiento) })
                 }
                 composable("seguimientos") {
                     val factory = remember(container, isPreview) {
@@ -198,6 +212,13 @@ fun PetlyNavHost(container: AppContainer, resetToken: String? = null, onResetHan
                     val vm: SeguimientosViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
                     SeguimientosScreen(state, vm::load, vm::select, vm::edit, vm::submit, onBack = { nav.popBackStack() })
+                }
+                composable(
+                    "notificaciones/{evento}",
+                    arguments = listOf(navArgument("evento") { type = NavType.LongType })
+                ) { entry ->
+                    val event = requireNotNull(entry.arguments).getLong("evento")
+                    AvisoSolicitudScreen(container.notificacionesApi, event) { nav.popBackStack() }
                 }
                 composable("notificaciones") {
                     LaunchedEffect(Unit) { notificationsVm.load() }

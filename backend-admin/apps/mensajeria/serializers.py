@@ -15,7 +15,7 @@ class AdjuntoSerializer(serializers.ModelSerializer):
 
 class MensajeSerializer(serializers.ModelSerializer):
     remitente_id = serializers.IntegerField(read_only=True)
-    remitente_spring_id = serializers.IntegerField(source="remitente.spring_id", read_only=True)
+    remitente_spring_id = serializers.IntegerField(source="remitente.usuario_spring_id", read_only=True)
     remitente_nombre = serializers.SerializerMethodField()
     adjuntos = AdjuntoSerializer(many=True, read_only=True)
     propio = serializers.SerializerMethodField()

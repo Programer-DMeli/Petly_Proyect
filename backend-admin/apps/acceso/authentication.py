@@ -76,9 +76,9 @@ class SpringBootJWTAuthentication(JWTAuthentication):
             if not user_id:
                 raise InvalidToken("Token sin claim 'sub' (user_id)")
             
-            # Get or create local User para permisos Django usando spring_id
+            # Get or create local User para permisos Django usando usuario_spring_id
             user, created = User.objects.get_or_create(
-                spring_id=user_id,
+                usuario_spring_id=user_id,
                 defaults={
                     "username": email or f"user_{user_id}",
                     "email": email,

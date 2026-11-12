@@ -12,7 +12,7 @@ from .kyc_storage import PrivateKycStorage, nombre_archivo_kyc
 class User(AbstractUser):
     """Usuario personalizado con roles para Petly (US-21)."""
 
-    spring_id = models.PositiveBigIntegerField(null=True, blank=True, unique=True)
+    usuario_spring_id = models.PositiveBigIntegerField(null=True, blank=True, unique=True)
 
     class Rol(models.TextChoices):
         ADOPTANTE = "ADOPTANTE", "Adoptante"
@@ -552,3 +552,44 @@ class CriteriosAviso(models.Model):
     temperamento = models.CharField(max_length=20, blank=True, choices=Mascota.Temperamento.choices)
     edad_min_meses = models.PositiveSmallIntegerField(null=True, blank=True)
     edad_max_meses = models.PositiveSmallIntegerField(null=True, blank=True)
+
+
+class DispositivoPush(models.Model):
+    # La clave es el hash de la credencial aleatoria de una vinculación.
+    id = models.CharField(max_length=64, primary_key=True)
+    adoptante = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    token = models.CharField(max_length=4096, blank=True)
+    token_hash = models.CharField(max_length=64, unique=True, null=True)
+    revocado = models.BooleanField(default=False)
+
+
+class AvisoExterno(models.Model):
+    evento = models.OneToOneField(SolicitudEvento, on_delete=models.CASCADE)
+    planificado = models.BooleanField(default=False, db_index=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+
+class EntregaExterna(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE"
+        EN_CURSO = "EN_CURSO"
+        ACEPTADA = "ACEPTADA"
+        OMITIDA = "OMITIDA"
+        REINTENTAR = "REINTENTAR"
+        FALLIDA = "FALLIDA"
+        INCIERTA = "INCIERTA"
+
+    aviso = models.ForeignKey(AvisoExterno, on_delete=models.CASCADE)
+    canal = models.CharField(max_length=10)
+    destino = models.CharField(max_length=64, blank=True)
+    estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PENDIENTE)
+    intentos = models.PositiveSmallIntegerField(default=0)
+    proximo_intento = models.DateTimeField(default=timezone.now)
+    resultado = models.CharField(max_length=60, blank=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["aviso", "canal", "destino"], name="entrega_externa_unica")
+        ]
+        indexes = [models.Index(fields=["estado", "proximo_intento"])]

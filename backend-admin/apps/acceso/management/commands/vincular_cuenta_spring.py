@@ -18,6 +18,6 @@ class Command(BaseCommand):
             raise CommandError("No vincules cuentas técnicas de administración.")
         if user.email.lower() != row[0].lower():
             raise CommandError("Los correos deben coincidir; revisar propiedad antes de vincular.")
-        user.spring_id=options["spring_id"]; user.rol=row[1]; user.set_unusable_password()
-        user.save(update_fields=["spring_id", "rol", "password"])
+        user.usuario_spring_id=options["spring_id"]; user.rol=row[1]; user.set_unusable_password()
+        user.save(update_fields=["usuario_spring_id", "rol", "password"])
         self.stdout.write("Vínculo actualizado sin transferir credenciales.")

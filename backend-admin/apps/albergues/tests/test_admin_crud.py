@@ -9,8 +9,8 @@ class AdminCrudTest(TestCase):
     def setUp(self):
         User = get_user_model()
         self.admin = User.objects.create_user(username='admin', rol='ADMIN')
-        self.owner = User.objects.create_user(username='owner', rol='ALBERGUE', spring_id=101)
-        self.other = User.objects.create_user(username='other', rol='ALBERGUE', spring_id=102)
+        self.owner = User.objects.create_user(username='owner', rol='ALBERGUE', usuario_spring_id=101)
+        self.other = User.objects.create_user(username='other', rol='ALBERGUE', usuario_spring_id=102)
         self.client = APIClient(); self.client.force_authenticate(self.admin, token='token-test')
 
     @patch('apps.acceso.authentication.spring_get')

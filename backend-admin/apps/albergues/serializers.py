@@ -32,7 +32,7 @@ class AlbergueSerializer(serializers.ModelSerializer):
     infraestructura = InfraestructuraSerializer(many=True, read_only=True)
     usuario_id = serializers.IntegerField(source="usuario.id", read_only=True)
     usuario_username = serializers.CharField(source="usuario.username", read_only=True)
-    propietario_spring_id = serializers.IntegerField(source="usuario.spring_id", read_only=True)
+    propietario_spring_id = serializers.IntegerField(source="usuario.usuario_spring_id", read_only=True)
     propietario_correo = serializers.CharField(source="usuario.email", read_only=True)
 
     class Meta:
@@ -92,7 +92,7 @@ class AlbergueCreateUpdateSerializer(serializers.ModelSerializer):
             from apps.acceso.authentication import spring_get, AuthorityUnavailable
             import urllib.error
             uid = attrs.pop('propietario_spring_id')
-            if self.instance and self.instance.usuario.spring_id != uid:
+            if self.instance and self.instance.usuario.usuario_spring_id != uid:
                 raise serializers.ValidationError({'propietario_spring_id':'El propietario no se transfiere desde este formulario.'})
             try:
                 identity = spring_get('/api/admin/cuentas-albergue/'+str(uid), request.headers.get('Authorization'))
@@ -102,7 +102,7 @@ class AlbergueCreateUpdateSerializer(serializers.ModelSerializer):
                 raise AuthorityUnavailable()
             from django.contrib.auth import get_user_model
             User = get_user_model()
-            owner = User.objects.filter(spring_id=uid).first()
+            owner = User.objects.filter(usuario_spring_id=uid).first()
             if owner is not None and (owner.is_staff or owner.is_superuser):
                 raise serializers.ValidationError({'propietario_spring_id':'No vincules una cuenta técnica.'})
             if owner is not None:
@@ -117,7 +117,7 @@ class AlbergueCreateUpdateSerializer(serializers.ModelSerializer):
     def _owner(self):
         from django.contrib.auth import get_user_model
         identity = self.owner_identity
-        owner, _ = get_user_model().objects.get_or_create(spring_id=identity['id'], defaults={
+        owner, _ = get_user_model().objects.get_or_create(usuario_spring_id=identity['id'], defaults={
             'username':'spring_'+str(identity['id']), 'email':identity['correo'], 'rol':'ALBERGUE'})
         owner.email = identity['correo']; owner.rol = 'ALBERGUE'; owner.set_unusable_password()
         owner.save(update_fields=['email','rol','password'])

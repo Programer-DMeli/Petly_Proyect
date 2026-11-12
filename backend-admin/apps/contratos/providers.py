@@ -54,10 +54,19 @@ class ProveedorFirmaREST:
             raise ProveedorNoConfigurado("El endpoint del proveedor debe usar HTTPS (HTTP solo en DEBUG).")
 
         solicitud = contrato.solicitud
-        email_adoptante = (contrato.snapshot.get("adoptanteCorreo") or solicitud.postulante.email).strip()
+        email_adoptante = (contrato.snapshot.get("adoptanteCorreo") or "").strip()
+        if not email_adoptante:
+            if solicitud.adoptante_id:
+                email_adoptante = solicitud.adoptante.email.strip()
+            if not email_adoptante and solicitud.postulante_id and (
+                not solicitud.adoptante_id or not solicitud.adoptante.usuario_spring_id
+            ):
+                email_adoptante = solicitud.postulante.email.strip()
         email_albergue = contrato.snapshot.get("albergueCorreo", "").strip()
-        if not email_adoptante or not email_albergue:
-            raise ErrorProveedorFirma("El adoptante y el albergue deben tener correo para iniciar la firma.")
+        if not email_adoptante:
+            raise ErrorProveedorFirma("Falta el correo electrónico del titular para la firma.")
+        if not email_albergue:
+            raise ErrorProveedorFirma("Falta el correo electrónico del albergue para la firma.")
 
         payload = {
             "reference": str(contrato.public_id),

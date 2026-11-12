@@ -43,7 +43,8 @@ fun PerfilScreen(
     onOpenKyc: () -> Unit = {},
     onDetailPet: (Long) -> Unit = {},
     onExit: () -> Unit = {},
-    onOpenSeguimientos: () -> Unit = {}
+    onOpenSeguimientos: () -> Unit = {},
+    reportReminders: @Composable () -> Unit = {}
 ) {
     val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
     var showFavoritesDialog by remember { mutableStateOf(false) }
@@ -85,6 +86,8 @@ fun PerfilScreen(
         OutlinedButton(onClick = onOpenSeguimientos, modifier = Modifier.fillMaxWidth()) {
             Text("Seguimiento y asesoría veterinaria gratuita")
         }
+
+        if (!preview) reportReminders()
 
         // CARD 2: CUESTIONARIO DE ESTILO DE VIDA
         AdoptionQuestionnaireBannerCard(onOpenQuestionnaire = onOpenQuestionnaire)

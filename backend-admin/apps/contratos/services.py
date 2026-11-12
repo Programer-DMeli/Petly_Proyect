@@ -9,13 +9,45 @@ from django.db import transaction
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from apps.acceso.models import SolicitudAdopcion, SolicitudEvento
+from apps.acceso.models import SolicitudAdopcion, SolicitudEvento, VerificacionKyc
 from .models import ContratoAdopcion, EventoWebhookFirma
 from .providers import ErrorProveedorFirma, obtener_adaptador_firma, obtener_callback_firma
 
 
 class TerminosContratoNoConfigurados(Exception):
     pass
+
+
+def _datos_titular(solicitud):
+    cuenta = solicitud.adoptante
+    ficha = solicitud.postulante
+    if ficha and (not cuenta or not cuenta.usuario_spring_id):
+        nombre = ficha.nombre_completo.strip()
+        documento = ficha.documento_numero.strip()
+        correo = ((cuenta.email if cuenta else "") or ficha.email).strip()
+    elif cuenta:
+        verificacion = VerificacionKyc.objects.select_for_update().filter(adoptante=cuenta).first()
+        if not verificacion:
+            raise ValidationError("Falta el documento de identidad del titular. El adoptante debe completar su verificación de identidad (KYC).")
+        if verificacion.estado not in (VerificacionKyc.Estado.VERIFICADO, VerificacionKyc.Estado.APROBADO_MANUAL):
+            raise ValidationError("El documento de identidad del titular requiere una verificación de identidad (KYC) aprobada.")
+        nombres = verificacion.nombres.strip()
+        apellidos = verificacion.apellidos.strip()
+        if not nombres or not apellidos:
+            raise ValidationError("Faltan los nombres o apellidos del titular en la verificación de identidad (KYC).")
+        nombre = f"{nombres} {apellidos}"
+        documento = verificacion.dni.strip()
+        correo = cuenta.email.strip()
+    else:
+        raise ValidationError("La solicitud no tiene un titular vinculado ni una ficha de postulante.")
+
+    if not documento:
+        raise ValidationError("Falta el número de documento de identidad del titular.")
+    if not nombre:
+        raise ValidationError("Falta el nombre completo del titular.")
+    if not correo:
+        raise ValidationError("Falta el correo electrónico del titular para la firma.")
+    return nombre, documento, correo
 
 
 def _renderizar_contrato(snapshot):
@@ -47,11 +79,7 @@ def crear_borrador(solicitud_id, actor):
     if existente:
         return existente, False
 
-    adoptante_nombre = (
-        solicitud.adoptante.get_full_name().strip()
-        if solicitud.adoptante and solicitud.adoptante.get_full_name().strip()
-        else solicitud.postulante.nombre_completo.strip()
-    )
+    adoptante_nombre, adoptante_documento, adoptante_correo = _datos_titular(solicitud)
     albergue = solicitud.albergue
     contrato_numero = f"PETLY-{solicitud.pk}-{uuid.uuid4().hex[:8].upper()}"
     terminos = settings.ADOPTION_CONTRACT_TERMS.strip()
@@ -59,8 +87,8 @@ def crear_borrador(solicitud_id, actor):
         "contratoNumero": contrato_numero,
         "solicitudId": solicitud.pk,
         "adoptanteNombre": adoptante_nombre,
-        "adoptanteDocumento": solicitud.postulante.documento_numero,
-        "adoptanteCorreo": (solicitud.adoptante.email if solicitud.adoptante else solicitud.postulante.email),
+        "adoptanteDocumento": adoptante_documento,
+        "adoptanteCorreo": adoptante_correo,
         "albergueNombre": albergue.nombre,
         "albergueResponsable": albergue.responsable_nombre or albergue.nombre,
         "albergueCorreo": albergue.responsable_email or albergue.email or albergue.usuario.email,

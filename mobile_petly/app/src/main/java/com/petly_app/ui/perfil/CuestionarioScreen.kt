@@ -61,7 +61,8 @@ fun CuestionarioScreen(
     onSaveDisponibilidad: () -> Unit = {},
     onRefreshProfile: () -> Unit = {},
     onExit: () -> Unit = {},
-    onOpenSeguimientos: () -> Unit = {}
+    onOpenSeguimientos: () -> Unit = {},
+    reportReminders: @Composable () -> Unit = {}
 ) {
     var currentSubScreen by rememberSaveable { mutableStateOf("DASHBOARD") }
 
@@ -76,6 +77,7 @@ fun CuestionarioScreen(
                 onOpenKyc = onOpenKyc,
                 onOpenNotifications = onOpenNotifications,
                 onOpenSeguimientos = onOpenSeguimientos,
+                reportReminders = reportReminders,
                 onDetailPet = onDetailPet,
                 onExit = onExit
             )

@@ -6,6 +6,7 @@ import com.petly_app.core.network.apiErrorMessage
 import com.petly_app.data.remote.SeguimientoDto
 import com.petly_app.data.remote.SeguimientosApi
 import com.petly_app.data.remote.SolicitarAsesoriaDto
+import com.petly_app.data.remote.listarTodos
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,12 +33,7 @@ class SeguimientosViewModel(private val api: SeguimientosApi, private val previe
     init { load() }
 
     fun load() = execute {
-        val items = mutableListOf<SeguimientoDto>()
-        var page = 1
-        do {
-            val response = api.listar(page++)
-            items.addAll(response.results)
-        } while (response.next != null)
+        val items = api.listarTodos()
         mutable.update { it.copy(items = items.distinctBy { row -> row.id }) }
     }
 

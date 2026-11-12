@@ -100,9 +100,9 @@ public class AlertaCompatibilidadService {
 
     private Long springIdDelAlbergue(long mascotaId) {
         try {
-            return db.queryForObject("SELECT u.spring_id FROM mascotas_mascota m "
-                    + "JOIN albergues_albergue a ON a.id=m.albergue_id "
-                    + "JOIN acceso_user u ON u.id=a.usuario_id WHERE m.id=?", Long.class, mascotaId);
+            return db.queryForObject("SELECT u.usuario_spring_id FROM mascotas_mascota m "
+                    + "JOIN albergues a ON a.id=m.albergue_id "
+                    + "JOIN acceso_user u ON u.id=a.propietario_django_id WHERE m.id=?", Long.class, mascotaId);
         } catch (org.springframework.dao.EmptyResultDataAccessException ex) {
             return null;
         }

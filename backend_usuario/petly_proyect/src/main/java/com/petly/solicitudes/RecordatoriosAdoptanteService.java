@@ -16,8 +16,12 @@ public class RecordatoriosAdoptanteService {
     }
 
     @Transactional(readOnly = true)
-    public List<RecordatorioAdoptanteResponse> listar(long adoptanteId) {
-        return recordatorios.findByAdoptanteIdOrderByFechaLimiteAsc(adoptanteId).stream()
+    public List<RecordatorioAdoptanteResponse> listar(long adoptanteId, boolean pendientes) {
+        var filas = pendientes
+                ? recordatorios.findByAdoptanteIdAndEstadoInOrderByFechaLimiteAsc(adoptanteId,
+                        List.of(RecordatorioSeguimiento.Estado.PENDIENTE, RecordatorioSeguimiento.Estado.ENVIADO))
+                : recordatorios.findByAdoptanteIdOrderByFechaLimiteAsc(adoptanteId);
+        return filas.stream()
                 .map(RecordatorioAdoptanteResponse::desde)
                 .toList();
     }

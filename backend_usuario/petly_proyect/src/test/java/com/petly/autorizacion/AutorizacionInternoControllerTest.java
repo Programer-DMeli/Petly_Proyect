@@ -30,9 +30,9 @@ class AutorizacionInternoControllerTest {
 
     @org.junit.jupiter.api.BeforeEach
     void alberguesDePrueba() {
-        db.update("MERGE INTO albergues_albergue (id,nombre,direccion,activo) KEY(id) VALUES (5,'Refugio prueba','Dirección prueba',TRUE)");
-        db.update("MERGE INTO albergues_albergue (id,nombre,direccion,activo) KEY(id) VALUES (7,'Refugio prueba','Dirección prueba',TRUE)");
-        db.update("MERGE INTO albergues_albergue (id,nombre,direccion,activo) KEY(id) VALUES (9,'Refugio prueba','Dirección prueba',TRUE)");
+        db.update("MERGE INTO albergues (id,nombre,direccion,activo) KEY(id) VALUES (5,'Refugio prueba','Dirección prueba',TRUE)");
+        db.update("MERGE INTO albergues (id,nombre,direccion,activo) KEY(id) VALUES (7,'Refugio prueba','Dirección prueba',TRUE)");
+        db.update("MERGE INTO albergues (id,nombre,direccion,activo) KEY(id) VALUES (9,'Refugio prueba','Dirección prueba',TRUE)");
     }
 
     @Autowired

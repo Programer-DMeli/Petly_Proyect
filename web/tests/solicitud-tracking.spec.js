@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/**', route => route.fulfill({ status: 404, json: { detail: 'Sin fixture' } }));
 });
 
-async function loginAsAdopter(page) {
+async function loginAsAdopter(page, path = '/acceso') {
   await page.route('http://localhost:8080/api/catalogo?**', route =>
     route.fulfill({ json: { items: [], total: 0 } })
   );
@@ -20,10 +20,15 @@ async function loginAsAdopter(page) {
     route.fulfill({ json: { id: '17', correo: 'adoptante@example.com', rol: 'ADOPTANTE' } })
   );
 
-  await page.goto('/acceso');
+  await page.goto(path);
+  await expect(page).toHaveURL(/\/acceso$/);
   await page.getByLabel('Correo', { exact: true }).fill('adoptante@example.com');
   await page.getByLabel('Contraseña', { exact: true }).fill('clave-de-prueba');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  if (path !== '/acceso') {
+    await expect(page).toHaveURL(/\/adoptante\/solicitudes\/42$/);
+    return;
+  }
   await expect(page).toHaveURL(/\/adoptante\/catalogo$/);
   await page.evaluate(() => {
     window.history.pushState({}, '', '/adoptante/solicitudes/42');
@@ -89,12 +94,12 @@ test('el seguimiento ordena los eventos y actualiza el estado y el evento más r
   expect(requests).toBeGreaterThan(initialRequests);
 });
 
-test('el seguimiento informa cuando la solicitud todavía no tiene eventos', async ({ page }) => {
+test('el enlace de seguimiento vuelve a la solicitud tras iniciar sesión y muestra el historial vacío', async ({ page }) => {
   await page.route('http://localhost:8080/api/solicitudes/42/seguimiento', route =>
     route.fulfill({ json: { solicitudId: 42, estadoActual: 'PENDIENTE', eventos: [] } })
   );
 
-  await loginAsAdopter(page);
+  await loginAsAdopter(page, '/adoptante/solicitudes/42');
 
   await expect(page.getByText(/Aún no hay eventos registrados/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Actualizar historial', exact: true })).toBeVisible();

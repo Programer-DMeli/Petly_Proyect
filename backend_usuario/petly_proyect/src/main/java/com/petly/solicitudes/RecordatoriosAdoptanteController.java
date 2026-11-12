@@ -6,6 +6,7 @@ import io.jsonwebtoken.Claims;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** API autenticada para que cada adoptante consulte únicamente sus recordatorios. */
@@ -20,8 +21,9 @@ public class RecordatoriosAdoptanteController {
     }
 
     @GetMapping
-    public List<RecordatorioAdoptanteResponse> listar(Authentication authentication) {
+    public List<RecordatorioAdoptanteResponse> listar(Authentication authentication,
+            @RequestParam(defaultValue = "false") boolean pendientes) {
         long adoptanteId = Long.parseLong(((Claims) authentication.getPrincipal()).getSubject());
-        return service.listar(adoptanteId);
+        return service.listar(adoptanteId, pendientes);
     }
 }

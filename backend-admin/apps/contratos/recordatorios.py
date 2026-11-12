@@ -30,7 +30,7 @@ class FeedRecordatoriosSeguimientoView(APIView):
         seguimientos = (
             SeguimientoPostAdopcion.objects.filter(
                 solicitud__estado=SolicitudAdopcion.Estado.ENTREGADA,
-                solicitud__adoptante__spring_id__isnull=False,
+                solicitud__adoptante__usuario_spring_id__isnull=False,
             )
             .select_related("solicitud", "solicitud__adoptante")
             .annotate(
@@ -47,7 +47,7 @@ class FeedRecordatoriosSeguimientoView(APIView):
         return Response([
             {
                 "id": seguimiento.pk,
-                "adoptante_spring_id": seguimiento.solicitud.adoptante.spring_id,
+                "adoptante_spring_id": seguimiento.solicitud.adoptante.usuario_spring_id,
                 "programado_para": seguimiento.programado_para,
                 "estado": seguimiento.estado,
                 "reporte_enviado": seguimiento.reporte_enviado,

@@ -21,7 +21,7 @@ class PerfilCompartidoView(APIView):
                 return Response({"error": "el albergue no está configurado", "campos": {}}, status=403)
             profile["solicitudesPrevias"] = list(
                 SolicitudAdopcion.objects.filter(
-                    adoptante__spring_id=adoptante_id,
+                    adoptante__usuario_spring_id=adoptante_id,
                     albergue=albergue,
                 ).order_by("-fecha_solicitud").values(
                     "id", "estado", "fecha_solicitud", "fecha_revision",

@@ -28,6 +28,7 @@ class Albergue(models.Model):
         on_delete=models.CASCADE,
         related_name="albergue",
         verbose_name="Usuario propietario",
+        db_column="propietario_django_id",
     )
 
     # Auditoría
@@ -36,6 +37,7 @@ class Albergue(models.Model):
     activo = models.BooleanField(default=True)
 
     class Meta:
+        db_table = "albergues"
         verbose_name = "Albergue"
         verbose_name_plural = "Albergues"
         ordering = ["nombre"]

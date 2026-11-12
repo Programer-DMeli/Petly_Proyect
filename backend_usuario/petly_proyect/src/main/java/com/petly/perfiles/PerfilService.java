@@ -10,7 +10,7 @@ public class PerfilService {
  private final JdbcTemplate db;
  public PerfilService(JdbcTemplate db) {this.db=db;}
  public boolean authorizationExists(long userId,long shelterId) {
-  return db.queryForObject("SELECT COUNT(*) FROM autorizaciones_perfil ap JOIN albergues_albergue a ON a.id=ap.albergue_id WHERE ap.usuario_id=? AND ap.albergue_id=? AND a.activo=TRUE",Long.class,userId,shelterId)==1;
+  return db.queryForObject("SELECT COUNT(*) FROM autorizaciones_perfil ap JOIN albergues a ON a.id=ap.albergue_id WHERE ap.usuario_id=? AND ap.albergue_id=? AND a.activo=TRUE",Long.class,userId,shelterId)==1;
  }
  private static final Set<String> FIELDS=Set.of("vivienda","horasFuera","presupuesto","tieneNinos","tieneOtrasMascotas","finalizado");
  public Map<String,Object> get(long id) {
