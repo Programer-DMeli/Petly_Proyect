@@ -10,6 +10,8 @@ django-cors-headers==4.9.0
 # alternativa documentada: PyMySQL==1.2.3 (ver README).
 PyMySQL==1.2.3
 Pillow==12.3.0
+# Generación de certificados PDF para expedientes de seguimiento cerrados (US-38).
+reportlab==5.1.0
 # Carga variables de entorno desde .env (que nunca se sube a Git).
 python-dotenv==1.2.4
 # JWT para autenticación stateless (US-21, Android/Spring Boot integration).

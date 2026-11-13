@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.http import FileResponse
 from django.db import transaction
 from django.db.models import Prefetch
 from rest_framework import permissions, serializers, status, viewsets
@@ -16,6 +17,7 @@ from .models import (
 )
 from .alertas_incumplimiento import generar_alertas_incumplimiento
 from .reportes import ReporteBienestarReadSerializer
+from .certificados import generar_certificado_expediente
 
 
 class SolicitudAsesoriaVeterinariaSerializer(serializers.ModelSerializer):
@@ -247,9 +249,28 @@ class ExpedienteAlbergueViewSet(viewsets.ReadOnlyModelViewSet):
             return qs.none()
         return qs.filter(albergue__usuario=user).select_related(
             "mascota", "adoptante", "expediente_post_adopcion",
+            "albergue", "expediente_post_adopcion__cerrado_por",
         ).prefetch_related(
             Prefetch("seguimientos_post_adopcion", queryset=seguimientos_con_detalle()),
         ).order_by("-id")
+
+    @action(detail=True, methods=["get"], url_path="certificado")
+    def certificado(self, request, pk=None):
+        solicitud = self.get_object()
+        expediente = getattr(solicitud, "expediente_post_adopcion", None)
+        if expediente is None or expediente.cerrado_en is None:
+            return Response(
+                {"detail": "El certificado estará disponible cuando el expediente esté cerrado."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        documento = generar_certificado_expediente(solicitud)
+        return FileResponse(
+            documento,
+            as_attachment=True,
+            filename=f"certificado-seguimiento-{solicitud.pk}.pdf",
+            content_type="application/pdf",
+        )
 
 
 class SeguimientoPostAdopcionViewSet(viewsets.ModelViewSet):

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
-import { django, errorMessage, json } from '../../../../services/http';
+import { django, downloadDjango, errorMessage, json } from '../../../../services/http';
 import { Hito, Reporte } from '../../../seguimiento/Cronograma';
 import { fecha, modalidad, type Evaluacion, type Seguimiento } from '../../../seguimiento/cronogramaDatos';
 
@@ -237,6 +237,12 @@ function Evaluar({ expediente, primerReporte, busy, ejecutar }: {
     <h3>Expediente cerrado</h3>
     <p>Adaptación: <strong>{evaluacion.calificacion_adaptacion}/5</strong> · {fecha(evaluacion.cerrado_en)}</p>
     {evaluacion.observaciones_cierre && <p className="seguimiento-texto">{evaluacion.observaciones_cierre}</p>}
+    <button type="button" className="secondary" disabled={busy} onClick={() => {
+      void ejecutar(
+        () => downloadDjango(`${ruta}${expediente.id}/certificado/`, `certificado-seguimiento-${expediente.id}.pdf`),
+        'Certificado descargado.',
+      );
+    }}>Descargar certificado PDF</button>
   </section>;
 
   const destino = `${actividades}${primerReporte?.id}/`;
