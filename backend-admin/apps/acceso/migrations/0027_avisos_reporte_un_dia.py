@@ -1,0 +1,38 @@
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ("acceso", "0026_canalavisos"),
+    ]
+
+    operations = [
+        migrations.AlterField(
+            model_name="solicitudevento",
+            name="tipo",
+            field=models.CharField(
+                choices=[
+                    ("NUEVA_COINCIDENCIA", "Nueva mascota para ti"),
+                    ("REGISTRO_HISTORICO", "Registro histórico"),
+                    ("SOLICITUD_CREADA", "Solicitud creada"),
+                    ("OBSERVADA", "Solicitud observada"),
+                    ("APROBADA", "Solicitud aprobada"),
+                    ("RECHAZADA", "Solicitud rechazada"),
+                    ("CANCELADA", "Solicitud cancelada"),
+                    ("CONTRATO_GENERADO", "Contrato generado"),
+                    ("CONTRATO_ENVIADO", "Contrato enviado a firma"),
+                    ("CONTRATO_FIRMADO", "Contrato firmado"),
+                    ("CONTRATO_RECHAZADO", "Contrato rechazado"),
+                    ("CONTRATO_EXPIRADO", "Contrato expirado"),
+                    ("ENTREGADA", "Mascota entregada"),
+                    ("SEGUIMIENTO_PROGRAMADO", "Nuevo seguimiento postadopción"),
+                    ("RECORDATORIO_REPORTE", "Próxima entrega de reporte"),
+                    ("REPORTE_1_DIA", "Reporte vence en un día"),
+                    ("INCUMPLIMIENTO_REPORTE", "Alerta roja de incumplimiento"),
+                ],
+                db_index=True,
+                max_length=24,
+            ),
+        ),
+    ]

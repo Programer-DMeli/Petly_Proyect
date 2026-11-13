@@ -33,7 +33,8 @@ MENSAJES = {
     "CONTRATO_RECHAZADO": "El contrato de adopción fue rechazado.",
     "CONTRATO_EXPIRADO": "El contrato de adopción venció. Contacta con el albergue.",
     "SEGUIMIENTO_PROGRAMADO": "El albergue agregó una actividad al cronograma de adopción.",
-    "RECORDATORIO_REPORTE": "Envía tu reporte de bienestar antes de la fecha límite.",
+    "RECORDATORIO_REPORTE": "Tu reporte de bienestar vence en los próximos días. Revisa la fecha límite.",
+    "REPORTE_1_DIA": "Tu reporte de bienestar vence mañana. Envíalo antes de la fecha límite.",
     "INCUMPLIMIENTO_REPORTE": "El albergue emitió una alerta por un reporte de bienestar vencido.",
     "ENTREGADA": "La entrega de tu mascota quedó registrada. ¡Gracias por adoptar!",
 }
@@ -184,7 +185,7 @@ class NotificacionViewSet(viewsets.GenericViewSet):
         if usuario.rol != User.Rol.ADOPTANTE:
             return qs.none()
         ahora = timezone.now()
-        recordatorios_activos = Q(
+        ventana_recordatorio = Q(
             seguimiento__requiere_reporte=True,
             seguimiento__programado_para__gt=ahora,
             seguimiento__programado_para__lte=ahora + timedelta(hours=settings.RECORDATORIOS_ANTICIPACION_HORAS),
@@ -192,8 +193,15 @@ class NotificacionViewSet(viewsets.GenericViewSet):
             seguimiento__reporte_bienestar__isnull=True,
             seguimiento__solicitud__expediente_post_adopcion__cerrado_en__isnull=True,
         ) & ~Q(seguimiento__estado="CANCELADO")
+        ventana_tres_dias = ventana_recordatorio & Q(
+            seguimiento__programado_para__gt=ahora + timedelta(hours=24),
+        )
+        ventana_un_dia = ventana_recordatorio & Q(
+            seguimiento__programado_para__lte=ahora + timedelta(hours=24),
+        )
         return qs.filter(
-            ~Q(tipo=SolicitudEvento.Tipo.RECORDATORIO_REPORTE) | recordatorios_activos,
+            ~Q(tipo=SolicitudEvento.Tipo.RECORDATORIO_REPORTE) | ventana_tres_dias,
+            ~Q(tipo=SolicitudEvento.Tipo.REPORTE_1_DIA) | ventana_un_dia,
             Q(solicitud__adoptante=self.request.user) | Q(destinatario=self.request.user, tipo="NUEVA_COINCIDENCIA"),
             visible_adoptante=True,
             tipo__in=MENSAJES,

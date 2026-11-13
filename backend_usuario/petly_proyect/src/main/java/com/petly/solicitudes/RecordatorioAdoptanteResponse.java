@@ -9,6 +9,7 @@ public record RecordatorioAdoptanteResponse(
         Long id,
         @JsonProperty("seguimiento_id") Long seguimientoId,
         @JsonProperty("fecha_limite") LocalDateTime fechaLimite,
+        @JsonProperty("anticipacion_dias") int anticipacionDias,
         String estado,
         @JsonProperty("enviado_en") LocalDateTime enviadoEn) {
 
@@ -17,6 +18,7 @@ public record RecordatorioAdoptanteResponse(
                 recordatorio.getId(),
                 recordatorio.getSeguimientoId(),
                 recordatorio.getFechaLimite(),
+                recordatorio.getAnticipacionDias(),
                 recordatorio.getEstado().name(),
                 recordatorio.getEnviadoEn());
     }

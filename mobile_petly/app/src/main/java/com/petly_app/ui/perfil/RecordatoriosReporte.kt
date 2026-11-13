@@ -80,6 +80,11 @@ fun RecordatoriosReporte(repository: ReportesSeguimientoRepository, entrega: Lon
                         Text(plazo.seguimiento.mascota_nombre, style = MaterialTheme.typography.titleSmall)
                         Text(plazo.seguimiento.albergue_nombre)
                         Text("Fecha límite: ${fechaLimiteLima(plazo.fechaLimite)}")
+                        if (plazo.anticipacionesAviso.isNotEmpty()) {
+                            val avisos = plazo.anticipacionesAviso.sortedDescending()
+                                .joinToString(" y ") { "$it ${if (it == 1) "día" else "días"}" }
+                            Text("Avisos programados: $avisos antes del plazo")
+                        }
                         if (plazo.seguimiento.estado_entrega == "VENCIDA") {
                             Text("Entrega vencida", color = MaterialTheme.colorScheme.error)
                         }

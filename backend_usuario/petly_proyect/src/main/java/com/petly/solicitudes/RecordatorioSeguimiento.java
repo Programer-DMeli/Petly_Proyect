@@ -20,7 +20,8 @@ import jakarta.persistence.UniqueConstraint;
 @Entity
 @Table(name = "recordatorios_seguimiento",
         uniqueConstraints = @UniqueConstraint(
-                name = "uq_recordatorio_seguimiento", columnNames = "seguimiento_id"),
+                name = "uq_recordatorio_seguimiento_anticipacion",
+                columnNames = {"seguimiento_id", "anticipacion_dias"}),
         indexes = @Index(
                 name = "idx_recordatorio_adoptante_estado_fecha",
                 columnList = "adoptante_id, estado, fecha_limite"))
@@ -48,6 +49,9 @@ public class RecordatorioSeguimiento {
     @Column(name = "fecha_limite", nullable = false)
     private LocalDateTime fechaLimite;
 
+    @Column(name = "anticipacion_dias", nullable = false)
+    private int anticipacionDias;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 12)
     private Estado estado = Estado.PENDIENTE;
@@ -67,9 +71,15 @@ public class RecordatorioSeguimiento {
     }
 
     public RecordatorioSeguimiento(Long seguimientoId, Long adoptanteId, LocalDateTime fechaLimite) {
+        this(seguimientoId, adoptanteId, fechaLimite, 3);
+    }
+
+    public RecordatorioSeguimiento(Long seguimientoId, Long adoptanteId, LocalDateTime fechaLimite,
+            int anticipacionDias) {
         this.seguimientoId = seguimientoId;
         this.adoptanteId = adoptanteId;
         this.fechaLimite = fechaLimite;
+        this.anticipacionDias = anticipacionDias;
         this.estado = Estado.PENDIENTE;
     }
 
@@ -89,6 +99,10 @@ public class RecordatorioSeguimiento {
         return fechaLimite;
     }
 
+    public int getAnticipacionDias() {
+        return anticipacionDias;
+    }
+
     public Estado getEstado() {
         return estado;
     }
@@ -106,8 +120,13 @@ public class RecordatorioSeguimiento {
     }
 
     public void actualizarDatos(Long adoptanteId, LocalDateTime fechaLimite) {
+        boolean cambio = !this.adoptanteId.equals(adoptanteId) || !this.fechaLimite.equals(fechaLimite);
         this.adoptanteId = adoptanteId;
         this.fechaLimite = fechaLimite;
+        if (cambio && estado == Estado.ENVIADO) {
+            estado = Estado.PENDIENTE;
+            enviadoEn = null;
+        }
     }
 
     public void marcarEnviado(LocalDateTime enviadoEn) {

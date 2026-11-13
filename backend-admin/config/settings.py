@@ -312,4 +312,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
 GEMINI_TIMEOUT_SECONDS = max(1, min(60, int(os.getenv("GEMINI_TIMEOUT_SECONDS", "20"))))
 
-RECORDATORIOS_ANTICIPACION_HORAS = int(os.getenv("RECORDATORIOS_ANTICIPACION_HORAS", "24"))
+RECORDATORIOS_HORIZONTE_HORAS = int(os.getenv("RECORDATORIOS_HORIZONTE_HORAS", "72"))
+# Alias del nombre anterior para mantener compatibilidad con configuraciones de prueba.
+RECORDATORIOS_ANTICIPACION_HORAS = RECORDATORIOS_HORIZONTE_HORAS

@@ -46,11 +46,22 @@ public class EnviarRecordatoriosSeguimiento {
     }
 
     @Transactional
-    public void enviarPendiente(Long seguimientoId, String mascotaNombre) {
+    public void enviarPendiente(Long seguimientoId, int anticipacionDias, String mascotaNombre) {
         LocalDateTime ahora = LocalDateTime.now(ZONA_PETLY);
-        var recordatorio = recordatorios.bloquearPorSeguimiento(seguimientoId).orElse(null);
+        var recordatorio = recordatorios
+                .bloquearPorSeguimientoYAnticipacion(seguimientoId, anticipacionDias).orElse(null);
         if (recordatorio == null || recordatorio.getEstado() != RecordatorioSeguimiento.Estado.PENDIENTE
                 || !recordatorio.getFechaLimite().isAfter(ahora)) {
+            return;
+        }
+        LocalDateTime inicioAviso = recordatorio.getFechaLimite().minusDays(anticipacionDias);
+        LocalDateTime finAviso = recordatorio.getFechaLimite().minusDays(anticipacionDias - 1L);
+        if (ahora.isBefore(inicioAviso)) {
+            return;
+        }
+        if (!ahora.isBefore(finAviso)) {
+            recordatorio.cancelar();
+            recordatorios.save(recordatorio);
             return;
         }
         var canales = preferencias.obtener(recordatorio.getAdoptanteId());
@@ -71,9 +82,12 @@ public class EnviarRecordatoriosSeguimiento {
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setFrom(mailFrom);
         mensaje.setTo(adoptante.getCorreo());
-        mensaje.setSubject("Petly: envía tu reporte de bienestar postadopción");
+        mensaje.setSubject(anticipacionDias == 3
+                ? "Petly: tu reporte vence en los próximos días"
+                : "Petly: tu reporte vence mañana");
         mensaje.setText("Hola" + nombre(adoptante) + ",\n\n"
-                + "El reporte de bienestar de " + mascotaNombre + " vence el "
+                + "El reporte de bienestar de " + mascotaNombre
+                + (anticipacionDias == 3 ? " vence en aproximadamente tres días, el " : " vence mañana, el ")
                 + recordatorio.getFechaLimite().format(FORMATO_FECHA) + " (hora de Lima). "
                 + "Cuéntanos cómo está tu mascota y adjunta una foto en Petly:\n"
                 + urlReportes + (urlReportes.contains("?") ? "&" : "?")

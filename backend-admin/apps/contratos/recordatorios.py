@@ -69,6 +69,12 @@ class FeedRecordatoriosSeguimientoView(APIView):
                     tipo=SolicitudEvento.Tipo.RECORDATORIO_REPORTE,
                     defaults={"solicitud_id": seguimiento.solicitud_id},
                 )
+                if seguimiento.programado_para <= ahora + timedelta(hours=24):
+                    SolicitudEvento.objects.get_or_create(
+                        seguimiento=seguimiento,
+                        tipo=SolicitudEvento.Tipo.REPORTE_1_DIA,
+                        defaults={"solicitud_id": seguimiento.solicitud_id},
+                    )
             filas.append({
                 "id": seguimiento.pk,
                 "adoptante_spring_id": seguimiento.solicitud.adoptante.usuario_spring_id,

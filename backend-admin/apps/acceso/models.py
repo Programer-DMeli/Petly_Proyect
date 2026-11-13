@@ -497,6 +497,7 @@ class SolicitudEvento(models.Model):
         ENTREGADA = "ENTREGADA", "Mascota entregada"
         SEGUIMIENTO_PROGRAMADO = "SEGUIMIENTO_PROGRAMADO", "Nuevo seguimiento postadopción"
         RECORDATORIO_REPORTE = "RECORDATORIO_REPORTE", "Próxima entrega de reporte"
+        REPORTE_1_DIA = "REPORTE_1_DIA", "Reporte vence en un día"
         INCUMPLIMIENTO_REPORTE = "INCUMPLIMIENTO_REPORTE", "Alerta roja de incumplimiento"
 
     solicitud = models.ForeignKey(

@@ -45,7 +45,12 @@ interface SeguimientosApi {
 }
 
 
-data class RecordatorioReporteDto(val seguimiento_id: Long, val fecha_limite: String, val estado: String)
+data class RecordatorioReporteDto(
+    val seguimiento_id: Long,
+    val fecha_limite: String,
+    val anticipacion_dias: Int,
+    val estado: String
+)
 data class ReporteBienestarDto(val id: Long)
 
 interface ReportesSeguimientoApi {

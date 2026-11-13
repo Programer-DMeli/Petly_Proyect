@@ -14,7 +14,11 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
 
-data class PlazoReporte(val seguimiento: SeguimientoDto, val fechaLimite: String)
+data class PlazoReporte(
+    val seguimiento: SeguimientoDto,
+    val fechaLimite: String,
+    val anticipacionesAviso: Set<Int> = emptySet()
+)
 
 class ReportesSeguimientoRepository(
     private val seguimientos: SeguimientosApi,
@@ -24,9 +28,17 @@ class ReportesSeguimientoRepository(
     suspend fun pendientes(): List<PlazoReporte> {
         val cronograma = seguimientos.listarTodos()
         val (actuales, antiguos) = cronograma.partition { it.requiere_reporte != null }
-        val plazos = actuales.filter { it.admiteReporte() }
-            .map { PlazoReporte(it, it.programado_para) }
-        return if (antiguos.isEmpty()) plazos else plazos + cruzarPlazos(reportes.pendientes(), antiguos)
+        val avisos = try {
+            reportes.pendientes()
+        } catch (error: Exception) {
+            if (antiguos.isNotEmpty()) throw error
+            emptyList()
+        }
+        val diasPorSeguimiento = avisos.groupBy { it.seguimiento_id }
+            .mapValues { (_, recordatorios) -> recordatorios.map { it.anticipacion_dias }.toSet() }
+        val plazosActuales = actuales.filter { it.admiteReporte() }
+            .map { PlazoReporte(it, it.programado_para, diasPorSeguimiento[it.id].orEmpty()) }
+        return (plazosActuales + cruzarPlazos(avisos, antiguos)).distinctBy { it.seguimiento.id }
     }
 
     suspend fun enviar(id: Long, estado: String, observaciones: String, fotos: List<Uri>) {
@@ -72,8 +84,14 @@ internal fun cruzarPlazos(avisos: List<RecordatorioReporteDto>, seguimientos: Li
         it.estado in setOf("PROGRAMADO", "REALIZADO") &&
             it.requiere_reporte != false && it.reporte_bienestar == null && it.expediente_cierre == null
     }.associateBy { it.id }
-    return avisos.mapNotNull { aviso ->
-        disponibles[aviso.seguimiento_id]?.let { PlazoReporte(it, aviso.fecha_limite) }
+    return avisos.groupBy { it.seguimiento_id }.mapNotNull { (seguimientoId, recordatorios) ->
+        disponibles[seguimientoId]?.let { seguimiento ->
+            PlazoReporte(
+                seguimiento,
+                recordatorios.first().fecha_limite,
+                recordatorios.map { it.anticipacion_dias }.toSet(),
+            )
+        }
     }
 }
 

@@ -12,7 +12,8 @@ import jakarta.persistence.LockModeType;
 /** Acceso a los recordatorios persistidos de seguimientos postadopción (US-43). */
 public interface RecordatorioSeguimientoRepository extends JpaRepository<RecordatorioSeguimiento, Long> {
 
-    Optional<RecordatorioSeguimiento> findBySeguimientoId(Long seguimientoId);
+    Optional<RecordatorioSeguimiento> findBySeguimientoIdAndAnticipacionDias(
+            Long seguimientoId, int anticipacionDias);
 
     List<RecordatorioSeguimiento> findByAdoptanteIdOrderByFechaLimiteAsc(Long adoptanteId);
 
@@ -23,6 +24,8 @@ public interface RecordatorioSeguimientoRepository extends JpaRepository<Recorda
             Long adoptanteId, RecordatorioSeguimiento.Estado estado);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select r from RecordatorioSeguimiento r where r.seguimientoId = :seguimientoId")
-    Optional<RecordatorioSeguimiento> bloquearPorSeguimiento(Long seguimientoId);
+    @Query("select r from RecordatorioSeguimiento r where r.seguimientoId = :seguimientoId "
+            + "and r.anticipacionDias = :anticipacionDias")
+    Optional<RecordatorioSeguimiento> bloquearPorSeguimientoYAnticipacion(
+            Long seguimientoId, int anticipacionDias);
 }
