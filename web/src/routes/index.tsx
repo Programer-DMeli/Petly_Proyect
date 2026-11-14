@@ -30,6 +30,7 @@ import PreferenciasNotificacionPage from '../features/adoptante/perfil/pages/Pre
 import VerificacionesKycAdminPage from '../features/administracion/kyc/pages/VerificacionesKycAdminPage';
 import ChatDirectoPage from '../features/shared/ChatDirectoPage';
 import RevisionCasosExitoPage from '../features/shared/RevisionCasosExitoPage';
+import HistoriasExitoPublicasPage from '../features/shared/HistoriasExitoPublicasPage';
 
 /**
  * Rutas de Petly web. Estructura prevista según PLANNING v2 §9.2:
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: 'historias-exito', element: <HistoriasExitoPublicasPage /> },
       { path: 'acceso', element: <AccesoPage /> },
       { path: 'registro', element: <AccesoPage register /> },
       { path: 'recuperacion', element: <RecuperacionPage /> },

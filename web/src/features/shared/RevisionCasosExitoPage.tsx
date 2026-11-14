@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import Feedback from '../../components/Feedback';
-import { django, errorMessage, fetchDjangoFile } from '../../services/http';
+import { django, errorMessage } from '../../services/http';
+import FotoCasoExitoPrivada, { type FotoCasoExito } from './FotoCasoExitoPrivada';
 
 type Role = 'ALBERGUE' | 'ADMIN';
-type FotoCaso = {
-  id: number;
-  mime_type: string;
-  tamaño_bytes: number;
-  descarga_url: string;
-};
 type CasoPendiente = {
   id: number;
   solicitud_id: number;
@@ -18,40 +13,11 @@ type CasoPendiente = {
   estado: string;
   estado_display: string;
   creado_en: string;
-  fotos: FotoCaso[];
+  fotos: FotoCasoExito[];
 };
 type Page = { results: CasoPendiente[]; next: string | null };
 
 const API = '/api/contratos/casos-exito/';
-
-function FotoPrivada({ foto }: { foto: FotoCaso }) {
-  const [src, setSrc] = useState('');
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let cancelado = false;
-    let urlTemporal = '';
-    setSrc('');
-    setError('');
-    void fetchDjangoFile(foto.descarga_url)
-      .then(response => response.blob())
-      .then(blob => {
-        urlTemporal = URL.createObjectURL(blob);
-        if (cancelado) URL.revokeObjectURL(urlTemporal);
-        else setSrc(urlTemporal);
-      })
-      .catch(cause => { if (!cancelado) setError(errorMessage(cause)); });
-    return () => {
-      cancelado = true;
-      if (urlTemporal) URL.revokeObjectURL(urlTemporal);
-    };
-  }, [foto.descarga_url]);
-
-  return <figure>
-    {src ? <img src={src} alt="Foto adjunta a la historia de adopción" loading="lazy" />
-      : error ? <p role="alert">{error}</p> : <p role="status">Cargando foto…</p>}
-  </figure>;
-}
 
 export default function RevisionCasosExitoPage({ role }: { role: Role }) {
   const [casos, setCasos] = useState<CasoPendiente[]>([]);
@@ -136,7 +102,8 @@ export default function RevisionCasosExitoPage({ role }: { role: Role }) {
             <p className="case-story">{caso.historia}</p>
             <h3>Fotos adjuntas ({caso.fotos.length})</h3>
             <div className="case-story-photos">
-              {caso.fotos.map(foto => <FotoPrivada key={foto.id} foto={foto} />)}
+              {caso.fotos.map(foto => <FotoCasoExitoPrivada key={foto.id} foto={foto}
+                alt={`Foto de la historia de ${caso.mascota_nombre}`} />)}
             </div>
             {role === 'ALBERGUE' && <p className="muted">Como albergue, solo puedes revisar historias de tus adopciones.</p>}
             <label htmlFor={`motivo-caso-${caso.id}`}>Motivo del rechazo (obligatorio para rechazar)

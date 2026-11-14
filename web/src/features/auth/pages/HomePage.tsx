@@ -20,6 +20,9 @@ export default function HomePage() {
           <Link className="button secondary" to="/registro">
             Crear cuenta de adoptante
           </Link>
+          <Link className="button secondary" to="/historias-exito">
+            Historias de adopción
+          </Link>
         </div>
       </div>
       <img className="hero__pets" src="/images/mascotas-portada.webp" alt="Un perro y un gato buscando un hogar" />

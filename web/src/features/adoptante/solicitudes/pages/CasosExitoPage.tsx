@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
 import { django, errorMessage } from '../../../../services/http';
+import FotoCasoExitoPrivada, { type FotoCasoExito } from '../../../shared/FotoCasoExitoPrivada';
 
 type AdopcionDisponible = {
   id: number;
@@ -9,7 +11,6 @@ type AdopcionDisponible = {
   fecha_entrega: string;
 };
 
-type FotoCaso = { id: number; mime_type: string; tamaño_bytes: number; subido_en: string };
 type CasoExito = {
   id: number;
   solicitud_id: number;
@@ -18,8 +19,9 @@ type CasoExito = {
   historia: string;
   estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
   estado_display: string;
+  motivo_revision: string;
   creado_en: string;
-  fotos: FotoCaso[];
+  fotos: FotoCasoExito[];
 };
 type Coleccion<T> = T[] | { results: T[]; next: string | null };
 
@@ -35,6 +37,19 @@ function rows<T>(data: Coleccion<T>) {
 function fecha(value: string) {
   const date = new Date(`${value}T12:00:00`);
   return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium' }).format(date);
+}
+
+async function cargarHistorias(): Promise<CasoExito[]> {
+  const todas: CasoExito[] = [];
+  let pagina = 1;
+  let siguiente: string | null;
+  do {
+    const respuesta = await django<Coleccion<CasoExito>>(`${API}?page=${pagina}&page_size=100`);
+    todas.push(...rows(respuesta));
+    siguiente = Array.isArray(respuesta) ? null : respuesta.next;
+    pagina += 1;
+  } while (siguiente);
+  return todas;
 }
 
 export default function CasosExitoPage() {
@@ -54,10 +69,10 @@ export default function CasosExitoPage() {
     try {
       const [disponibles, propias] = await Promise.all([
         django<AdopcionDisponible[]>(`${API}adopciones-disponibles/`),
-        django<Coleccion<CasoExito>>(API),
+        cargarHistorias(),
       ]);
       setAdopciones(disponibles);
-      setHistorias(rows(propias));
+      setHistorias(propias);
       setSolicitudId(current => disponibles.some(item => String(item.id) === current)
         ? current
         : String(disponibles[0]?.id ?? ''));
@@ -128,6 +143,7 @@ export default function CasosExitoPage() {
       <p className="eyebrow">Comunidad Petly</p>
       <h1>Comparte tu historia de adopción</h1>
       <p className="muted">Cuéntale a la comunidad cómo es tu vida con tu nuevo compañero. Las historias se revisan antes de publicarse.</p>
+      <p><Link to="/historias-exito">Conoce las historias publicadas por la comunidad</Link></p>
     </header>
 
     <Feedback error={error} success={success} />
@@ -168,6 +184,12 @@ export default function CasosExitoPage() {
             <p><strong>Estado:</strong> {caso.estado_display}</p>
             <p>{caso.historia}</p>
             <p>{caso.fotos.length} {caso.fotos.length === 1 ? 'foto adjunta' : 'fotos adjuntas'}</p>
+            {caso.estado === 'RECHAZADO' && caso.motivo_revision &&
+              <p className="feedback error"><strong>Motivo:</strong> {caso.motivo_revision}</p>}
+            <div className="case-story-photos">
+              {caso.fotos.map(foto => <FotoCasoExitoPrivada key={foto.id} foto={foto}
+                alt={`Foto privada de tu historia de ${caso.mascota_nombre}`} />)}
+            </div>
           </article>)}
         </div>}
       </section>
