@@ -1,0 +1,160 @@
+import { useCallback, useEffect, useState } from 'react';
+import Feedback from '../../components/Feedback';
+import { django, errorMessage, fetchDjangoFile } from '../../services/http';
+
+type Role = 'ALBERGUE' | 'ADMIN';
+type FotoCaso = {
+  id: number;
+  mime_type: string;
+  tamaño_bytes: number;
+  descarga_url: string;
+};
+type CasoPendiente = {
+  id: number;
+  solicitud_id: number;
+  mascota_nombre: string;
+  albergue_nombre: string;
+  historia: string;
+  estado: string;
+  estado_display: string;
+  creado_en: string;
+  fotos: FotoCaso[];
+};
+type Page = { results: CasoPendiente[]; next: string | null };
+
+const API = '/api/contratos/casos-exito/';
+
+function FotoPrivada({ foto }: { foto: FotoCaso }) {
+  const [src, setSrc] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelado = false;
+    let urlTemporal = '';
+    setSrc('');
+    setError('');
+    void fetchDjangoFile(foto.descarga_url)
+      .then(response => response.blob())
+      .then(blob => {
+        urlTemporal = URL.createObjectURL(blob);
+        if (cancelado) URL.revokeObjectURL(urlTemporal);
+        else setSrc(urlTemporal);
+      })
+      .catch(cause => { if (!cancelado) setError(errorMessage(cause)); });
+    return () => {
+      cancelado = true;
+      if (urlTemporal) URL.revokeObjectURL(urlTemporal);
+    };
+  }, [foto.descarga_url]);
+
+  return <figure>
+    {src ? <img src={src} alt="Foto adjunta a la historia de adopción" loading="lazy" />
+      : error ? <p role="alert">{error}</p> : <p role="status">Cargando foto…</p>}
+  </figure>;
+}
+
+export default function RevisionCasosExitoPage({ role }: { role: Role }) {
+  const [casos, setCasos] = useState<CasoPendiente[]>([]);
+  const [motivos, setMotivos] = useState<Record<number, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const cargar = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const resultados: CasoPendiente[] = [];
+      let page = 1;
+      let next: string | null;
+      do {
+        const respuesta = await django<Page>(`${API}pendientes/?page=${page}&page_size=100`);
+        resultados.push(...respuesta.results);
+        next = respuesta.next;
+        page += 1;
+      } while (next);
+      setCasos(resultados);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void cargar(); }, [cargar]);
+
+  async function revisar(caso: CasoPendiente, decision: 'APROBAR' | 'RECHAZAR') {
+    const motivo = motivos[caso.id]?.trim() ?? '';
+    if (decision === 'RECHAZAR' && !motivo) {
+      setError('Escribe el motivo del rechazo antes de continuar.');
+      return;
+    }
+    setBusyId(caso.id);
+    setError('');
+    setSuccess('');
+    try {
+      await django(`${API}${caso.id}/revisar/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, motivo }),
+      });
+      setCasos(actuales => actuales.filter(item => item.id !== caso.id));
+      setSuccess(decision === 'APROBAR'
+        ? `La historia de ${caso.mascota_nombre} fue aprobada y publicada.`
+        : `La historia de ${caso.mascota_nombre} fue rechazada.`);
+      setMotivos(actuales => {
+        const copia = { ...actuales };
+        delete copia[caso.id];
+        return copia;
+      });
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return <section className="card">
+    <header>
+      <p className="eyebrow">Comunidad Petly</p>
+      <h1>Revisión de historias de adopción</h1>
+      <p className="muted">Revisa el relato y las fotos antes de publicar. Las historias rechazadas no aparecen en la sección pública.</p>
+    </header>
+    <Feedback error={error} success={success} />
+    <div className="actions">
+      <button type="button" className="secondary" onClick={() => void cargar()} disabled={loading || busyId !== null}>
+        Actualizar pendientes
+      </button>
+    </div>
+    {loading ? <p role="status">Cargando historias pendientes…</p>
+      : casos.length === 0 ? <p>No hay historias pendientes de revisión.</p>
+        : <div className="list-stack">
+          {casos.map(caso => <article className="card" key={caso.id}>
+            <h2>{caso.mascota_nombre}</h2>
+            <p className="muted">Albergue: {caso.albergue_nombre} · Solicitud #{caso.solicitud_id} · Enviada {new Date(caso.creado_en).toLocaleDateString('es-PE')}</p>
+            <p className="case-story">{caso.historia}</p>
+            <h3>Fotos adjuntas ({caso.fotos.length})</h3>
+            <div className="case-story-photos">
+              {caso.fotos.map(foto => <FotoPrivada key={foto.id} foto={foto} />)}
+            </div>
+            {role === 'ALBERGUE' && <p className="muted">Como albergue, solo puedes revisar historias de tus adopciones.</p>}
+            <label htmlFor={`motivo-caso-${caso.id}`}>Motivo del rechazo (obligatorio para rechazar)
+              <textarea id={`motivo-caso-${caso.id}`} maxLength={500} value={motivos[caso.id] ?? ''}
+                onChange={event => setMotivos(actuales => ({ ...actuales, [caso.id]: event.target.value }))}
+                disabled={busyId !== null} />
+            </label>
+            <div className="actions">
+              <button type="button" disabled={busyId !== null}
+                onClick={() => void revisar(caso, 'APROBAR')}>
+                {busyId === caso.id ? 'Guardando…' : 'Aprobar y publicar'}
+              </button>
+              <button type="button" className="danger" disabled={busyId !== null}
+                onClick={() => void revisar(caso, 'RECHAZAR')}>
+                Rechazar historia
+              </button>
+            </div>
+          </article>)}
+        </div>}
+  </section>;
+}

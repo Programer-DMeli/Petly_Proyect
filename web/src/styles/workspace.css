@@ -40,6 +40,27 @@
 .workspace .card .card {
   box-shadow: none;
 }
+.case-story {
+  white-space: pre-wrap;
+}
+.case-story-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 0.8rem;
+}
+.case-story-photos figure {
+  margin: 0;
+  min-height: 140px;
+  background: var(--petly-surface-muted, #f4f7f5);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.case-story-photos img {
+  display: block;
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+}
 .workspace h1,
 .workspace h2,
 .workspace h3 {

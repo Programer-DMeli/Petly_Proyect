@@ -1,8 +1,11 @@
 from django.db import IntegrityError, transaction
+from django.http import FileResponse
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from PIL import Image, UnidentifiedImageError
 from rest_framework import mixins, permissions, serializers, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
@@ -17,10 +20,15 @@ MAX_PIXELES_FOTO = 20_000_000
 
 
 class FotoCasoExitoReadSerializer(serializers.ModelSerializer):
+    descarga_url = serializers.SerializerMethodField()
+
     class Meta:
         model = FotoCasoExito
-        fields = ["id", "mime_type", "tamaño_bytes", "subido_en"]
+        fields = ["id", "mime_type", "tamaño_bytes", "subido_en", "descarga_url"]
         read_only_fields = fields
+
+    def get_descarga_url(self, obj):
+        return f"/api/contratos/casos-exito/{obj.caso_id}/fotos/{obj.pk}/"
 
 
 class CasoExitoReadSerializer(serializers.ModelSerializer):
@@ -34,8 +42,19 @@ class CasoExitoReadSerializer(serializers.ModelSerializer):
         model = CasoExitoAdopcion
         fields = [
             "id", "solicitud_id", "mascota_nombre", "albergue_nombre", "historia",
-            "estado", "estado_display", "creado_en", "fotos",
+            "estado", "estado_display", "motivo_revision", "creado_en", "fotos",
         ]
+        read_only_fields = fields
+
+
+class CasoExitoPublicoSerializer(serializers.ModelSerializer):
+    mascota_nombre = serializers.CharField(source="solicitud.mascota.nombre", read_only=True)
+    albergue_nombre = serializers.CharField(source="solicitud.albergue.nombre", read_only=True)
+    fotos = FotoCasoExitoReadSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CasoExitoAdopcion
+        fields = ["id", "mascota_nombre", "albergue_nombre", "historia", "publicado_en", "fotos"]
         read_only_fields = fields
 
 
@@ -98,6 +117,16 @@ class CrearCasoExitoSerializer(serializers.Serializer):
         return archivos
 
 
+class RevisionCasoExitoSerializer(serializers.Serializer):
+    decision = serializers.ChoiceField(choices=["APROBAR", "RECHAZAR"])
+    motivo = serializers.CharField(max_length=500, required=False, allow_blank=True, trim_whitespace=True)
+
+    def validate(self, attrs):
+        if attrs["decision"] == "RECHAZAR" and not attrs.get("motivo", "").strip():
+            raise serializers.ValidationError({"motivo": "Indica por qué se rechaza la historia."})
+        return attrs
+
+
 class CasoExitoAdopcionViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
@@ -113,6 +142,8 @@ class CasoExitoAdopcionViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, v
     def get_serializer_class(self):
         if self.action == "create":
             return CrearCasoExitoSerializer
+        if self.action == "revisar":
+            return RevisionCasoExitoSerializer
         return CasoExitoReadSerializer
 
     def list(self, request, *args, **kwargs):
@@ -130,6 +161,116 @@ class CasoExitoAdopcionViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, v
             fecha_entrega__isnull=False,
         ).filter(caso_exito__isnull=True).select_related("mascota", "albergue").order_by("-fecha_entrega", "-id")
         return Response(AdopcionElegibleSerializer(solicitudes, many=True).data)
+
+    @action(detail=False, methods=["get"], url_path="pendientes")
+    def pendientes(self, request):
+        if request.user.rol == User.Rol.ADMIN:
+            queryset = CasoExitoAdopcion.objects.filter(estado=CasoExitoAdopcion.Estado.PENDIENTE)
+        elif request.user.rol == User.Rol.ALBERGUE:
+            queryset = CasoExitoAdopcion.objects.filter(
+                estado=CasoExitoAdopcion.Estado.PENDIENTE,
+                solicitud__albergue__usuario=request.user,
+            )
+        else:
+            raise PermissionDenied("Solo el albergue responsable o ADMIN puede revisar historias.")
+        queryset = queryset.select_related("solicitud__mascota", "solicitud__albergue", "autor").prefetch_related("fotos")
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page if page is not None else queryset, many=True)
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="revisar")
+    def revisar(self, request, pk=None):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        decision = serializer.validated_data["decision"]
+        motivo = serializer.validated_data.get("motivo", "").strip()
+
+        with transaction.atomic():
+            caso = get_object_or_404(
+                CasoExitoAdopcion.objects.select_for_update().select_related("solicitud__albergue"),
+                pk=pk,
+            )
+            user = request.user
+            es_admin = user.rol == User.Rol.ADMIN
+            es_albergue_responsable = (
+                user.rol == User.Rol.ALBERGUE
+                and caso.solicitud.albergue.usuario_id == user.pk
+            )
+            if not (es_admin or es_albergue_responsable):
+                raise NotFound("No se encontró una historia pendiente que puedas revisar.")
+            if caso.estado != CasoExitoAdopcion.Estado.PENDIENTE:
+                return Response({"detail": "La historia ya fue revisada."}, status=status.HTTP_409_CONFLICT)
+
+            caso.revisado_por = user
+            caso.revisado_en = timezone.now()
+            caso.motivo_revision = motivo if decision == "RECHAZAR" else ""
+            if decision == "APROBAR":
+                caso.estado = CasoExitoAdopcion.Estado.APROBADO
+                caso.publicado_en = caso.revisado_en
+            else:
+                caso.estado = CasoExitoAdopcion.Estado.RECHAZADO
+                caso.publicado_en = None
+            caso.save(update_fields=[
+                "estado", "revisado_por", "revisado_en", "motivo_revision", "publicado_en", "actualizado_en",
+            ])
+
+        return Response(CasoExitoReadSerializer(caso, context=self.get_serializer_context()).data)
+
+    @action(detail=False, methods=["get"], url_path="publicados", permission_classes=[permissions.AllowAny])
+    def publicados(self, request):
+        queryset = CasoExitoAdopcion.objects.filter(
+            estado=CasoExitoAdopcion.Estado.APROBADO,
+            publicado_en__isnull=False,
+        ).select_related("solicitud__mascota", "solicitud__albergue").prefetch_related("fotos")
+        page = self.paginate_queryset(queryset)
+        serializer = CasoExitoPublicoSerializer(
+            page if page is not None else queryset,
+            many=True,
+            context=self.get_serializer_context(),
+        )
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path=r"fotos/(?P<foto_id>[0-9]+)",
+        permission_classes=[permissions.AllowAny],
+    )
+    def foto(self, request, pk=None, foto_id=None):
+        caso = get_object_or_404(
+            CasoExitoAdopcion.objects.select_related("solicitud__albergue"),
+            pk=pk,
+        )
+        publicada = (
+            caso.estado == CasoExitoAdopcion.Estado.APROBADO
+            and caso.publicado_en is not None
+        )
+        if not publicada:
+            user = request.user
+            puede_ver = user.is_authenticated and (
+                user.rol == User.Rol.ADMIN
+                or caso.autor_id == user.pk
+                or (
+                    user.rol == User.Rol.ALBERGUE
+                    and caso.solicitud.albergue.usuario_id == user.pk
+                )
+            )
+            if not puede_ver:
+                raise NotFound("No se encontró la fotografía.")
+
+        foto = get_object_or_404(FotoCasoExito, pk=foto_id, caso=caso)
+        try:
+            archivo = foto.archivo.open("rb")
+        except (OSError, ValueError):
+            raise NotFound("No se pudo abrir la fotografía.")
+        response = FileResponse(archivo, content_type=foto.mime_type)
+        response["X-Content-Type-Options"] = "nosniff"
+        response["Cache-Control"] = "public, max-age=300" if publicada else "private, no-store"
+        return response
 
     def create(self, request, *args, **kwargs):
         if request.user.rol != User.Rol.ADOPTANTE:

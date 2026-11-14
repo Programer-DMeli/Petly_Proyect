@@ -124,6 +124,11 @@ const groups: Record<string, Group[]> = {
           to: '/albergue/seguimientos',
           description: 'Programa visitas y revisa reportes de adaptación',
         },
+        {
+          label: 'Revisar historias de adopción',
+          to: '/albergue/casos-exito',
+          description: 'Revisa historias y fotos de tus adopciones entregadas.',
+        },
       ],
     },
     {
@@ -155,6 +160,11 @@ const groups: Record<string, Group[]> = {
           label: 'Revisión de identidad',
           to: '/administracion/verificaciones-kyc',
           description: 'Revisa los casos y sus documentos.',
+        },
+        {
+          label: 'Revisión de historias',
+          to: '/administracion/casos-exito',
+          description: 'Modera historias de adopción enviadas por la comunidad.',
         },
       ],
     },
