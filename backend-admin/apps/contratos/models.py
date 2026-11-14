@@ -232,3 +232,64 @@ class FotoReporteBienestar(models.Model):
 
     class Meta:
         ordering = ["id"]
+
+
+def ruta_foto_caso_exito(instance, filename):
+    extension = ".jpg" if instance.mime_type == "image/jpeg" else ".png"
+    return f"casos-exito/{instance.caso_id}/{uuid.uuid4().hex}{extension}"
+
+
+class CasoExitoAdopcion(models.Model):
+    """Historia enviada por el titular de una adopción para revisión (US-61)."""
+
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente de revisión"
+        APROBADO = "APROBADO", "Aprobado"
+        RECHAZADO = "RECHAZADO", "Rechazado"
+
+    solicitud = models.OneToOneField(
+        "acceso.SolicitudAdopcion",
+        on_delete=models.PROTECT,
+        related_name="caso_exito",
+    )
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="historias_adopcion",
+    )
+    historia = models.TextField(max_length=4000)
+    estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PENDIENTE, db_index=True)
+    revisado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="casos_exito_revisados",
+    )
+    revisado_en = models.DateTimeField(null=True, blank=True)
+    motivo_revision = models.CharField(max_length=500, blank=True)
+    publicado_en = models.DateTimeField(null=True, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-creado_en", "-id"]
+
+    def __str__(self):
+        return f"Caso de éxito · solicitud {self.solicitud_id} · {self.estado}"
+
+
+class FotoCasoExito(models.Model):
+    """Imagen privada que solo se publica cuando se aprueba su historia."""
+
+    caso = models.ForeignKey(CasoExitoAdopcion, on_delete=models.CASCADE, related_name="fotos")
+    archivo = models.ImageField(
+        upload_to=ruta_foto_caso_exito,
+        storage=PrivateContractStorage(),
+    )
+    mime_type = models.CharField(max_length=20, choices=[("image/jpeg", "JPEG"), ("image/png", "PNG")])
+    tamaño_bytes = models.PositiveIntegerField()
+    subido_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]

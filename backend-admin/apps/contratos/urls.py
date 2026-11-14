@@ -5,10 +5,12 @@ from .views import ContratoViewSet, GenerarContratoView, RegistrarEntregaContrat
 from .seguimientos import ExpedienteAlbergueViewSet, SeguimientoPostAdopcionViewSet, SolicitudAsesoriaVeterinariaViewSet
 from .reportes import ReporteBienestarPostAdopcionViewSet
 from .recordatorios import FeedRecordatoriosSeguimientoView
+from .casos_exito import CasoExitoAdopcionViewSet
 
 router = DefaultRouter()
 router.register("asesorias-veterinarias", SolicitudAsesoriaVeterinariaViewSet, basename="asesoria-veterinaria")
 router.register("reportes-seguimiento", ReporteBienestarPostAdopcionViewSet, basename="reporte-seguimiento")
+router.register("casos-exito", CasoExitoAdopcionViewSet, basename="caso-exito")
 router.register("expedientes", ExpedienteAlbergueViewSet, basename="expediente-post-adopcion")
 router.register("seguimientos", SeguimientoPostAdopcionViewSet, basename="seguimiento-post-adopcion")
 router.register("", ContratoViewSet, basename="contrato")

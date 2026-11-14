@@ -27,6 +27,11 @@ const groups: Record<string, Group[]> = {
           description: 'Envía reportes de bienestar y fotos de tu mascota adoptada.',
         },
         {
+          label: 'Mi historia de adopción',
+          to: '/adoptante/casos-exito',
+          description: 'Comparte tu experiencia y fotos con la comunidad.',
+        },
+        {
           label: 'Favoritos',
           to: '/adoptante/favoritos',
           description: 'Los compañeros que te robaron el corazón.',
