@@ -27,27 +27,27 @@
                     </div>
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/panel/' %}active{% endif %}" href="{% url 'panel_home' %}">
+                            <a class="nav-link {% if request.path == '/panel/' %}active{% endif %}" href="{% url 'panel_home' %}" {% if request.path == '/panel/' %}aria-current="page"{% endif %}>
                                 <i class="bi bi-house-door me-2"></i>Inicio
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/panel/albergue/' %}active{% endif %}" href="{% url 'albergue_perfil' %}">
+                            <a class="nav-link {% if request.path == '/panel/albergue/' %}active{% endif %}" href="{% url 'albergue_perfil' %}" {% if request.path == '/panel/albergue/' %}aria-current="page"{% endif %}>
                                 <i class="bi bi-building me-2"></i>Mi Albergue
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if '/panel/mascotas/' in request.path %}active{% endif %}" href="{% url 'mascota_lista' %}">
+                            <a class="nav-link {% if '/panel/mascotas/' in request.path %}active{% endif %}" href="{% url 'mascota_lista' %}" {% if '/panel/mascotas/' in request.path %}aria-current="page"{% endif %}>
                                 <i class="bi bi-heart-fill me-2"></i>Mascotas
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if '/panel/postulantes/' in request.path %}active{% endif %}" href="{% url 'postulante_lista' %}">
+                            <a class="nav-link {% if '/panel/postulantes/' in request.path %}active{% endif %}" href="{% url 'postulante_lista' %}" {% if '/panel/postulantes/' in request.path %}aria-current="page"{% endif %}>
                                 <i class="bi bi-people me-2"></i>Postulantes
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if '/panel/solicitudes/' in request.path %}active{% endif %}" href="{% url 'solicitud_lista' %}">
+                            <a class="nav-link {% if '/panel/solicitudes/' in request.path %}active{% endif %}" href="{% url 'solicitud_lista' %}" {% if '/panel/solicitudes/' in request.path %}aria-current="page"{% endif %}>
                                 <i class="bi bi-file-earmark-text me-2"></i>Solicitudes
                             </a>
                         </li>
