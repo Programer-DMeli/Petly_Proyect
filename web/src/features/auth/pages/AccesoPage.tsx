@@ -12,8 +12,8 @@ export default function AccesoPage({ register = false }: { register?: boolean })
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
-  const estadoNavegacion = useLocation().state as { solicitud?: unknown; destinoSeguimiento?: unknown } | null;
-  const { solicitud, destinoSeguimiento } = estadoNavegacion ?? {};
+  const estadoNavegacion = useLocation().state as { solicitud?: unknown; destinoSeguimiento?: unknown; destinoAfiche?: unknown } | null;
+  const { solicitud, destinoSeguimiento, destinoAfiche } = estadoNavegacion ?? {};
   const [locks, setLocks] = useState<Record<string, number>>({});
   const [rateUntil, setRateUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
@@ -84,7 +84,9 @@ export default function AccesoPage({ register = false }: { register?: boolean })
           : identity.rol === 'ALBERGUE' ? '/albergue/seguimientos' : '';
         const puedeRetomar = contexto && typeof destinoSeguimiento === 'string'
           && destinoSeguimiento.split(/[?#]/, 1)[0] === contexto;
-        await navigate(puedeRetomar ? destinoSeguimiento : destino, { replace: true });
+        const afiche = identity.rol === 'ALBERGUE' && typeof destinoAfiche === 'string'
+          && /^\/albergue\?/.test(destinoAfiche) ? destinoAfiche : null;
+        await navigate(afiche ?? (puedeRetomar ? destinoSeguimiento : destino), { replace: true });
       }
     } catch (e) {
       setError(errorMessage(e));

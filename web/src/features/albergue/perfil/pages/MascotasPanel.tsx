@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { contactoAfiche } from '../../../../services/afichesApi';
 import Feedback from '../../../../components/Feedback';
 import { django, json, errorMessage, mediaUrl } from '../../../../services/http';
 import type { AdminPet, Page, Shelter } from '../../../../services/types';
@@ -53,9 +55,16 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
   const [page, setPage] = useState(1);
   const [next, setNext] = useState(false);
   const [detail, setDetail] = useState<AdminPet | null>(null);
-  const [posterPet, setPosterPet] = useState<AdminPet | null>(null);
+  const [search, setSearch] = useSearchParams();
+  const posterId = Number(search.get('afiche')) || null;
+  const pedidoId = Number(search.get('pedido')) || null;
+  const [loadedPosterPet, setLoadedPosterPet] = useState<AdminPet | null>(null);
+  const posterPet = items.find(pet => pet.id === posterId)
+    ?? (loadedPosterPet?.id === posterId ? loadedPosterPet : null);
   const [loadedShelter, setLoadedShelter] = useState<Shelter | null>(suppliedShelter ?? null);
   const shelter = suppliedShelter ?? loadedShelter;
+  const datosAfiche = shelter && contactoAfiche(shelter);
+  const contactoListo = Boolean(datosAfiche?.telefono || datosAfiche?.email);
   const load = useCallback(async () => {
     setError('');
     try {
@@ -198,11 +207,24 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
       setBusy(false);
     }
   }
-  async function showPoster(value: number) {
-    setBusy(true); setError(''); setPosterPet(null);
-    try { setPosterPet(await django<AdminPet>(`/api/mascotas/${value}/`)); }
-    catch (e) { setError(errorMessage(e)); }
-    finally { setBusy(false); }
+  useEffect(() => {
+    if (!posterId || posterPet) return;
+    const controller = new AbortController();
+    void django<AdminPet>(`/api/mascotas/${posterId}/`, { signal: controller.signal })
+      .then(pet => { if (!controller.signal.aborted) setLoadedPosterPet(pet); })
+      .catch(e => { if (!controller.signal.aborted) setError(errorMessage(e)); });
+    return () => controller.abort();
+  }, [posterId, posterPet]);
+
+  function mostrarAfiche(mascota: number | null, pedido?: number) {
+    setSearch(actual => {
+      const params = new URLSearchParams(actual);
+      if (mascota) params.set('afiche', String(mascota));
+      else params.delete('afiche');
+      if (pedido) params.set('pedido', String(pedido));
+      else params.delete('pedido');
+      return params;
+    }, { replace: true });
   }
   async function remove(pet: AdminPet) {
     if (!window.confirm(`¿Eliminar a ${pet.nombre}? Esta operación no se puede deshacer.`)) return;
@@ -390,12 +412,15 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
             <button disabled={busy} className="secondary" onClick={() => void show(p.id, true)}>
               Editar mascota
             </button>
-            <button disabled={busy || !p.foto_principal || !shelter || !shelter.nombre.trim() || !(shelter.telefono.trim() || shelter.email.trim())}
-              className="secondary" onClick={() => void showPoster(p.id)}>
-              Preparar afiche
+            <button disabled={busy || !p.foto_principal || !datosAfiche?.nombre || !contactoListo}
+              className="secondary" onClick={() => mostrarAfiche(p.id, p.id === posterId ? pedidoId ?? undefined : undefined)}>
+              Generar afiche con IA
             </button>
             {!p.foto_principal && <span className="muted">Añade una foto para generar el afiche.</span>}
-            {shelter && !(shelter.telefono.trim() || shelter.email.trim()) && <span className="muted">Completa un teléfono o correo público del albergue.</span>}
+            {shelter && !contactoListo && <>
+              <span className="muted">Completa un teléfono o correo público del albergue.</span>
+              <Link to="/albergue?seccion=datos#contacto-publico">Completar contacto público</Link>
+            </>}
             <button disabled={busy} className="danger" onClick={() => void remove(p)}>
               Eliminar mascota
             </button>
@@ -443,7 +468,9 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
           <button onClick={() => setDetail(null)}>Cerrar detalle</button>
         </article>
       )}
-      {posterPet && shelter && <PosterMascota pet={posterPet} shelter={shelter} onClose={() => setPosterPet(null)} />}
+      {posterPet && shelter && <PosterMascota key={posterPet.id} pet={posterPet} shelter={shelter}
+        pedidoId={pedidoId} onPedido={pedido => mostrarAfiche(posterPet.id, pedido)}
+        onClose={() => mostrarAfiche(null)} />}
     </section>
   );
 }

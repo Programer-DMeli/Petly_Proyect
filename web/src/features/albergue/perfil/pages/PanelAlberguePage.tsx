@@ -133,14 +133,15 @@ export default function PanelAlberguePage() {
                         {
                           nombre: 'Nombre del albergue',
                           direccion: 'Dirección',
-                          telefono: 'Teléfono',
-                          email: 'Correo de contacto',
+                          telefono: 'Teléfono público',
+                          email: 'Correo de contacto público',
                           responsable_nombre: 'Nombre del responsable',
                           responsable_telefono: 'Teléfono del responsable',
                           responsable_email: 'Correo del responsable',
                         }[key]
                       }
                       <input
+                        id={key === 'telefono' ? 'contacto-publico' : undefined}
                         type={key.includes('email') ? 'email' : 'text'}
                         required={key === 'nombre' || key === 'direccion'}
                         maxLength={key === 'direccion' ? 255 : key.includes('telefono') ? 20 : 150}

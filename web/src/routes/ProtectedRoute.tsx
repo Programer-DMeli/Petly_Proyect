@@ -9,6 +9,8 @@ export default function ProtectedRoute({ children, role }: { children: ReactNode
   if (!session || session.expires <= Date.now()) {
     return <Navigate to="/acceso" state={{
       solicitud: pathname.match(/^\/adoptante\/solicitudes\/(\d+)$/)?.[1],
+      destinoAfiche: pathname === '/albergue' && new URLSearchParams(search).has('afiche')
+        ? pathname + search : undefined,
       destinoSeguimiento: pathname === '/adoptante/seguimientos-postadopcion' || pathname === '/albergue/seguimientos'
         ? pathname + search + hash : undefined,
     }} replace />;
