@@ -2,13 +2,14 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import ContratoViewSet, GenerarContratoView, RegistrarEntregaContratoView, WebhookFirmaView
-from .seguimientos import SeguimientoPostAdopcionViewSet, SolicitudAsesoriaVeterinariaViewSet
+from .seguimientos import ExpedienteAlbergueViewSet, SeguimientoPostAdopcionViewSet, SolicitudAsesoriaVeterinariaViewSet
 from .reportes import ReporteBienestarPostAdopcionViewSet
 from .recordatorios import FeedRecordatoriosSeguimientoView
 
 router = DefaultRouter()
 router.register("asesorias-veterinarias", SolicitudAsesoriaVeterinariaViewSet, basename="asesoria-veterinaria")
 router.register("reportes-seguimiento", ReporteBienestarPostAdopcionViewSet, basename="reporte-seguimiento")
+router.register("expedientes", ExpedienteAlbergueViewSet, basename="expediente-post-adopcion")
 router.register("seguimientos", SeguimientoPostAdopcionViewSet, basename="seguimiento-post-adopcion")
 router.register("", ContratoViewSet, basename="contrato")
 

@@ -1,6 +1,7 @@
 from django.db import IntegrityError, transaction
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from PIL import Image, UnidentifiedImageError
 from rest_framework import mixins, permissions, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -9,7 +10,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
 from apps.acceso.models import SolicitudAdopcion, User
-from .models import FotoReporteBienestar, ReporteBienestarPostAdopcion, SeguimientoPostAdopcion
+from .models import AlertaIncumplimientoSeguimiento, FotoReporteBienestar, ReporteBienestarPostAdopcion, SeguimientoPostAdopcion
 
 
 MAX_REPORT_PHOTOS = 5
@@ -56,6 +57,7 @@ class CrearReporteBienestarSerializer(serializers.Serializer):
             "solicitud", "solicitud__adoptante", "solicitud__albergue"
         ).filter(
             pk=value,
+            requiere_reporte=True,
             solicitud__adoptante=user,
             solicitud__estado=SolicitudAdopcion.Estado.ENTREGADA,
         ).exclude(estado=SeguimientoPostAdopcion.Estado.CANCELADO).first()
@@ -63,7 +65,8 @@ class CrearReporteBienestarSerializer(serializers.Serializer):
             raise serializers.ValidationError("El seguimiento no pertenece a una adopción activa tuya.")
         if hasattr(seguimiento, "reporte_bienestar"):
             raise serializers.ValidationError("Ya enviaste un reporte para este seguimiento.")
-        if hasattr(seguimiento.solicitud, "expediente_post_adopcion"):
+        expediente = getattr(seguimiento.solicitud, "expediente_post_adopcion", None)
+        if expediente and expediente.cerrado_en:
             raise serializers.ValidationError("El expediente de esta adopción ya está cerrado.")
         return seguimiento
 
@@ -136,11 +139,17 @@ class ReporteBienestarPostAdopcionViewSet(
         seguimiento = serializer.validated_data["seguimiento_id"]
         try:
             with transaction.atomic():
+                SolicitudAdopcion.objects.select_for_update().get(pk=seguimiento.solicitud_id)
+                # Revalidar después de esperar por cualquier cambio al expediente o al plazo.
+                seguimiento = serializer.validate_seguimiento_id(seguimiento.pk)
                 reporte = ReporteBienestarPostAdopcion.objects.create(
                     seguimiento=seguimiento,
                     estado_bienestar=serializer.validated_data["estado_bienestar"],
                     observaciones=serializer.validated_data.get("observaciones", "").strip(),
                 )
+                AlertaIncumplimientoSeguimiento.objects.filter(
+                    seguimiento=seguimiento, estado=AlertaIncumplimientoSeguimiento.Estado.PENDIENTE,
+                ).update(estado=AlertaIncumplimientoSeguimiento.Estado.RESUELTA, resuelta_en=timezone.now())
                 saved_names = []
                 try:
                     for upload in serializer.validated_data["fotos"]:

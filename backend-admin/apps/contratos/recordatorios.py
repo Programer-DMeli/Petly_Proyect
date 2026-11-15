@@ -1,12 +1,14 @@
 import secrets
+from datetime import timedelta
 
 from django.conf import settings
 from django.db.models import Exists, OuterRef
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.acceso.models import SolicitudAdopcion
+from apps.acceso.models import SolicitudAdopcion, SolicitudEvento
 from .models import ExpedientePostAdopcion, ReporteBienestarPostAdopcion, SeguimientoPostAdopcion
 
 
@@ -17,6 +19,14 @@ class FeedRecordatoriosSeguimientoView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
+        return self.feed(request, registrar_avisos=False)
+
+    def post(self, request):
+        return self.feed(request, registrar_avisos=True)
+
+    def feed(self, request, *, registrar_avisos):
+        ahora = timezone.now()
+        ventana = ahora + timedelta(hours=settings.RECORDATORIOS_ANTICIPACION_HORAS)
         secreto_configurado = settings.INTERNAL_API_SECRET
         secreto_recibido = request.headers.get("X-Internal-Secret", "")
         if not secreto_configurado:
@@ -29,29 +39,44 @@ class FeedRecordatoriosSeguimientoView(APIView):
 
         seguimientos = (
             SeguimientoPostAdopcion.objects.filter(
+                requiere_reporte=True,
                 solicitud__estado=SolicitudAdopcion.Estado.ENTREGADA,
                 solicitud__adoptante__usuario_spring_id__isnull=False,
             )
-            .select_related("solicitud", "solicitud__adoptante")
+            .select_related("solicitud__adoptante", "solicitud__mascota")
             .annotate(
                 reporte_enviado=Exists(
                     ReporteBienestarPostAdopcion.objects.filter(seguimiento_id=OuterRef("pk"))
                 ),
                 expediente_cerrado=Exists(
-                    ExpedientePostAdopcion.objects.filter(solicitud_id=OuterRef("solicitud_id"))
+                    ExpedientePostAdopcion.objects.filter(solicitud_id=OuterRef("solicitud_id"), cerrado_en__isnull=False)
                 ),
             )
             .order_by("programado_para", "id")
         )
 
-        return Response([
-            {
+        filas = []
+        for seguimiento in seguimientos:
+            activo = (
+                ahora < seguimiento.programado_para <= ventana
+                and seguimiento.estado != SeguimientoPostAdopcion.Estado.CANCELADO
+                and not seguimiento.reporte_enviado
+                and not seguimiento.expediente_cerrado
+            )
+            if registrar_avisos and activo:
+                SolicitudEvento.objects.get_or_create(
+                    seguimiento=seguimiento,
+                    tipo=SolicitudEvento.Tipo.RECORDATORIO_REPORTE,
+                    defaults={"solicitud_id": seguimiento.solicitud_id},
+                )
+            filas.append({
                 "id": seguimiento.pk,
                 "adoptante_spring_id": seguimiento.solicitud.adoptante.usuario_spring_id,
+                "mascota_nombre": seguimiento.solicitud.mascota.nombre,
                 "programado_para": seguimiento.programado_para,
                 "estado": seguimiento.estado,
                 "reporte_enviado": seguimiento.reporte_enviado,
                 "expediente_cerrado": seguimiento.expediente_cerrado,
-            }
-            for seguimiento in seguimientos
-        ])
+                "recordatorio_activo": activo,
+            })
+        return Response(filas)

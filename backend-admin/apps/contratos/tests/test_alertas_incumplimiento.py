@@ -1,16 +1,24 @@
 from datetime import timedelta
+from io import BytesIO
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
+
+from PIL import Image
 
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from apps.acceso.models import SolicitudAdopcion, User
+from apps.acceso.models import SolicitudAdopcion, SolicitudEvento, User
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
 from apps.contratos.alertas_incumplimiento import generar_alertas_incumplimiento
 from apps.contratos.models import (
     AlertaIncumplimientoSeguimiento,
     ExpedientePostAdopcion,
+    FotoReporteBienestar,
     ReporteBienestarPostAdopcion,
     SeguimientoPostAdopcion,
 )
@@ -117,3 +125,95 @@ class AlertasIncumplimientoTest(APITestCase):
         adoptante = self.client.get(self.seguimientos_url)
         adoptante_rows = adoptante.data["results"] if isinstance(adoptante.data, dict) else adoptante.data
         self.assertIsNone(adoptante_rows[0]["alerta_incumplimiento"])
+
+    def test_evaluacion_exige_primer_reporte_y_cierre_exige_evaluacion_guardada(self):
+        self.client.force_authenticate(self.albergue_user)
+        url = f"{self.seguimientos_url}{self.seguimiento.pk}/"
+        evaluar = {"calificacion_adaptacion": 4, "observaciones_cierre": "Bien adaptada"}
+        self.assertEqual(self.client.post(url + "evaluar-expediente/", evaluar).status_code, 409)
+        self.assertEqual(self.client.post(url + "cerrar-expediente/", {"confirmar": True}).status_code, 409)
+
+        ReporteBienestarPostAdopcion.objects.create(seguimiento=self.seguimiento, estado_bienestar="BUENO")
+        self.client.force_authenticate(self.otro_albergue_user)
+        self.assertEqual(self.client.post(url + "evaluar-expediente/", evaluar).status_code, 404)
+        self.client.force_authenticate(self.adoptante)
+        self.assertEqual(self.client.post(url + "evaluar-expediente/", evaluar).status_code, 403)
+
+        self.client.force_authenticate(self.albergue_user)
+        guardada = self.client.post(url + "evaluar-expediente/", evaluar)
+        self.assertEqual(guardada.status_code, 200)
+        self.assertIsNone(guardada.data["cerrado_en"])
+        self.assertEqual(self.client.post(url + "cerrar-expediente/", {"confirmar": False}).status_code, 400)
+        self.assertEqual(self.client.post(url + "cerrar-expediente/", {"confirmar": True}).status_code, 201)
+
+        expediente = self.client.get(f"/api/contratos/expedientes/{self.solicitud.pk}/").data
+        self.assertEqual(expediente["evaluacion"]["calificacion_adaptacion"], 4)
+        self.assertIsNotNone(expediente["evaluacion"]["cerrado_en"])
+        self.assertEqual(expediente["cronograma"][0]["estado_entrega"], "FUERA_DE_PLAZO")
+
+    @override_settings(INTERNAL_API_SECRET="solo-pruebas", RECORDATORIOS_ANTICIPACION_HORAS=24)
+    def test_recordatorios_solo_dentro_de_ventana_y_para_el_titular(self):
+        self.adoptante.usuario_spring_id = 123
+        self.adoptante.save(update_fields=["usuario_spring_id"])
+        proxima = self.crear_seguimiento(self.solicitud, fecha=timezone.now() + timedelta(hours=3))
+        self.crear_seguimiento(self.solicitud, fecha=timezone.now() + timedelta(days=2))
+        visita = self.crear_seguimiento(self.solicitud, fecha=timezone.now() + timedelta(hours=3))
+        visita.requiere_reporte = False
+        visita.save(update_fields=["requiere_reporte"])
+
+        feed = "/api/contratos/reportes/feed-recordatorios/"
+        self.assertEqual(self.client.post(feed).status_code, 401)
+        for _ in range(2):
+            self.assertEqual(self.client.post(feed, HTTP_X_INTERNAL_SECRET="solo-pruebas").status_code, 200)
+        self.assertEqual(SolicitudEvento.objects.get(tipo="RECORDATORIO_REPORTE").seguimiento_id, proxima.pk)
+
+        self.client.force_authenticate(self.adoptante)
+        bandeja = "/api/acceso/notificaciones/"
+        aviso = self.client.get(bandeja).data["results"][0]
+        self.assertEqual(aviso["seguimiento_id"], proxima.pk)
+        self.assertEqual(aviso["mascota_nombre"], "Luna")
+        self.assertIsNotNone(aviso["fecha_limite"])
+        ReporteBienestarPostAdopcion.objects.create(seguimiento=proxima, estado_bienestar="BUENO")
+        self.assertEqual(self.client.get(bandeja).data["results"], [])
+
+    def test_emision_idempotente_y_reporte_tardio_con_foto_privada(self):
+        url = f"{self.seguimientos_url}{self.seguimiento.pk}/"
+        futuro = self.crear_seguimiento(self.solicitud, fecha=timezone.now() + timedelta(days=1))
+        otro_adoptante = User.objects.create_user(username="otro-adoptante")
+        self.client.force_authenticate(self.otro_albergue_user)
+        self.assertEqual(self.client.post(url + "emitir-incumplimiento/").status_code, 404)
+        self.client.force_authenticate(self.albergue_user)
+        self.assertEqual(self.client.post(f"{self.seguimientos_url}{futuro.pk}/emitir-incumplimiento/").status_code, 409)
+        for _ in range(2):
+            self.assertEqual(self.client.post(url + "emitir-incumplimiento/").status_code, 200)
+        self.assertEqual(SolicitudEvento.objects.filter(tipo="INCUMPLIMIENTO_REPORTE").count(), 1)
+
+        self.client.force_authenticate(self.adoptante)
+        aviso = self.client.get("/api/acceso/notificaciones/").data["results"][0]
+        self.assertEqual(aviso["seguimiento_id"], self.seguimiento.pk)
+        data = BytesIO()
+        Image.new("RGB", (4, 4)).save(data, format="PNG")
+        storage = FotoReporteBienestar._meta.get_field("archivo").storage
+        with TemporaryDirectory() as directory, patch.object(storage, "location", directory):
+            response = self.client.post("/api/contratos/reportes-seguimiento/", {
+                "seguimiento_id": self.seguimiento.pk,
+                "estado_bienestar": "BUENO",
+                "fotos": SimpleUploadedFile("reporte.png", data.getvalue(), content_type="image/png"),
+            }, format="multipart")
+            self.assertEqual(response.status_code, 201, response.data)
+            foto = response.data["fotos"][0]["descarga_url"]
+            for user in (otro_adoptante, self.otro_albergue_user):
+                self.client.force_authenticate(user)
+                self.assertEqual(self.client.get(foto).status_code, 404)
+            for user in (self.adoptante, self.albergue_user):
+                self.client.force_authenticate(user)
+                archivo = self.client.get(foto)
+                self.assertEqual(archivo.status_code, 200)
+                self.assertEqual(archivo["Cache-Control"], "private, no-store")
+                self.assertEqual(b"".join(archivo.streaming_content), data.getvalue())
+                archivo.close()
+
+        seguimiento = self.client.get(url).data
+        self.assertEqual(seguimiento["estado_entrega"], "FUERA_DE_PLAZO")
+        self.assertEqual(seguimiento["alerta_incumplimiento"]["estado"], "RESUELTA")
+        self.assertIsNotNone(seguimiento["alerta_incumplimiento"]["emitida_en"])

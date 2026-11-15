@@ -495,6 +495,8 @@ class SolicitudEvento(models.Model):
         CONTRATO_RECHAZADO = "CONTRATO_RECHAZADO", "Contrato rechazado"
         CONTRATO_EXPIRADO = "CONTRATO_EXPIRADO", "Contrato expirado"
         ENTREGADA = "ENTREGADA", "Mascota entregada"
+        RECORDATORIO_REPORTE = "RECORDATORIO_REPORTE", "Próxima entrega de reporte"
+        INCUMPLIMIENTO_REPORTE = "INCUMPLIMIENTO_REPORTE", "Alerta roja de incumplimiento"
 
     solicitud = models.ForeignKey(
         SolicitudAdopcion,
@@ -502,6 +504,10 @@ class SolicitudEvento(models.Model):
         related_name="eventos",
         verbose_name="Solicitud",
         null=True, blank=True,
+    )
+    seguimiento = models.ForeignKey(
+        "contratos.SeguimientoPostAdopcion", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="avisos",
     )
     destinatario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name="avisos_mascotas")
     mascota_coincidente = models.ForeignKey("mascotas.Mascota", on_delete=models.CASCADE, null=True, blank=True, related_name="avisos_coincidencia")
@@ -521,7 +527,10 @@ class SolicitudEvento(models.Model):
     leido_en = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["destinatario", "mascota_coincidente"], name="aviso_unico_adoptante_mascota")]
+        constraints = [
+            models.UniqueConstraint(fields=["destinatario", "mascota_coincidente"], name="aviso_unico_adoptante_mascota"),
+            models.UniqueConstraint(fields=["seguimiento", "tipo"], name="aviso_unico_tipo_seguimiento"),
+        ]
         verbose_name = "Evento de solicitud"
         verbose_name_plural = "Eventos de solicitudes"
         ordering = ["ocurrido_en", "id"]

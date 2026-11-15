@@ -30,6 +30,7 @@ public class SincronizarRecordatoriosSeguimiento {
     private static final ZoneId ZONA_PETLY = ZoneId.of("America/Lima");
 
     private final RestTemplate restTemplate;
+    private final EnviarRecordatoriosSeguimiento remitente;
     private final RecordatorioSeguimientoRepository recordatorios;
     private final String djangoApiBaseUrl;
     private final String secretoInterno;
@@ -37,10 +38,12 @@ public class SincronizarRecordatoriosSeguimiento {
     public SincronizarRecordatoriosSeguimiento(
             RestTemplate restTemplate,
             RecordatorioSeguimientoRepository recordatorios,
+            EnviarRecordatoriosSeguimiento remitente,
             @Value("${petly.django-api-base-url}") String djangoApiBaseUrl,
             @Value("${interno.api-secret}") String secretoInterno) {
         this.restTemplate = restTemplate;
         this.recordatorios = recordatorios;
+        this.remitente = remitente;
         this.djangoApiBaseUrl = djangoApiBaseUrl.replaceAll("/+$", "");
         this.secretoInterno = secretoInterno;
     }
@@ -53,7 +56,7 @@ public class SincronizarRecordatoriosSeguimiento {
             headers.set("X-Internal-Secret", secretoInterno);
             ResponseEntity<List<SeguimientoFeed>> response = restTemplate.exchange(
                     djangoApiBaseUrl + RUTA_FEED,
-                    HttpMethod.GET,
+                    HttpMethod.POST,
                     new HttpEntity<>(headers),
                     new ParameterizedTypeReference<>() { });
 
@@ -64,6 +67,9 @@ public class SincronizarRecordatoriosSeguimiento {
             for (SeguimientoFeed fila : filas) {
                 try {
                     sincronizar(fila);
+                    if (Boolean.TRUE.equals(fila.recordatorioActivo())) {
+                        remitente.enviarPendiente(fila.id(), fila.mascotaNombre());
+                    }
                 } catch (RuntimeException ex) {
                     log.error("No se pudo sincronizar el recordatorio del seguimiento {}.", fila.id(), ex);
                 }
@@ -137,6 +143,10 @@ public class SincronizarRecordatoriosSeguimiento {
             @JsonProperty("reporte_enviado")
             Boolean reporteEnviado,
             @JsonProperty("expediente_cerrado")
-            Boolean expedienteCerrado) {
+            Boolean expedienteCerrado,
+            @JsonProperty("recordatorio_activo")
+            Boolean recordatorioActivo,
+            @JsonProperty("mascota_nombre")
+            String mascotaNombre) {
     }
 }

@@ -14,8 +14,9 @@ def generar_alertas_incumplimiento(ahora=None):
         solicitud__estado="ENTREGADA",
         estado__in=(SeguimientoPostAdopcion.Estado.PROGRAMADO, SeguimientoPostAdopcion.Estado.REALIZADO),
         programado_para__lte=ahora,
+        requiere_reporte=True,
         reporte_bienestar__isnull=True,
-        solicitud__expediente_post_adopcion__isnull=True,
+        solicitud__expediente_post_adopcion__cerrado_en__isnull=True,
     ).order_by("pk")
 
     creadas = 0
@@ -27,8 +28,10 @@ def generar_alertas_incumplimiento(ahora=None):
     ya_atendidas = pendientes.filter(
         Q(seguimiento__estado=SeguimientoPostAdopcion.Estado.CANCELADO)
         | Q(seguimiento__reporte_bienestar__isnull=False)
+        | Q(seguimiento__requiere_reporte=False)
+        | Q(seguimiento__programado_para__gt=ahora)
         | Q(seguimiento__solicitud__estado__in=("CANCELADA", "RECHAZADA"))
-        | Q(seguimiento__solicitud__expediente_post_adopcion__isnull=False)
+        | Q(seguimiento__solicitud__expediente_post_adopcion__cerrado_en__isnull=False)
     )
     resueltas = ya_atendidas.update(
         estado=AlertaIncumplimientoSeguimiento.Estado.RESUELTA,

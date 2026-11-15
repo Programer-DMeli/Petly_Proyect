@@ -31,7 +31,7 @@ class SincronizarRecordatoriosSeguimientoTest {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
         server.expect(requestTo(FEED_URL))
-                .andExpect(method(HttpMethod.GET))
+                .andExpect(method(HttpMethod.POST))
                 .andExpect(header("X-Internal-Secret", "test-secret"))
                 .andRespond(withSuccess(feed(27, false), MediaType.APPLICATION_JSON));
 
@@ -101,7 +101,7 @@ class SincronizarRecordatoriosSeguimientoTest {
     private static SincronizarRecordatoriosSeguimiento sincronizador(
             RestTemplate restTemplate, RecordatorioSeguimientoRepository repository) {
         return new SincronizarRecordatoriosSeguimiento(
-                restTemplate, repository, "http://django.test", "test-secret");
+                restTemplate, repository, null, "http://django.test", "test-secret");
     }
 
     private static String feed(long id, boolean reporteEnviado) {

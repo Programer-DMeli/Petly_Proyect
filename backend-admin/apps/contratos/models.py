@@ -2,6 +2,7 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from .storage import PrivateContractStorage
 
@@ -76,6 +77,7 @@ class SeguimientoPostAdopcion(models.Model):
     class Modalidad(models.TextChoices):
         VISITA = "VISITA", "Visita"
         LLAMADA = "LLAMADA", "Llamada"
+        REPORTE = "REPORTE", "Entrega de reporte"
 
     class Estado(models.TextChoices):
         PROGRAMADO = "PROGRAMADO", "Programado"
@@ -90,6 +92,7 @@ class SeguimientoPostAdopcion(models.Model):
     )
     programado_para = models.DateTimeField(db_index=True)
     modalidad = models.CharField(max_length=10, choices=Modalidad.choices)
+    requiere_reporte = models.BooleanField(default=True)
     estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PROGRAMADO, db_index=True)
     notas = models.CharField(max_length=500, blank=True)
     creado_por = models.ForeignKey(
@@ -131,6 +134,7 @@ class AlertaIncumplimientoSeguimiento(models.Model):
     )
     estado = models.CharField(max_length=10, choices=Estado.choices, default=Estado.PENDIENTE, db_index=True)
     generada_en = models.DateTimeField(auto_now_add=True)
+    emitida_en = models.DateTimeField(null=True, blank=True)
     resuelta_en = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -175,7 +179,7 @@ class ExpedientePostAdopcion(models.Model):
         null=True,
         related_name="expedientes_post_adopcion_cerrados",
     )
-    cerrado_en = models.DateTimeField(auto_now_add=True)
+    cerrado_en = models.DateTimeField(default=timezone.now, null=True)
 
     class Meta:
         ordering = ["-cerrado_en"]

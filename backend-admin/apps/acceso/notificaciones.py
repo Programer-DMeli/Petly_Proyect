@@ -4,6 +4,7 @@ El evento y la transición se guardan en la misma transacción: no se generan
 avisos duplicados ni se notifican decisiones que hayan sido revertidas.
 """
 import secrets
+from datetime import timedelta
 
 from django.conf import settings
 from django.db.models import Q
@@ -31,12 +32,16 @@ MENSAJES = {
     "CONTRATO_FIRMADO": "Se registró la firma del contrato de adopción.",
     "CONTRATO_RECHAZADO": "El contrato de adopción fue rechazado.",
     "CONTRATO_EXPIRADO": "El contrato de adopción venció. Contacta con el albergue.",
+    "RECORDATORIO_REPORTE": "Envía tu reporte de bienestar antes de la fecha límite.",
+    "INCUMPLIMIENTO_REPORTE": "El albergue emitió una alerta por un reporte de bienestar vencido.",
     "ENTREGADA": "La entrega de tu mascota quedó registrada. ¡Gracias por adoptar!",
 }
 
 
 class NotificacionSerializer(serializers.ModelSerializer):
     solicitud_id = serializers.IntegerField(read_only=True)
+    seguimiento_id = serializers.IntegerField(read_only=True)
+    fecha_limite = serializers.DateTimeField(source="seguimiento.programado_para", read_only=True, default=None)
     mascota_id = serializers.SerializerMethodField()
     mascota_nombre = serializers.SerializerMethodField()
     albergue_nombre = serializers.SerializerMethodField()
@@ -46,7 +51,7 @@ class NotificacionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SolicitudEvento
-        fields = ["id", "solicitud_id", "mascota_id", "mascota_nombre", "albergue_nombre",
+        fields = ["id", "solicitud_id", "seguimiento_id", "fecha_limite", "mascota_id", "mascota_nombre", "albergue_nombre",
                   "tipo", "titulo", "mensaje", "descripcion", "estado_nuevo", "estado_actual",
                   "ocurrido_en", "leido_en"]
 
@@ -141,10 +146,20 @@ class NotificacionViewSet(viewsets.GenericViewSet):
     pagination_class = NotificacionPagination
 
     def get_queryset(self):
-        qs = SolicitudEvento.objects.select_related("solicitud__mascota", "solicitud__albergue", "mascota_coincidente__albergue")
+        qs = SolicitudEvento.objects.select_related("solicitud__mascota", "solicitud__albergue", "mascota_coincidente__albergue", "seguimiento")
         if self.request.user.rol != User.Rol.ADOPTANTE:
             return qs.none()
+        ahora = timezone.now()
+        recordatorios_activos = Q(
+            seguimiento__requiere_reporte=True,
+            seguimiento__programado_para__gt=ahora,
+            seguimiento__programado_para__lte=ahora + timedelta(hours=settings.RECORDATORIOS_ANTICIPACION_HORAS),
+            seguimiento__solicitud__estado="ENTREGADA",
+            seguimiento__reporte_bienestar__isnull=True,
+            seguimiento__solicitud__expediente_post_adopcion__cerrado_en__isnull=True,
+        ) & ~Q(seguimiento__estado="CANCELADO")
         return qs.filter(
+            ~Q(tipo=SolicitudEvento.Tipo.RECORDATORIO_REPORTE) | recordatorios_activos,
             Q(solicitud__adoptante=self.request.user) | Q(destinatario=self.request.user, tipo="NUEVA_COINCIDENCIA"),
             visible_adoptante=True,
             tipo__in=MENSAJES,
