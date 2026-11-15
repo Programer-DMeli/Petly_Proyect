@@ -173,6 +173,8 @@ REST_FRAMEWORK = {
 SPRING_API_URL = os.getenv("SPRING_API_URL", "http://127.0.0.1:8080").rstrip("/")
 SPRING_JWT_SECRET = os.getenv("SPRING_JWT_SECRET", "test-secret-key-for-development-only-change-in-production")
 INTERNAL_API_SECRET = os.getenv("INTERNAL_API_SECRET", "local-internal-secret-change-me")
+AFICHE_WORKER_TOKEN = os.getenv("AFICHE_WORKER_TOKEN", "")
+AFICHE_RESERVA_SEGUNDOS = int(os.getenv("AFICHE_RESERVA_SEGUNDOS", "600"))
 
 # US-03: secreto de servicio para el feed de datos vigentes de mascotas.
 PET_COMPATIBILITY_SERVICE_TOKEN = os.getenv("PET_COMPATIBILITY_SERVICE_TOKEN", "")

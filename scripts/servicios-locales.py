@@ -71,6 +71,8 @@ try:
                        stderr=subprocess.STDOUT, check=True)
     launch(root / "backend-admin", [os.sys.executable, "manage.py", "runserver",
                                    "127.0.0.1:8000", "--noreload"], "django.log")
+    if env.get("AFICHE_WORKER_TOKEN"):
+        launch(root, ["node", "trabajador.js"], "afiches.log")
     state = home / "servicios.json"
     state.write_text(json.dumps({"pid": os.getpid(), "database": "database_petly"}))
     state.chmod(0o600)

@@ -143,6 +143,33 @@ class Mascota(models.Model):
         return transiciones.get(self.estado, [])
 
 
+class PedidoAfiche(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        RESERVADO = "RESERVADO", "Reservado"
+        COMPLETADO = "COMPLETADO", "Completado"
+        FALLIDO = "FALLIDO", "Fallido"
+
+    mascota = models.ForeignKey(Mascota, on_delete=models.CASCADE, related_name="pedidos_afiche")
+    albergue = models.ForeignKey(Albergue, on_delete=models.CASCADE, related_name="pedidos_afiche")
+    foto_ruta = models.CharField(max_length=100)
+    foto_version = models.CharField(max_length=64)
+    datos_afiche = models.JSONField(default=dict)
+    estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PENDIENTE)
+    intentos = models.PositiveIntegerField(default=0)
+    reserva = models.UUIDField(null=True, blank=True, editable=False)
+    reserva_vence_en = models.DateTimeField(null=True, blank=True)
+    ruta_resultado = models.CharField(max_length=255, blank=True)
+    error_codigo = models.CharField(max_length=32, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["mascota", "foto_version", "estado"], name="afiche_mascota_foto_estado_idx"),
+            models.Index(fields=["estado", "reserva_vence_en", "id"], name="afiche_estado_reserva_idx"),
+        ]
+
+
 class ReglaCompatibilidad(models.Model):
     """Pesos vigentes del motor compartido de compatibilidad (singleton id=1)."""
 

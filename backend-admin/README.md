@@ -83,3 +83,43 @@ Cada aplicación sigue la organización indicada en `PLANNING.md` v2 §7:
 Cada fila de `EntregaExterna` guarda el canal, la huella del destino, los intentos y el resultado. `ACEPTADA` indica que el proveedor aceptó el envío. `REINTENTAR` se usa para fallos previos al envío o un HTTP 429, hasta cinco intentos. `INCIERTA` requiere conciliación manual con el proveedor para evitar duplicados tras un timeout o una interrupción. El worker revalida la preferencia y el destino antes del intento. Android elimina localmente la vinculación y las notificaciones al salir. Si el servidor no responde, reintenta la revocación con el proceso activo y al volver a iniciar la aplicación.
 
 Para la aceptación, usa dos cuentas con preferencias opuestas y registra sus dispositivos. Genera una transición nueva por combinación, prueba email, push y WhatsApp por separado y los tres apagados. Luego habilita email y push en la titular, deja Android en segundo plano o cierra su actividad y verifica recepción en la bandeja externa y en el sistema Android. Abre ambos enlaces y comprueba el número de solicitud. La segunda cuenta no debe recibir el evento ni poder abrirlo con la ruta autenticada.
+
+## Afiches de adopción con IA
+
+Aplica las migraciones `mascotas.0007` y `mascotas.0008`. Configura
+`AFICHE_WORKER_TOKEN` con el mismo secreto en Django y en el entorno del
+trabajador. Con Django sirviendo las fotos de mascotas y Codex CLI conectado
+a ChatGPT, ejecuta `node trabajador.js` desde la raíz del repositorio. Verifica
+la sesión previamente con `codex login status`. El trabajador necesita Node
+22 o superior y Python con Pillow. Usa por defecto el Python del entorno
+virtual de Django, y `AFICHE_PYTHON` permite indicar otro ejecutable.
+Si usas `scripts/servicios-locales.py`, ese lanzador inicia el trabajador al
+encontrar `AFICHE_WORKER_TOKEN` y registra su actividad en `afiches.log`.
+
+`AFICHE_DJANGO_URL` apunta por defecto a `http://127.0.0.1:8000`.
+`AFICHE_CODEX_TIMEOUT_MS` vale 180000 y `AFICHE_RESERVA_SEGUNDOS` vale 600.
+El trabajador consulta cada cinco segundos mientras está libre. Los fallos
+temporales de generación admiten un reintento dentro de la reserva. Si se
+interrumpe el proceso, el pedido vuelve a estar disponible tras el vencimiento
+y puede reservarse hasta tres veces. Los registros JSON de `cola`,
+`generacion` y `entrega` incluyen el identificador del pedido y milisegundos
+por fase. El registro de cola mide desde la creación hasta cada toma e
+incluye la espera por vencimiento si corresponde.
+
+| Operación | Ruta | Respuesta |
+| --- | --- | --- |
+| Crear | `POST /api/mascotas/{mascota_id}/afiches/` | `201` con el pedido nuevo o `200` con el pedido activo para esa foto |
+| Consultar | `GET /api/mascotas/afiches/{pedido_id}/` | Estado, errores y URL del fondo al completarse |
+| Obtener fondo | `GET /api/mascotas/afiches/{pedido_id}/fondo/` | PNG privado del pedido completado |
+| Tomar | `POST /api/mascotas/interno/afiches/tomar/` | Pedido con `foto_url`, `foto_version` y `reserva`, o `204` si no hay trabajo |
+| Entregar | `POST /api/mascotas/interno/afiches/{pedido_id}/entregar/` | Estado actualizado o `409` si la reserva expiró o cambió |
+
+Las operaciones del albergue usan su Bearer JWT. El backend verifica la foto,
+el nombre y el contacto público y guarda los datos verificados con el pedido.
+Las dos operaciones internas requieren `X-Afiche-Worker-Token`. En la entrega
+el trabajador envía `reserva`, `estado` y, si completó la generación, el
+archivo `fondo` como multipart. Si falla, informa `error_codigo` y establece
+`reintentar=false` tras agotar su reintento local. Django guarda el fondo
+aceptado bajo `PRIVATE_FILES_ROOT` y el navegador compone el PNG final de
+1080 × 1350 con el Canvas. Al recargar, el flujo retoma el pedido después del
+inicio de sesión de la web.
