@@ -1,21 +1,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Link } from 'react-router-dom';
 import { getSession, subscribe } from '../services/session';
 import { errorMessage, json, spring } from '../services/http';
 import { useDialogFocus } from '../services/useDialogFocus';
 import '../styles/asistente-chat.css';
 
 type Message = { role: 'user' | 'model'; text: string };
-type Faq = { id: string; pregunta: string; respuesta: string };
-type FaqCategory = { id: string; nombre: string; preguntas: Faq[] };
-type CareAdvice = { categoria: string; titulo: string; contenido: string };
-type CareResponse = {
-  especie: string;
-  raza: string;
-  recomendacionEspecifica: boolean;
-  mensaje: string;
-  consejos: CareAdvice[];
-};
-
 /** A new session mounts a new conversation; transcripts never leave memory except to answer. */
 export default function AsistenteChat() {
   const session = useSyncExternalStore(subscribe, getSession);
@@ -26,18 +16,6 @@ export default function AsistenteChat() {
 function Conversation({ shelter }: { shelter: boolean }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
-  const [careSpecies, setCareSpecies] = useState('');
-  const [careBreed, setCareBreed] = useState('');
-  const [careAdvice, setCareAdvice] = useState<CareResponse | null>(null);
-  const [careLoading, setCareLoading] = useState(false);
-  const [careError, setCareError] = useState('');
-  const [faqCategories, setFaqCategories] = useState<FaqCategory[]>([]);
-  const [faqLoading, setFaqLoading] = useState(false);
-  const [faqLoaded, setFaqLoaded] = useState(false);
-  const [faqError, setFaqError] = useState('');
-  const [faqSearch, setFaqSearch] = useState('');
-  const [faqCategoryId, setFaqCategoryId] = useState('');
-  const [selectedFaq, setSelectedFaq] = useState<Faq | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -45,24 +23,6 @@ function Conversation({ shelter }: { shelter: boolean }) {
   const end = useRef<HTMLDivElement>(null);
   useDialogFocus(open, () => setOpen(false));
   useEffect(() => () => controller.current?.abort(), []);
-  useEffect(() => {
-    if (!open || shelter || faqLoaded) return;
-    const request = new AbortController();
-    setFaqLoading(true);
-    setFaqError('');
-    void spring<FaqCategory[]>('/api/asistente/preguntas-frecuentes', { signal: request.signal })
-      .then(setFaqCategories)
-      .catch(cause => {
-        if (!request.signal.aborted) setFaqError(errorMessage(cause));
-      })
-      .finally(() => {
-        if (!request.signal.aborted) {
-          setFaqLoading(false);
-          setFaqLoaded(true);
-        }
-      });
-    return () => request.abort();
-  }, [open, shelter, faqLoaded]);
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'nearest' });
   }, [messages, sending, error, open]);
@@ -123,31 +83,6 @@ function Conversation({ shelter }: { shelter: boolean }) {
     setError('');
   }
 
-  async function loadCareAdvice() {
-    if (!careSpecies || careLoading) return;
-    setCareLoading(true);
-    setCareError('');
-    setCareAdvice(null);
-    const query = new URLSearchParams({ especie: careSpecies });
-    if (careBreed.trim()) query.set('raza', careBreed.trim());
-    try {
-      setCareAdvice(await spring<CareResponse>(`/api/asistente/cuidados?${query.toString()}`));
-    } catch (cause) {
-      setCareError(errorMessage(cause));
-    } finally {
-      setCareLoading(false);
-    }
-  }
-
-  const matchingFaqs = faqCategories.map(category => ({
-    ...category,
-    preguntas: category.preguntas.filter(item =>
-      `${item.pregunta} ${item.respuesta}`.toLocaleLowerCase().includes(faqSearch.trim().toLocaleLowerCase())
-    ),
-  })).filter(category =>
-    category.preguntas.length > 0 && (!faqCategoryId || category.id === faqCategoryId)
-  );
-
   return (
     <>
       <button
@@ -177,120 +112,11 @@ function Conversation({ shelter }: { shelter: boolean }) {
             <p className="petly-chat-intro">
               {shelter
                 ? 'Te ayudo con tu panel, solicitudes y cuidados de las mascotas.'
-                : 'Te ayudo con el catálogo, tu cuestionario, adopción y cuidados básicos.'}
+                : 'Resuelve dudas sobre la adopción y recibe orientación para completar tu cuestionario.'}
             </p>
-            {!shelter && (
-              <section className="petly-chat-faq" aria-labelledby="petly-chat-faq-title">
-                <h3 id="petly-chat-faq-title">Preguntas frecuentes</h3>
-                <label htmlFor="petly-chat-faq-search">Buscar una pregunta</label>
-                <input
-                  id="petly-chat-faq-search"
-                  value={faqSearch}
-                  maxLength={120}
-                  onChange={event => {
-                    setFaqSearch(event.target.value);
-                    setFaqCategoryId('');
-                    setSelectedFaq(null);
-                  }}
-                  placeholder="Ej. solicitud, cuestionario"
-                />
-                <div className="petly-chat-faq-categories" aria-label="Categorías de preguntas">
-                  {faqCategories.map(category => (
-                    <button
-                      type="button"
-                      key={category.id}
-                      aria-pressed={faqCategoryId === category.id}
-                      onClick={() => {
-                        setFaqCategoryId(faqCategoryId === category.id ? '' : category.id);
-                        setSelectedFaq(null);
-                      }}
-                    >
-                      {category.nombre}
-                    </button>
-                  ))}
-                </div>
-                {faqLoading && <p role="status">Cargando preguntas…</p>}
-                {faqError && (
-                  <div className="petly-chat-inline-error" role="alert">
-                    <p>{faqError}</p>
-                    <button type="button" onClick={() => setFaqLoaded(false)}>Reintentar</button>
-                  </div>
-                )}
-                {!faqLoading && !faqError && matchingFaqs.length === 0 && (
-                  <p role="status">
-                    No encontré una pregunta coincidente. Prueba otra palabra o elige una categoría disponible arriba.
-                  </p>
-                )}
-                {matchingFaqs.map(category => (
-                  <div className="petly-chat-faq-category" key={category.id}>
-                    <h4>{category.nombre}</h4>
-                    {category.preguntas.map(item => (
-                      <button
-                        className="petly-chat-faq-question"
-                        type="button"
-                        key={item.id}
-                        aria-pressed={selectedFaq?.id === item.id}
-                        onClick={() => setSelectedFaq(item)}
-                      >
-                        {item.pregunta}
-                      </button>
-                    ))}
-                  </div>
-                ))}
-                {selectedFaq && (
-                  <article className="petly-chat-faq-answer" aria-live="polite">
-                    <h4>{selectedFaq.pregunta}</h4>
-                    <p>{selectedFaq.respuesta}</p>
-                  </article>
-                )}
-              </section>
-            )}
-            {!shelter && (
-              <fieldset className="petly-chat-care" disabled={sending || careLoading}>
-                <legend>Cuidados según especie y raza</legend>
-                <label htmlFor="petly-care-species">Especie</label>
-                <select
-                  id="petly-care-species"
-                  value={careSpecies}
-                  onChange={event => {
-                    setCareSpecies(event.target.value);
-                    setCareAdvice(null);
-                    setCareError('');
-                  }}
-                >
-                  <option value="">Selecciona</option>
-                  <option value="perro">Perro</option>
-                  <option value="gato">Gato</option>
-                </select>
-                <label htmlFor="petly-care-breed">Raza (opcional)</label>
-                <input
-                  id="petly-care-breed"
-                  value={careBreed}
-                  maxLength={80}
-                  onChange={event => {
-                    setCareBreed(event.target.value);
-                    setCareAdvice(null);
-                    setCareError('');
-                  }}
-                  placeholder="Ej. mestizo, labrador"
-                />
-                <button type="button" disabled={!careSpecies} onClick={() => void loadCareAdvice()}>
-                  {careLoading ? 'Buscando cuidados…' : 'Consultar cuidados'}
-                </button>
-                {careError && <p className="petly-chat-inline-error" role="alert">{careError}</p>}
-                {careAdvice && (
-                  <div className="petly-chat-care-results" aria-live="polite">
-                    <p>{careAdvice.mensaje}</p>
-                    {careAdvice.consejos.map(advice => (
-                      <article key={`${advice.categoria}-${advice.titulo}`}>
-                        <h4>{advice.titulo}</h4>
-                        <p>{advice.contenido}</p>
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </fieldset>
-            )}
+            {!shelter && <Link to="/adoptante/cuestionario" onClick={() => setOpen(false)}>
+              Abrir guía paso a paso del cuestionario
+            </Link>}
             <div
               className="petly-chat-messages"
               role="log"

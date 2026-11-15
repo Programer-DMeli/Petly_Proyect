@@ -39,7 +39,7 @@ class ChatbotMetricasTest(TestCase):
 
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.data["total_consultas"], 4)
-        self.assertEqual(response.data["preguntas"], [{"pregunta_clave": "Horario", "consultas": 4}])
+        self.assertEqual(response.data["preguntas"], [{"pregunta_clave": "Horario", "categoria": "GENERAL", "categoria_nombre": "General", "consultas": 4}])
 
     def test_adoptante_no_puede_consultar_metricas_del_albergue(self):
         self.client.force_authenticate(self.adopter)
@@ -52,6 +52,7 @@ class ChatbotMetricasTest(TestCase):
         rule = RespuestaAutomaticaChatbot.objects.create(
             albergue=self.shelter,
             pregunta_clave="horario de atención",
+            categoria="ADOPCION",
             respuesta="Atendemos de lunes a viernes.",
         )
         self.client.force_authenticate(self.adopter)
@@ -66,3 +67,4 @@ class ChatbotMetricasTest(TestCase):
         self.assertEqual(response.data["respuesta"], rule.respuesta)
         metric = MetricaRespuestaChatbot.objects.get(albergue=self.shelter, pregunta_clave=rule.pregunta_clave)
         self.assertEqual(metric.consultas, 1)
+        self.assertEqual(metric.categoria, "ADOPCION")

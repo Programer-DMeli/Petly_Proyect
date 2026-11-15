@@ -12,7 +12,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from .models import MetricaRespuestaChatbot, RespuestaAutomaticaChatbot
+from .models import CategoriaChatbot, MetricaRespuestaChatbot, RespuestaAutomaticaChatbot
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class RespuestaAutomaticaChatbotSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RespuestaAutomaticaChatbot
-        fields = ["id", "pregunta_clave", "disparadores", "respuesta", "activa", "creado_en", "actualizado_en"]
+        fields = ["id", "pregunta_clave", "categoria", "disparadores", "respuesta", "activa", "creado_en", "actualizado_en"]
         read_only_fields = ["id", "creado_en", "actualizado_en"]
 
     def validate_pregunta_clave(self, value):
@@ -121,10 +121,13 @@ class RespuestaAutomaticaChatbotViewSet(viewsets.ModelViewSet):
                 albergue=request.user.albergue,
                 fecha__range=(desde, hasta),
             )
-            .values("pregunta_clave")
+            .values("pregunta_clave", "categoria")
             .annotate(consultas=Sum("consultas"))
-            .order_by("-consultas", "pregunta_clave")
+            .order_by("-consultas", "pregunta_clave", "categoria")
         )
+        etiquetas = dict(CategoriaChatbot.choices)
+        for item in metricas:
+            item["categoria_nombre"] = etiquetas.get(item["categoria"], CategoriaChatbot.GENERAL.label)
         return Response({
             "desde": desde,
             "hasta": hasta,
@@ -162,7 +165,7 @@ class RespuestaAutomaticaChatbotViewSet(viewsets.ModelViewSet):
             return Response({"respuesta": None, "albergue": None})
         rule = best[0]
         try:
-            _registrar_consulta(rule.albergue_id, rule.pregunta_clave)
+            _registrar_consulta(rule.albergue_id, rule.pregunta_clave, rule.categoria)
         except Exception:
             # Analytics must not prevent the chatbot from returning its configured answer.
             logger.exception("No se pudo guardar el conteo agregado de una respuesta automática.")
@@ -178,10 +181,11 @@ def _parse_metric_date(value, field, default):
     return parsed
 
 
-def _registrar_consulta(albergue_id, pregunta_clave):
+def _registrar_consulta(albergue_id, pregunta_clave, categoria):
     metric, created = MetricaRespuestaChatbot.objects.get_or_create(
         albergue_id=albergue_id,
         pregunta_clave=pregunta_clave,
+        categoria=categoria,
         fecha=timezone.localdate(),
         defaults={"consultas": 1},
     )

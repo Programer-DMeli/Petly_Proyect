@@ -91,11 +91,20 @@ class Infraestructura(models.Model):
         return f"{self.albergue.nombre} - {self.get_tipo_display()}: {self.nombre}"
 
 
+class CategoriaChatbot(models.TextChoices):
+    GENERAL = "GENERAL", "General"
+    ADOPCION = "ADOPCION", "Proceso de adopción"
+    SOLICITUDES = "SOLICITUDES", "Solicitudes"
+    CUESTIONARIO = "CUESTIONARIO", "Cuestionario y compatibilidad"
+    CUIDADOS = "CUIDADOS", "Cuidados"
+
+
 class RespuestaAutomaticaChatbot(models.Model):
     """Respuesta pública reutilizable, propiedad de un único albergue (US-33)."""
 
     albergue = models.ForeignKey(Albergue, on_delete=models.CASCADE, related_name="respuestas_chatbot")
     pregunta_clave = models.CharField(max_length=180)
+    categoria = models.CharField(max_length=16, choices=CategoriaChatbot.choices, default=CategoriaChatbot.GENERAL)
     disparadores = models.JSONField(default=list, blank=True)
     respuesta = models.CharField(max_length=1200)
     activa = models.BooleanField(default=True)
@@ -122,14 +131,15 @@ class MetricaRespuestaChatbot(models.Model):
         related_name="metricas_respuestas_chatbot",
     )
     pregunta_clave = models.CharField(max_length=180)
+    categoria = models.CharField(max_length=16, choices=CategoriaChatbot.choices, default=CategoriaChatbot.GENERAL)
     fecha = models.DateField()
     consultas = models.PositiveIntegerField(default=1)
 
     class Meta:
         ordering = ["-fecha", "pregunta_clave"]
         constraints = [models.UniqueConstraint(
-            fields=["albergue", "pregunta_clave", "fecha"],
-            name="albergue_chat_metric_dia_uniq",
+            fields=["albergue", "pregunta_clave", "categoria", "fecha"],
+            name="albergue_chat_metric_cat_dia",
         )]
         indexes = [models.Index(fields=["albergue", "fecha"], name="albergue_chat_metric_dia_idx")]
 

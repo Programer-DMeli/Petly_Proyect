@@ -15,7 +15,7 @@ import com.petly.common.exception.ApiException;
 @RestController
 @RequestMapping("/api/asistente")
 public class AsistenteContenidoController {
-    private static final int MAX_RAZA_LENGTH = 80;
+    private static final int MAX_RAZA_LENGTH = 100;
     private final AsistenteContenidoService contenido;
 
     public AsistenteContenidoController(AsistenteContenidoService contenido) {
@@ -37,7 +37,7 @@ public class AsistenteContenidoController {
         }
         String razaNormalizada = raza.trim();
         if (razaNormalizada.length() > MAX_RAZA_LENGTH) {
-            throw new ApiException(400, "La raza no puede superar 80 caracteres.");
+            throw new ApiException(400, "La raza no puede superar 100 caracteres.");
         }
         return contenido.cuidados(especieNormalizada, razaNormalizada);
     }

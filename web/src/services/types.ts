@@ -17,6 +17,7 @@ export interface Profile {
 }
 export interface Pet {
   id: number;
+  raza?: string | null;
   nombre: string;
   especie: string;
   tamano: string;

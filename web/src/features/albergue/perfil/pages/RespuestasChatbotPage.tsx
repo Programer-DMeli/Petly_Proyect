@@ -5,19 +5,27 @@ import { django, json, errorMessage } from '../../../../services/http';
 type Rule = {
   id: number;
   pregunta_clave: string;
+  categoria: string;
   disparadores: string[];
   respuesta: string;
   activa: boolean;
 };
-type Draft = { pregunta_clave: string; disparadores: string; respuesta: string; activa: boolean };
-type QuestionMetric = { pregunta_clave: string; consultas: number };
+type Draft = { pregunta_clave: string; categoria: string; disparadores: string; respuesta: string; activa: boolean };
+type QuestionMetric = { pregunta_clave: string; categoria: string; categoria_nombre: string; consultas: number };
 type MetricsSummary = {
   desde: string;
   hasta: string;
   total_consultas: number;
   preguntas: QuestionMetric[];
 };
-const empty: Draft = { pregunta_clave: '', disparadores: '', respuesta: '', activa: true };
+const categorias = {
+  GENERAL: 'General',
+  ADOPCION: 'Proceso de adopción',
+  SOLICITUDES: 'Solicitudes',
+  CUESTIONARIO: 'Cuestionario y compatibilidad',
+  CUIDADOS: 'Cuidados',
+};
+const empty: Draft = { pregunta_clave: '', categoria: 'GENERAL', disparadores: '', respuesta: '', activa: true };
 
 function localDate(date: Date) {
   const year = date.getFullYear();
@@ -84,6 +92,7 @@ export default function RespuestasChatbotPage() {
     try {
       const body = {
         pregunta_clave: draft.pregunta_clave.trim(),
+        categoria: draft.categoria,
         disparadores: draft.disparadores.split('\n').map(value => value.trim()).filter(Boolean),
         respuesta: draft.respuesta.trim(),
         activa: draft.activa,
@@ -118,6 +127,11 @@ export default function RespuestasChatbotPage() {
           onChange={event => setDraft({ ...draft, pregunta_clave: event.target.value })}
           placeholder="¿Cuál es el horario de atención?" />
       </label>
+      <label>Categoría
+        <select value={draft.categoria} onChange={event => setDraft({ ...draft, categoria: event.target.value })}>
+          {Object.entries(categorias).map(([id, nombre]) => <option key={id} value={id}>{nombre}</option>)}
+        </select>
+      </label>
       <label>Frases que también activan la respuesta <span className="muted">(una por línea, opcional)</span>
         <textarea maxLength={1000} rows={4} value={draft.disparadores}
           onChange={event => setDraft({ ...draft, disparadores: event.target.value })}
@@ -138,7 +152,7 @@ export default function RespuestasChatbotPage() {
         onClick={() => { setEditing(null); setDraft(empty); }}>Cancelar edición</button>}
     </form>
 
-    <section aria-labelledby="chatbot-metricas-titulo">
+    <section className="card" aria-labelledby="chatbot-metricas-titulo">
       <h2 id="chatbot-metricas-titulo">Preguntas más consultadas</h2>
       <p className="muted">
         Se cuentan las consultas que activaron una respuesta configurada por tu albergue. Se guarda el conteo diario y la pregunta clave, no el mensaje libre ni la identidad del adoptante.
@@ -173,9 +187,9 @@ export default function RespuestasChatbotPage() {
           ) : (
             <ol className="chatbot-metrics-ranking">
               {metrics.preguntas.map((metric, index) => (
-                <li key={metric.pregunta_clave}>
+                <li key={`${metric.categoria}-${metric.pregunta_clave}`}>
                   <div>
-                    <strong>{metric.pregunta_clave}</strong>
+                    <strong>{metric.pregunta_clave} · {metric.categoria_nombre}</strong>
                     <span>{new Intl.NumberFormat('es-PE').format(metric.consultas)} consultas</span>
                   </div>
                   <progress
@@ -199,7 +213,7 @@ export default function RespuestasChatbotPage() {
         <p style={{ whiteSpace: 'pre-wrap' }}>{rule.respuesta}</p>
         <button type="button" disabled={busy} onClick={() => {
           setEditing(rule.id);
-          setDraft({ pregunta_clave: rule.pregunta_clave, disparadores: rule.disparadores.join('\n'), respuesta: rule.respuesta, activa: rule.activa });
+          setDraft({ pregunta_clave: rule.pregunta_clave, categoria: rule.categoria, disparadores: rule.disparadores.join('\n'), respuesta: rule.respuesta, activa: rule.activa });
           setError(''); setSuccess('');
         }}>Editar</button>
         <button type="button" className="secondary" disabled={busy} onClick={() => void remove(rule)}>Eliminar</button>

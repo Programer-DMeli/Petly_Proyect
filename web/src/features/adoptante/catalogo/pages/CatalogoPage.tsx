@@ -1,3 +1,4 @@
+import AyudaParaAdoptar from '../components/AyudaParaAdoptar';
 import ConsejosCompatibilidad from '../../../../components/ConsejosCompatibilidad';
 import PetCard from '../../../../components/PetCard';
 import { FavoriteHeart } from '../../../../components/FavoritesProvider';
@@ -250,6 +251,7 @@ export default function CatalogoPage() {
           )}
         </div>
       </div>
+      <AyudaParaAdoptar mascotas={items} />
     </section>
   );
 }

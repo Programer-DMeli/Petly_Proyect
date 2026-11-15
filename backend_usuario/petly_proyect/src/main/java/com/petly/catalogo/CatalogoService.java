@@ -44,6 +44,7 @@ public class CatalogoService {
  }
  private Map<String,Object> pet(Map<String,Object> row) {
   Map<String,Object> v=new LinkedHashMap<>();v.put("id",row.get("id"));v.put("nombre",row.get("nombre"));
+  v.put("raza",row.get("raza"));
   v.put("especie",ESPECIES.get(row.get("especie")));v.put("tamano",TAMANOS.getOrDefault(row.get("tamanio"),"Por evaluar"));
   v.put("edadMeses",row.get("edad_total"));v.put("temperamento",TEMPERAMENTOS.getOrDefault(row.get("temperamento"),"Por evaluar"));
   v.put("energia",Map.of("BAJA","Baja","MEDIA","Media","ALTA","Alta").getOrDefault(String.valueOf(row.get("energia")),"Por evaluar"));
