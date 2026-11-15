@@ -71,6 +71,25 @@ class AlbergueSerializer(serializers.ModelSerializer):
         ]
 
 
+class AlberguePublicoSerializer(serializers.ModelSerializer):
+    """Información institucional aprobada para el perfil público del albergue."""
+
+    class Meta:
+        model = Albergue
+        fields = [
+            "id",
+            "nombre",
+            "descripcion",
+            "direccion",
+            "telefono",
+            "email",
+            "sitio_web",
+            "capacidad_maxima",
+            "horario_atencion",
+        ]
+        read_only_fields = fields
+
+
 class OptionalBooleanField(serializers.BooleanField):
     default_empty_html = serializers.empty
 

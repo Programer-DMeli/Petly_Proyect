@@ -6,6 +6,7 @@ import { djangoBase, errorMessage, mediaUrl, request } from '../../services/http
 type FotoPublicada = { id: number; descarga_url: string; mime_type: string };
 type HistoriaPublicada = {
   id: number;
+  albergue_id: number;
   mascota_nombre: string;
   albergue_nombre: string;
   historia: string;
@@ -84,7 +85,7 @@ export default function HistoriasExitoPublicasPage() {
             <div className="success-story-card__heading">
               <div>
                 <h2>{historia.mascota_nombre}</h2>
-                <p className="muted">Adopción con {historia.albergue_nombre}</p>
+                <p className="muted">Adopción con <Link to={`/albergues/${historia.albergue_id}`}>{historia.albergue_nombre}</Link></p>
               </div>
               <time dateTime={historia.publicado_en}>{fechaPublicacion(historia.publicado_en)}</time>
             </div>

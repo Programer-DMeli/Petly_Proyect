@@ -12,6 +12,7 @@ import urllib.error
 from .models import Albergue, Infraestructura
 from .serializers import (
     AlbergueSerializer,
+    AlberguePublicoSerializer,
     AlbergueCreateUpdateSerializer,
     InfraestructuraSerializer,
     InfraestructuraCreateUpdateSerializer,
@@ -49,10 +50,18 @@ class AlbergueViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """ADMIN consulta todos; ALBERGUE consulta solo su institución."""
+        if self.action == "publico":
+            return self.queryset.filter(activo=True)
         user = self.request.user
         if user.rol == "ADMIN":
             return self.queryset
         return self.queryset.filter(usuario=user)
+
+    @action(detail=True, methods=["get"], url_path="publico", permission_classes=[permissions.AllowAny])
+    def publico(self, request, pk=None):
+        """Expone solo los datos institucionales destinados a visitantes."""
+        albergue = self.get_object()
+        return Response(AlberguePublicoSerializer(albergue).data)
 
     def perform_create(self, serializer):
         """Asigna el usuario actual como dueño al crear."""

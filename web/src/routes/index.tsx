@@ -31,6 +31,8 @@ import VerificacionesKycAdminPage from '../features/administracion/kyc/pages/Ver
 import ChatDirectoPage from '../features/shared/ChatDirectoPage';
 import RevisionCasosExitoPage from '../features/shared/RevisionCasosExitoPage';
 import HistoriasExitoPublicasPage from '../features/shared/HistoriasExitoPublicasPage';
+import GestionTestimoniosPage from '../features/albergue/perfil/pages/GestionTestimoniosPage';
+import PerfilPublicoAlberguePage from '../features/shared/PerfilPublicoAlberguePage';
 
 /**
  * Rutas de Petly web. Estructura prevista según PLANNING v2 §9.2:
@@ -47,6 +49,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: 'historias-exito', element: <HistoriasExitoPublicasPage /> },
+      { path: 'albergues/:albergueId', element: <PerfilPublicoAlberguePage /> },
       { path: 'acceso', element: <AccesoPage /> },
       { path: 'registro', element: <AccesoPage register /> },
       { path: 'recuperacion', element: <RecuperacionPage /> },
@@ -99,6 +102,7 @@ export const router = createBrowserRouter([
           { path: 'seguimientos', element: <SeguimientosPage /> },
           { path: 'respuestas-chatbot', element: <RespuestasChatbotPage /> },
           { path: 'casos-exito', element: <RevisionCasosExitoPage role="ALBERGUE" /> },
+          { path: 'testimonios', element: <GestionTestimoniosPage /> },
           { path: 'mensajes/:id?', element: <ChatDirectoPage role="ALBERGUE" /> },
           { path: 'eventos', element: <EventosPage gestionar /> },
           { path: 'necesidades', element: <NecesidadesPage gestionar /> },
