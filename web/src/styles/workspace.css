@@ -150,6 +150,113 @@
 .testimonial-toggle {
   margin-top: 0.75rem;
 }
+.shelter-reviews {
+  display: grid;
+  gap: 1.25rem;
+}
+.shelter-reviews__heading,
+.shelter-review__heading,
+.shelter-review-form__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+}
+.shelter-reviews__heading h2,
+.shelter-review-form h3 {
+  margin: 0.25rem 0 0;
+  color: var(--petly-primary, #125643);
+}
+.shelter-reviews__summary {
+  display: grid;
+  justify-items: end;
+  color: var(--petly-text-muted, #62756c);
+}
+.shelter-reviews__summary strong {
+  color: var(--petly-primary, #125643);
+  font-size: 1.5rem;
+}
+.shelter-reviews__summary strong span,
+.shelter-review__stars,
+.shelter-review-form__star.is-selected {
+  color: #d88a13;
+}
+.shelter-review-form {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--petly-border, #d8e7df);
+  border-radius: 14px;
+  background: var(--petly-surface-soft, #f7faf8);
+}
+.shelter-review-form__rating {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.shelter-review-form__rating legend {
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+.shelter-review-form__stars {
+  display: flex;
+  gap: 0.15rem;
+}
+.shelter-review-form__star {
+  min-width: 2.25rem;
+  padding: 0.1rem;
+  border: 0;
+  background: transparent;
+  color: #a9b8b0;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.shelter-review-form__star:hover,
+.shelter-review-form__star:focus-visible {
+  color: #a66700;
+}
+.shelter-review-form textarea {
+  width: 100%;
+  min-height: 6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--petly-border, #d8e7df);
+  border-radius: 10px;
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+.shelter-review-form__footer small,
+.shelter-review__heading time {
+  color: var(--petly-text-muted, #62756c);
+}
+.shelter-reviews__list {
+  display: grid;
+  gap: 0.75rem;
+}
+.shelter-review {
+  padding: 1rem 0;
+  border-top: 1px solid var(--petly-border, #d8e7df);
+}
+.shelter-review p {
+  margin-bottom: 0;
+  white-space: pre-wrap;
+}
+.shelter-review__stars {
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+}
+.shelter-reviews__success {
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  color: #155a3f;
+  background: #e8f5ed;
+}
+.shelter-reviews__login-hint {
+  margin: 0;
+}
 @media (max-width: 560px) {
   .testimonials-carousel {
     grid-template-columns: 1fr 1fr;
@@ -157,6 +264,9 @@
   .testimonials-carousel__content {
     grid-column: 1 / -1;
     grid-row: 1;
+  }
+  .shelter-reviews__summary {
+    justify-items: start;
   }
 }
 .workspace h1,
