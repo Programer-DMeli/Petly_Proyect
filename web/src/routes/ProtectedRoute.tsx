@@ -5,9 +5,13 @@ import { getSession, subscribe, roleHome } from '../services/session';
 import type { Role } from '../services/session';
 export default function ProtectedRoute({ children, role }: { children: ReactNode; role: Role }) {
   const session = useSyncExternalStore(subscribe, getSession);
-  const { pathname } = useLocation();
+  const { pathname, search, hash } = useLocation();
   if (!session || session.expires <= Date.now()) {
-    return <Navigate to="/acceso" state={{ solicitud: pathname.match(/^\/adoptante\/solicitudes\/(\d+)$/)?.[1] }} replace />;
+    return <Navigate to="/acceso" state={{
+      solicitud: pathname.match(/^\/adoptante\/solicitudes\/(\d+)$/)?.[1],
+      destinoSeguimiento: pathname === '/adoptante/seguimientos-postadopcion' || pathname === '/albergue/seguimientos'
+        ? pathname + search + hash : undefined,
+    }} replace />;
   }
   if (session.identity.rol !== role)
     return <Navigate to={roleHome(session.identity.rol)} replace />;

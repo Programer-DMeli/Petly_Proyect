@@ -1,114 +1,270 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
-import PrivateDjangoImage from '../../../../components/PrivateDjangoImage';
-import { django, json, errorMessage } from '../../../../services/http';
+import { django, errorMessage, json } from '../../../../services/http';
+import { Hito, Reporte } from '../../../seguimiento/Cronograma';
+import { fecha, modalidad, type Evaluacion, type Seguimiento } from '../../../seguimiento/cronogramaDatos';
 
-type Seguimiento = { id: number; solicitud_id: number; mascota_nombre: string; adoptante_email: string | null; programado_para: string; modalidad: 'VISITA' | 'LLAMADA'; estado: string; notas: string; alerta_incumplimiento?: { estado: 'PENDIENTE'; generada_en: string } | null; asesorias_veterinarias?: { id: number; problema: string; creado_en: string }[]; expediente_cierre?: { id: number; calificacion_adaptacion: number; observaciones_cierre: string; cerrado_en: string } | null; reporte_bienestar?: { id: number; estado_bienestar: string; estado_bienestar_display: string; observaciones: string; enviado_en: string; fotos: { id: number; mime_type: string; tamaño_bytes: number; descarga_url: string }[] } | null };
-type Draft = { solicitud_id: string; programado_para: string; modalidad: 'VISITA' | 'LLAMADA'; notas: string };
-const empty: Draft = { solicitud_id: '', programado_para: '', modalidad: 'VISITA', notas: '' };
+type Expediente = {
+  id: number;
+  mascota_nombre: string;
+  adoptante_nombre: string;
+  adoptante_email: string | null;
+  evaluacion: Evaluacion | null;
+  cronograma: Seguimiento[];
+};
+type Pagina = { results: Expediente[]; next: string | null };
+type Ejecutar = (operacion: () => Promise<unknown>, mensaje: string) => Promise<boolean>;
+const ruta = '/api/contratos/expedientes/';
+const actividades = '/api/contratos/seguimientos/';
+const secciones = ['Cronograma', 'Reportes', 'Evaluación y cierre'] as const;
+
+function vencimientos(expediente: Expediente) {
+  return expediente.cronograma.filter(row => row.estado_entrega === 'VENCIDA');
+}
 
 export default function SeguimientosPage() {
-  const [rows, setRows] = useState<Seguimiento[]>([]);
-  const [draft, setDraft] = useState<Draft>(empty);
-  const [editing, setEditing] = useState<number | null>(null);
-  const [closingId, setClosingId] = useState<number | null>(null);
-  const [rating, setRating] = useState('');
-  const [closureNotes, setClosureNotes] = useState('');
+  const [params] = useSearchParams();
+  const id = params.get('expediente');
+  const [pagina, setPagina] = useState(1);
+  const [lista, setLista] = useState<Pagina | null>(null);
+  const [detalle, setDetalle] = useState<Expediente | null>(null);
+  const [version, setVersion] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [busy, setBusy] = useState(false);
-  async function load() {
-    try {
-      const result = await django<Seguimiento[] | { results: Seguimiento[] }>('/api/contratos/seguimientos/');
-      setRows(Array.isArray(result) ? result : result.results);
-      setError('');
-    } catch (e) { setError(errorMessage(e)); }
-  }
-  useEffect(() => { void load(); }, []);
-  async function save() {
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError('');
+    if (id !== null && !/^[1-9]\d*$/.test(id)) {
+      setError('El número de expediente no es válido.');
+      setLoading(false);
+      return () => controller.abort();
+    }
+    const init = { signal: controller.signal };
+    const consulta = id
+      ? django<Expediente>(`${ruta}${encodeURIComponent(id)}/`, init).then(value => {
+        if (!controller.signal.aborted) setDetalle(value);
+      })
+      : django<Pagina>(`${ruta}?page=${pagina}`, init).then(value => {
+        if (!controller.signal.aborted) setLista(value);
+      });
+    void consulta.catch(cause => {
+      if (!controller.signal.aborted) setError(errorMessage(cause));
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoading(false);
+    });
+    return () => controller.abort();
+  }, [id, pagina, version]);
+
+  const ejecutar: Ejecutar = async (operacion, mensaje) => {
     setBusy(true); setError(''); setSuccess('');
     try {
-      const body = { ...draft, solicitud_id: Number(draft.solicitud_id), programado_para: `${draft.programado_para}:00-05:00` };
-      await django(editing ? `/api/contratos/seguimientos/${editing}/` : '/api/contratos/seguimientos/', {
-        method: editing ? 'PATCH' : 'POST', body: json(body),
-      });
-      setDraft(empty); setEditing(null); setSuccess('Seguimiento guardado.'); await load();
-    } catch (e) { setError(errorMessage(e)); }
-    finally { setBusy(false); }
-  }
-  async function remove(id: number) {
-    if (!window.confirm('¿Cancelar este seguimiento programado?')) return;
-    try {
-      await django(`/api/contratos/seguimientos/${id}/`, { method: 'DELETE' });
-      setSuccess('Seguimiento cancelado.'); await load();
-    } catch (e) { setError(errorMessage(e)); }
-  }
-  async function closeExpediente(row: Seguimiento) {
-    if (!rating) { setError('Selecciona la calificación de adaptación.'); return; }
-    if (!window.confirm(`¿Cerrar formalmente el expediente de adopción de ${row.mascota_nombre}? Esta acción no se puede deshacer.`)) return;
-    setBusy(true); setError(''); setSuccess('');
-    try {
-      await django(`/api/contratos/seguimientos/${row.id}/cerrar-expediente/`, {
-        method: 'POST',
-        body: json({ calificacion_adaptacion: Number(rating), observaciones_cierre: closureNotes, confirmar: true }),
-      });
-      setClosingId(null); setRating(''); setClosureNotes('');
-      setSuccess('Expediente de adopción cerrado.'); await load();
-    } catch (e) { setError(errorMessage(e)); }
-    finally { setBusy(false); }
-  }
-  return <section className="card">
-    <h1>Seguimientos postadopción</h1>
-    <p>Programa visitas o llamadas para adopciones entregadas. Ingresa el número de solicitud.</p>
+      await operacion();
+      if (id) setDetalle(await django<Expediente>(`${ruta}${encodeURIComponent(id)}/`));
+      setSuccess(mensaje);
+      return true;
+    } catch (cause) {
+      setError(errorMessage(cause));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return <section className="seguimiento-panel">
+    <header className="seguimiento-portada">
+      <h1>Seguimiento posadopción</h1>
+      <p>Programa visitas y revisa reportes de adaptación</p>
+    </header>
+    <div className="actions">
+      {id && <Link to="/albergue/seguimientos" onClick={() => setSuccess('')}>Volver a expedientes</Link>}
+      <button type="button" className="secondary" disabled={busy || loading}
+        onClick={() => { setSuccess(''); setVersion(value => value + 1); }}>
+        {id ? 'Actualizar expediente' : 'Actualizar expedientes'}
+      </button>
+    </div>
     <Feedback error={error} success={success} />
-    <form onSubmit={e => { e.preventDefault(); void save(); }}>
-      <label>Solicitud entregada<input required type="number" min="1" value={draft.solicitud_id} disabled={editing !== null} onChange={e => setDraft({ ...draft, solicitud_id: e.target.value })} /></label>
-      <label>Fecha y hora<input required type="datetime-local" value={draft.programado_para} onChange={e => setDraft({ ...draft, programado_para: e.target.value })} /></label>
-      <label>Modalidad<select value={draft.modalidad} onChange={e => setDraft({ ...draft, modalidad: e.target.value as Draft['modalidad'] })}><option value="VISITA">Visita</option><option value="LLAMADA">Llamada</option></select></label>
-      <label>Notas<textarea maxLength={500} value={draft.notas} onChange={e => setDraft({ ...draft, notas: e.target.value })} /></label>
-      <button disabled={busy}>{editing ? 'Guardar cambios' : 'Programar seguimiento'}</button>
-      {editing !== null && <button type="button" className="secondary" onClick={() => { setEditing(null); setDraft(empty); }}>Cancelar edición</button>}
+    {loading ? <p role="status">Cargando expedientes…</p> : id
+      ? detalle && String(detalle.id) === id && <Detalle key={id} expediente={detalle} busy={busy} ejecutar={ejecutar} />
+      : lista && <section className="card">
+        <h2>Expedientes de adopción</h2>
+        {lista.results.length === 0 ? <p>Aún no hay adopciones entregadas para hacer seguimiento.</p> :
+          <div className="seguimiento-lista">
+            {lista.results.map(expediente => <Link className="seguimiento-expediente"
+              key={expediente.id} to={`?expediente=${expediente.id}`}>
+              <strong>{expediente.mascota_nombre}</strong>
+              <span>{expediente.adoptante_nombre} · Expediente #{expediente.id}</span>
+              <span>{expediente.evaluacion?.cerrado_en ? 'Cerrado' :
+                vencimientos(expediente).length ? `⚠ Entregas vencidas: ${vencimientos(expediente).length}` : 'Abierto'}</span>
+            </Link>)}
+          </div>}
+        <div className="actions">
+          {pagina > 1 && <button type="button" className="secondary" onClick={() => setPagina(pagina - 1)}>Anterior</button>}
+          {lista.next && <button type="button" className="secondary" onClick={() => setPagina(pagina + 1)}>Siguiente</button>}
+        </div>
+      </section>}
+  </section>;
+}
+
+function Detalle({ expediente, busy, ejecutar }: { expediente: Expediente; busy: boolean; ejecutar: Ejecutar }) {
+  const [seccion, setSeccion] = useState<(typeof secciones)[number]>('Cronograma');
+  const [editing, setEditing] = useState<Seguimiento | null>(null);
+  const { cronograma, evaluacion } = expediente;
+  const abierto = !evaluacion?.cerrado_en;
+  const reportes = cronograma.filter(row => row.reporte_bienestar);
+  const vencidas = vencimientos(expediente);
+  const alertasPorEmitir = abierto ? vencidas.filter(row => !row.alerta_incumplimiento?.emitida_en) : [];
+  const proximo = abierto && cronograma.find(row => row.estado === 'PROGRAMADO'
+    && !row.reporte_bienestar && Date.parse(row.programado_para) > Date.now());
+
+  async function cancelar(row: Seguimiento) {
+    if (!window.confirm('¿Cancelar esta actividad del cronograma?')) return;
+    if (await ejecutar(() => django(`${actividades}${row.id}/`, { method: 'DELETE' }), 'Actividad cancelada.')) {
+      setEditing(null);
+    }
+  }
+
+  return <section className="card">
+    <h2>{expediente.mascota_nombre} · Expediente #{expediente.id}</h2>
+    <p>Adoptante: <strong>{expediente.adoptante_nombre}</strong>
+      {expediente.adoptante_email && expediente.adoptante_email !== expediente.adoptante_nombre &&
+        <> · {expediente.adoptante_email}</>}</p>
+    {proximo && <p className="feedback success"><strong>Próximo hito</strong> · {modalidad[proximo.modalidad]} · {fecha(proximo.programado_para)}</p>}
+    {vencidas.length > 0 && <p className="feedback error">⚠ Entregas vencidas: {vencidas.length}
+      {alertasPorEmitir.length > 0 && <> · Alertas por emitir: {alertasPorEmitir.length}</>}
+    </p>}
+    {abierto && reportes.length > 0 && !evaluacion && <p>El expediente ya tiene reportes y está pendiente de evaluación.</p>}
+    <nav className="seguimiento-secciones" aria-label="Secciones del expediente">
+      {secciones.map(label => <button className="secondary" type="button" key={label}
+        aria-pressed={label === seccion} onClick={() => setSeccion(label)}>{label}</button>)}
+    </nav>
+    {seccion === 'Cronograma' && <>
+      <h3>Cronograma</h3>
+      {abierto && <Programar key={editing?.id ?? 'nueva'} expedienteId={expediente.id} editing={editing} busy={busy}
+        ejecutar={ejecutar} limpiar={() => setEditing(null)} />}
+      {cronograma.length === 0 ? <p>Este expediente aún no tiene actividades programadas.</p> :
+        <ol className="seguimiento-cronograma">{cronograma.map(row => <Hito row={row} key={row.id}>
+          <div className="actions">
+            {abierto && row.estado === 'PROGRAMADO' && !row.reporte_bienestar && <>
+              {!row.alerta_incumplimiento?.emitida_en && <button type="button" className="secondary"
+                disabled={busy} onClick={() => setEditing(row)}>Editar</button>}
+              <button type="button" className="secondary" disabled={busy} onClick={() => void cancelar(row)}>Cancelar</button>
+            </>}
+            {abierto && row.estado_entrega === 'VENCIDA' && !row.alerta_incumplimiento?.emitida_en &&
+              <button type="button" className="seguimiento-alertar" disabled={busy} onClick={() => {
+                if (window.confirm('¿Enviar una alerta roja de incumplimiento al adoptante?')) {
+                  void ejecutar(() => django(`${actividades}${row.id}/emitir-incumplimiento/`, {
+                    method: 'POST',
+                  }), 'Alerta roja emitida.');
+                }
+              }}>Emitir alerta roja de incumplimiento</button>}
+          </div>
+          {row.asesorias_veterinarias.map(asesoria => <div key={asesoria.id}>
+            <strong>Asesoría veterinaria solicitada · {fecha(asesoria.creado_en)}</strong>
+            <p className="seguimiento-texto">{asesoria.problema}</p>
+          </div>)}
+        </Hito>)}</ol>}
+    </>}
+    {seccion === 'Reportes' && <section>
+      <h3>Reportes recibidos</h3>
+      {reportes.length === 0 ? <p>Aún no se han recibido reportes de bienestar.</p> :
+        <ol className="seguimiento-cronograma">{reportes.map(row => <Hito key={row.id} row={row}>
+          <details>
+            <summary>Revisar reporte y fotos</summary>
+            <Reporte row={row} />
+          </details>
+        </Hito>)}</ol>}
+    </section>}
+    {seccion === 'Evaluación y cierre' && <Evaluar expediente={expediente} primerReporte={reportes[0]}
+      busy={busy} ejecutar={ejecutar} />}
+  </section>;
+}
+
+function Programar({ expedienteId, editing, busy, ejecutar, limpiar }: {
+  expedienteId: number; editing: Seguimiento | null; busy: boolean; ejecutar: Ejecutar; limpiar: () => void;
+}) {
+  const [tipo, setTipo] = useState<Seguimiento['modalidad']>(editing?.modalidad ?? 'VISITA');
+  const [dia, setDia] = useState(editing
+    ? new Date(Date.parse(editing.programado_para) - 5 * 3600000).toISOString().slice(0, 16) : '');
+  const [notas, setNotas] = useState(editing?.notas ?? '');
+
+  async function guardar(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const guardado = await ejecutar(() => django(editing ? `${actividades}${editing.id}/` : actividades, {
+      method: editing ? 'PATCH' : 'POST',
+      body: json({
+        solicitud_id: expedienteId, modalidad: tipo, programado_para: `${dia}:00-05:00`, notas: notas.trim(),
+        ...(editing ? {} : { requiere_reporte: tipo === 'REPORTE' }),
+      }),
+    }), editing ? 'Actividad actualizada.' : 'Actividad añadida al cronograma.');
+    if (guardado) { setDia(''); setNotas(''); limpiar(); }
+  }
+
+  return <form onSubmit={event => void guardar(event)}>
+    <h4>{editing ? 'Editar actividad' : 'Programar actividad'}</h4>
+    <label>Tipo de actividad
+      <select value={tipo} disabled={Boolean(editing)} onChange={event => setTipo(event.target.value as Seguimiento['modalidad'])}>
+        {Object.entries(modalidad).map(([valor, label]) => <option key={valor} value={valor}>{label}</option>)}
+      </select>
+    </label>
+    <label>{tipo === 'REPORTE' ? 'Fecha y hora límite (Lima)' : 'Fecha y hora (Lima)'}
+      <input required type="datetime-local" value={dia} onChange={event => setDia(event.target.value)} />
+    </label>
+    <label>Notas<textarea maxLength={500} value={notas} onChange={event => setNotas(event.target.value)} /></label>
+    <div className="actions">
+      <button disabled={busy}>{editing ? 'Guardar cambios' : 'Añadir al cronograma'}</button>
+      {editing && <button className="secondary" type="button" onClick={limpiar}>Cancelar edición</button>}
+    </div>
+  </form>;
+}
+
+function Evaluar({ expediente, primerReporte, busy, ejecutar }: {
+  expediente: Expediente; primerReporte?: Seguimiento; busy: boolean; ejecutar: Ejecutar;
+}) {
+  const evaluacion = expediente.evaluacion;
+  const [rating, setRating] = useState(evaluacion ? String(evaluacion.calificacion_adaptacion) : '');
+  const [notas, setNotas] = useState(evaluacion?.observaciones_cierre ?? '');
+  const guardada = evaluacion && String(evaluacion.calificacion_adaptacion) === rating
+    && evaluacion.observaciones_cierre === notas.trim();
+
+  if (evaluacion?.cerrado_en) return <section>
+    <h3>Expediente cerrado</h3>
+    <p>Adaptación: <strong>{evaluacion.calificacion_adaptacion}/5</strong> · {fecha(evaluacion.cerrado_en)}</p>
+    {evaluacion.observaciones_cierre && <p className="seguimiento-texto">{evaluacion.observaciones_cierre}</p>}
+  </section>;
+
+  const destino = `${actividades}${primerReporte?.id}/`;
+  return <section>
+    <h3>Evaluación y cierre</h3>
+    {!primerReporte && <p>La evaluación se habilita cuando el adoptante envíe el primer reporte.</p>}
+    <form onSubmit={event => {
+      event.preventDefault();
+      void ejecutar(() => django(`${destino}evaluar-expediente/`, {
+        method: 'POST', body: json({ calificacion_adaptacion: Number(rating), observaciones_cierre: notas.trim() }),
+      }), 'Evaluación guardada.');
+    }}>
+      <fieldset disabled={!primerReporte || busy}>
+        <label>Nivel de adaptación
+          <select required value={rating} onChange={event => setRating(event.target.value)}>
+            <option value="">Selecciona una calificación</option>
+            {['Requiere atención', 'Adaptación difícil', 'Adaptación en proceso', 'Buena adaptación', 'Adaptación excelente']
+              .map((label, index) => <option value={index + 1} key={label}>{index + 1} · {label}</option>)}
+          </select>
+        </label>
+        <label>Observaciones<textarea maxLength={2000} value={notas} onChange={event => setNotas(event.target.value)} /></label>
+        <button disabled={!rating}>Guardar evaluación</button>
+      </fieldset>
     </form>
-    <button type="button" className="secondary" onClick={() => void load()}>Actualizar agenda</button>
-    {rows.length === 0 ? <p>No tienes seguimientos programados.</p> : <ul>{rows.map(row => <li key={row.id}>
-      <strong>{row.mascota_nombre}</strong> · Solicitud #{row.solicitud_id} · {row.modalidad === 'VISITA' ? 'Visita' : 'Llamada'} · {new Date(row.programado_para).toLocaleString('es-PE')} · {row.estado}
-      {row.alerta_incumplimiento && <div className="alert alert--error" role="alert" style={{ marginTop: '0.75rem' }}>
-        <strong>Alerta roja: reporte de bienestar vencido.</strong>
-        <p>El plazo venció el {new Date(row.programado_para).toLocaleString('es-PE')} y aún no se ha recibido el reporte.</p>
-      </div>}
-      {row.notas && <p>{row.notas}</p>}
-      {row.asesorias_veterinarias?.map(asesoria => <div key={asesoria.id}>
-        <strong>Asesoría veterinaria gratuita solicitada · {new Date(asesoria.creado_en).toLocaleString('es-PE')}</strong>
-        <p style={{ whiteSpace: 'pre-wrap' }}>{asesoria.problema}</p>
-      </div>)}
-      {row.reporte_bienestar && <article>
-        <strong>Reporte de bienestar · {row.reporte_bienestar.estado_bienestar_display} · {new Date(row.reporte_bienestar.enviado_en).toLocaleString('es-PE')}</strong>
-        {row.reporte_bienestar.observaciones && <p style={{ whiteSpace: 'pre-wrap' }}>{row.reporte_bienestar.observaciones}</p>}
-        <div className="actions">{row.reporte_bienestar.fotos.map(photo => <div key={photo.id} style={{ maxWidth: 220 }}>
-          <PrivateDjangoImage src={photo.descarga_url} alt={`Foto del reporte de ${row.mascota_nombre}`} />
-        </div>)}</div>
-      </article>}
-      {row.expediente_cierre ? <div>
-        <strong>Expediente cerrado · adaptación {row.expediente_cierre.calificacion_adaptacion}/5 · {new Date(row.expediente_cierre.cerrado_en).toLocaleString('es-PE')}</strong>
-        {row.expediente_cierre.observaciones_cierre && <p style={{ whiteSpace: 'pre-wrap' }}>{row.expediente_cierre.observaciones_cierre}</p>}
-      </div> : row.estado !== 'CANCELADO' && <>
-        {closingId === row.id ? <form onSubmit={e => { e.preventDefault(); void closeExpediente(row); }}>
-          <label>Calificación de adaptación
-            <select required value={rating} onChange={e => setRating(e.target.value)}>
-              <option value="">Seleccionar (1 a 5)</option>
-              <option value="1">1 · Requiere atención</option>
-              <option value="2">2 · Adaptación difícil</option>
-              <option value="3">3 · Adaptación en proceso</option>
-              <option value="4">4 · Buena adaptación</option>
-              <option value="5">5 · Adaptación excelente</option>
-            </select>
-          </label>
-          <label>Observaciones de cierre<textarea maxLength={2000} value={closureNotes} onChange={e => setClosureNotes(e.target.value)} /></label>
-          <button disabled={busy || !rating}>Confirmar cierre</button>
-          <button type="button" className="secondary" onClick={() => { setClosingId(null); setRating(''); setClosureNotes(''); }}>Volver</button>
-        </form> : <button type="button" className="secondary" onClick={() => { setClosingId(row.id); setRating(''); setClosureNotes(''); }}>Calificar y cerrar expediente</button>}
-      </>}
-      {row.estado === 'PROGRAMADO' && closingId !== row.id && !row.expediente_cierre && <><button type="button" onClick={() => { setEditing(row.id); setDraft({ solicitud_id: String(row.solicitud_id), programado_para: new Date(Date.parse(row.programado_para) - 5 * 3600000).toISOString().slice(0, 16), modalidad: row.modalidad, notas: row.notas }); }}>Editar</button><button type="button" className="secondary" onClick={() => void remove(row.id)}>Cancelar</button></>}
-    </li>)}</ul>}
+    <button type="button" className="secondary" disabled={!guardada || busy} onClick={() => {
+      if (window.confirm(`¿Cerrar formalmente el expediente de ${expediente.mascota_nombre}?`)) {
+        void ejecutar(() => django(`${destino}cerrar-expediente/`, {
+          method: 'POST', body: json({ confirmar: true }),
+        }), 'Expediente cerrado.');
+      }
+    }}>Cerrar expediente</button>
   </section>;
 }

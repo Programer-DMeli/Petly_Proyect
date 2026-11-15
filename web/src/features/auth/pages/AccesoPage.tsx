@@ -12,7 +12,8 @@ export default function AccesoPage({ register = false }: { register?: boolean })
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
-  const solicitud = useLocation().state?.solicitud;
+  const estadoNavegacion = useLocation().state as { solicitud?: unknown; destinoSeguimiento?: unknown } | null;
+  const { solicitud, destinoSeguimiento } = estadoNavegacion ?? {};
   const [locks, setLocks] = useState<Record<string, number>>({});
   const [rateUntil, setRateUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
@@ -79,7 +80,11 @@ export default function AccesoPage({ register = false }: { register?: boolean })
         const destino = identity.rol === 'ADOPTANTE' && typeof solicitud === 'string' && /^\d+$/.test(solicitud)
           ? `/adoptante/solicitudes/${solicitud}`
           : roleHome(identity.rol);
-        await navigate(destino, { replace: true });
+        const contexto = identity.rol === 'ADOPTANTE' ? '/adoptante/seguimientos-postadopcion'
+          : identity.rol === 'ALBERGUE' ? '/albergue/seguimientos' : '';
+        const puedeRetomar = contexto && typeof destinoSeguimiento === 'string'
+          && destinoSeguimiento.split(/[?#]/, 1)[0] === contexto;
+        await navigate(puedeRetomar ? destinoSeguimiento : destino, { replace: true });
       }
     } catch (e) {
       setError(errorMessage(e));

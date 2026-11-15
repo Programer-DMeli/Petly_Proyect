@@ -211,7 +211,19 @@ fun PetlyNavHost(
                     }
                     val vm: SeguimientosViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    SeguimientosScreen(state, vm::load, vm::select, vm::edit, vm::submit, onBack = { nav.popBackStack() })
+                    SeguimientosScreen(state, vm::load, vm::select, vm::edit, vm::submit,
+                        onBack = { nav.popBackStack() },
+                        onOpenReporte = { nav.navigate("reportes-seguimiento/$it") })
+                }
+                composable(
+                    "reportes-seguimiento/{entrega}",
+                    arguments = listOf(navArgument("entrega") { type = NavType.LongType })
+                ) { entry ->
+                    ReportesSeguimientoScreen(
+                        container.reportesSeguimiento,
+                        requireNotNull(entry.arguments).getLong("entrega"),
+                        onBack = { nav.popBackStack() },
+                    )
                 }
                 composable(
                     "notificaciones/{evento}",
@@ -227,7 +239,8 @@ fun PetlyNavHost(
                         onBack = { nav.popBackStack() },
                         onOpenPet = { nav.navigate("mascota/$it") { launchSingleTop = true } },
                         onLoadCriterios = notificationsVm::loadCriterios,
-                        onSaveCriterios = notificationsVm::saveCriterios)
+                        onSaveCriterios = notificationsVm::saveCriterios,
+                        onOpenReporte = { nav.navigate("reportes-seguimiento/$it") })
                 }
                 composable("autorizaciones") {
                     val factory = remember(container) { viewModelFactory { initializer { AutorizacionViewModel(container.autorizaciones) } } }

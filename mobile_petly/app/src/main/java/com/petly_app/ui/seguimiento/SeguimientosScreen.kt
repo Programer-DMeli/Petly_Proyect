@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.petly_app.ui.perfil.notificationDate
+import com.petly_app.data.repository.admiteReporte
 
 @Composable
 fun SeguimientosScreen(
@@ -16,7 +17,8 @@ fun SeguimientosScreen(
     onSelect: (Long?) -> Unit,
     onEdit: (String) -> Unit,
     onSubmit: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenReporte: ((Long) -> Unit)? = null
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().safeDrawingPadding(),
@@ -41,8 +43,22 @@ fun SeguimientosScreen(
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(row.mascota_nombre, style = MaterialTheme.typography.titleLarge)
                     Text("Albergue: ${row.albergue_nombre}")
-                    Text("${if (row.modalidad == "VISITA") "Visita" else "Llamada"} · ${notificationDate(row.programado_para)}")
+                    val modalidad = when (row.modalidad) {
+                        "VISITA" -> "Visita"
+                        "LLAMADA" -> "Llamada"
+                        else -> "Entrega de reporte"
+                    }
+                    Text("$modalidad · ${notificationDate(row.programado_para)}")
+                    when (row.estado_entrega) {
+                        "PENDIENTE" -> Text("Entrega pendiente")
+                        "VENCIDA" -> Text("Entrega vencida", color = MaterialTheme.colorScheme.error)
+                        "ENVIADA" -> Text("Reporte enviado")
+                        "FUERA_DE_PLAZO" -> Text("Recibido fuera de plazo", color = MaterialTheme.colorScheme.error)
+                    }
                     Text("Estado: ${when (row.estado) { "PROGRAMADO" -> "Programado"; "REALIZADO" -> "Realizado"; "CANCELADO" -> "Cancelado"; else -> row.estado }}")
+                    if (row.admiteReporte() && onOpenReporte != null) {
+                        TextButton(onClick = { onOpenReporte(row.id) }) { Text("Abrir reporte") }
+                    }
                     row.asesorias_veterinarias.forEach { asesoria ->
                         Text("Asesoría solicitada · ${notificationDate(asesoria.creado_en)}", style = MaterialTheme.typography.labelLarge)
                         Text(asesoria.problema)
@@ -53,7 +69,7 @@ fun SeguimientosScreen(
                             else -> asesoria.estado
                         }}")
                     }
-                    if (row.estado != "CANCELADO") {
+                    if (row.estado != "CANCELADO" && row.expediente_cierre == null) {
                         if (state.selectedId == row.id) {
                             OutlinedTextField(
                                 value = state.problema, onValueChange = onEdit,

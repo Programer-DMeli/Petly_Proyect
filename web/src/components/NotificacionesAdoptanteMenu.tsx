@@ -6,6 +6,7 @@ import {
   marcarAvisoComoLeido,
   marcarTodosLosAvisosComoLeidos,
 } from '../services/notificacionesApi';
+import { fecha as fechaSeguimiento } from '../features/seguimiento/cronogramaDatos';
 import type { AvisoAdoptante, BandejaAvisosAdoptante } from '../services/types';
 
 type Props = {
@@ -41,6 +42,10 @@ export default function NotificacionesAdoptanteMenu({ open, onToggle }: Props) {
     return () => window.clearInterval(interval);
   }, [cargarAvisos]);
 
+  useEffect(() => {
+    if (open) void cargarAvisos();
+  }, [open, cargarAvisos]);
+
   const noLeidas = bandeja?.no_leidas ?? 0;
   const avisos = bandeja?.results ?? [];
 
@@ -63,8 +68,8 @@ export default function NotificacionesAdoptanteMenu({ open, onToggle }: Props) {
     }
   }
 
-  async function abrirCoincidencia(aviso: AvisoAdoptante) {
-    if (!aviso.mascota_id) return;
+  async function abrirAviso(aviso: AvisoAdoptante, destino: string) {
+    void navigate(destino);
     if (aviso.leido_en === null) {
       try {
         const actualizado = await marcarAvisoComoLeido(aviso.id);
@@ -79,7 +84,6 @@ export default function NotificacionesAdoptanteMenu({ open, onToggle }: Props) {
         setError(errorMessage(cause));
       }
     }
-    navigate(`/adoptante/catalogo/${aviso.mascota_id}`);
   }
 
   return (
@@ -111,27 +115,23 @@ export default function NotificacionesAdoptanteMenu({ open, onToggle }: Props) {
             : error ? <p role="alert">No se pudieron cargar los avisos.</p>
               : avisos.length === 0 ? <p>No tienes avisos por ahora.</p>
                 : <div className="workspace-notifications__list">
-                  {avisos.map((aviso: AvisoAdoptante) => (
-                    aviso.tipo === 'NUEVA_COINCIDENCIA' && aviso.mascota_id ? <button
-                      type="button"
-                      className={`workspace-notifications__item workspace-notifications__item--action${aviso.leido_en ? '' : ' is-unread'}`}
-                      key={aviso.id}
-                      onClick={() => void abrirCoincidencia(aviso)}
-                    >
+                  {avisos.map(aviso => {
+                    const destino = aviso.seguimiento_id
+                      ? `/adoptante/seguimientos-postadopcion?entrega=${aviso.seguimiento_id}#seguimiento-${aviso.seguimiento_id}`
+                      : aviso.tipo === 'NUEVA_COINCIDENCIA' && aviso.mascota_id
+                        ? `/adoptante/catalogo/${aviso.mascota_id}` : null;
+                    const clase = `workspace-notifications__item${aviso.leido_en ? '' : ' is-unread'}`;
+                    const contenido = <>
                       <strong>{aviso.titulo}</strong>
                       <p>{aviso.mensaje}</p>
                       {aviso.mascota_nombre && <span>Mascota: {aviso.mascota_nombre}</span>}
+                      {aviso.fecha_limite && <span>Fecha límite: {fechaSeguimiento(aviso.fecha_limite)} (Lima)</span>}
                       <time dateTime={aviso.ocurrido_en}>{fecha(aviso.ocurrido_en)}</time>
-                    </button> : <article
-                      className={`workspace-notifications__item${aviso.leido_en ? '' : ' is-unread'}`}
-                      key={aviso.id}
-                    >
-                      <strong>{aviso.titulo}</strong>
-                      <p>{aviso.mensaje}</p>
-                      {aviso.mascota_nombre && <span>Mascota: {aviso.mascota_nombre}</span>}
-                      <time dateTime={aviso.ocurrido_en}>{fecha(aviso.ocurrido_en)}</time>
-                    </article>
-                  ))}
+                    </>;
+                    return destino ? <button type="button" className={`${clase} workspace-notifications__item--action`}
+                      key={aviso.id} onClick={() => void abrirAviso(aviso, destino)}>{contenido}</button>
+                      : <article className={clase} key={aviso.id}>{contenido}</article>;
+                  })}
                 </div>}
         </div>
       )}

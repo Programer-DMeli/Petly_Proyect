@@ -1,52 +1,27 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Feedback from '../../../../components/Feedback';
-import PrivateDjangoImage from '../../../../components/PrivateDjangoImage';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Hito, Reporte } from '../../../seguimiento/Cronograma';
+import { fecha, type Bienestar, type Seguimiento } from '../../../seguimiento/cronogramaDatos';
 import { errorMessage, json, spring } from '../../../../services/http';
 
-type Bienestar = 'EXCELENTE' | 'BUENO' | 'REGULAR' | 'PREOCUPANTE';
-type Foto = { id: number; mime_type: string; tamaño_bytes: number; descarga_url: string };
-type Reporte = {
-  id: number;
-  estado_bienestar: Bienestar;
-  estado_bienestar_display: string;
-  observaciones: string;
-  enviado_en: string;
-  fotos: Foto[];
-};
-type Recordatorio = {
-  id: number;
-  seguimiento_id: number;
-  fecha_limite: string;
-  estado: 'PENDIENTE' | 'ENVIADO' | 'COMPLETADO' | 'CANCELADO';
-  enviado_en: string | null;
-};
-type Asesoria = { id: number; problema: string; estado: 'PENDIENTE' | 'EN_ATENCION' | 'ATENDIDA'; creado_en: string };
-type Seguimiento = {
-  id: number;
-  solicitud_id: number;
-  mascota_nombre: string;
-  albergue_nombre: string;
-  programado_para: string;
-  modalidad: 'VISITA' | 'LLAMADA';
-  estado: string;
-  notas: string;
-  expediente_cierre: { cerrado_en: string } | null;
-  reporte_bienestar: Reporte | null;
-  asesorias_veterinarias: Asesoria[];
-};
+type Asesoria = Seguimiento['asesorias_veterinarias'][number];
+type Pagina = { results: Seguimiento[]; next: string | null };
 
 const MAX_PHOTOS = 5;
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 
-function fecha(value: string) {
-  return new Date(value).toLocaleString('es-PE', { dateStyle: 'medium', timeStyle: 'short' });
-}
-
 export default function ReportesPostAdopcionPage() {
+  const [params, setParams] = useSearchParams();
+  const solicitud = params.get('solicitud');
   const [rows, setRows] = useState<Seguimiento[]>([]);
-  const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([]);
-  const [activeId, setActiveId] = useState<number | null>(null);
+  const activeId = Number(params.get('entrega'));
+  const setActiveId = (id: number | null) => {
+    const next = new URLSearchParams(params);
+    if (id === null) next.delete('entrega'); else next.set('entrega', String(id));
+    setParams(next, { replace: true });
+  };
   const [activeAsesoriaId, setActiveAsesoriaId] = useState<number | null>(null);
   const [problemaAsesoria, setProblemaAsesoria] = useState('');
   const [bienestar, setBienestar] = useState<Bienestar>('BUENO');
@@ -55,23 +30,33 @@ export default function ReportesPostAdopcionPage() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [recordatoriosError, setRecordatoriosError] = useState('');
   const [success, setSuccess] = useState('');
 
   async function load() {
     try {
-      const result = await spring<Seguimiento[] | { results: Seguimiento[] }>('/api/seguimientos/adoptante');
-      setRows(Array.isArray(result) ? result : result.results);
+      let page = 1;
+      let next: string | null;
+      const all: Seguimiento[] = [];
+      do {
+        const result = await spring<Pagina | Seguimiento[]>(`/api/seguimientos/adoptante?page=${page++}`);
+        all.push(...(Array.isArray(result) ? result : result.results));
+        next = Array.isArray(result) ? null : result.next;
+      } while (next);
+      setRows(all);
       setError('');
-    } catch (cause) { setError(errorMessage(cause)); }
-    try {
-      setRecordatorios(await spring<Recordatorio[]>('/api/seguimientos/adoptante/recordatorios'));
-      setRecordatoriosError('');
     } catch (cause) {
-      setRecordatoriosError(errorMessage(cause));
+      setError(errorMessage(cause));
     } finally { setLoading(false); }
   }
   useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    if (!loading && activeId) document.getElementById(`seguimiento-${activeId}`)?.scrollIntoView({ block: 'start' });
+  }, [activeId, loading]);
+  useEffect(() => {
+    setFotos([]);
+    setObservaciones('');
+    setBienestar('BUENO');
+  }, [activeId]);
 
   function selectPhotos(list: FileList | null) {
     const selected = Array.from(list ?? []);
@@ -119,28 +104,19 @@ export default function ReportesPostAdopcionPage() {
     finally { setBusy(false); }
   }
 
-  return <section className="card">
-    <h1>Reportes de bienestar postadopción</h1>
-    <p>Envía una actualización con fotos para cada seguimiento programado. El reporte solo lo ven tú y el albergue responsable.</p>
-    <Feedback error={error} success={success} />
-    <section aria-labelledby="recordatorios-title">
-      <h2 id="recordatorios-title">Recordatorios de seguimiento</h2>
-      {recordatoriosError ? <p role="alert">No se pudieron cargar tus recordatorios.</p>
-        : recordatorios.length === 0 ? <p>No tienes recordatorios registrados por ahora.</p>
-          : <ul>{recordatorios.map(recordatorio => <li key={recordatorio.id}>
-            <strong>Seguimiento #{recordatorio.seguimiento_id}</strong>
-            <p>Fecha límite: {fecha(recordatorio.fecha_limite)}</p>
-            <p>Estado: <strong>{estadoRecordatorio(recordatorio.estado)}</strong></p>
-            {recordatorio.enviado_en && <p>Notificación enviada: {fecha(recordatorio.enviado_en)}</p>}
-            <a href={`#seguimiento-${recordatorio.seguimiento_id}`}>Ver seguimiento y enviar reporte</a>
-          </li>)}</ul>}
-    </section>
-    {loading ? <p role="status">Cargando tu cronograma…</p> : rows.length === 0
-      ? <p>Aún no tienes seguimientos postadopción programados.</p>
-      : <ul>{rows.map(row => <li id={`seguimiento-${row.id}`} key={row.id}>
+  const visibles = solicitud ? rows.filter(row => String(row.solicitud_id) === solicitud) : rows;
+  const entregaNoDisponible = !loading && !error && activeId > 0 && !visibles.some(row => row.id === activeId);
+  return <section className="card seguimiento-panel">
+    <header className="seguimiento-portada">
+      <h1>Cronograma posadopción</h1>
+      <p>Consulta tus visitas, llamadas y entregas de reportes de bienestar.</p>
+    </header>
+    {solicitud && <Link to="/adoptante/seguimientos-postadopcion">Ver todos mis seguimientos</Link>}
+    <Feedback error={error || (entregaNoDisponible ? 'Esta entrega no está disponible.' : '')} success={success} />
+    {loading ? <p role="status">Cargando tu cronograma…</p> : error && rows.length === 0 ? <button type="button" onClick={() => void load()}>Reintentar</button>
+      : visibles.length === 0 ? <p>Aún no tienes seguimientos postadopción programados.</p>
+      : <ol className="seguimiento-cronograma">{visibles.map(row => <Hito row={row} key={row.id}>
         <strong>{row.mascota_nombre}</strong> · Solicitud #{row.solicitud_id} · {row.albergue_nombre}
-        <p>{row.modalidad === 'VISITA' ? 'Visita' : 'Llamada'} · {fecha(row.programado_para)} · {row.estado}</p>
-        {row.notas && <p>{row.notas}</p>}
         <section aria-labelledby={`asesorias-title-${row.id}`}>
           <h3 id={`asesorias-title-${row.id}`}>Asesoría técnica o veterinaria gratuita</h3>
           {row.asesorias_veterinarias?.length > 0 && <ul>
@@ -165,15 +141,11 @@ export default function ReportesPostAdopcionPage() {
             }}>Solicitar asesoría gratuita</button>}
           </>}
         </section>
-        {row.reporte_bienestar ? <article>
-          <h2>Reporte enviado · {fecha(row.reporte_bienestar.enviado_en)}</h2>
-          <p>Estado de bienestar: <strong>{row.reporte_bienestar.estado_bienestar_display}</strong></p>
-          {row.reporte_bienestar.observaciones && <p style={{ whiteSpace: 'pre-wrap' }}>{row.reporte_bienestar.observaciones}</p>}
-          <div className="actions">{row.reporte_bienestar.fotos.map(photo => <div key={photo.id} style={{ maxWidth: 220 }}>
-            <PrivateDjangoImage src={photo.descarga_url} alt={`Foto adjunta al reporte de ${row.mascota_nombre}`} />
-          </div>)}</div>
-        </article> : row.estado !== 'CANCELADO' && !row.expediente_cierre ? <>
-          {activeId === row.id ? <form onSubmit={event => void submit(event, row)}>
+        {row.reporte_bienestar ? <Reporte row={row} /> :
+          (!row.expediente_cierre && (row.estado_entrega === 'PENDIENTE' || row.estado_entrega === 'VENCIDA')) && <>
+          {activeId === row.id ? <form key={row.id} onSubmit={event => void submit(event, row)}>
+            <h3>Reporte de {row.mascota_nombre}</h3>
+            <p>Fecha límite: {fecha(row.programado_para)} (Lima)</p>
             <label>Estado de bienestar
               <select value={bienestar} onChange={event => setBienestar(event.target.value as Bienestar)}>
                 <option value="EXCELENTE">Excelente</option>
@@ -195,20 +167,11 @@ export default function ReportesPostAdopcionPage() {
               setActiveId(null); setFotos([]); setObservaciones(''); setError('');
             }}>Cancelar</button>
           </form> : <button type="button" className="secondary" onClick={() => {
-            setActiveId(row.id); setError(''); setSuccess('');
+            setActiveId(row.id); setFotos([]); setObservaciones(''); setBienestar('BUENO'); setError(''); setSuccess('');
           }}>Preparar reporte</button>}
-        </> : <p>Este seguimiento no admite nuevos reportes.</p>}
-      </li>)}</ul>}
+        </>}
+      </Hito>)}</ol>}
   </section>;
-}
-
-function estadoRecordatorio(estado: Recordatorio['estado']) {
-  switch (estado) {
-    case 'PENDIENTE': return 'Pendiente de notificación';
-    case 'ENVIADO': return 'Notificación enviada';
-    case 'COMPLETADO': return 'Reporte completado';
-    case 'CANCELADO': return 'Cancelado';
-  }
 }
 
 function estadoAsesoria(estado: Asesoria['estado']) {

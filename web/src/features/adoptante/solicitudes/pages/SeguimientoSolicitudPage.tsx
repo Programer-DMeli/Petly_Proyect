@@ -81,6 +81,9 @@ export default function SeguimientoSolicitudPage() {
               {estadoLabel[seguimiento.estadoActual] ?? seguimiento.estadoActual}
             </span>
           </p>
+          {seguimiento.estadoActual === 'ENTREGADA' && (
+            <Link to={`/adoptante/seguimientos-postadopcion?solicitud=${seguimiento.solicitudId}`}>Ver cronograma posadopción</Link>
+          )}
           <FotosHogar solicitudId={seguimiento.solicitudId}/>
           <h2>Historial de cambios</h2>
           {seguimiento.eventos.length === 0 ? (

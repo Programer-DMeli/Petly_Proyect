@@ -1,0 +1,108 @@
+.seguimiento-panel {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.seguimiento-portada {
+  padding: clamp(1rem, 4vw, 2rem);
+  border-radius: 1rem;
+  background: linear-gradient(130deg, var(--petly-primary), var(--petly-primary-dark));
+  color: white;
+  overflow-wrap: anywhere;
+}
+
+.seguimiento-portada :is(h1, p) {
+  color: inherit;
+  margin: 0 0 .5rem;
+}
+
+.seguimiento-portada strong {
+  color: var(--petly-accent);
+}
+
+.seguimiento-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: .85rem;
+}
+
+.seguimiento-expediente {
+  padding: 1rem;
+  border-radius: .85rem;
+  border: 1px solid var(--petly-border);
+  background: var(--petly-background);
+  color: var(--petly-primary-dark);
+  display: grid;
+  gap: .45rem;
+  overflow-wrap: anywhere;
+}
+
+.seguimiento-secciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  padding-block: .5rem;
+}
+
+.seguimiento-secciones button[aria-pressed="true"] {
+  background: var(--petly-primary);
+  color: white;
+}
+
+.seguimiento-cronograma {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: .85rem;
+}
+
+.seguimiento-hito {
+  padding: 1rem;
+  border-left: .35rem solid var(--petly-primary-light);
+  border-radius: .75rem;
+  background: #f1f8f4;
+  overflow-wrap: anywhere;
+  scroll-margin-top: 7rem;
+}
+
+.seguimiento-hito--vencido {
+  border-color: #b42d37;
+  background: #fff0ed;
+}
+
+.seguimiento-hito__encabezado {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.seguimiento-estado {
+  border-radius: 1rem;
+  padding: .22rem .65rem;
+  background: var(--petly-secondary);
+  color: var(--petly-primary-dark);
+  font-size: .875rem;
+}
+
+.seguimiento-hito--vencido .seguimiento-estado {
+  background: #f9d9d9;
+  color: #861d27;
+}
+
+.seguimiento-texto {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.seguimiento-fotos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 13rem));
+  gap: .75rem;
+}
+
+.seguimiento-hito .seguimiento-alertar {
+  background: #a92631;
+  color: white;
+}

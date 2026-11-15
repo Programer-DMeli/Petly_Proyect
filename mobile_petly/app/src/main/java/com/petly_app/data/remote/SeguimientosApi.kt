@@ -29,7 +29,9 @@ data class SeguimientoDto(
     val estado: String,
     val asesorias_veterinarias: List<AsesoriaVeterinariaDto> = emptyList(),
     val reporte_bienestar: ReporteBienestarDto? = null,
-    val expediente_cierre: com.google.gson.JsonObject? = null
+    val expediente_cierre: com.google.gson.JsonObject? = null,
+    val requiere_reporte: Boolean? = null,
+    val estado_entrega: String? = null
 )
 
 data class SeguimientosPagina(val results: List<SeguimientoDto>, val next: String?)

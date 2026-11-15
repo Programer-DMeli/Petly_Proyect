@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -28,18 +29,35 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
-fun RecordatoriosReporte(repository: ReportesSeguimientoRepository) {
+fun ReportesSeguimientoScreen(repository: ReportesSeguimientoRepository, entrega: Long, onBack: () -> Unit) {
+    Column(
+        modifier = Modifier.safeDrawingPadding().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        TextButton(onClick = onBack) { Text("Volver") }
+        RecordatoriosReporte(repository, entrega)
+    }
+}
+
+@Composable
+fun RecordatoriosReporte(repository: ReportesSeguimientoRepository, entrega: Long? = null) {
     var plazos by remember { mutableStateOf(emptyList<PlazoReporte>()) }
     var seleccionado by remember { mutableStateOf<PlazoReporte?>(null) }
     var carga by remember { mutableIntStateOf(0) }
     var cargando by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var enviado by remember { mutableStateOf(false) }
+    var enlacePendiente by remember(entrega) { mutableStateOf(entrega) }
     LaunchedEffect(repository, carga) {
         cargando = true
         error = null
         try {
             plazos = repository.pendientes()
+            enlacePendiente?.let { id ->
+                seleccionado = plazos.firstOrNull { it.seguimiento.id == id }
+                if (seleccionado == null) error = "Esta entrega ya no admite un reporte."
+                enlacePendiente = null
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -62,6 +80,9 @@ fun RecordatoriosReporte(repository: ReportesSeguimientoRepository) {
                         Text(plazo.seguimiento.mascota_nombre, style = MaterialTheme.typography.titleSmall)
                         Text(plazo.seguimiento.albergue_nombre)
                         Text("Fecha límite: ${fechaLimiteLima(plazo.fechaLimite)}")
+                        if (plazo.seguimiento.estado_entrega == "VENCIDA") {
+                            Text("Entrega vencida", color = MaterialTheme.colorScheme.error)
+                        }
                         TextButton(onClick = { seleccionado = plazo }, enabled = !cargando) {
                             Text("Abrir reporte")
                         }
@@ -157,7 +178,19 @@ private val ESTADOS_BIENESTAR = listOf(
 )
 
 internal fun fechaLimiteLima(value: String): String {
-    // Spring guarda y devuelve fecha_limite en hora de Lima sin offset.
+    // Spring devuelve sus fechas históricas en hora de Lima; el cronograma Django incluye zona.
+    val instante = runCatching {
+        val normalizado = value.replace(Regex("\\.(\\d{3})\\d+"), ".$1")
+        val formato = if (normalizado.contains('.')) "yyyy-MM-dd'T'HH:mm:ss.SSSXXX" else "yyyy-MM-dd'T'HH:mm:ssXXX"
+        java.text.SimpleDateFormat(formato, java.util.Locale.ROOT).apply { isLenient = false }
+            .parse(normalizado)
+    }.getOrNull()
+    if (instante != null && (value.endsWith("Z") || Regex("[+-]\\d{2}:\\d{2}$").containsMatchIn(value))) {
+        val etiqueta = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.ROOT).apply {
+            timeZone = java.util.TimeZone.getTimeZone("America/Lima")
+        }.format(instante)
+        return "$etiqueta (hora de Lima)"
+    }
     val partes = Regex("""(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})(?::\d{2}(?:\.\d+)?)?""").matchEntire(value)
         ?: return value
     val (anio, mes, dia, hora) = partes.destructured

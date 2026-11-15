@@ -22,9 +22,11 @@ class ReportesSeguimientoRepository(
     private val resolver: ContentResolver
 ) {
     suspend fun pendientes(): List<PlazoReporte> {
-        val avisos = reportes.pendientes()
-        if (avisos.isEmpty()) return emptyList()
-        return cruzarPlazos(avisos, seguimientos.listarTodos())
+        val cronograma = seguimientos.listarTodos()
+        val (actuales, antiguos) = cronograma.partition { it.requiere_reporte != null }
+        val plazos = actuales.filter { it.admiteReporte() }
+            .map { PlazoReporte(it, it.programado_para) }
+        return if (antiguos.isEmpty()) plazos else plazos + cruzarPlazos(reportes.pendientes(), antiguos)
     }
 
     suspend fun enviar(id: Long, estado: String, observaciones: String, fotos: List<Uri>) {
@@ -68,9 +70,12 @@ class ReportesSeguimientoRepository(
 internal fun cruzarPlazos(avisos: List<RecordatorioReporteDto>, seguimientos: List<SeguimientoDto>): List<PlazoReporte> {
     val disponibles = seguimientos.filter {
         it.estado in setOf("PROGRAMADO", "REALIZADO") &&
-            it.reporte_bienestar == null && it.expediente_cierre == null
+            it.requiere_reporte != false && it.reporte_bienestar == null && it.expediente_cierre == null
     }.associateBy { it.id }
     return avisos.mapNotNull { aviso ->
         disponibles[aviso.seguimiento_id]?.let { PlazoReporte(it, aviso.fecha_limite) }
     }
 }
+
+internal fun SeguimientoDto.admiteReporte() =
+    expediente_cierre == null && (estado_entrega == "PENDIENTE" || estado_entrega == "VENCIDA")

@@ -115,6 +115,11 @@ const groups: Record<string, Group[]> = {
           to: '/albergue?seccion=perfiles',
           description: 'Consulta información con consentimiento.',
         },
+        {
+          label: 'Seguimiento',
+          to: '/albergue/seguimientos',
+          description: 'Programa visitas y revisa reportes de adaptación',
+        },
       ],
     },
     {

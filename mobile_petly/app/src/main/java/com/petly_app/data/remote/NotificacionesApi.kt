@@ -19,7 +19,9 @@ data class NotificacionDto(
     val estado_actual: String,
     val ocurrido_en: String,
     val leido_en: String?,
-    val tipo: String = ""
+    val tipo: String = "",
+    val seguimiento_id: Long? = null,
+    val fecha_limite: String? = null
 )
 
 data class NotificacionesPagina(

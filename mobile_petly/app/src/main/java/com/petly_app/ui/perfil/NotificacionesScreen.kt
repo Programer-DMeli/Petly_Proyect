@@ -26,7 +26,8 @@ fun NotificacionesScreen(
     onBack: (() -> Unit)? = null,
     onOpenPet: (Long) -> Unit = {},
     onLoadCriterios: () -> Unit = {},
-    onSaveCriterios: (CriteriosAvisoDto) -> Unit = {}
+    onSaveCriterios: (CriteriosAvisoDto) -> Unit = {},
+    onOpenReporte: (Long) -> Unit = {}
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
     LazyColumn(
@@ -68,8 +69,13 @@ fun NotificacionesScreen(
             Text("Todavía no tienes notificaciones. Guarda tus criterios para conocer nuevas mascotas y recibe novedades de tus solicitudes.")
         }
         items(state.items, key = { it.id }) { item ->
+            val abrir = {
+                if (item.leido_en == null) onRead(item.id)
+                if (item.seguimiento_id != null) onOpenReporte(item.seguimiento_id)
+                else onOpenPet(item.mascota_id)
+            }
             Card(
-                onClick = { if (item.leido_en == null) onRead(item.id); onOpenPet(item.mascota_id) },
+                onClick = abrir,
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = if (item.leido_en == null)
                     MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)
@@ -81,10 +87,11 @@ fun NotificacionesScreen(
                     if (item.solicitud_id != null) Text("Solicitud #${item.solicitud_id} · Estado actual: ${item.estado_actual}",
                         style = MaterialTheme.typography.labelMedium)
                     Text(item.mensaje)
+                    item.fecha_limite?.let { Text("Fecha límite: ${fechaLimiteLima(it)}") }
                     if (item.descripcion.isNotBlank()) Text("Observaciones: ${item.descripcion}")
                     Text(notificationDate(item.ocurrido_en), style = MaterialTheme.typography.bodySmall)
-                    TextButton(onClick = { if (item.leido_en == null) onRead(item.id); onOpenPet(item.mascota_id) }) {
-                        Text("Ver mascota")
+                    TextButton(onClick = abrir) {
+                        Text(if (item.seguimiento_id != null) "Abrir reporte" else "Ver mascota")
                     }
                     if (item.leido_en == null) TextButton(onClick = { onRead(item.id) }, enabled = !state.busy) {
                         Text("Marcar como leída")
