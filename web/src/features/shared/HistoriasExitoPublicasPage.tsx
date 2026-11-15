@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Feedback from '../../components/Feedback';
 import { djangoBase, errorMessage, mediaUrl, request } from '../../services/http';
+import CasoExitoInteracciones from './CasoExitoInteracciones';
 
 type FotoPublicada = { id: number; descarga_url: string; mime_type: string };
 type HistoriaPublicada = {
@@ -96,6 +97,7 @@ export default function HistoriasExitoPublicasPage() {
                   alt={`Foto ${index + 1} de ${historia.mascota_nombre}`} loading="lazy" />
               </figure>)}
             </div>}
+            <CasoExitoInteracciones casoId={historia.id} />
           </article>)}
         </div>}
     {siguientePagina !== null && !loading && <button type="button" className="secondary"

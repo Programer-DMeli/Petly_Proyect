@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Feedback from '../../components/Feedback';
+import CasoExitoInteracciones from './CasoExitoInteracciones';
 import { getSession, subscribe } from '../../services/session';
 import { djangoBase, errorMessage, json, mediaUrl, request, springBase } from '../../services/http';
 
@@ -206,6 +207,7 @@ export default function PerfilPublicoAlberguePage() {
                     alt={`Foto ${fotoIndex + 1} de ${testimonio.mascota_nombre}`} loading="lazy" />
                 </figure>)}
               </div>}
+              <CasoExitoInteracciones casoId={testimonio.id} />
               <p className="testimonials-carousel__position" aria-label={`Testimonio ${indice + 1} de ${testimonios.length}`}>
                 {indice + 1} de {testimonios.length}
               </p>
