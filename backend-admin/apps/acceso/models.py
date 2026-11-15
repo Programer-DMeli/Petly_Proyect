@@ -445,6 +445,7 @@ class SolicitudAdopcion(models.Model):
             models.Index(fields=["albergue", "estado"]),
             models.Index(fields=["postulante", "estado"]),
             models.Index(fields=["mascota", "estado"]),
+            models.Index(fields=["estado", "fecha_entrega"], name="sol_entregada_fecha_idx"),
         ]
         # Un postulante no puede tener 2 solicitudes pendientes para la misma mascota
         constraints = [
