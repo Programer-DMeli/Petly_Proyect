@@ -1,8 +1,8 @@
 import mimetypes
 import os
 
-from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db import transaction
+from django.db.models import F, OuterRef, Q, Subquery
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -15,7 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.acceso.models import SolicitudAdopcion
+from apps.acceso.models import SolicitudAdopcion, User
 from apps.albergues.models import Albergue
 from .models import (AdjuntoMensaje, BienvenidaAlbergue, BloqueoConversacion,
                      Conversacion, Mensaje, ParticipanteConversacion, ReporteConversacion)
@@ -26,23 +26,53 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "application/pdf"}
 
 
 def is_participant(conversation, user):
-    return user.pk == conversation.adoptante_id or user.pk == conversation.albergue.usuario_id
+    if conversation.solicitud_id:
+        solicitud = conversation.solicitud
+        if (solicitud.adoptante_id, solicitud.albergue_id) != (conversation.adoptante_id, conversation.albergue_id):
+            return False
+    return ((user.rol == User.Rol.ADOPTANTE and user.pk == conversation.adoptante_id)
+            or (user.rol == User.Rol.ALBERGUE and user.pk == conversation.albergue.usuario_id))
 
 
 class ConversacionViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
-    def list(self, request):
-        if request.user.rol not in ("ADOPTANTE", "ALBERGUE"):
+    def conversaciones_del_usuario(self, user):
+        if user.rol not in (User.Rol.ADOPTANTE, User.Rol.ALBERGUE):
             raise PermissionDenied()
-        conversations = Conversacion.objects.filter(Q(adoptante=request.user) | Q(albergue__usuario=request.user)).select_related("albergue", "albergue__usuario", "adoptante", "solicitud__mascota").prefetch_related("bloqueos", "participantes")
+        participa = Q(adoptante=user) if user.rol == User.Rol.ADOPTANTE else Q(albergue__usuario=user)
+        return Conversacion.objects.filter(
+            participa,
+            Q(solicitud__isnull=True) | Q(solicitud__adoptante_id=F("adoptante_id"), solicitud__albergue_id=F("albergue_id")),
+        )
+
+    def list(self, request):
+        conversations = self.conversaciones_del_usuario(request.user).select_related(
+            "albergue", "albergue__usuario", "adoptante", "solicitud__mascota",
+        ).prefetch_related("participantes")
         return Response(ConversacionSerializer(conversations, many=True, context={"request": request}).data)
+
+    @action(detail=False, methods=["get"], url_path="no-leidos")
+    def no_leidos(self, request):
+        conversaciones = self.conversaciones_del_usuario(request.user)
+        lecturas = ParticipanteConversacion.objects.filter(
+            conversacion_id=OuterRef("conversacion_id"), usuario=request.user,
+        )
+        total = Mensaje.objects.filter(conversacion__in=conversaciones).exclude(
+            remitente=request.user,
+        ).annotate(leido_hasta=Subquery(lecturas.values("leido_hasta")[:1])).filter(
+            Q(leido_hasta__isnull=True) | Q(creado_en__gt=F("leido_hasta")),
+        ).count()
+        response = Response({"no_leidos": total})
+        response["Cache-Control"] = "private, no-store"
+        return response
 
     def create(self, request):
         if request.user.rol not in ("ADOPTANTE", "ALBERGUE"):
             raise PermissionDenied()
         solicitud_id = request.data.get("solicitud_id")
         shelter_id = request.data.get("albergue_id")
+        mascota_id = request.data.get("mascota_id")
         solicitud = None
         if solicitud_id not in (None, ""):
             try:
@@ -56,6 +86,8 @@ class ConversacionViewSet(viewsets.ViewSet):
                        else request.user.pk == solicitud.albergue.usuario_id)
             if not allowed:
                 raise PermissionDenied("Solo los participantes de la solicitud pueden iniciar el chat.")
+            if mascota_id is not None and str(mascota_id) != str(solicitud.mascota_id):
+                raise ValidationError({"mascota_id": "La mascota no corresponde a esta solicitud."})
             albergue = solicitud.albergue
             adoptante = solicitud.adoptante
         else:
@@ -68,26 +100,18 @@ class ConversacionViewSet(viewsets.ViewSet):
             albergue = get_object_or_404(Albergue, pk=shelter_id, activo=True)
             adoptante = request.user
         with transaction.atomic():
-            conversation = Conversacion.objects.filter(adoptante=adoptante, albergue=albergue).order_by("id").first()
-            if conversation:
-                if solicitud and conversation.solicitud_id is None:
-                    conversation.solicitud = solicitud
-                    conversation.save(update_fields=["solicitud", "actualizada_en"])
-                created = False
+            if solicitud:
+                conversation, created = Conversacion.objects.get_or_create(
+                    solicitud=solicitud, defaults={"adoptante": adoptante, "albergue": albergue},
+                )
+                if not is_participant(conversation, request.user):
+                    raise PermissionDenied()
             else:
-                try:
-                    with transaction.atomic():
-                        conversation = Conversacion.objects.create(
-                            solicitud=solicitud,
-                            adoptante=adoptante,
-                            albergue=albergue,
-                        )
-                    created = True
-                except IntegrityError:
-                    conversation = Conversacion.objects.filter(adoptante=adoptante, albergue=albergue).order_by("id").first()
-                    if conversation is None:
-                        raise
-                    created = False
+                # Sin solicitud, serializa la creación de consultas generales para esta cuenta.
+                User.objects.select_for_update().get(pk=adoptante.pk)
+                conversation, created = Conversacion.objects.get_or_create(
+                    solicitud=None, adoptante=adoptante, albergue=albergue,
+                )
             ParticipanteConversacion.objects.get_or_create(conversacion=conversation, usuario_id=conversation.adoptante_id)
             ParticipanteConversacion.objects.get_or_create(conversacion=conversation, usuario=conversation.albergue.usuario)
             if created:
@@ -103,7 +127,7 @@ class ConversacionViewSet(viewsets.ViewSet):
                          "mensajes": MensajeSerializer(messages, many=True, context={"request": request}).data})
 
     def _get(self, request, pk):
-        conversation = get_object_or_404(Conversacion.objects.select_related("albergue", "albergue__usuario", "adoptante", "solicitud__mascota").prefetch_related("bloqueos", "participantes"), pk=pk)
+        conversation = get_object_or_404(Conversacion.objects.select_related("albergue", "albergue__usuario", "adoptante", "solicitud__mascota").prefetch_related("participantes"), pk=pk)
         if not is_participant(conversation, request.user):
             raise PermissionDenied()
         return conversation
@@ -145,7 +169,7 @@ class ConversacionViewSet(viewsets.ViewSet):
             response["Cache-Control"] = "private, no-store"
             return response
 
-        if conversation.bloqueos.exclude(bloqueador=request.user).exists():
+        if conversation.bloqueos_entre_participantes().exclude(bloqueador=request.user).exists():
             return Response({"detail": "No puedes enviar mensajes a una persona que te bloqueó."}, status=423)
         text = str(request.data.get("texto", request.data.get("contenido", ""))).strip()
         upload = request.FILES.get("archivo")
@@ -252,7 +276,7 @@ class AdjuntoView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        attachment = get_object_or_404(AdjuntoMensaje.objects.select_related("mensaje__conversacion__albergue"), pk=pk)
+        attachment = get_object_or_404(AdjuntoMensaje.objects.select_related("mensaje__conversacion__albergue", "mensaje__conversacion__solicitud"), pk=pk)
         if not is_participant(attachment.mensaje.conversacion, request.user):
             raise PermissionDenied()
         try:

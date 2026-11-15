@@ -58,6 +58,7 @@ class MensajeSerializer(serializers.ModelSerializer):
 
 class ConversacionSerializer(serializers.ModelSerializer):
     solicitud_id = serializers.IntegerField(read_only=True)
+    mascota_id = serializers.IntegerField(source="solicitud.mascota_id", read_only=True, default=None)
     albergue_id = serializers.IntegerField(read_only=True)
     albergue_nombre = serializers.CharField(source="albergue.nombre", read_only=True)
     interlocutor = serializers.SerializerMethodField()
@@ -71,7 +72,7 @@ class ConversacionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversacion
-        fields = ["id", "solicitud_id", "mascota", "nombre_contacto", "albergue_id", "albergue_nombre", "interlocutor", "creada_en", "actualizada_en", "ultimo_mensaje", "no_leidos", "promedio_respuesta_horas", "bloqueada", "puede_enviar"]
+        fields = ["id", "solicitud_id", "mascota_id", "mascota", "nombre_contacto", "albergue_id", "albergue_nombre", "interlocutor", "creada_en", "actualizada_en", "ultimo_mensaje", "no_leidos", "promedio_respuesta_horas", "bloqueada", "puede_enviar"]
 
     def get_nombre_contacto(self, obj):
         request = self.context["request"]
@@ -82,13 +83,13 @@ class ConversacionSerializer(serializers.ModelSerializer):
     def get_bloqueada(self, obj):
         if hasattr(obj, "tiene_bloqueos"):
             return obj.tiene_bloqueos
-        return bool(obj.bloqueos.all())
+        return obj.bloqueos_entre_participantes().exists()
 
     def get_puede_enviar(self, obj):
         request = self.context.get("request")
         if not request:
             return False
-        return not obj.bloqueos.exclude(bloqueador=request.user).exists()
+        return not obj.bloqueos_entre_participantes().exclude(bloqueador=request.user).exists()
 
     def get_mascota(self, obj):
         return obj.solicitud.mascota.nombre if obj.solicitud_id else "Consulta general"

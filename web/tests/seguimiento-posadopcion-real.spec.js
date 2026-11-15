@@ -144,6 +144,37 @@ test('la bandeja enlaza a entregas próximas y la alerta vencida se conserva tra
   }
 });
 
+test('cada solicitud abre su propio chat y el albergue ve el contexto', async ({ browser }) => {
+  const casos = JSON.parse(process.env.PETLY_AJUSTES_SOLICITUDES ?? '[]');
+  test.skip(casos.length !== 2, 'Se requieren dos solicitudes del mismo albergue para mascotas distintas.');
+  const adoptante = await ingresar(browser, 'ADOPTANTE', { width: 1440, height: 960 });
+  const albergue = await ingresar(browser, 'ALBERGUE', { width: 1440, height: 960 });
+  try {
+    const conversaciones = new Set();
+    for (const caso of casos) {
+      await adoptante.getByRole('button', { name: 'Mi adopción', exact: true }).click();
+      await adoptante.getByRole('link', { name: /Mis solicitudes/ }).click();
+      const solicitud = adoptante.locator('article').filter({ has: adoptante.getByRole('heading', { name: caso.nombre, exact: true }) });
+      await solicitud.getByRole('link', { name: 'Abrir chat con el albergue' }).click();
+      await expect(adoptante).toHaveURL(new RegExp(`/adoptante/mensajes/\\d+\\?mascota=${caso.mascota}&solicitud=${caso.id}$`));
+      await expect(adoptante.getByRole('heading', { name: new RegExp(`${caso.nombre} · Solicitud #${caso.id}$`) })).toBeVisible();
+      conversaciones.add(new URL(adoptante.url()).pathname);
+    }
+    expect(conversaciones.size).toBe(2);
+
+    await albergue.getByRole('button', { name: 'Adopciones', exact: true }).click();
+    await albergue.getByRole('link', { name: /^Mensajes/ }).click();
+    for (const caso of casos) {
+      await albergue.getByRole('navigation', { name: 'Conversaciones' })
+        .getByRole('button', { name: new RegExp(`${caso.nombre} · Solicitud #${caso.id}(?: |$)`) }).click();
+      await expect(albergue.getByRole('heading', { name: new RegExp(`${caso.nombre} · Solicitud #${caso.id}$`) })).toBeVisible();
+    }
+  } finally {
+    await adoptante.close();
+    await albergue.close();
+  }
+});
+
 test('el adoptante puede quitar una entrega tardía y el albergue conserva su reporte', async ({ browser }) => {
   const entrega = Number(process.env.PETLY_AJUSTES_ENTREGA);
   const expediente = Number(process.env.PETLY_AJUSTES_EXPEDIENTE);

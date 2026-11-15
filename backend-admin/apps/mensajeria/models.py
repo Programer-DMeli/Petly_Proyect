@@ -36,10 +36,12 @@ class Conversacion(models.Model):
 
     class Meta:
         ordering = ["-actualizada_en", "-id"]
-        constraints = [models.UniqueConstraint(
-            fields=["adoptante", "albergue"],
-            name="chat_adoptante_albergue_unico",
-        )]
+
+    def bloqueos_entre_participantes(self):
+        return BloqueoConversacion.objects.filter(
+            conversacion__adoptante_id=self.adoptante_id,
+            conversacion__albergue_id=self.albergue_id,
+        )
 
 
 class ParticipanteConversacion(models.Model):

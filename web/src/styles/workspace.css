@@ -1518,3 +1518,47 @@
     width: 100%;
   }
 }
+
+.mensajes-flotante {
+  position: fixed;
+  z-index: 40;
+  left: max(1rem, env(safe-area-inset-left));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  box-shadow: 0 4px 14px rgb(18 86 67 / 25%);
+}
+
+.mensajes-flotante__icono {
+  display: block;
+  overflow: hidden;
+  border-radius: inherit;
+  width: 100%;
+  height: 100%;
+}
+
+.mensajes-flotante__icono img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scale(1.17);
+}
+
+.mensajes-flotante__contador {
+  position: absolute;
+  top: -.25rem;
+  right: -.35rem;
+  min-width: 1.45rem;
+  height: 1.45rem;
+  padding-inline: .22rem;
+  display: grid;
+  place-items: center;
+  border: 2px solid white;
+  border-radius: 1rem;
+  background: #ba2835;
+  color: white;
+  font-size: .75rem;
+  font-weight: 800;
+  line-height: 1;
+}

@@ -1,3 +1,4 @@
+import MensajesFlotante from '../components/MensajesFlotante';
 import AsistenteChat from '../components/AsistenteChat';
 import { Outlet, useLocation } from 'react-router-dom';
 import AdoptionCarousel from '../components/AdoptionCarousel';
@@ -10,6 +11,7 @@ export default function AdoptanteLayout() {
       <div className="workspace workspace--adoptante">
         {overview && <AdoptionCarousel role="adoptante" />}
         <Outlet />
+        <MensajesFlotante espacio="adoptante" />
         <AsistenteChat />
       </div>
     </FavoritesProvider>
