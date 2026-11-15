@@ -259,6 +259,11 @@ class CasoExitoAdopcion(models.Model):
     )
     historia = models.TextField(max_length=4000)
     estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PENDIENTE, db_index=True)
+    destacado = models.BooleanField(
+        "Destacado",
+        default=False,
+        help_text="Incluye este caso aprobado en los testimonios públicos del albergue.",
+    )
     revisado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

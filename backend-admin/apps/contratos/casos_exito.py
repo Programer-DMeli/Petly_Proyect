@@ -42,19 +42,23 @@ class CasoExitoReadSerializer(serializers.ModelSerializer):
         model = CasoExitoAdopcion
         fields = [
             "id", "solicitud_id", "mascota_nombre", "albergue_nombre", "historia",
-            "estado", "estado_display", "motivo_revision", "creado_en", "fotos",
+            "estado", "estado_display", "motivo_revision", "destacado", "creado_en", "fotos",
         ]
         read_only_fields = fields
 
 
 class CasoExitoPublicoSerializer(serializers.ModelSerializer):
+    albergue_id = serializers.IntegerField(source="solicitud.albergue_id", read_only=True)
     mascota_nombre = serializers.CharField(source="solicitud.mascota.nombre", read_only=True)
     albergue_nombre = serializers.CharField(source="solicitud.albergue.nombre", read_only=True)
     fotos = FotoCasoExitoReadSerializer(many=True, read_only=True)
 
     class Meta:
         model = CasoExitoAdopcion
-        fields = ["id", "mascota_nombre", "albergue_nombre", "historia", "publicado_en", "fotos"]
+        fields = [
+            "id", "albergue_id", "mascota_nombre", "albergue_nombre", "historia",
+            "publicado_en", "destacado", "fotos",
+        ]
         read_only_fields = fields
 
 
@@ -127,6 +131,18 @@ class RevisionCasoExitoSerializer(serializers.Serializer):
         return attrs
 
 
+class ActualizarDestacadoCasoExitoSerializer(serializers.Serializer):
+    destacado = serializers.BooleanField()
+
+
+class CasosDestacadosQuerySerializer(serializers.Serializer):
+    albergue_id = serializers.IntegerField(min_value=1)
+
+
+class CasosPublicadosQuerySerializer(serializers.Serializer):
+    albergue_id = serializers.IntegerField(min_value=1, required=False)
+
+
 class CasoExitoAdopcionViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
@@ -144,6 +160,8 @@ class CasoExitoAdopcionViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, v
             return CrearCasoExitoSerializer
         if self.action == "revisar":
             return RevisionCasoExitoSerializer
+        if self.action == "destacar":
+            return ActualizarDestacadoCasoExitoSerializer
         return CasoExitoReadSerializer
 
     def list(self, request, *args, **kwargs):
@@ -220,9 +238,36 @@ class CasoExitoAdopcionViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, v
 
     @action(detail=False, methods=["get"], url_path="publicados", permission_classes=[permissions.AllowAny])
     def publicados(self, request):
+        filtros = CasosPublicadosQuerySerializer(data=request.query_params)
+        filtros.is_valid(raise_exception=True)
         queryset = CasoExitoAdopcion.objects.filter(
             estado=CasoExitoAdopcion.Estado.APROBADO,
             publicado_en__isnull=False,
+        ).select_related("solicitud__mascota", "solicitud__albergue").prefetch_related("fotos")
+        albergue_id = filtros.validated_data.get("albergue_id")
+        if albergue_id is not None:
+            queryset = queryset.filter(solicitud__albergue_id=albergue_id)
+        page = self.paginate_queryset(queryset)
+        serializer = CasoExitoPublicoSerializer(
+            page if page is not None else queryset,
+            many=True,
+            context=self.get_serializer_context(),
+        )
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="destacados", permission_classes=[permissions.AllowAny])
+    def destacados(self, request):
+        filtros = CasosDestacadosQuerySerializer(data=request.query_params)
+        filtros.is_valid(raise_exception=True)
+        albergue_id = filtros.validated_data["albergue_id"]
+        queryset = CasoExitoAdopcion.objects.filter(
+            solicitud__albergue_id=albergue_id,
+            estado=CasoExitoAdopcion.Estado.APROBADO,
+            publicado_en__isnull=False,
+            destacado=True,
+            solicitud__albergue__activo=True,
         ).select_related("solicitud__mascota", "solicitud__albergue").prefetch_related("fotos")
         page = self.paginate_queryset(queryset)
         serializer = CasoExitoPublicoSerializer(
@@ -233,6 +278,36 @@ class CasoExitoAdopcionViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, v
         if page is not None:
             return self.get_paginated_response(serializer.data)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="destacar")
+    def destacar(self, request, pk=None):
+        if request.user.rol != User.Rol.ALBERGUE:
+            raise PermissionDenied("Solo el albergue propietario puede destacar testimonios.")
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        destacado = serializer.validated_data["destacado"]
+
+        with transaction.atomic():
+            caso = get_object_or_404(
+                CasoExitoAdopcion.objects.select_for_update().filter(
+                    solicitud__albergue__usuario=request.user,
+                ),
+                pk=pk,
+            )
+            if (
+                caso.estado != CasoExitoAdopcion.Estado.APROBADO
+                or caso.publicado_en is None
+            ):
+                return Response(
+                    {"detail": "Solo puedes destacar historias aprobadas y publicadas."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            caso.destacado = destacado
+            caso.save(update_fields=["destacado", "actualizado_en"])
+
+        return Response({"id": caso.pk, "destacado": caso.destacado})
 
     @action(
         detail=True,
