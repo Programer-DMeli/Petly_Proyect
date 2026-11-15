@@ -34,6 +34,7 @@ type Resena = {
   id: number;
   calificacion: number;
   comentario: string;
+  respuesta_albergue: string | null;
   creado_en: string;
 };
 type ResumenResenas = {
@@ -284,6 +285,10 @@ export default function PerfilPublicoAlberguePage() {
                 <time dateTime={resena.creado_en}>{fechaResena(resena.creado_en)}</time>
               </div>
               <p>{resena.comentario}</p>
+              {resena.respuesta_albergue && <aside className="shelter-review__reply">
+                <strong>Respuesta de {perfil.nombre}</strong>
+                <p>{resena.respuesta_albergue}</p>
+              </aside>}
             </article>)}
           </div> : resumenResenas && <p className="success-stories-empty">Todavía no hay reseñas para este albergue.</p>}
         </section>

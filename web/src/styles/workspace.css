@@ -319,6 +319,78 @@
   font-size: 1.1rem;
   letter-spacing: 0.08em;
 }
+.shelter-review__reply {
+  margin-top: 0.85rem;
+  padding: 0.8rem 1rem;
+  border-left: 3px solid var(--petly-primary, #125643);
+  border-radius: 0 10px 10px 0;
+  background: var(--petly-surface-soft, #f7faf8);
+}
+.shelter-review__reply p {
+  margin: 0.35rem 0 0;
+}
+.shelter-reviews-management {
+  display: grid;
+  gap: 0.85rem;
+}
+.shelter-reviews-management h1,
+.shelter-reviews-management > p {
+  margin-top: 0;
+}
+.shelter-reviews-management__list {
+  display: grid;
+  gap: 1rem;
+}
+.shelter-review-management {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+  border: 1px solid var(--petly-border, #d8e7df);
+  border-radius: 14px;
+}
+.shelter-review-management__heading,
+.shelter-review-management__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+.shelter-review-management__heading time,
+.shelter-review-management > small {
+  color: var(--petly-text-muted, #62756c);
+}
+.shelter-review-management__status {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  color: #79531a;
+  background: #fff3d9;
+  font-size: 0.875rem;
+}
+.shelter-review-management__status.is-visible {
+  color: #155a3f;
+  background: #e8f5ed;
+}
+.shelter-review-management__comment {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.shelter-review-management textarea {
+  width: 100%;
+  min-height: 5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--petly-border, #d8e7df);
+  border-radius: 10px;
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+.shelter-reviews-management__success {
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  color: #155a3f;
+  background: #e8f5ed;
+}
 .shelter-reviews__success {
   padding: 0.75rem 1rem;
   border-radius: 10px;

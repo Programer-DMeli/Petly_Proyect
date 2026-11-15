@@ -32,6 +32,7 @@ import ChatDirectoPage from '../features/shared/ChatDirectoPage';
 import RevisionCasosExitoPage from '../features/shared/RevisionCasosExitoPage';
 import HistoriasExitoPublicasPage from '../features/shared/HistoriasExitoPublicasPage';
 import GestionTestimoniosPage from '../features/albergue/perfil/pages/GestionTestimoniosPage';
+import ResenasPage from '../features/albergue/perfil/pages/ResenasPage';
 import PerfilPublicoAlberguePage from '../features/shared/PerfilPublicoAlberguePage';
 
 /**
@@ -103,6 +104,7 @@ export const router = createBrowserRouter([
           { path: 'respuestas-chatbot', element: <RespuestasChatbotPage /> },
           { path: 'casos-exito', element: <RevisionCasosExitoPage role="ALBERGUE" /> },
           { path: 'testimonios', element: <GestionTestimoniosPage /> },
+          { path: 'resenas', element: <ResenasPage /> },
           { path: 'mensajes/:id?', element: <ChatDirectoPage role="ALBERGUE" /> },
           { path: 'eventos', element: <EventosPage gestionar /> },
           { path: 'necesidades', element: <NecesidadesPage gestionar /> },

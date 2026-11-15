@@ -135,6 +135,11 @@ const groups: Record<string, Group[]> = {
       label: 'Comunidad',
       items: [
         {
+          label: 'Reseñas recibidas',
+          to: '/albergue/resenas',
+          description: 'Responde a las opiniones y modera su visibilidad pública.',
+        },
+        {
           label: 'Testimonios destacados',
           to: '/albergue/testimonios',
           description: 'Elige historias aprobadas para mostrarlas en tu perfil público.',
