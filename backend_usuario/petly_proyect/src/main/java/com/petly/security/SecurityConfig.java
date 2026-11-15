@@ -3,6 +3,7 @@ package com.petly.security;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -67,6 +68,12 @@ public class SecurityConfig {
                         // ya no asocia la barra final automaticamente)
                         .requestMatchers("/api/health", "/api/health/", "/api/health/**")
                         .permitAll()
+                        // La lectura de reseñas y promedio institucional es pública.
+                        .requestMatchers(HttpMethod.GET, "/api/albergues/*/resenas", "/api/albergues/*/resenas/")
+                        .permitAll()
+                        // Solo adoptantes pueden publicar reseñas; el backend valida la interacción.
+                        .requestMatchers(HttpMethod.POST, "/api/albergues/*/resenas", "/api/albergues/*/resenas/")
+                        .hasRole("ADOPTANTE")
                         // /me requiere token, va antes del permitAll general
                         .requestMatchers("/api/auth/me")
                         .authenticated()
