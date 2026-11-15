@@ -217,3 +217,79 @@ class AlertasIncumplimientoTest(APITestCase):
         self.assertEqual(seguimiento["estado_entrega"], "FUERA_DE_PLAZO")
         self.assertEqual(seguimiento["alerta_incumplimiento"]["estado"], "RESUELTA")
         self.assertIsNotNone(seguimiento["alerta_incumplimiento"]["emitida_en"])
+
+    def test_ocultar_entrega_es_personal_idempotente_y_conserva_el_reporte(self):
+        reporte = ReporteBienestarPostAdopcion.objects.create(
+            seguimiento=self.seguimiento, estado_bienestar="BUENO",
+        )
+        url = f"{self.seguimientos_url}{self.seguimiento.pk}/ocultar/"
+        self.client.force_authenticate(self.otro_albergue_user)
+        self.assertEqual(self.client.post(url).status_code, 403)
+        otro = User.objects.create_user(username="otro-titular")
+        self.client.force_authenticate(otro)
+        self.assertEqual(self.client.post(url).status_code, 404)
+        self.client.force_authenticate(self.adoptante)
+        self.assertEqual(self.client.post(url).status_code, 204)
+        self.assertEqual(self.client.post(url).status_code, 204)
+        self.assertEqual(self.client.get(self.seguimientos_url).data["results"], [])
+
+        self.client.force_authenticate(self.albergue_user)
+        expediente = self.client.get(f"/api/contratos/expedientes/{self.solicitud.pk}/").data
+        self.assertEqual(expediente["cronograma"][0]["reporte_bienestar"]["id"], reporte.pk)
+
+    def test_programar_editar_cancelar_y_conservar_el_aviso_del_titular(self):
+        self.seguimiento.delete()
+        self.client.force_authenticate(self.adoptante)
+        self.assertEqual(self.client.get(self.seguimientos_url).data["results"], [])
+        datos = {
+            "solicitud_id": self.solicitud.pk,
+            "modalidad": "LLAMADA",
+            "programado_para": (timezone.now() + timedelta(days=1)).isoformat(),
+            "requiere_reporte": False,
+            "notas": "Llamada de adaptación.",
+        }
+        self.client.force_authenticate(self.otro_albergue_user)
+        self.assertEqual(self.client.post(self.seguimientos_url, datos).status_code, 400)
+        self.client.force_authenticate(self.albergue_user)
+        creada = self.client.post(self.seguimientos_url, datos)
+        self.assertEqual(creada.status_code, 201, creada.data)
+        seguimiento = creada.data["id"]
+        detalle = f"{self.seguimientos_url}{seguimiento}/"
+        avisos = "/api/acceso/notificaciones/"
+
+        self.client.force_authenticate(self.adoptante)
+        dato = self.client.get(avisos).data["results"][0]
+        self.assertEqual(dato["tipo"], SolicitudEvento.Tipo.SEGUIMIENTO_PROGRAMADO)
+        self.assertEqual(dato["seguimiento_id"], seguimiento)
+        self.assertEqual(dato["mascota_nombre"], "Luna")
+        self.assertEqual(dato["programado_para"], creada.data["programado_para"])
+        self.assertEqual(self.client.get(detalle).status_code, 200)
+        self.assertEqual(self.client.delete(detalle).status_code, 403)
+
+        otro_adoptante = User.objects.create_user(username="adoptante-ajeno")
+        self.client.force_authenticate(otro_adoptante)
+        self.assertEqual(self.client.get(detalle).status_code, 404)
+        self.assertEqual(self.client.get(avisos).data["results"], [])
+        self.client.force_authenticate(self.otro_albergue_user)
+        self.assertEqual(self.client.get(detalle).status_code, 404)
+        self.assertEqual(self.client.patch(detalle, {"notas": "Cambio ajeno"}).status_code, 404)
+        self.assertEqual(self.client.delete(detalle).status_code, 404)
+
+        self.client.force_authenticate(self.albergue_user)
+        editada = self.client.patch(detalle, {
+            "notas": "Horario actualizado.",
+            "programado_para": (timezone.now() + timedelta(days=2)).isoformat(),
+        })
+        self.assertEqual(editada.status_code, 200)
+        self.assertEqual(self.client.delete(detalle).status_code, 204)
+        self.assertEqual(self.client.patch(detalle, {"notas": "Reabrir"}).status_code, 400)
+
+        self.client.force_authenticate(self.adoptante)
+        cancelada = self.client.get(detalle).data
+        self.assertEqual(cancelada["notas"], "Horario actualizado.")
+        self.assertEqual(cancelada["estado"], "CANCELADO")
+        self.assertIsNotNone(cancelada["cancelado_en"])
+        lista = self.client.get(avisos).data["results"]
+        self.assertEqual(len(lista), 1)
+        self.assertEqual(lista[0]["seguimiento_id"], seguimiento)
+        self.assertEqual(lista[0]["programado_para"], editada.data["programado_para"])

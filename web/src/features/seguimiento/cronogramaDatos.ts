@@ -10,6 +10,7 @@ export type Seguimiento = {
   mascota_nombre: string;
   albergue_nombre: string;
   programado_para: string;
+  cancelado_en?: string | null;
   modalidad: 'VISITA' | 'LLAMADA' | 'REPORTE';
   estado: string;
   notas: string;

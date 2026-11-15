@@ -122,8 +122,8 @@ class SeguimientoPostAdopcionSerializer(serializers.ModelSerializer):
         fields = ["id", "solicitud_id", "mascota_nombre", "adoptante_email", "programado_para",
                   "modalidad", "estado", "notas", "creado_en", "actualizado_en",
                   "albergue_nombre", "asesorias_veterinarias", "expediente_cierre", "reporte_bienestar"]
-        fields += ["alerta_incumplimiento", "requiere_reporte", "estado_entrega"]
-        read_only_fields = ["id", "estado", "creado_en", "actualizado_en"]
+        fields += ["alerta_incumplimiento", "requiere_reporte", "estado_entrega", "cancelado_en"]
+        read_only_fields = ["id", "estado", "creado_en", "actualizado_en", "cancelado_en"]
 
     def get_expediente_cierre(self, obj):
         try:
@@ -187,6 +187,8 @@ class SeguimientoPostAdopcionSerializer(serializers.ModelSerializer):
             alerta = self.instance.alerta_incumplimiento
             if alerta.emitida_en:
                 raise ValidationError("El plazo queda registrado en el historial de la alerta emitida.")
+        if self.instance and self.instance.estado != SeguimientoPostAdopcion.Estado.PROGRAMADO:
+            raise ValidationError("Solo se pueden editar seguimientos programados.")
         if self.instance and solicitud_id != self.instance.solicitud_id:
             raise ValidationError({"solicitud_id": "La actividad pertenece a su expediente original."})
         if solicitud_id:
@@ -265,8 +267,20 @@ class SeguimientoPostAdopcionViewSet(viewsets.ModelViewSet):
         if user.rol == User.Rol.ALBERGUE and hasattr(user, "albergue"):
             return qs.filter(solicitud__albergue=user.albergue)
         if user.rol == User.Rol.ADOPTANTE:
-            return qs.filter(solicitud__adoptante=user)
+            return qs.filter(solicitud__adoptante=user, oculto_adoptante=False)
         return qs.none()
+
+    @action(detail=True, methods=["post"], url_path="ocultar", permission_classes=[permissions.IsAuthenticated])
+    def ocultar(self, request, pk=None):
+        if request.user.rol != User.Rol.ADOPTANTE:
+            raise PermissionDenied("Solo el adoptante titular puede quitar una entrega de su cronograma.")
+        entregas = SeguimientoPostAdopcion.objects.filter(
+            pk=pk, requiere_reporte=True, solicitud__adoptante=request.user,
+            solicitud__estado=SolicitudAdopcion.Estado.ENTREGADA,
+        )
+        if not entregas.update(oculto_adoptante=True):
+            return Response({"detail": "No se encontró la entrega."}, status=404)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def list(self, request, *args, **kwargs):
         if request.user.rol == User.Rol.ALBERGUE:
@@ -285,7 +299,16 @@ class SeguimientoPostAdopcionViewSet(viewsets.ModelViewSet):
         )
         if expediente_cerrado(solicitud) or solicitud.estado != SolicitudAdopcion.Estado.ENTREGADA:
             return Response({"detail": "La adopción ya no admite nuevas actividades."}, status=409)
-        serializer.save(creado_por=request.user)
+        if not solicitud.adoptante_id:
+            raise ValidationError({"solicitud_id": "Esta adopción no tiene una cuenta adoptante vinculada."})
+        seguimiento = serializer.save(creado_por=request.user)
+        SolicitudEvento.objects.create(
+            solicitud=solicitud,
+            seguimiento=seguimiento,
+            tipo=SolicitudEvento.Tipo.SEGUIMIENTO_PROGRAMADO,
+            destinatario_id=solicitud.adoptante_id,
+            actor=request.user,
+        )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @transaction.atomic
@@ -367,8 +390,9 @@ class SeguimientoPostAdopcionViewSet(viewsets.ModelViewSet):
         if seguimiento.estado != SeguimientoPostAdopcion.Estado.PROGRAMADO:
             return Response({"detail": "Solo se pueden cancelar seguimientos programados."}, status=409)
         seguimiento.estado = SeguimientoPostAdopcion.Estado.CANCELADO
-        seguimiento.save(update_fields=["estado", "actualizado_en"])
+        seguimiento.cancelado_en = timezone.now()
+        seguimiento.save(update_fields=["estado", "cancelado_en", "actualizado_en"])
         AlertaIncumplimientoSeguimiento.objects.filter(
             seguimiento=seguimiento, estado=AlertaIncumplimientoSeguimiento.Estado.PENDIENTE,
-        ).update(estado=AlertaIncumplimientoSeguimiento.Estado.RESUELTA, resuelta_en=timezone.now())
+        ).update(estado=AlertaIncumplimientoSeguimiento.Estado.RESUELTA, resuelta_en=seguimiento.cancelado_en)
         return Response(status=status.HTTP_204_NO_CONTENT)

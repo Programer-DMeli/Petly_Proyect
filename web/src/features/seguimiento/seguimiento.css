@@ -106,3 +106,8 @@
   background: #a92631;
   color: white;
 }
+
+.seguimiento-hito:target {
+  outline: 2px solid var(--petly-focus);
+  outline-offset: 3px;
+}

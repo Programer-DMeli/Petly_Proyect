@@ -27,7 +27,8 @@ fun NotificacionesScreen(
     onOpenPet: (Long) -> Unit = {},
     onLoadCriterios: () -> Unit = {},
     onSaveCriterios: (CriteriosAvisoDto) -> Unit = {},
-    onOpenReporte: (Long) -> Unit = {}
+    onOpenReporte: (Long) -> Unit = {},
+    onOpenSeguimiento: (Long) -> Unit = {}
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
     LazyColumn(
@@ -69,10 +70,14 @@ fun NotificacionesScreen(
             Text("Todavía no tienes notificaciones. Guarda tus criterios para conocer nuevas mascotas y recibe novedades de tus solicitudes.")
         }
         items(state.items, key = { it.id }) { item ->
+            val esProgramacion = item.tipo == "SEGUIMIENTO_PROGRAMADO"
             val abrir = {
                 if (item.leido_en == null) onRead(item.id)
-                if (item.seguimiento_id != null) onOpenReporte(item.seguimiento_id)
-                else onOpenPet(item.mascota_id)
+                when {
+                    esProgramacion && item.seguimiento_id != null -> onOpenSeguimiento(item.seguimiento_id)
+                    item.seguimiento_id != null -> onOpenReporte(item.seguimiento_id)
+                    else -> onOpenPet(item.mascota_id)
+                }
             }
             Card(
                 onClick = abrir,
@@ -87,11 +92,19 @@ fun NotificacionesScreen(
                     if (item.solicitud_id != null) Text("Solicitud #${item.solicitud_id} · Estado actual: ${item.estado_actual}",
                         style = MaterialTheme.typography.labelMedium)
                     Text(item.mensaje)
-                    item.fecha_limite?.let { Text("Fecha límite: ${fechaLimiteLima(it)}") }
+                    if (esProgramacion) {
+                        item.programado_para?.let { Text("Fecha programada: ${fechaLimiteLima(it)}") }
+                    } else {
+                        item.fecha_limite?.let { Text("Fecha límite: ${fechaLimiteLima(it)}") }
+                    }
                     if (item.descripcion.isNotBlank()) Text("Observaciones: ${item.descripcion}")
                     Text(notificationDate(item.ocurrido_en), style = MaterialTheme.typography.bodySmall)
                     TextButton(onClick = abrir) {
-                        Text(if (item.seguimiento_id != null) "Abrir reporte" else "Ver mascota")
+                        Text(when {
+                            esProgramacion -> "Ver seguimiento"
+                            item.seguimiento_id != null -> "Abrir reporte"
+                            else -> "Ver mascota"
+                        })
                     }
                     if (item.leido_en == null) TextButton(onClick = { onRead(item.id) }, enabled = !state.busy) {
                         Text("Marcar como leída")

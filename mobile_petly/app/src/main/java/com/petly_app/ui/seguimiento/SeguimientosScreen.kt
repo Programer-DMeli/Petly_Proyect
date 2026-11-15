@@ -3,8 +3,10 @@ package com.petly_app.ui.seguimiento
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.petly_app.ui.perfil.notificationDate
@@ -18,28 +20,43 @@ fun SeguimientosScreen(
     onEdit: (String) -> Unit,
     onSubmit: () -> Unit,
     onBack: () -> Unit,
-    onOpenReporte: ((Long) -> Unit)? = null
+    onOpenReporte: ((Long) -> Unit)? = null,
+    objetivoId: Long? = null
 ) {
+    val lista = rememberLazyListState()
+    val indiceObjetivo = state.items.indexOfFirst { it.id == objetivoId }
+    LaunchedEffect(objetivoId, indiceObjetivo) {
+        if (indiceObjetivo >= 0) lista.scrollToItem(indiceObjetivo + 1)
+    }
     LazyColumn(
+        state = lista,
         modifier = Modifier.fillMaxSize().safeDrawingPadding(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            TextButton(onClick = onBack) { Text("Volver") }
-            Text("Seguimiento postadopción", style = MaterialTheme.typography.headlineMedium)
-            Text("Si tu mascota presenta problemas de adaptación, solicita asesoría técnica o veterinaria gratuita al albergue responsable.")
-            if (!state.preview) TextButton(onClick = onRefresh, enabled = !state.busy) { Text("Actualizar seguimientos") }
-        }
-        if (state.preview) item { Text("Inicia sesión para consultar tus seguimientos y solicitar asesoría.") }
-        if (state.busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-        state.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
-        state.success?.let { success -> item { Text(success) } }
-        if (!state.preview && !state.busy && state.error == null && state.items.isEmpty()) item {
-            Text("Todavía no tienes seguimientos. El albergue los programa después de la entrega de tu mascota.")
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onBack) { Text("Volver") }
+                Text("Seguimiento postadopción", style = MaterialTheme.typography.headlineMedium)
+                Text("Si tu mascota presenta problemas de adaptación, solicita asesoría técnica o veterinaria gratuita al albergue responsable.")
+                if (!state.preview) TextButton(onClick = onRefresh, enabled = !state.busy) { Text("Actualizar seguimientos") }
+                if (state.preview) Text("Inicia sesión para consultar tus seguimientos y solicitar asesoría.")
+                if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                state.success?.let { Text(it) }
+                if (!state.preview && !state.busy && state.error == null) {
+                    if (state.items.isEmpty()) Text("Todavía no tienes seguimientos. El albergue los programa después de la entrega de tu mascota.")
+                    if (objetivoId != null && indiceObjetivo < 0) Text("Esta actividad no está disponible.")
+                }
+            }
         }
         items(state.items, key = { it.id }) { row ->
-            Card(Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = if (row.id == objetivoId) CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ) else CardDefaults.cardColors(),
+            ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(row.mascota_nombre, style = MaterialTheme.typography.titleLarge)
                     Text("Albergue: ${row.albergue_nombre}")
@@ -53,7 +70,7 @@ fun SeguimientosScreen(
                         "PENDIENTE" -> Text("Entrega pendiente")
                         "VENCIDA" -> Text("Entrega vencida", color = MaterialTheme.colorScheme.error)
                         "ENVIADA" -> Text("Reporte enviado")
-                        "FUERA_DE_PLAZO" -> Text("Recibido fuera de plazo", color = MaterialTheme.colorScheme.error)
+                        "FUERA_DE_PLAZO" -> Text("Enviado fuera de plazo", color = MaterialTheme.colorScheme.error)
                     }
                     Text("Estado: ${when (row.estado) { "PROGRAMADO" -> "Programado"; "REALIZADO" -> "Realizado"; "CANCELADO" -> "Cancelado"; else -> row.estado }}")
                     if (row.admiteReporte() && onOpenReporte != null) {

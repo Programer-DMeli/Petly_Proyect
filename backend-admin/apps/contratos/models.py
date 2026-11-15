@@ -93,6 +93,8 @@ class SeguimientoPostAdopcion(models.Model):
     programado_para = models.DateTimeField(db_index=True)
     modalidad = models.CharField(max_length=10, choices=Modalidad.choices)
     requiere_reporte = models.BooleanField(default=True)
+    oculto_adoptante = models.BooleanField(default=False)
+    cancelado_en = models.DateTimeField(null=True, blank=True)
     estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PROGRAMADO, db_index=True)
     notas = models.CharField(max_length=500, blank=True)
     creado_por = models.ForeignKey(

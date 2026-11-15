@@ -205,7 +205,10 @@ fun PetlyNavHost(
                     CuestionarioScreen(state, onRefreshProfile = vm::refreshSummary, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }), onOpenNotifications = { nav.navigate("notificaciones") { launchSingleTop = true } }, onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
                         reportReminders = { RecordatoriosReporte(container.reportesSeguimiento) })
                 }
-                composable("seguimientos") {
+                composable(
+                    "seguimientos?actividad={actividad}",
+                    arguments = listOf(navArgument("actividad") { type = NavType.LongType; defaultValue = 0L }),
+                ) { entry ->
                     val factory = remember(container, isPreview) {
                         viewModelFactory { initializer { SeguimientosViewModel(container.seguimientosApi, isPreview) } }
                     }
@@ -213,7 +216,8 @@ fun PetlyNavHost(
                     val state by vm.state.collectAsStateWithLifecycle()
                     SeguimientosScreen(state, vm::load, vm::select, vm::edit, vm::submit,
                         onBack = { nav.popBackStack() },
-                        onOpenReporte = { nav.navigate("reportes-seguimiento/$it") })
+                        onOpenReporte = { nav.navigate("reportes-seguimiento/$it") },
+                        objetivoId = entry.arguments?.getLong("actividad")?.takeIf { it > 0 })
                 }
                 composable(
                     "reportes-seguimiento/{entrega}",
@@ -240,7 +244,8 @@ fun PetlyNavHost(
                         onOpenPet = { nav.navigate("mascota/$it") { launchSingleTop = true } },
                         onLoadCriterios = notificationsVm::loadCriterios,
                         onSaveCriterios = notificationsVm::saveCriterios,
-                        onOpenReporte = { nav.navigate("reportes-seguimiento/$it") })
+                        onOpenReporte = { nav.navigate("reportes-seguimiento/$it") },
+                        onOpenSeguimiento = { nav.navigate("seguimientos?actividad=$it") })
                 }
                 composable("autorizaciones") {
                     val factory = remember(container) { viewModelFactory { initializer { AutorizacionViewModel(container.autorizaciones) } } }

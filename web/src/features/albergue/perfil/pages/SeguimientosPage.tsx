@@ -214,7 +214,9 @@ function Programar({ expedienteId, editing, busy, ejecutar, limpiar }: {
     <label>{tipo === 'REPORTE' ? 'Fecha y hora límite (Lima)' : 'Fecha y hora (Lima)'}
       <input required type="datetime-local" value={dia} onChange={event => setDia(event.target.value)} />
     </label>
-    <label>Notas<textarea maxLength={500} value={notas} onChange={event => setNotas(event.target.value)} /></label>
+    <label>{tipo === 'REPORTE' ? 'Qué debe incluir el reporte' : 'Notas'}
+      <textarea required={tipo === 'REPORTE'} placeholder={tipo === 'REPORTE' ? 'Ej. Describe su apetito y añade una foto de su lugar de descanso.' : undefined}
+        maxLength={500} value={notas} onChange={event => setNotas(event.target.value)} /></label>
     <div className="actions">
       <button disabled={busy}>{editing ? 'Guardar cambios' : 'Añadir al cronograma'}</button>
       {editing && <button className="secondary" type="button" onClick={limpiar}>Cancelar edición</button>}

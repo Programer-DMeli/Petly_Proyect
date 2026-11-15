@@ -116,8 +116,9 @@ export default function NotificacionesAdoptanteMenu({ open, onToggle }: Props) {
               : avisos.length === 0 ? <p>No tienes avisos por ahora.</p>
                 : <div className="workspace-notifications__list">
                   {avisos.map(aviso => {
+                    const programacion = aviso.tipo === 'SEGUIMIENTO_PROGRAMADO';
                     const destino = aviso.seguimiento_id
-                      ? `/adoptante/seguimientos-postadopcion?entrega=${aviso.seguimiento_id}#seguimiento-${aviso.seguimiento_id}`
+                      ? `/adoptante/seguimientos-postadopcion?${programacion ? 'seguimiento' : 'entrega'}=${aviso.seguimiento_id}#seguimiento-${aviso.seguimiento_id}`
                       : aviso.tipo === 'NUEVA_COINCIDENCIA' && aviso.mascota_id
                         ? `/adoptante/catalogo/${aviso.mascota_id}` : null;
                     const clase = `workspace-notifications__item${aviso.leido_en ? '' : ' is-unread'}`;
@@ -125,7 +126,8 @@ export default function NotificacionesAdoptanteMenu({ open, onToggle }: Props) {
                       <strong>{aviso.titulo}</strong>
                       <p>{aviso.mensaje}</p>
                       {aviso.mascota_nombre && <span>Mascota: {aviso.mascota_nombre}</span>}
-                      {aviso.fecha_limite && <span>Fecha límite: {fechaSeguimiento(aviso.fecha_limite)} (Lima)</span>}
+                      {programacion ? aviso.programado_para && <span>Fecha programada: {fechaSeguimiento(aviso.programado_para)} (Lima)</span>
+                        : aviso.fecha_limite && <span>Fecha límite: {fechaSeguimiento(aviso.fecha_limite)} (Lima)</span>}
                       <time dateTime={aviso.ocurrido_en}>{fecha(aviso.ocurrido_en)}</time>
                     </>;
                     return destino ? <button type="button" className={`${clase} workspace-notifications__item--action`}

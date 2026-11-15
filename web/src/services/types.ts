@@ -172,6 +172,7 @@ export interface PreferenciasNotificacion {
 export interface AvisoAdoptante {
   id: number;
   seguimiento_id?: number | null;
+  programado_para?: string | null;
   fecha_limite?: string | null;
   solicitud_id: number | null;
   mascota_id: number | null;

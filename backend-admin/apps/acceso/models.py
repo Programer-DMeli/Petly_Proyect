@@ -495,6 +495,7 @@ class SolicitudEvento(models.Model):
         CONTRATO_RECHAZADO = "CONTRATO_RECHAZADO", "Contrato rechazado"
         CONTRATO_EXPIRADO = "CONTRATO_EXPIRADO", "Contrato expirado"
         ENTREGADA = "ENTREGADA", "Mascota entregada"
+        SEGUIMIENTO_PROGRAMADO = "SEGUIMIENTO_PROGRAMADO", "Nuevo seguimiento postadopción"
         RECORDATORIO_REPORTE = "RECORDATORIO_REPORTE", "Próxima entrega de reporte"
         INCUMPLIMIENTO_REPORTE = "INCUMPLIMIENTO_REPORTE", "Alerta roja de incumplimiento"
 

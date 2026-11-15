@@ -32,6 +32,7 @@ MENSAJES = {
     "CONTRATO_FIRMADO": "Se registró la firma del contrato de adopción.",
     "CONTRATO_RECHAZADO": "El contrato de adopción fue rechazado.",
     "CONTRATO_EXPIRADO": "El contrato de adopción venció. Contacta con el albergue.",
+    "SEGUIMIENTO_PROGRAMADO": "El albergue agregó una actividad al cronograma de adopción.",
     "RECORDATORIO_REPORTE": "Envía tu reporte de bienestar antes de la fecha límite.",
     "INCUMPLIMIENTO_REPORTE": "El albergue emitió una alerta por un reporte de bienestar vencido.",
     "ENTREGADA": "La entrega de tu mascota quedó registrada. ¡Gracias por adoptar!",
@@ -41,6 +42,7 @@ MENSAJES = {
 class NotificacionSerializer(serializers.ModelSerializer):
     solicitud_id = serializers.IntegerField(read_only=True)
     seguimiento_id = serializers.IntegerField(read_only=True)
+    programado_para = serializers.DateTimeField(source="seguimiento.programado_para", read_only=True, default=None)
     fecha_limite = serializers.DateTimeField(source="seguimiento.programado_para", read_only=True, default=None)
     mascota_id = serializers.SerializerMethodField()
     mascota_nombre = serializers.SerializerMethodField()
@@ -51,7 +53,7 @@ class NotificacionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SolicitudEvento
-        fields = ["id", "solicitud_id", "seguimiento_id", "fecha_limite", "mascota_id", "mascota_nombre", "albergue_nombre",
+        fields = ["id", "solicitud_id", "seguimiento_id", "programado_para", "fecha_limite", "mascota_id", "mascota_nombre", "albergue_nombre",
                   "tipo", "titulo", "mensaje", "descripcion", "estado_nuevo", "estado_actual",
                   "ocurrido_en", "leido_en"]
 

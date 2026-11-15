@@ -42,4 +42,18 @@ class SeguimientosScreenTest {
         ui.onNodeWithText("No come en casa.").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("Estado de asesoría: En atención").performScrollTo().assertIsDisplayed()
     }
+
+    @Test fun muestraLaTarjetaCanceladaIndicadaPorElAviso() {
+        val filas = (1L..12L).map { id ->
+            SeguimientoDto(id, 10, "Mascota $id", "Huellitas", "2026-11-22T12:00:00Z",
+                "LLAMADA", if (id == 12L) "CANCELADO" else "PROGRAMADO")
+        }
+        ui.setContent {
+            MaterialTheme {
+                SeguimientosScreen(SeguimientosState(items = filas), {}, {}, {}, {}, {}, objetivoId = 12L)
+            }
+        }
+        ui.onNodeWithText("Mascota 12").assertIsDisplayed()
+        ui.onNodeWithText("Estado: Cancelado").assertIsDisplayed()
+    }
 }
