@@ -39,6 +39,26 @@ MENSAJES = {
 }
 
 
+MENSAJES_ALBERGUE = {
+    "SOLICITUD_CREADA": "Recibiste una nueva solicitud de adopción.",
+    "OBSERVADA": "La solicitud quedó observada.",
+    "APROBADA": "La solicitud fue aprobada.",
+    "RECHAZADA": "La solicitud fue rechazada.",
+    "CANCELADA": "El adoptante canceló su solicitud.",
+    "CONTRATO_GENERADO": "Se preparó el contrato de adopción.",
+    "CONTRATO_ENVIADO": "El contrato fue enviado para firma.",
+    "CONTRATO_FIRMADO": "Se registró la firma del contrato.",
+    "CONTRATO_RECHAZADO": "El contrato fue rechazado.",
+    "CONTRATO_EXPIRADO": "El contrato venció.",
+    "ENTREGADA": "Se registró la entrega de la mascota.",
+    "INCUMPLIMIENTO_REPORTE": "Se emitió una alerta por un reporte de bienestar vencido.",
+}
+
+
+def campo_lectura(usuario):
+    return "leido_albergue_en" if usuario.rol == User.Rol.ALBERGUE else "leido_en"
+
+
 class NotificacionSerializer(serializers.ModelSerializer):
     solicitud_id = serializers.IntegerField(read_only=True)
     seguimiento_id = serializers.IntegerField(read_only=True)
@@ -50,6 +70,7 @@ class NotificacionSerializer(serializers.ModelSerializer):
     estado_actual = serializers.SerializerMethodField()
     titulo = serializers.CharField(source="get_tipo_display", read_only=True)
     mensaje = serializers.SerializerMethodField()
+    leido_en = serializers.SerializerMethodField()
 
     class Meta:
         model = SolicitudEvento
@@ -70,7 +91,13 @@ class NotificacionSerializer(serializers.ModelSerializer):
         return evento.mascota_coincidente.estado if evento.mascota_coincidente_id else evento.solicitud.estado
 
     def get_mensaje(self, evento):
-        return MENSAJES[evento.tipo]
+        usuario = self.context["request"].user
+        mensajes = MENSAJES_ALBERGUE if usuario.rol == User.Rol.ALBERGUE else MENSAJES
+        return mensajes[evento.tipo]
+
+    def get_leido_en(self, evento):
+        valor = getattr(evento, campo_lectura(self.context["request"].user))
+        return serializers.DateTimeField().to_representation(valor)
 
 
 class CriteriosAvisoSerializer(serializers.ModelSerializer):
@@ -149,7 +176,12 @@ class NotificacionViewSet(viewsets.GenericViewSet):
 
     def get_queryset(self):
         qs = SolicitudEvento.objects.select_related("solicitud__mascota", "solicitud__albergue", "mascota_coincidente__albergue", "seguimiento")
-        if self.request.user.rol != User.Rol.ADOPTANTE:
+        usuario = self.request.user
+        if usuario.rol == User.Rol.ALBERGUE:
+            return qs.filter(
+                solicitud__albergue__usuario=usuario, tipo__in=MENSAJES_ALBERGUE,
+            ).order_by("-ocurrido_en", "-id")
+        if usuario.rol != User.Rol.ADOPTANTE:
             return qs.none()
         ahora = timezone.now()
         recordatorios_activos = Q(
@@ -185,7 +217,8 @@ class NotificacionViewSet(viewsets.GenericViewSet):
         qs = self.get_queryset()
         page = self.paginate_queryset(qs)
         response = self.get_paginated_response(self.get_serializer(page, many=True).data)
-        response.data["no_leidas"] = qs.filter(leido_en__isnull=True).count()
+        campo = campo_lectura(request.user)
+        response.data["no_leidas"] = qs.filter(**{f"{campo}__isnull": True}).count()
         response["Cache-Control"] = "private, no-store"
         return response
 
@@ -193,11 +226,13 @@ class NotificacionViewSet(viewsets.GenericViewSet):
     def leer(self, request, pk=None):
         evento = self.get_object()
         # Reintentar conserva la fecha de la primera lectura.
-        self.get_queryset().filter(pk=evento.pk, leido_en__isnull=True).update(leido_en=timezone.now())
+        campo = campo_lectura(request.user)
+        self.get_queryset().filter(pk=evento.pk, **{f"{campo}__isnull": True}).update(**{campo: timezone.now()})
         evento.refresh_from_db()
         return Response(self.get_serializer(evento).data)
 
     @action(detail=False, methods=["post"], url_path="leer-todas")
     def leer_todas(self, request):
-        actualizadas = self.get_queryset().filter(leido_en__isnull=True).update(leido_en=timezone.now())
+        campo = campo_lectura(request.user)
+        actualizadas = self.get_queryset().filter(**{f"{campo}__isnull": True}).update(**{campo: timezone.now()})
         return Response({"actualizadas": actualizadas})

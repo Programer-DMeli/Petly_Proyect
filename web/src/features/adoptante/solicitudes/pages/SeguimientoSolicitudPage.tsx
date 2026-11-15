@@ -2,6 +2,8 @@ import FotosHogar from '../../../../components/FotosHogar';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { errorMessage, spring } from '../../../../services/http';
+import { avisosConectados, observarAvisos } from '../../../../services/avisosEnVivo';
+import { INTERVALO_AVISOS_MS } from '../../../../services/notificacionesApi';
 import type { SeguimientoSolicitud } from '../../../../services/types';
 
 const estadoLabel: Record<string, string> = {
@@ -42,26 +44,57 @@ export default function SeguimientoSolicitudPage() {
 
     setLoading(true);
     setError('');
-    setSeguimiento(null);
-    void spring<SeguimientoSolicitud>(`/api/solicitudes/${id}/seguimiento`, {
-      signal: controller.signal,
-    })
-      .then(result => {
-        if (!controller.signal.aborted) setSeguimiento(result);
-      })
-      .catch((reason: unknown) => {
-        if (!controller.signal.aborted) setError(errorMessage(reason));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
+    setSeguimiento(actual => actual?.solicitudId === id ? actual : null);
 
-    return () => controller.abort();
+    let pendiente = false;
+    let refrescarDespues = false;
+    async function consultar() {
+      if (pendiente) {
+        refrescarDespues = true;
+        return;
+      }
+      pendiente = true;
+      try {
+        const datos = await spring<SeguimientoSolicitud>(`/api/solicitudes/${id}/seguimiento`, {
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        if (!controller.signal.aborted) {
+          setSeguimiento(datos);
+          setError('');
+        }
+      } catch (reason) {
+        if (!controller.signal.aborted) setError(errorMessage(reason));
+      } finally {
+        pendiente = false;
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          if (refrescarDespues) {
+            refrescarDespues = false;
+            void consultar();
+          }
+        }
+      }
+    }
+
+    const actualizar = () => { if (!document.hidden && !avisosConectados()) void consultar(); };
+    const dejarDeObservar = observarAvisos(evento => {
+      if (evento.tipo === 'sincronizar' || evento.solicitudes.includes(id)) void consultar();
+    });
+    void consultar();
+    const timer = window.setInterval(actualizar, INTERVALO_AVISOS_MS);
+    document.addEventListener('visibilitychange', actualizar);
+    return () => {
+      controller.abort();
+      dejarDeObservar();
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', actualizar);
+    };
   }, [solicitudId, refresh]);
 
   return (
     <section className="card">
-      <Link to="/adoptante/catalogo">Volver al catálogo</Link>
+      <Link to="/adoptante/solicitudes">Volver a Mis solicitudes</Link>
       <h1>Seguimiento de solicitud</h1>
       {loading && <p role="status">Cargando el historial de tu solicitud…</p>}
       {error && (
@@ -77,7 +110,7 @@ export default function SeguimientoSolicitudPage() {
           <p className="muted">Solicitud #{seguimiento.solicitudId}</p>
           <p className="tracking-current">
             Estado actual{' '}
-            <span className="tracking-badge">
+            <span className="tracking-badge" aria-live="polite">
               {estadoLabel[seguimiento.estadoActual] ?? seguimiento.estadoActual}
             </span>
           </p>

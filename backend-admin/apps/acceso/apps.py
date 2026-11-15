@@ -8,4 +8,4 @@ class AccesoConfig(AppConfig):
     verbose_name = "Acceso"
 
     def ready(self):
-        from . import avisos_mascotas  # noqa: F401
+        from . import avisos_mascotas, eventos_avisos  # noqa: F401

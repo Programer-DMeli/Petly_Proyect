@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import FotosHogar from '../../../../components/FotosHogar';
 import Feedback from '../../../../components/Feedback';
 import { django, json, errorMessage } from '../../../../services/http';
@@ -14,6 +14,7 @@ type Solicitud = {
   observaciones_revision: string;
   postulante_nombre: string;
   mascota_nombre: string;
+  mascota: number;
 };
 function respuesta(value: unknown): string {
   if (typeof value === 'boolean') return value ? 'Sí' : 'No';
@@ -33,12 +34,18 @@ export default function SolicitudesPage() {
   const load = useCallback(async () => {
     try {
       const response = await django<Page<Solicitud>>('/api/acceso/solicitudes/');
-      setRows(Array.isArray(response) ? response : response.results);
+      const solicitudes = Array.isArray(response) ? response : response.results;
+      setRows(solicitudes);
+      if (solicitudDestacada && /^[1-9]\d*$/.test(solicitudDestacada)
+          && !solicitudes.some(item => String(item.id) === solicitudDestacada)) {
+        const destacada = await django<Solicitud>(`/api/acceso/solicitudes/${solicitudDestacada}/`);
+        setRows([destacada, ...solicitudes]);
+      }
       setError('');
     } catch (e) {
       setError(errorMessage(e));
     }
-  }, []);
+  }, [solicitudDestacada]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -123,12 +130,9 @@ export default function SolicitudesPage() {
               </details>
             )}
             <FotosHogar solicitudId={row.id} />
-            <button type="button" className="secondary" onClick={() => { void (async () => {
-              try {
-                const conversation = await django<{ id: number }>('/api/mensajeria/conversaciones/', { method: 'POST', body: json({ solicitud_id: row.id }) });
-                window.location.href = `/albergue/mensajes/${conversation.id}`;
-              } catch (e) { setError(errorMessage(e)); }
-            })(); }}>Conversar con el adoptante</button>
+            <Link className="button secondary" to={`/albergue/mensajes?solicitud=${row.id}&mascota=${row.mascota}`}>
+              Conversar con el adoptante
+            </Link>
             {row.observaciones_revision && <p>Observación: {row.observaciones_revision}</p>}
             {['PENDIENTE', 'OBSERVADA'].includes(row.estado) && (
               <>

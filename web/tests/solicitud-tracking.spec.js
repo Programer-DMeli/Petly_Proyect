@@ -123,3 +123,30 @@ test('el adoptante puede reintentar cuando falla la consulta del historial', asy
   await expect(page.getByText(/Aún no hay eventos registrados/)).toBeVisible();
   expect(requests).toBeGreaterThan(initialRequests);
 });
+
+test('el rechazo actualiza el historial y la campana sin recargar', async ({ page }) => {
+  const creada = event(1, 'SOLICITUD_CREADA', 'Solicitud creada', '2026-10-24T09:00:00Z');
+  const rechazo = event(2, 'RECHAZADA', 'Solicitud rechazada', '2026-10-24T10:00:00Z',
+    'PENDIENTE', 'RECHAZADA', 'Faltaba información.');
+  let rechazada = false;
+  await page.route('http://localhost:8080/api/solicitudes/42/seguimiento', route => route.fulfill({
+    json: { solicitudId: 42, estadoActual: rechazada ? 'RECHAZADA' : 'PENDIENTE',
+      eventos: rechazada ? [creada, rechazo] : [creada] },
+  }));
+  await page.route('http://localhost:8000/api/acceso/notificaciones/', route => route.fulfill({
+    json: { no_leidas: rechazada ? 1 : 0, results: rechazada ? [{
+      ...rechazo, titulo: 'Solicitud rechazada', mensaje: 'Revisa el motivo de la decisión.',
+      solicitud_id: 42, mascota_nombre: 'Simba', leido_en: null,
+    }] : [] },
+  }));
+  await loginAsAdopter(page, '/adoptante/solicitudes/42');
+  await expect(page.locator('.tracking-badge')).toHaveText('Pendiente');
+  await page.getByRole('button', { name: 'Avisos', exact: true }).click();
+  await expect(page.getByText('No tienes avisos por ahora.')).toBeVisible();
+
+  rechazada = true;
+  await expect(page.locator('.tracking-badge')).toHaveText('Rechazada', { timeout: 10_000 });
+  await expect(page.locator('.tracking-timeline')).toContainText('Faltaba información.');
+  await expect(page.getByRole('button', { name: 'Avisos, 1 sin leer' })).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('#workspace-notifications-menu')).toContainText('Solicitud rechazada');
+});

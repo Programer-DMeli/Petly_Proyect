@@ -44,7 +44,8 @@ class NotificacionesTest(APITestCase):
 
     def test_solo_titular_puede_listar_y_leer_incluso_si_otro_es_staff(self):
         evento = self.evento()
-        for user in [self.otro, self.staff]:
+        ajeno = User.objects.create_user(username="otro-albergue", rol=User.Rol.ALBERGUE, is_staff=True)
+        for user in [self.otro, ajeno]:
             self.client.force_authenticate(user)
             self.assertEqual(self.client.get(self.url).data["results"], [])
             self.assertEqual(self.client.post(f"{self.url}{evento.pk}/leer/").status_code, 404)
@@ -95,3 +96,62 @@ class NotificacionesTest(APITestCase):
     def test_requiere_autenticacion(self):
         self.client.force_authenticate(None)
         self.assertEqual(self.client.get(self.url).status_code, 401)
+
+    def test_albergue_recibe_estados_y_mantiene_lectura_independiente(self):
+        creada = self.evento()
+        cambiar_estado_solicitud(self.solicitud.pk, "OBSERVADA", self.staff, "Confirma el horario")
+        SolicitudEvento.objects.create(solicitud=self.solicitud, tipo="SEGUIMIENTO_PROGRAMADO")
+        self.client.force_authenticate(self.staff)
+        bandeja = self.client.get(self.url).data
+        self.assertEqual(bandeja["no_leidas"], 2)
+        self.assertEqual([aviso["tipo"] for aviso in bandeja["results"]], ["OBSERVADA", "SOLICITUD_CREADA"])
+        self.assertEqual(bandeja["results"][1]["mensaje"], "Recibiste una nueva solicitud de adopción.")
+        url = f"{self.url}{creada.pk}/leer/"
+        leida = self.client.post(url).data["leido_en"]
+        self.assertIsNotNone(leida)
+        self.assertEqual(self.client.post(url).data["leido_en"], leida)
+        self.assertEqual(self.client.get(self.url).data["no_leidas"], 1)
+        self.assertEqual(self.client.post(self.url + "leer-todas/").data["actualizadas"], 1)
+        self.assertEqual(self.client.get(self.url).data["no_leidas"], 0)
+        self.client.force_authenticate(self.adoptante)
+        self.assertEqual(self.client.get(self.url).data["no_leidas"], 3)
+
+    def test_sse_publica_solo_los_cambios_del_titular(self):
+        import json
+        import time
+
+        self.client.force_authenticate(self.adoptante, token={"exp": time.time() + 10})
+        response = self.client.get(self.url + "eventos/", HTTP_ACCEPT="text/event-stream")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/event-stream")
+        stream = iter(response.streaming_content)
+        self.assertTrue(next(stream).startswith(b"event: sincronizar"))
+
+        otra = SolicitudAdopcion.objects.create(
+            adoptante=self.otro, mascota=self.mascota, albergue=self.albergue,
+        )
+        try:
+            SolicitudEvento.objects.create(solicitud=otra, tipo="SOLICITUD_CREADA")
+            cambiar_estado_solicitud(self.solicitud.pk, "RECHAZADA", self.staff, "Falta información")
+            trama = next(stream).decode()
+            self.assertTrue(trama.startswith("event: avisos\n"))
+            self.assertEqual(json.loads(trama.split("data: ", 1)[1]), {"solicitudes": [self.solicitud.pk]})
+            self.assertNotIn("Falta información", trama)
+        finally:
+            response.close()
+
+        self.client.force_authenticate(self.staff, token={"exp": time.time() + 10})
+        self.assertEqual(self.client.get(self.url + "eventos/").status_code, 403)
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get(self.url + "eventos/").status_code, 401)
+
+    def test_canal_sse_se_revierte_si_no_se_confirma_la_decision(self):
+        from apps.acceso.models import CanalAvisos
+
+        self.evento()
+        antes = CanalAvisos.objects.get(adoptante=self.adoptante).revision
+        with self.assertRaises(RuntimeError):
+            with transaction.atomic():
+                cambiar_estado_solicitud(self.solicitud.pk, "RECHAZADA", self.staff, "Sin disponibilidad")
+                raise RuntimeError("rollback")
+        self.assertEqual(CanalAvisos.objects.get(adoptante=self.adoptante).revision, antes)

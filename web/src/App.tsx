@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { getSession, subscribe, setSession } from './services/session';
+import { conectarAvisos } from './services/avisosEnVivo';
 import WorkspaceHeader from './components/WorkspaceHeader';
 import './styles/workspace.css';
 
@@ -12,6 +13,9 @@ export default function App() {
     if (!session) return;
     const timer = setTimeout(() => setSession(null), Math.max(0, session.expires - Date.now()));
     return () => clearTimeout(timer);
+  }, [session]);
+  useEffect(() => {
+    if (session?.identity.rol === 'ADOPTANTE') return conectarAvisos(session.token);
   }, [session]);
   return (
     <div className={`app${isLanding ? ' app--landing' : ''}${session ? ' app--workspace' : ''}`}>

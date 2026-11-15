@@ -98,6 +98,11 @@ public class AlertaCompatibilidadService {
         return AlertaCompatibilidadResponse.desde(alertas.save(alerta));
     }
 
+    @Transactional
+    public int marcarTodasLeidas(long albergueUsuarioId) {
+        return alertas.marcarTodasLeidas(albergueUsuarioId, LocalDateTime.now());
+    }
+
     private Long springIdDelAlbergue(long mascotaId) {
         try {
             return db.queryForObject("SELECT u.usuario_spring_id FROM mascotas_mascota m "

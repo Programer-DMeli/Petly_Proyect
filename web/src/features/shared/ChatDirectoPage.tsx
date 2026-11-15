@@ -10,6 +10,7 @@ type MessageUpdates = { mensajes: Message[]; leidos_hasta_id: number | null };
 
 export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGUE' }) {
   const { id } = useParams();
+  const rutaMensajes = role === 'ADOPTANTE' ? '/adoptante/mensajes' : '/albergue/mensajes';
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const solicitudId = searchParams.get('solicitud');
@@ -33,10 +34,10 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
       setConversations(result);
       if (!id && activeConversationRef.current === null && !shelterId && solicitudId === null && result.length) {
         activeConversationRef.current = result[0].id;
-        void navigate(`/${role === 'ADOPTANTE' ? 'adoptante' : 'albergue'}/mensajes/${result[0].id}`, { replace: true });
+        void navigate(`${rutaMensajes}/${result[0].id}`, { replace: true });
       }
     } catch (e) { setError(errorMessage(e)); }
-  }, [id, navigate, role, shelterId, solicitudId]);
+  }, [id, navigate, rutaMensajes, shelterId, solicitudId]);
 
   const loadThread = useCallback(async () => {
     if (!id) { threadRef.current = null; setThread(null); return; }
@@ -97,7 +98,7 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
   }, [id]);
   useEffect(() => { void loadList(); }, [loadList]);
   useEffect(() => {
-    if (role !== 'ADOPTANTE' || id || (shelterId == null && solicitudId === null)) return;
+    if (id || (solicitudId === null && (role !== 'ADOPTANTE' || shelterId == null))) return;
     if (solicitudId !== null && (!/^[1-9]\d*$/.test(solicitudId) || (mascotaId !== null && !/^[1-9]\d*$/.test(mascotaId)))) {
       setError('El enlace al chat de la solicitud no es válido.');
       return;
@@ -113,11 +114,11 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
       if (active) {
         const query = conversation.solicitud_id
           ? `?mascota=${conversation.mascota_id}&solicitud=${conversation.solicitud_id}` : '';
-        void navigate(`/adoptante/mensajes/${conversation.id}${query}`, { replace: true });
+        void navigate(`${rutaMensajes}/${conversation.id}${query}`, { replace: true });
       }
     }).catch(e => { if (active) setError(errorMessage(e)); });
     return () => { active = false; };
-  }, [id, mascotaId, navigate, role, shelterId, solicitudId]);
+  }, [id, mascotaId, navigate, role, rutaMensajes, shelterId, solicitudId]);
   useEffect(() => {
     if (role !== 'ALBERGUE') return;
     void django<{ texto: string }>('/api/mensajeria/bienvenida/').then(v => setWelcome(v.texto)).catch(e => setError(errorMessage(e)));
@@ -176,7 +177,7 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
     <div className="chat-directo-layout">
       <nav aria-label="Conversaciones" className="chat-directo-list">{conversations.map(item => <button type="button" key={item.id} aria-current={String(item.id) === id} onClick={() => {
         activeConversationRef.current = item.id;
-        void navigate(`/${role === 'ADOPTANTE' ? 'adoptante' : 'albergue'}/mensajes/${item.id}`);
+        void navigate(`${rutaMensajes}/${item.id}`);
       }}><strong>{item.nombre_contacto}</strong><span>{item.mascota}{item.solicitud_id != null && ` · Solicitud #${item.solicitud_id}`}</span><small>{item.ultimo_mensaje?.texto || item.ultimo_mensaje?.adjuntos[0]?.nombre_original || 'Sin mensajes'}{item.no_leidos ? ` · ${item.no_leidos} sin leer` : ''}</small></button>)}{conversations.length === 0 && <p>Aún no hay conversaciones. Abre una desde una solicitud de adopción.</p>}</nav>
       <div className="chat-directo-thread">
         {thread && String(thread.conversacion.id) === id ? <>

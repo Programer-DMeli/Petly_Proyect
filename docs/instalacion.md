@@ -114,3 +114,17 @@ En desarrollo DEBUG, Django admite explícitamente Host 10.0.2.2 para servir las
 Configuración aplicada: MAIL_HOST=127.0.0.1, MAIL_PORT=1026. La bandeja se abre en http://localhost:8025; 8025 no es el puerto SMTP. Spring fue reiniciado cargando esas variables y se verificó la recepción de un correo de recuperación de una cuenta ficticia en Mailpit.
 
 El arranque scripts/servicios-pruebas.py respeta MAIL_HOST/MAIL_PORT del entorno o del .env privado de Spring. Cuando se usa 1026, no inicia ni detiene Mailpit. Las suites antiguas que leen /tmp/petly-correo-prueba.eml requieren el receptor interno: arrancar explícitamente con MAIL_HOST=127.0.0.1 MAIL_PORT=1025. Mailpit externo puede permanecer en 1026.
+
+### Avisos del adoptante en tiempo real
+
+Después de aplicar las migraciones de Django, la web del adoptante abre un flujo
+SSE en `GET /api/acceso/notificaciones/eventos/` con su token Bearer. Django
+comparte entre procesos las revisiones confirmadas en MariaDB y el flujo
+transporta únicamente los identificadores de solicitudes afectadas. Al conectar
+y reconectar, el navegador vuelve a consultar las vistas abiertas mediante sus
+endpoints autorizados. Las consultas cada cinco segundos quedan como respaldo.
+
+El servidor de desarrollo WSGI soporta este flujo. En despliegues con conexiones
+concurrentes, servir `config.asgi:application` para usar el iterador asíncrono.
+Si hay proxy inverso, mantener desactivado el buffering de esta ruta y permitir
+un tiempo de lectura mayor al intervalo de latido de 15 segundos.

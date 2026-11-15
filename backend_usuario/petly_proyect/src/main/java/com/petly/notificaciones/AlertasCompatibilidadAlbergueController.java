@@ -30,6 +30,11 @@ public class AlertasCompatibilidadAlbergueController {
         return service.marcarLeida(albergueId(authentication), id);
     }
 
+    @PostMapping("/leer-todas")
+    public Map<String, Integer> marcarTodasLeidas(Authentication authentication) {
+        return Map.of("actualizadas", service.marcarTodasLeidas(albergueId(authentication)));
+    }
+
     private static long albergueId(Authentication authentication) {
         return Long.parseLong(((Claims) authentication.getPrincipal()).getSubject());
     }

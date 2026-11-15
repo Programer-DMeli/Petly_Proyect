@@ -162,11 +162,12 @@ test('cada solicitud abre su propio chat y el albergue ve el contexto', async ({
     }
     expect(conversaciones.size).toBe(2);
 
-    await albergue.getByRole('button', { name: 'Adopciones', exact: true }).click();
-    await albergue.getByRole('link', { name: /^Mensajes/ }).click();
     for (const caso of casos) {
-      await albergue.getByRole('navigation', { name: 'Conversaciones' })
-        .getByRole('button', { name: new RegExp(`${caso.nombre} · Solicitud #${caso.id}(?: |$)`) }).click();
+      await albergue.getByRole('button', { name: 'Adopciones', exact: true }).click();
+      await albergue.getByRole('link', { name: /^Solicitudes/ }).click();
+      const solicitud = albergue.locator(`#solicitud-${caso.id}`);
+      await solicitud.getByRole('link', { name: 'Conversar con el adoptante' }).click();
+      await expect(albergue).toHaveURL(new RegExp(`/albergue/mensajes/\\d+\\?mascota=${caso.mascota}&solicitud=${caso.id}$`));
       await expect(albergue.getByRole('heading', { name: new RegExp(`${caso.nombre} · Solicitud #${caso.id}$`) })).toBeVisible();
     }
   } finally {

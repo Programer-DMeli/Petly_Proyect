@@ -526,6 +526,7 @@ class SolicitudEvento(models.Model):
     )
     visible_adoptante = models.BooleanField(default=True)
     leido_en = models.DateTimeField(null=True, blank=True)
+    leido_albergue_en = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [
@@ -540,6 +541,16 @@ class SolicitudEvento(models.Model):
     def __str__(self):
         titular = self.solicitud_id or f"adoptante {self.destinatario_id}"
         return f"{titular}: {self.get_tipo_display()} ({self.ocurrido_en:%Y-%m-%d %H:%M})"
+
+
+class CanalAvisos(models.Model):
+    """Registro acotado de cambios para la bandeja y el historial del adoptante."""
+
+    adoptante = models.OneToOneField(
+        settings.AUTH_USER_MODEL, primary_key=True, on_delete=models.CASCADE,
+    )
+    revision = models.PositiveBigIntegerField(default=0)
+    solicitudes = models.JSONField(default=list)
 
 
 class FotoHogar(models.Model):

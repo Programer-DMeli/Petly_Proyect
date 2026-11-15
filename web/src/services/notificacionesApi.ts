@@ -8,7 +8,9 @@ import type {
   PreferenciasNotificacion,
 } from './types';
 
-export function getAvisosAdoptante() {
+export const INTERVALO_AVISOS_MS = 5000;
+
+export function getAvisos() {
   return django<BandejaAvisosAdoptante>('/api/acceso/notificaciones/');
 }
 
@@ -28,6 +30,10 @@ export function marcarAlertaCompatibilidadComoLeida(id: number) {
   return spring<AlertaCompatibilidadAlbergue>(`/api/albergue/alertas-compatibilidad/${id}/leer`, {
     method: 'POST',
   });
+}
+
+export function marcarTodasLasAlertasCompatibilidadComoLeidas() {
+  return spring<AvisosLeidosResponse>('/api/albergue/alertas-compatibilidad/leer-todas', { method: 'POST' });
 }
 
 export function getPreferenciasNotificacion() {

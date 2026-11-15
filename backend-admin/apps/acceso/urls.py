@@ -18,6 +18,7 @@ from .views import (
 )
 from .kyc_views import VerificacionKycViewSet
 from .dispositivos import GestionarPushView, VincularPushView
+from .eventos_avisos import eventos_avisos
 from .notificaciones import FeedInternoCoincidenciasView, NotificacionViewSet
 from .integracion import (
     PerfilCompartidoView,
@@ -34,6 +35,7 @@ router.register("verificaciones-kyc", VerificacionKycViewSet, basename="verifica
 from .fotos_hogar import FotosHogarView, FotoHogarView
 
 urlpatterns = [
+    path("notificaciones/eventos/", eventos_avisos, name="eventos_avisos"),
     path("notificaciones/dispositivos/", VincularPushView.as_view()),
     path("notificaciones/dispositivos/rotar/", GestionarPushView.as_view(), {"operacion": "rotar"}),
     path("notificaciones/dispositivos/revocar/", GestionarPushView.as_view(), {"operacion": "revocar"}),
