@@ -12,7 +12,6 @@ export default function AsistenteChat() {
   if (!session || !['ADOPTANTE', 'ALBERGUE'].includes(session.identity.rol)) return null;
   return <Conversation key={session.token} shelter={session.identity.rol === 'ALBERGUE'} />;
 }
-
 function Conversation({ shelter }: { shelter: boolean }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
@@ -92,7 +91,7 @@ function Conversation({ shelter }: { shelter: boolean }) {
         aria-controls="petly-chat"
         onClick={() => setOpen(true)}
       >
-        Asistente Petly
+        <img src="/images/asistente-petly.png" alt="" aria-hidden="true" />
       </button>
       {open && (
         <div className="petly-chat-backdrop">
@@ -180,3 +179,4 @@ function Conversation({ shelter }: { shelter: boolean }) {
     </>
   );
 }
+
