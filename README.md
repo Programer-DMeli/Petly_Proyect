@@ -58,6 +58,17 @@ Spring es la autoridad de cuentas, contraseñas y JWT. React envía ese JWT como
 
 La guía completa —incluidos requisitos, configuración de variables, migraciones, rutas, arquitectura por apps y solución de problemas— está en [`backend-admin/README.md`](backend-admin/README.md).
 
+### Imágenes del panel ADMIN React
+
+Las capturas siguientes muestran la pantalla de **Albergues y responsables** en escritorio, tableta y móvil. Incluyen registros de demostración (`example.test`).
+
+<details>
+<summary>Ver capturas del panel</summary>
+<p align="center"><img src="web/output/redisenio/real-admin-escritorio.png" alt="Panel ADMIN React en escritorio" width="820"></p>
+<p align="center"><img src="web/output/redisenio/real-admin-tableta.png" alt="Panel ADMIN React en tableta" width="420"></p>
+<p align="center"><img src="web/output/redisenio/real-admin-movil.png" alt="Panel ADMIN React en móvil" width="280"></p>
+</details>
+
 ## Estructura del repositorio
 
 Un solo repositorio, sin repositorios Git anidados:

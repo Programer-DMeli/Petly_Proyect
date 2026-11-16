@@ -209,6 +209,17 @@ El navegador llama directamente a los backends; React no hace de proxy. Por eso 
 6. Al seleccionar un responsable, Django consulta Spring para comprobar que la identidad existe y tiene rol ALBERGUE. Django rechaza cuentas ya asignadas o técnicas.
 7. Django guarda los datos del albergue y su vínculo en MariaDB y devuelve la representación JSON a React.
 
+### Capturas del panel ADMIN React
+
+Estas capturas corresponden a la pantalla React **Albergues y responsables**. Los registros y correos `example.test` son datos de demostración. Las imágenes originales están versionadas en `web/output/redisenio/`.
+
+<details>
+<summary>Ver capturas en escritorio, tableta y móvil</summary>
+<p align="center"><img src="../web/output/redisenio/real-admin-escritorio.png" alt="Panel ADMIN React en escritorio" width="820"></p>
+<p align="center"><img src="../web/output/redisenio/real-admin-tableta.png" alt="Panel ADMIN React en tableta" width="420"></p>
+<p align="center"><img src="../web/output/redisenio/real-admin-movil.png" alt="Panel ADMIN React en móvil" width="280"></p>
+</details>
+
 ### Configurar React
 
 Desde la raíz del repositorio:
