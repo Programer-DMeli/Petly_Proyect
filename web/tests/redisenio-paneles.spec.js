@@ -20,6 +20,12 @@ async function mockApis(page, role) {
     if (!['GET', 'OPTIONS'].includes(method)) writes.push({ path, method });
     if (path === '/api/auth/login') return send({ token: 'token-ui-test', expiresIn: 3600 });
     if (path === '/api/auth/me') return send({ id: '7', correo: `${role.toLowerCase()}@example.test`, rol: role });
+    if (path === '/api/acceso/notificaciones/eventos/') return route.fulfill({ status: 204 });
+    if (path === '/api/acceso/notificaciones/') return send({ ...paged([]), no_leidas: 0 });
+    if (path === '/api/albergue/alertas-compatibilidad') return send({ results: [], no_leidas: 0 });
+    if (path === '/api/mensajeria/conversaciones/no-leidos/') return send({ no_leidos: 0 });
+    if (path === '/api/asistente/cuestionario/guia') return send([]);
+    if (path === '/api/asistente/preguntas-frecuentes') return send([]);
     if (path === '/api/perfil/favoritos') return send(favorites);
     if (/^\/api\/perfil\/favoritos\/\d+$/.test(path)) {
       const id = Number(path.split('/').pop());
@@ -51,6 +57,7 @@ async function mockApis(page, role) {
       return send(paged(solicitudes));
     }
     if (path.includes('/cambiar-estado/')) { solicitudes[0] = { ...solicitudes[0], ...body() }; return send(solicitudes[0]); }
+    if (path === '/api/acceso/solicitudes/1/') return send(solicitudes[0]);
     if (path.endsWith('/cancelar')) { solicitudes[0].estado = 'CANCELADA'; return send(solicitudes[0]); }
     if (path.endsWith('/seguimiento')) return send({ solicitudId: 1, estadoActual: solicitudes[0].estado, eventos: [] });
     if (path.includes('/fotos-hogar/')) return send([]);
@@ -107,7 +114,7 @@ for (const size of sizes) for (const role of ['ADOPTANTE', 'ALBERGUE', 'ADMIN'])
       await menu(page, 'Mi adopción'); await page.getByRole('link', { name: 'Favoritos Los compañeros que te robaron el corazón.', exact: true }).click();
       await expect(page.getByRole('heading', { name: 'Luna', exact: true })).toBeVisible(); await page.getByRole('button', { name: 'Quitar Luna de favoritos', exact: true }).click(); await expect(page.getByText(/Aún no tienes favoritos/)).toBeVisible();
       await menu(page, 'Mi perfil'); await page.getByRole('link', { name: /^Mi cuestionario/ }).click();
-      await page.getByLabel('Vivienda', { exact: true }).fill('Departamento'); await page.getByRole('button', { name: 'Guardar borrador', exact: true }).click(); await expect(page.getByText('Respuestas guardadas.', { exact: true })).toBeVisible();
+      await page.getByRole('textbox', { name: /^Vivienda/ }).fill('Departamento'); await page.getByRole('button', { name: 'Guardar borrador', exact: true }).click(); await expect(page.getByText('Respuestas guardadas.', { exact: true })).toBeVisible();
       await menu(page, 'Mi perfil'); await page.getByRole('link', { name: /^Disponibilidad/ }).click(); await expect(page.getByRole('heading', { name: 'Disponibilidad semanal', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Guardar franja', exact: true }).click(); await expect(page.getByText('Disponibilidad guardada.', { exact: true })).toBeVisible(); await fits(page);
       await menu(page,'Mi perfil');await page.getByRole('link',{name:/^Autorizaciones Decide/}).click();await page.getByRole('button',{name:'Revocar',exact:true}).click();
@@ -119,8 +126,15 @@ for (const size of sizes) for (const role of ['ADOPTANTE', 'ALBERGUE', 'ADMIN'])
     } else if (role === 'ALBERGUE') {
       await page.getByLabel('Nombre del albergue', { exact: true }).fill('Refugio Esperanza actualizado'); await page.getByRole('button', { name: 'Actualizar albergue', exact: true }).click(); await expect(page.getByText('Información del albergue guardada.', { exact: true })).toBeVisible();
       await menu(page, 'Mi albergue'); await page.getByRole('link', { name: /^Infraestructura Organiza/ }).click(); await expect(page.getByRole('heading', { name: 'Infraestructura', exact: true })).toBeVisible();
-      await menu(page, 'Adopciones'); await page.getByRole('link', { name: /^Solicitudes Acompaña/ }).click(); await page.getByRole('button', { name: 'Observar', exact: true }).click(); await expect(page.getByRole('alert')).toContainText('Escribe el motivo');
-      await page.getByLabel('Motivo de observación o rechazo').fill('Coordinar visita.'); await page.getByRole('button', { name: 'Observar', exact: true }).click(); await expect(page.getByText(/Estado: OBSERVADA/)).toBeVisible();
+      await menu(page, 'Adopciones'); await page.getByRole('link', { name: /^Solicitudes Acompaña/ }).click();
+      await page.getByRole('button', { name: 'Ver solicitud de adopción' }).click();
+      const solicitud = page.getByRole('dialog', { name: 'Solicitud de adopción' });
+      await solicitud.getByRole('button', { name: 'Observar', exact: true }).click();
+      await expect(solicitud.getByRole('alert')).toContainText('Escribe el motivo');
+      await solicitud.getByLabel('Motivo de la decisión').fill('Coordinar visita.');
+      await solicitud.getByRole('button', { name: 'Observar', exact: true }).click();
+      await expect(solicitud.getByText('OBSERVADA', { exact: true })).toBeVisible();
+      await solicitud.getByRole('button', { name: 'Cerrar', exact: true }).click();
       await menu(page, 'Comunidad'); await page.getByRole('link', { name: /^Eventos Publica/ }).click(); await expect(page.getByRole('button', { name: 'Publicar evento', exact: true })).toBeVisible();
       await page.getByLabel('Título del evento').fill('Evento de interfaz');await page.getByLabel('Descripción del evento').fill('Prueba de publicación sin escribir datos reales.');await page.getByLabel('Inicio del evento').fill('2040-11-01T10:00');await page.getByLabel('Fin del evento').fill('2040-11-01T12:00');await page.getByLabel('Ubicación del evento').fill('Lima');await page.getByLabel('Contacto público del evento').fill('refugio@example.test');await page.getByRole('button',{name:'Publicar evento',exact:true}).click();
       const eventCard=page.locator('article').filter({has:page.getByRole('heading',{name:'Evento de interfaz',exact:true})});await expect(eventCard).toBeVisible();page.on('dialog',dialog=>dialog.accept());await eventCard.getByRole('button',{name:'Cancelar evento',exact:true}).click();await expect(eventCard.getByText('CANCELADO',{exact:true})).toBeVisible();await fits(page);

@@ -2031,3 +2031,162 @@
   font-weight: 800;
   line-height: 1;
 }
+
+/* Formulario de adopción y revisión del albergue. */
+.adoption-application {
+  width: min(100%, 66rem);
+  margin-inline: auto;
+}
+
+.adoption-pet {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  margin-block: 1rem;
+  border-radius: 1rem;
+  background: #e8f3ed;
+}
+
+.adoption-pet img {
+  width: 4.5rem;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 0.75rem;
+}
+
+.adoption-pet :is(h2, p),
+.adoption-list-header h1,
+.adoption-list-row :is(h2, p),
+.adoption-dialog :is(h2, h3),
+.adoption-dialog__header p {
+  margin: 0;
+}
+
+.adoption-form,
+.adoption-answers,
+.adoption-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.workspace .adoption-section {
+  padding: 0.9rem 1rem 1.1rem;
+  border: 1px solid var(--petly-border);
+  border-radius: 1rem;
+  background: #fbfdfb;
+}
+
+.adoption-section legend,
+.adoption-section h3 {
+  color: var(--petly-primary-dark);
+  font-weight: 800;
+}
+
+.adoption-section legend {
+  padding-inline: 0.4rem;
+}
+
+.adoption-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 0.75rem 1.2rem;
+}
+
+.adoption-fields label,
+.adoption-fields dd {
+  margin: 0;
+}
+
+.adoption-field--wide {
+  grid-column: 1 / -1;
+}
+
+.adoption-list-header,
+.adoption-list-row,
+.adoption-dialog__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.85rem 1.25rem;
+}
+
+.adoption-list {
+  margin-top: 1.2rem;
+}
+
+.adoption-list-row {
+  padding: 1.05rem 1.2rem;
+  border: 1px solid var(--petly-border);
+  border-radius: 1rem;
+  background: #fbfdfb;
+}
+
+.adoption-list-row h2 {
+  font-size: 1.15rem;
+}
+
+.adoption-list-row p {
+  margin-block: 0.25rem 0.5rem;
+}
+
+.adoption-list-row :is(h2, p),
+.adoption-dialog__header p,
+.adoption-fields dd,
+.adoption-comment {
+  overflow-wrap: anywhere;
+}
+
+.adoption-dialog {
+  width: min(48rem, calc(100% - 1.5rem));
+  max-height: calc(100dvh - 1.5rem);
+  padding: 0;
+  border: 1px solid var(--petly-border);
+  border-radius: 1.1rem;
+  background: #fff;
+  color: var(--petly-text);
+  overscroll-behavior: contain;
+  box-shadow: 0 1rem 3.5rem rgb(18 53 42 / 24%);
+}
+
+.adoption-dialog::backdrop {
+  background: rgb(18 53 42 / 55%);
+}
+
+.adoption-dialog__header,
+.adoption-dialog__body,
+.adoption-dialog__decision {
+  padding: 1rem clamp(0.85rem, 3vw, 1.5rem);
+}
+
+.adoption-dialog__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f2f8f4;
+  border-bottom: 1px solid var(--petly-border);
+}
+
+.adoption-dialog__decision {
+  border-top: 1px solid var(--petly-border);
+  background: #f2f8f4;
+}
+
+.adoption-dialog__decision .actions {
+  margin-bottom: 0;
+}
+
+.adoption-answers {
+  margin-top: 0.8rem;
+}
+
+.adoption-fields dt {
+  color: var(--petly-primary-dark);
+  font-weight: 700;
+}
+
+.adoption-fields dd,
+.adoption-comment {
+  white-space: pre-wrap;
+}

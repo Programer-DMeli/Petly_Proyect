@@ -1,6 +1,7 @@
 import FotosHogar from '../../../../components/FotosHogar';
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import Feedback from '../../../../components/Feedback';
 import { errorMessage, spring } from '../../../../services/http';
 import { avisosConectados, observarAvisos } from '../../../../services/avisosEnVivo';
 import { INTERVALO_AVISOS_MS } from '../../../../services/notificacionesApi';
@@ -26,6 +27,7 @@ function formatDate(value: string) {
 
 export default function SeguimientoSolicitudPage() {
   const { solicitudId } = useParams();
+  const state = useLocation().state as { recienEnviada?: boolean } | null;
   const [seguimiento, setSeguimiento] = useState<SeguimientoSolicitud | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -96,6 +98,7 @@ export default function SeguimientoSolicitudPage() {
     <section className="card">
       <Link to="/adoptante/solicitudes">Volver a Mis solicitudes</Link>
       <h1>Seguimiento de solicitud</h1>
+      {state?.recienEnviada === true && <Feedback success="Solicitud enviada al albergue." />}
       {loading && <p role="status">Cargando el historial de tu solicitud…</p>}
       {error && (
         <>

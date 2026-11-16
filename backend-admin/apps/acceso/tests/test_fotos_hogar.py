@@ -63,6 +63,13 @@ class FotosHogarTest(TestCase):
         self.solicitud.respuestas_cuestionario={"direccionHogar":"Dirección privada"};self.solicitud.save()
         self.client.force_authenticate(self.owner)
         url=f"/api/acceso/solicitudes/{self.solicitud.pk}/"
-        self.assertIn("respuestas_cuestionario",self.client.get(url).data)
+        detalle = self.client.get(url)
+        self.assertIn("respuestas_cuestionario", detalle.data)
+        self.assertEqual(detalle["Cache-Control"], "private, no-store")
+        resumen = self.client.get(url, {"vista": "resumen"})
+        self.assertEqual(resumen.data["id"], self.solicitud.pk)
+        self.assertNotIn("respuestas_cuestionario", resumen.data)
+        listado = self.client.get("/api/acceso/solicitudes/", {"vista": "resumen"}).data
+        self.assertNotIn("respuestas_cuestionario", listado["results"][0])
         self.permiso.estado="REVOCADA";self.permiso.save()
         self.assertNotIn("respuestas_cuestionario",self.client.get(url).data)

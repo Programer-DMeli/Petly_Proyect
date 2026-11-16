@@ -53,7 +53,7 @@ export default function PetCard({ pet }: { pet: Pet }) {
         {pet.estado === 'Disponible' && (
           <Link
             className="button secondary pet-card__link"
-            to={`/adoptante/catalogo/${pet.id}`}
+            to={`/adoptante/catalogo/${pet.id}/solicitud`}
             aria-label={`Solicitar adopción de ${pet.nombre}`}
           >
             Solicitar adopción

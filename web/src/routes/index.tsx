@@ -15,6 +15,7 @@ import RecuperacionPage from '../features/auth/pages/RecuperacionPage';
 import AutorizacionesPage from '../features/adoptante/perfil/pages/AutorizacionesPage';
 import CatalogoPage, { DetallePage } from '../features/adoptante/catalogo/pages/CatalogoPage';
 import CuestionarioPage from '../features/adoptante/perfil/pages/CuestionarioPage';
+import FormularioAdopcionPage from '../features/adoptante/solicitudes/pages/FormularioAdopcionPage';
 import SeguimientoSolicitudPage from '../features/adoptante/solicitudes/pages/SeguimientoSolicitudPage';
 import ReportesPostAdopcionPage from '../features/adoptante/solicitudes/pages/ReportesPostAdopcionPage';
 import CasosExitoPage from '../features/adoptante/solicitudes/pages/CasosExitoPage';
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
           { path: 'disponibilidad', element: <DisponibilidadPage /> },
           { path: 'catalogo', element: <CatalogoPage /> },
           { path: 'catalogo/:id', element: <DetallePage /> },
+          { path: 'catalogo/:id/solicitud', element: <FormularioAdopcionPage /> },
           { path: 'autorizaciones', element: <AutorizacionesPage /> },
           { path: 'cuestionario', element: <CuestionarioPage /> },
           { path: 'verificacion-identidad', element: <VerificacionKycPage /> },

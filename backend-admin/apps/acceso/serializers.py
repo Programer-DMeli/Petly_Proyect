@@ -179,8 +179,8 @@ class SolicitudAdopcionSerializer(RespuestasPrivadasMixin, serializers.ModelSeri
         ]
 
 
-class SolicitudAdopcionListSerializer(RespuestasPrivadasMixin, serializers.ModelSerializer):
-    """Serializador ligero para listados."""
+class SolicitudAdopcionResumenSerializer(serializers.ModelSerializer):
+    """Resumen de solicitudes sin respuestas privadas."""
 
     postulante_nombre = serializers.SerializerMethodField()
     mascota_nombre = serializers.CharField(source="mascota.nombre", read_only=True)
@@ -207,9 +207,16 @@ class SolicitudAdopcionListSerializer(RespuestasPrivadasMixin, serializers.Model
             "estado_display",
             "fecha_solicitud",
             "fecha_revision",
+            "observaciones_revision",
+        ]
+
+
+class SolicitudAdopcionListSerializer(RespuestasPrivadasMixin, SolicitudAdopcionResumenSerializer):
+    class Meta(SolicitudAdopcionResumenSerializer.Meta):
+        fields = [
+            *SolicitudAdopcionResumenSerializer.Meta.fields,
             "mensaje_postulante",
             "respuestas_cuestionario",
-            "observaciones_revision",
         ]
 
 

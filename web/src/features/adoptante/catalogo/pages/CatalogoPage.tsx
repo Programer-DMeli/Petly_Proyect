@@ -5,13 +5,8 @@ import { FavoriteHeart } from '../../../../components/FavoritesProvider';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
-import { spring, json, mediaUrl, errorMessage } from '../../../../services/http';
-import type {
-  CrearSolicitudAdopcion,
-  Pet,
-  Profile,
-  SolicitudAdopcion,
-} from '../../../../services/types';
+import { spring, mediaUrl, errorMessage } from '../../../../services/http';
+import type { Pet } from '../../../../services/types';
 interface Filters {
   search: string;
   especie: string;
@@ -259,92 +254,27 @@ export function DetallePage() {
   const { id } = useParams();
   const [pet, setPet] = useState<Pet | null>(null);
   const [error, setError] = useState('');
-  const [eligibilityError, setEligibilityError] = useState('');
-  const [profileFinalizado, setProfileFinalizado] = useState<boolean | null>(null);
-  const [applicationProfile, setApplicationProfile] = useState<Profile | null>(null);
-  const [autorizacionActiva, setAutorizacionActiva] = useState<boolean | null>(null);
-  const [checkingEligibility, setCheckingEligibility] = useState(false);
-  const [mensajePostulante, setMensajePostulante] = useState('');
-  const [planCuidado, setPlanCuidado] = useState('');
-  const [sending, setSending] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [submittedRequestId, setSubmittedRequestId] = useState<number | null>(null);
-  const [success, setSuccess] = useState('');
-  const load = useCallback(async () => {
-    setError('');
-    setPet(null);
-    setProfileFinalizado(null);
-    setAutorizacionActiva(null);
-    setSubmitted(false);
-    setSubmittedRequestId(null);
-    setSuccess('');
-    try {
-      setPet(await spring<Pet>('/api/catalogo/' + String(id)));
-    } catch (e) {
-      setError(errorMessage(e));
-    }
-  }, [id]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  const loadEligibility = useCallback(async () => {
-    if (!pet) return;
-    setCheckingEligibility(true);
-    setEligibilityError('');
-    try {
-      const [profile, consents] = await Promise.all([
-        spring<Profile>('/api/perfil'),
-        spring<{ albergueId: number; estado: string }[]>('/api/autorizaciones'),
-      ]);
-      setApplicationProfile(profile);
-      setProfileFinalizado(profile.finalizado);
-      setAutorizacionActiva(
-        consents.some(
-          consent => consent.albergueId === pet.albergueId && consent.estado === 'ACTIVA'
-        )
-      );
-    } catch (e) {
-      setEligibilityError(errorMessage(e));
-    } finally {
-      setCheckingEligibility(false);
-    }
-  }, [pet]);
-  useEffect(() => {
-    void loadEligibility();
-  }, [loadEligibility]);
-
-  const disponible = pet?.estado.trim().toLocaleLowerCase('es') === 'disponible';
-  const canApply = Boolean(
-    pet && disponible && profileFinalizado === true && autorizacionActiva === true
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      setError('');
+      setPet(null);
+      try {
+        const detalle = await spring<Pet>('/api/catalogo/' + String(id), { signal });
+        if (!signal?.aborted) setPet(detalle);
+      } catch (e) {
+        if (!signal?.aborted) setError(errorMessage(e));
+      }
+    },
+    [id]
   );
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
+  }, [load]);
 
-  async function submitApplication() {
-    if (!pet || !canApply || sending || submitted) return;
-    setSending(true);
-    setError('');
-    setSuccess('');
-    const payload: CrearSolicitudAdopcion = {
-      mascotaId: pet.id,
-      mensajePostulante: mensajePostulante.trim(),
-      respuestasCuestionario: {
-        ...(applicationProfile ?? {}),
-        planCuidado: planCuidado.trim(),
-      },
-    };
-    try {
-      const created = await spring<SolicitudAdopcion>('/api/solicitudes', {
-        method: 'POST',
-        body: json(payload),
-      });
-      setSubmitted(true);
-      setSubmittedRequestId(created.id);
-      setSuccess(`Solicitud enviada. Estado: ${created.estado}.`);
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setSending(false);
-    }
-  }
+  const disponible = pet?.estado.trim().toLowerCase() === 'disponible';
+
   return (
     <section className="card">
       <Link to="/adoptante/catalogo">Volver al catálogo</Link>
@@ -405,79 +335,21 @@ export function DetallePage() {
           <ConsejosCompatibilidad key={pet.id} id={pet.id} />
           <h2>{pet.albergue}</h2>
           <p>{pet.ubicacion}</p>
-          <Link
-            className="button secondary"
-            to={`/adoptante/mensajes?albergue=${pet.albergueId}`}
-          >
-            Escribir al albergue
-          </Link>
-          <Link to="/adoptante/autorizaciones">Administrar autorizaciones de mi perfil</Link>
-          <hr />
-          <h2>Solicitar adopción</h2>
-          <Feedback error={eligibilityError} success={success} />
-          {!disponible && <p role="status">Esta mascota no está disponible para solicitudes.</p>}
-          {checkingEligibility && <p role="status">Comprobando los requisitos de solicitud…</p>}
-          {!checkingEligibility && profileFinalizado === false && (
-            <p>
-              Finaliza tu cuestionario antes de solicitar.{' '}
-              <Link to="/adoptante/cuestionario">Completar perfil</Link>
-            </p>
-          )}
-          {!checkingEligibility && profileFinalizado && autorizacionActiva === false && (
-            <p>
-              Necesitas una autorización vigente para este albergue.{' '}
-              <Link to="/adoptante/autorizaciones">Gestionar autorización</Link>
-            </p>
-          )}
-          {eligibilityError && (
-            <button className="secondary" onClick={() => void loadEligibility()}>
-              Reintentar comprobación
-            </button>
-          )}
-          {canApply && !submitted && (
-            <form
-              onSubmit={event => {
-                event.preventDefault();
-                void submitApplication();
-              }}
+          <div className="actions">
+            {disponible && (
+              <Link className="button" to={`/adoptante/catalogo/${pet.id}/solicitud`}>
+                Llenar formulario de adopción
+              </Link>
+            )}
+            <Link
+              className="button secondary"
+              to={`/adoptante/mensajes?albergue=${pet.albergueId}`}
             >
-              <p className="muted">
-                Cuéntale al albergue por qué quieres adoptar y cómo cubrirás sus cuidados. Se
-                enviará también el cuestionario que ya completaste.
-              </p>
-              <label>
-                ¿Por qué quieres adoptar a {pet.nombre}? <span aria-hidden="true">*</span>
-                <textarea
-                  maxLength={2000}
-                  required
-                  value={mensajePostulante}
-                  onChange={event => setMensajePostulante(event.target.value)}
-                  placeholder="Cuéntanos qué te motivó a elegirle…"
-                />
-              </label>
-              <label>
-                ¿Cómo organizarás sus cuidados diarios? <span aria-hidden="true">*</span>
-                <textarea
-                  maxLength={2000}
-                  required
-                  value={planCuidado}
-                  onChange={event => setPlanCuidado(event.target.value)}
-                  placeholder="Describe su espacio, compañía, paseos y atención veterinaria…"
-                />
-              </label>
-              <button disabled={sending || !mensajePostulante.trim() || !planCuidado.trim()}>
-                {sending ? 'Enviando…' : 'Enviar solicitud'}
-              </button>
-            </form>
-          )}
-          {submitted && (
-            <p className="feedback success" role="status">
-              La solicitud quedó pendiente de revisión. La mascota no se reserva al enviarla.{' '}
-              {submittedRequestId !== null && (
-                <Link to={`/adoptante/solicitudes/${submittedRequestId}`}>Ver seguimiento</Link>
-              )}
-            </p>
-          )}
+              Escribir al albergue
+            </Link>
+            <Link to="/adoptante/autorizaciones">Administrar autorizaciones de mi perfil</Link>
+          </div>
+          {!disponible && <p role="status">Esta mascota no está disponible para solicitudes.</p>}
         </>
       ) : (
         <button onClick={() => void load()}>Cargar detalle</button>

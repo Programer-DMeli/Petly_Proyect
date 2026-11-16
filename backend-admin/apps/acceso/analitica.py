@@ -1,5 +1,6 @@
 """Consultas agregadas de impacto de adopciones para administración (US-66)."""
-from django.db.models import Count, ExtractMonth, ExtractYear
+from django.db.models import Count
+from django.db.models.functions import ExtractMonth, ExtractYear
 from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView

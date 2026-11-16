@@ -1,169 +1,142 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import FotosHogar from '../../../../components/FotosHogar';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
-import { django, json, errorMessage } from '../../../../services/http';
+import { django, errorMessage } from '../../../../services/http';
+import RevisionSolicitudDialog from './RevisionSolicitudDialog';
+import type { SolicitudAlbergue } from './RevisionSolicitudDialog';
 
-type Solicitud = {
-  id: number;
-  respuestas_cuestionario?: Record<string, unknown>;
-  datos_compartidos?: boolean;
-  estado: 'PENDIENTE' | 'OBSERVADA' | 'APROBADA' | 'RECHAZADA' | 'CANCELADA' | 'ENTREGADA';
-  fecha_solicitud: string;
-  mensaje_postulante: string;
-  observaciones_revision: string;
-  postulante_nombre: string;
-  mascota_nombre: string;
-  mascota: number;
-};
-function respuesta(value: unknown): string {
-  if (typeof value === 'boolean') return value ? 'Sí' : 'No';
-  if (typeof value === 'string' || typeof value === 'number') return `${value}`;
-  return 'Sin responder';
-}
-type Page<T> = { results: T[] } | T[];
+type Pagina = { results: SolicitudAlbergue[]; next?: string | null } | SolicitudAlbergue[];
+const SOLICITUDES = '/api/acceso/solicitudes/';
 
 export default function SolicitudesPage() {
-  const [searchParams] = useSearchParams();
-  const solicitudDestacada = searchParams.get('solicitud');
-  const [rows, setRows] = useState<Solicitud[]>([]);
-  const [reasons, setReasons] = useState<Record<number, string>>({});
+  const [params] = useSearchParams();
+  const idDestacado = Number(params.get('solicitud'));
+  const [rows, setRows] = useState<SolicitudAlbergue[]>([]);
+  const [pagina, setPagina] = useState(1);
+  const [haySiguiente, setHaySiguiente] = useState(false);
+  const [actualizar, setActualizar] = useState(0);
+  const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [busy, setBusy] = useState<number | null>(null);
-  const load = useCallback(async () => {
-    try {
-      const response = await django<Page<Solicitud>>('/api/acceso/solicitudes/');
-      const solicitudes = Array.isArray(response) ? response : response.results;
-      setRows(solicitudes);
-      if (solicitudDestacada && /^[1-9]\d*$/.test(solicitudDestacada)
-          && !solicitudes.some(item => String(item.id) === solicitudDestacada)) {
-        const destacada = await django<Solicitud>(`/api/acceso/solicitudes/${solicitudDestacada}/`);
-        setRows([destacada, ...solicitudes]);
-      }
+  const [abierta, setAbierta] = useState<number | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    const options = { signal: controller.signal, cache: 'no-store' } as const;
+    async function cargar() {
+      setCargando(true);
       setError('');
-    } catch (e) {
-      setError(errorMessage(e));
+      try {
+        const datos = await django<Pagina>(`${SOLICITUDES}?vista=resumen&page=${pagina}`, options);
+        if (controller.signal.aborted) return;
+        const solicitudes = Array.isArray(datos) ? datos : datos.results;
+        setRows(solicitudes);
+        setHaySiguiente(!Array.isArray(datos) && Boolean(datos.next));
+
+        if (
+          pagina === 1 &&
+          Number.isSafeInteger(idDestacado) &&
+          idDestacado > 0 &&
+          !solicitudes.some(item => item.id === idDestacado)
+        ) {
+          const destacada = await django<SolicitudAlbergue>(
+            `${SOLICITUDES}${idDestacado}/?vista=resumen`,
+            options
+          );
+          if (!controller.signal.aborted) setRows([destacada, ...solicitudes]);
+        }
+      } catch (cause) {
+        if (!controller.signal.aborted) setError(errorMessage(cause));
+      } finally {
+        if (!controller.signal.aborted) setCargando(false);
+      }
     }
-  }, [solicitudDestacada]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+    void cargar();
+    return () => controller.abort();
+  }, [idDestacado, pagina, actualizar]);
 
   useEffect(() => {
-    if (!solicitudDestacada || rows.length === 0) return;
-    document.getElementById(`solicitud-${solicitudDestacada}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [solicitudDestacada, rows]);
+    if (!cargando && pagina === 1 && idDestacado > 0) {
+      document.getElementById(`solicitud-${idDestacado}`)?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [cargando, idDestacado, pagina]);
 
-  async function decidir(id: number, estado: 'OBSERVADA' | 'APROBADA' | 'RECHAZADA') {
-    const motivo = reasons[id]?.trim() ?? '';
-    if ((estado === 'OBSERVADA' || estado === 'RECHAZADA') && !motivo) {
-      setError('Escribe el motivo antes de observar o rechazar la solicitud.');
-      return;
-    }
-    setBusy(id);
-    setError('');
-    setSuccess('');
-    try {
-      await django(`/api/acceso/solicitudes/${id}/cambiar-estado/`, {
-        method: 'POST',
-        body: json({ estado, observaciones_revision: motivo }),
-      });
-      setSuccess('Decisión guardada.');
-      await load();
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(null);
-    }
+  function actualizarFila(solicitud: SolicitudAlbergue) {
+    setRows(actuales =>
+      actuales.map(item =>
+        item.id === solicitud.id
+          ? {
+              ...item,
+              estado: solicitud.estado,
+              estado_display: solicitud.estado_display,
+              observaciones_revision: solicitud.observaciones_revision,
+            }
+          : item
+      )
+    );
   }
 
   return (
     <section className="card">
-      <h1>Solicitudes de adopción</h1>
-      <Feedback error={error} success={success} />
-      <button onClick={() => void load()}>Actualizar</button>
-      {rows.length === 0 ? (
-        <p>No hay solicitudes para revisar.</p>
-      ) : (
-        rows.map(row => (
-          <article className="card" id={`solicitud-${row.id}`} key={row.id}>
-            <h2>
-              {row.mascota_nombre} · {row.postulante_nombre}
-            </h2>
-            <p>
-              Estado: {row.estado} · {new Date(row.fecha_solicitud).toLocaleDateString()}
-            </p>
-            {row.mensaje_postulante && <p>Mensaje: {row.mensaje_postulante}</p>}
-            {row.datos_compartidos === false && (
-              <p>El perfil y formulario privado requieren autorización vigente.</p>
-            )}
-            {row.respuestas_cuestionario && Object.keys(row.respuestas_cuestionario).length > 0 && (
-              <details>
-                <summary>Formulario del adoptante</summary>
-                <dl>
-                  {Object.entries({
-                    nombreCompleto: 'Nombre declarado',
-                    dni: 'DNI declarado (sin verificación de identidad)',
-                    direccionHogar: 'Dirección del hogar',
-                    telefonoContacto: 'Teléfono',
-                    tipoPropiedadVivienda: 'Propiedad de vivienda',
-                    permisoPropietarioDetalle: 'Permiso del propietario',
-                    espaciosDisponiblesMascota: 'Espacios disponibles',
-                    tieneAlergias: 'Alergias',
-                    alergiasDetalle: 'Detalle de alergias',
-                    vivesConPersonasEspeciales: 'Personas que requieren cuidados',
-                    personasEspecialesDetalle: 'Detalle de convivencia',
-                    motivoAdopcion: 'Motivo de adopción',
-                    haCuidadoMascotasAntes: 'Experiencia previa',
-                    experienciaPreviaDetalle: 'Detalle de experiencia',
-                    aceptaEsterilizacion: 'Acepta esterilización',
-                    aceptaSeguimiento: 'Acepta seguimiento',
-                    puedeCubrirGastosVeterinarios: 'Puede cubrir gastos veterinarios',
-                  }).map(([key, label]) => (
-                    <div key={key}>
-                      <dt>{label}</dt>
-                      <dd>{respuesta(row.respuestas_cuestionario?.[key])}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </details>
-            )}
-            <FotosHogar solicitudId={row.id} />
-            <Link className="button secondary" to={`/albergue/mensajes?solicitud=${row.id}&mascota=${row.mascota}`}>
-              Conversar con el adoptante
-            </Link>
-            {row.observaciones_revision && <p>Observación: {row.observaciones_revision}</p>}
-            {['PENDIENTE', 'OBSERVADA'].includes(row.estado) && (
-              <>
-                <label>
-                  Motivo de observación o rechazo
-                  <textarea
-                    value={reasons[row.id] ?? ''}
-                    onChange={e => setReasons(v => ({ ...v, [row.id]: e.target.value }))}
-                  />
-                </label>
-                <div className="grid">
-                  <button
-                    disabled={busy !== null}
-                    onClick={() => void decidir(row.id, 'OBSERVADA')}
-                  >
-                    Observar
-                  </button>
-                  <button disabled={busy !== null} onClick={() => void decidir(row.id, 'APROBADA')}>
-                    Aprobar
-                  </button>
-                  <button
-                    disabled={busy !== null}
-                    onClick={() => void decidir(row.id, 'RECHAZADA')}
-                  >
-                    Rechazar
-                  </button>
-                </div>
-              </>
-            )}
-          </article>
-        ))
+      <header className="adoption-list-header">
+        <h1>Solicitudes de adopción</h1>
+        <button
+          className="secondary"
+          type="button"
+          disabled={cargando}
+          onClick={() => setActualizar(actual => actual + 1)}
+        >
+          Actualizar
+        </button>
+      </header>
+      <Feedback error={error} />
+      {cargando && <p role="status">Cargando solicitudes…</p>}
+      {!cargando && !error && rows.length === 0 && <p>No hay solicitudes para revisar.</p>}
+      {!cargando && (
+        <div className="adoption-list">
+          {rows.map(row => (
+            <article className="adoption-list-row" id={`solicitud-${row.id}`} key={row.id}>
+              <div>
+                <h2>{row.mascota_nombre}</h2>
+                <p className="muted">
+                  {row.postulante_nombre} ·{' '}
+                  {new Date(row.fecha_solicitud).toLocaleDateString('es-PE')}
+                </p>
+                <span className="tracking-badge">{row.estado_display ?? row.estado}</span>
+              </div>
+              <button type="button" onClick={() => setAbierta(row.id)}>
+                Ver solicitud de adopción
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
+      {(pagina > 1 || haySiguiente) && (
+        <nav className="actions" aria-label="Páginas de solicitudes">
+          <button
+            type="button"
+            className="secondary"
+            disabled={cargando || pagina === 1}
+            onClick={() => setPagina(actual => actual - 1)}
+          >
+            Anterior
+          </button>
+          <span>Página {pagina}</span>
+          <button
+            type="button"
+            className="secondary"
+            disabled={cargando || !haySiguiente}
+            onClick={() => setPagina(actual => actual + 1)}
+          >
+            Siguiente
+          </button>
+        </nav>
+      )}
+      {abierta !== null && (
+        <RevisionSolicitudDialog
+          key={abierta}
+          id={abierta}
+          onCerrar={() => setAbierta(null)}
+          onDecision={actualizarFila}
+        />
       )}
     </section>
   );

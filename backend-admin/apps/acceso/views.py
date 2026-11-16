@@ -26,6 +26,7 @@ from .serializers import (
     PostulanteCreateUpdateSerializer,
     SolicitudAdopcionSerializer,
     SolicitudAdopcionListSerializer,
+    SolicitudAdopcionResumenSerializer,
     SolicitudEstadoSerializer,
     SolicitudEventoSerializer,
     SolicitudCreateSerializer,
@@ -190,7 +191,12 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
     ordering_fields = ["fecha_solicitud", "estado", "fecha_revision"]
     ordering = ["-fecha_solicitud"]
 
+    def usa_resumen(self):
+        return self.action in {"list", "retrieve"} and self.request.query_params.get("vista") == "resumen"
+
     def get_serializer_class(self):
+        if self.usa_resumen():
+            return SolicitudAdopcionResumenSerializer
         if self.action == "list":
             return SolicitudAdopcionListSerializer
         if self.action == "cambiar_estado":
@@ -202,6 +208,8 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         qs = self.queryset
+        if self.usa_resumen():
+            qs = qs.defer("respuestas_cuestionario", "mensaje_postulante")
 
         if user.is_staff:
             return qs
@@ -214,6 +222,11 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             return qs.filter(albergue=albergue)
         except Albergue.DoesNotExist:
             return qs.none()
+
+    def retrieve(self, request, *args, **kwargs):
+        response = super().retrieve(request, *args, **kwargs)
+        response["Cache-Control"] = "private, no-store"
+        return response
 
     def perform_create(self, serializer):
         # Recheck under a row lock so concurrent submissions cannot both pass validation.
