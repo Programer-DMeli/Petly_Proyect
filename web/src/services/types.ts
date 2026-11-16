@@ -151,6 +151,13 @@ export interface AdminPet {
   edad_anos: number | null;
   edad_meses: number | null;
   descripcion: string;
+  esterilizado: boolean;
+  vacunas_al_dia: boolean;
+  desparasitado: boolean;
+  necesidades_especiales: string;
+  estado_salud_general: string;
+  evidencia_vacunacion: string | null;
+  evidencia_esterilizacion: string | null;
   estado: string;
   foto_principal: string | null;
   foto_original_ia?: string | null;

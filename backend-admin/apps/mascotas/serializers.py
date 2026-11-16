@@ -20,6 +20,21 @@ def validate_image_file(value):
     return value
 
 
+def validate_evidence_image(value):
+    """Validate real JPEG/PNG content as well as the upload size."""
+    validate_image_file(value)
+    from PIL import Image
+    try:
+        image = Image.open(value)
+        if image.format not in {"JPEG", "PNG"}:
+            raise ValueError()
+        image.verify()
+        value.seek(0)
+    except Exception:
+        raise serializers.ValidationError("Usa una imagen JPEG o PNG válida.")
+    return value
+
+
 class MascotaFilter(DjangoFilterBackend):
     """Filtros personalizados para Mascota (US-12)."""
     
@@ -85,6 +100,8 @@ class MascotaSerializer(serializers.ModelSerializer):
     albergue_nombre = serializers.CharField(source="albergue.nombre", read_only=True)
     foto_original_ia = serializers.ImageField(read_only=True)
     foto_mejorada_ia = serializers.ImageField(read_only=True)
+    evidencia_vacunacion = serializers.ImageField(read_only=True)
+    evidencia_esterilizacion = serializers.ImageField(read_only=True)
 
     class Meta:
         model = Mascota
@@ -112,6 +129,9 @@ class MascotaSerializer(serializers.ModelSerializer):
             "vacunas_al_dia",
             "desparasitado",
             "necesidades_especiales",
+            "estado_salud_general",
+            "evidencia_vacunacion",
+            "evidencia_esterilizacion",
             "foto_principal",
             "foto_original_ia",
             "foto_mejorada_ia",
@@ -196,6 +216,10 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
         validators=[validate_image_file]
     )
     foto_mejorada_confirmada = serializers.BooleanField(write_only=True, required=False, default=False)
+    evidencia_vacunacion = serializers.ImageField(required=False, allow_null=True, validators=[validate_evidence_image])
+    evidencia_esterilizacion = serializers.ImageField(required=False, allow_null=True, validators=[validate_evidence_image])
+    eliminar_evidencia_vacunacion = serializers.BooleanField(write_only=True, required=False, default=False)
+    eliminar_evidencia_esterilizacion = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
         model = Mascota
@@ -214,6 +238,11 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             "vacunas_al_dia",
             "desparasitado",
             "necesidades_especiales",
+            "estado_salud_general",
+            "evidencia_vacunacion",
+            "evidencia_esterilizacion",
+            "eliminar_evidencia_vacunacion",
+            "eliminar_evidencia_esterilizacion",
             "foto_principal",
             "foto_mejorada_confirmada",
             "fotos_adicionales",
@@ -243,11 +272,21 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop("foto_mejorada_confirmada", None)
+        validated_data.pop("eliminar_evidencia_vacunacion", None)
+        validated_data.pop("eliminar_evidencia_esterilizacion", None)
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         improved_confirmed = validated_data.pop("foto_mejorada_confirmada", False)
         photo_replaced = "foto_principal" in validated_data
+        remove_vaccination = validated_data.pop("eliminar_evidencia_vacunacion", False)
+        remove_sterilization = validated_data.pop("eliminar_evidencia_esterilizacion", False)
+        if remove_vaccination:
+            instance.evidencia_vacunacion.delete(save=False)
+            validated_data.pop("evidencia_vacunacion", None)
+        if remove_sterilization:
+            instance.evidencia_esterilizacion.delete(save=False)
+            validated_data.pop("evidencia_esterilizacion", None)
         original_photo_name = instance.foto_principal.name if improved_confirmed and instance.foto_principal else None
         instance = super().update(instance, validated_data)
         if improved_confirmed:

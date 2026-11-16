@@ -82,6 +82,9 @@ class Mascota(models.Model):
     vacunas_al_dia = models.BooleanField("Vacunas al día", default=False)
     desparasitado = models.BooleanField("Desparasitado", default=False)
     necesidades_especiales = models.TextField("Necesidades especiales", blank=True)
+    estado_salud_general = models.TextField("Estado de salud general", blank=True)
+    evidencia_vacunacion = models.ImageField("Evidencia de vacunación", upload_to="mascotas/veterinaria/vacunacion/", blank=True, null=True)
+    evidencia_esterilizacion = models.ImageField("Evidencia de esterilización", upload_to="mascotas/veterinaria/esterilizacion/", blank=True, null=True)
 
     # Imágenes (URLs o paths)
     foto_principal = models.ImageField("Foto principal", upload_to="mascotas/", blank=True, null=True)

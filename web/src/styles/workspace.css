@@ -646,6 +646,23 @@
   margin-top: -0.35rem;
   color: var(--pet-form-muted);
 }
+.workspace--albergue .pet-vet-card {
+  display: grid;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  padding: clamp(1rem, 2vw, 1.4rem);
+  border: 1px solid #dce9df;
+  border-radius: 16px;
+  background: #f7faf6;
+}
+.workspace--albergue .pet-vet-card h4 { margin: 0 0 .25rem; color: var(--pet-form-ink); font-size: 1.15rem; }
+.workspace--albergue .pet-vet-card p { margin: 0; }
+.workspace--albergue .pet-vet-card textarea { min-height: 5.5rem; resize: vertical; }
+.workspace--albergue .pet-vet-checks { grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
+.workspace--albergue .pet-vet-checks label { display: flex; align-items: center; gap: .6rem; padding: .75rem; border: 1px solid #e1eae2; border-radius: 10px; background: #fff; }
+.workspace--albergue .pet-vet-evidence { display: grid; gap: .4rem; padding: .9rem; border: 1px solid #e1eae2; border-radius: 12px; background: #fff; }
+.workspace--albergue .pet-vet-preview { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; }
+.workspace--albergue .pet-vet-preview img { width: min(100%, 220px); max-height: 160px; object-fit: cover; border-radius: 10px; }
 .workspace--albergue .pet-edit-form > fieldset > .actions:last-child {
   margin-top: 1.5rem;
   padding-top: 1.2rem;

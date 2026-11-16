@@ -89,6 +89,48 @@ class MascotaAPITest(TestCase):
         self.assertIn('albergue', response.data)
         self.assertEqual(response.data['albergue'], self.albergue.id)
 
+    def test_ficha_veterinaria_se_guarda_se_consulta_y_se_edita(self):
+        self._auth(self.user)
+        payload = {
+            'nombre': 'Nube', 'especie': 'GATO', 'sexo': 'HEMBRA',
+            'foto_principal': foto_prueba('nube.png'),
+            'estado_salud_general': 'En buen estado; control veterinario reciente.',
+            'vacunas_al_dia': 'true', 'esterilizado': 'true', 'desparasitado': 'false',
+            'necesidades_especiales': 'Dieta húmeda.',
+            'evidencia_vacunacion': foto_prueba('vacunas.png'),
+            'evidencia_esterilizacion': foto_prueba('esterilizacion.png'),
+        }
+        created = self.client.post('/api/mascotas/', payload, format='multipart')
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED, created.data)
+        pet_id = created.data['id']
+        self.assertTrue(created.data['evidencia_vacunacion'])
+        self.assertTrue(created.data['evidencia_esterilizacion'])
+
+        opened = self.client.get(f'/api/mascotas/{pet_id}/')
+        self.assertEqual(opened.data['estado_salud_general'], payload['estado_salud_general'])
+        self.assertTrue(opened.data['vacunas_al_dia'])
+        self.assertEqual(opened.data['necesidades_especiales'], 'Dieta húmeda.')
+
+        updated = self.client.patch(f'/api/mascotas/{pet_id}/', {
+            'estado_salud_general': 'Control actualizado.',
+            'evidencia_esterilizacion': foto_prueba('esterilizacion-nueva.png'),
+            'eliminar_evidencia_vacunacion': 'true',
+        }, format='multipart')
+        self.assertEqual(updated.status_code, status.HTTP_200_OK, updated.data)
+        self.assertEqual(updated.data['estado_salud_general'], 'Control actualizado.')
+        self.assertIsNone(updated.data['evidencia_vacunacion'])
+        self.assertIn('esterilizacion-nueva', updated.data['evidencia_esterilizacion'])
+
+    def test_evidencia_veterinaria_rechaza_imagen_invalida(self):
+        self._auth(self.user)
+        response = self.client.post('/api/mascotas/', {
+            'nombre': 'Nube', 'especie': 'GATO', 'sexo': 'HEMBRA',
+            'foto_principal': foto_prueba(),
+            'evidencia_vacunacion': SimpleUploadedFile('invalida.png', b'no es una imagen', content_type='image/png'),
+        }, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('evidencia_vacunacion', response.data)
+
     @patch(
         "apps.mascotas.descripcion_ia.generar_borrador",
         return_value="Pelaje dorado y orejas caídas visibles en la fotografía.",

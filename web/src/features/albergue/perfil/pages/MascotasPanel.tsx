@@ -16,6 +16,11 @@ const initial = {
   edad_anos: '',
   edad_meses: '',
   descripcion: '',
+  esterilizado: false,
+  vacunas_al_dia: false,
+  desparasitado: false,
+  necesidades_especiales: '',
+  estado_salud_general: '',
 };
 const choices = {
   especie: ['PERRO', 'GATO', 'OTRO'],
@@ -45,6 +50,13 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
   const [id, setId] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [fileIsImproved, setFileIsImproved] = useState(false);
+  const [vaccinationFile, setVaccinationFile] = useState<File | null>(null);
+  const [sterilizationFile, setSterilizationFile] = useState<File | null>(null);
+  const [evidenceCurrent, setEvidenceCurrent] = useState<{ vacunacion: string | null; esterilizacion: string | null }>({ vacunacion: null, esterilizacion: null });
+  const [evidencePreviews, setEvidencePreviews] = useState<Record<string, string>>({});
+  const [removeVaccination, setRemoveVaccination] = useState(false);
+  const [removeSterilization, setRemoveSterilization] = useState(false);
+  const [evidenceErrors, setEvidenceErrors] = useState<Record<string, string>>({});
   const [improvedPhoto, setImprovedPhoto] = useState<{ dataUrl: string; base64: string; mimeType: string; name: string; originalUrl: string | null } | null>(null);
   const [inputVersion, setInputVersion] = useState(0);
   const [error, setError] = useState('');
@@ -91,6 +103,9 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
     setDraft(initial);
     setFile(null);
     setFileIsImproved(false);
+    setVaccinationFile(null); setSterilizationFile(null); setEvidenceCurrent({ vacunacion: null, esterilizacion: null });
+    setEvidencePreviews({});
+    setRemoveVaccination(false); setRemoveSterilization(false); setEvidenceErrors({});
     setImprovedPhoto(null);
     setInputVersion(v => v + 1);
   }
@@ -102,11 +117,25 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
       if (!id && !file) throw new Error('Agrega una fotografía JPEG o PNG.');
       if (file && (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024))
         throw new Error('La fotografía debe ser JPEG/PNG y no superar 5 MB.');
+      const invalidEvidence: Record<string, string> = {};
+      for (const [key, evidence] of [['vacunacion', vaccinationFile], ['esterilizacion', sterilizationFile]] as const) {
+        if (evidence && (!['image/jpeg', 'image/png'].includes(evidence.type) || evidence.size > 5 * 1024 * 1024))
+          invalidEvidence[key] = 'Adjunta una imagen JPEG o PNG de hasta 5 MB.';
+      }
+      setEvidenceErrors(invalidEvidence);
+      if (Object.keys(invalidEvidence).length) throw new Error('Revisa las evidencias veterinarias indicadas.');
       const form = new FormData();
       Object.entries(draft).forEach(([k, v]) => {
-        if (k !== 'edad_anos' && k !== 'edad_meses') form.append(k, v);
+        if (k !== 'edad_anos' && k !== 'edad_meses') form.append(k, String(v));
       });
+      form.set('esterilizado', String(draft.esterilizado));
+      form.set('vacunas_al_dia', String(draft.vacunas_al_dia));
+      form.set('desparasitado', String(draft.desparasitado));
       if (file) form.append('foto_principal', file);
+      if (vaccinationFile) form.append('evidencia_vacunacion', vaccinationFile);
+      if (sterilizationFile) form.append('evidencia_esterilizacion', sterilizationFile);
+      if (removeVaccination) form.append('eliminar_evidencia_vacunacion', 'true');
+      if (removeSterilization) form.append('eliminar_evidencia_esterilizacion', 'true');
       if (fileIsImproved) form.append('foto_mejorada_confirmada', 'true');
       form.append('edad_anos', draft.edad_anos);
       form.append('edad_meses', draft.edad_meses);
@@ -118,7 +147,12 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
       setSuccess('Mascota guardada.');
       await load();
     } catch (e) {
-      setError(errorMessage(e));
+      const message = errorMessage(e);
+      const nextEvidenceErrors: Record<string, string> = {};
+      if (/evidencia_vacunacion|Evidencia de vacunación/i.test(message)) nextEvidenceErrors['vacunacion'] = message;
+      if (/evidencia_esterilizacion|Evidencia de esterilización/i.test(message)) nextEvidenceErrors['esterilizacion'] = message;
+      setEvidenceErrors(nextEvidenceErrors);
+      setError(message);
     } finally {
       setBusy(false);
     }
@@ -196,7 +230,16 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
           edad_anos: pet.edad_anos === null ? '' : String(pet.edad_anos),
           edad_meses: pet.edad_meses === null ? '' : String(pet.edad_meses),
           descripcion: pet.descripcion,
+          esterilizado: pet.esterilizado ?? false,
+          vacunas_al_dia: pet.vacunas_al_dia ?? false,
+          desparasitado: pet.desparasitado ?? false,
+          necesidades_especiales: pet.necesidades_especiales ?? '',
+          estado_salud_general: pet.estado_salud_general ?? '',
         });
+        setEvidenceCurrent({ vacunacion: pet.evidencia_vacunacion ?? null, esterilizacion: pet.evidencia_esterilizacion ?? null });
+        setEvidencePreviews({});
+        setVaccinationFile(null); setSterilizationFile(null);
+        setRemoveVaccination(false); setRemoveSterilization(false); setEvidenceErrors({});
         setFile(null);
         setFileIsImproved(false);
         setInputVersion(v => v + 1);
@@ -335,6 +378,25 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
               onChange={e => setDraft({ ...draft, descripcion: e.target.value })}
             />
           </label>
+          <section className="pet-vet-card" aria-labelledby="pet-vet-title">
+            <div><h4 id="pet-vet-title">Ficha veterinaria</h4><p className="muted">Registra el estado de salud y los cuidados actuales.</p></div>
+            <label>Estado de salud general<textarea maxLength={2000} value={draft.estado_salud_general} onChange={e => setDraft({ ...draft, estado_salud_general: e.target.value })} placeholder="Describe brevemente su estado actual y observaciones relevantes" /></label>
+            <div className="grid pet-vet-checks">
+              <label><input type="checkbox" checked={draft.vacunas_al_dia} onChange={e => setDraft({ ...draft, vacunas_al_dia: e.target.checked })} /> Vacunas al día</label>
+              <label><input type="checkbox" checked={draft.esterilizado} onChange={e => setDraft({ ...draft, esterilizado: e.target.checked })} /> Esterilizada</label>
+              <label><input type="checkbox" checked={draft.desparasitado} onChange={e => setDraft({ ...draft, desparasitado: e.target.checked })} /> Desparasitada</label>
+            </div>
+            {([['vacunacion', 'Evidencia de vacunación', setVaccinationFile, evidenceCurrent.vacunacion, removeVaccination, setRemoveVaccination], ['esterilizacion', 'Evidencia de esterilización', setSterilizationFile, evidenceCurrent.esterilizacion, removeSterilization, setRemoveSterilization]] as const).map(([key, title, select, stored, removing, setRemoving]) => {
+              const preview = evidencePreviews[key] ?? (stored && !removing ? mediaUrl(stored) : null);
+              return <div className="pet-vet-evidence" key={key}>
+                <label>{title}<input type="file" accept="image/jpeg,image/png" onChange={e => { const selectedFile = e.target.files?.[0] ?? null; select(selectedFile); setRemoving(false); setEvidenceErrors(old => ({ ...old, [key]: '' })); if (selectedFile) { const reader = new FileReader(); reader.onload = () => { if (typeof reader.result === 'string') setEvidencePreviews(old => ({ ...old, [key]: reader.result as string })); }; reader.readAsDataURL(selectedFile); } else setEvidencePreviews(old => { const next = { ...old }; delete next[key]; return next; }); }} /></label>
+                <small className="muted">JPEG o PNG, máximo 5 MB.</small>
+                {preview && <div className="pet-vet-preview"><img src={preview} alt={`Vista previa: ${title.toLowerCase()}`} /><button type="button" className="secondary" onClick={() => { select(null); setEvidencePreviews(old => { const next = { ...old }; delete next[key]; return next; }); if (stored) setRemoving(true); }}>Eliminar evidencia</button></div>}
+                {evidenceErrors[key] && <p className="feedback error" role="alert">{evidenceErrors[key]}</p>}
+              </div>;
+            })}
+            <label>Necesidades especiales<textarea maxLength={2000} value={draft.necesidades_especiales} onChange={e => setDraft({ ...draft, necesidades_especiales: e.target.value })} placeholder="Medicación, dieta específica u otros cuidados" /></label>
+          </section>
           <div className="pet-ai-tools">
             <p className="muted">{id
               ? 'La descripción IA usa los datos actuales del formulario. Para temperamento y mejora de foto se requiere la mascota y su foto guardadas.'

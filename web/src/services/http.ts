@@ -55,7 +55,9 @@ export async function request<T>(
         foto_principal: 'Fotografía', nombre: 'Nombre de la mascota', especie: 'Especie',
         sexo: 'Sexo', tamanio: 'Tamaño', temperamento: 'Temperamento', energia: 'Energía',
         edad_anos: 'Edad: años', edad_meses: 'Edad: meses adicionales', raza: 'Raza',
-        descripcion: 'Descripción', non_field_errors: 'Formulario',
+        descripcion: 'Descripción', estado_salud_general: 'Estado de salud general',
+        evidencia_vacunacion: 'Evidencia de vacunación', evidencia_esterilizacion: 'Evidencia de esterilización',
+        non_field_errors: 'Formulario',
       };
       const validationFields = data.campos ?? (response.status === 400 ?
         Object.fromEntries(Object.entries(data).filter(([, value]) => Array.isArray(value))) : {});
