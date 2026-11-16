@@ -8,52 +8,46 @@
     <script src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js" defer></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <style>
-        .sidebar { min-height: 100vh; background: #f8f9fa; border-right: 1px solid #dee2e6; }
-        .sidebar .nav-link { color: #495057; }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active { background: #e9ecef; color: #0d6efd; }
-        .content-area { padding: 2rem; }
-        .card { box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075); }
-        .table th { background: #f8f9fa; }
-        .htmx-indicator { opacity: 0; transition: opacity 200ms; }
-        .htmx-request .htmx-indicator { opacity: 1; }
-        .htmx-request.htmx-indicator { opacity: 1; }
-    </style>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/panel.css' %}">
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Saltar al contenido</a>
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+            <nav id="panel-navigation" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
                 <div class="position-sticky pt-3">
                     <div class="px-3 mb-3">
-                        <h5 class="text-primary"><i class="bi bi-paw-fill me-2"></i>Petly Admin</h5>
-                        <small class="text-muted">Panel de Albergue</small>
+                        <a class="brand-lockup" href="{% url 'panel_home' %}">
+                            <span class="brand-mark" aria-hidden="true"><i class="bi bi-paw-fill"></i></span>
+                            <span><strong>Petly</strong><small>Panel de albergue</small></span>
+                        </a>
                     </div>
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/panel/' %}active{% endif %}" href="{% url 'panel_home' %}">
+                            <a class="nav-link {% if request.path == '/panel/' %}active{% endif %}" href="{% url 'panel_home' %}" {% if request.path == '/panel/' %}aria-current="page"{% endif %}>
                                 <i class="bi bi-house-door me-2"></i>Inicio
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/panel/albergue/' %}active{% endif %}" href="{% url 'albergue_perfil' %}">
+                            <a class="nav-link {% if request.path == '/panel/albergue/' %}active{% endif %}" href="{% url 'albergue_perfil' %}" {% if request.path == '/panel/albergue/' %}aria-current="page"{% endif %}>
                                 <i class="bi bi-building me-2"></i>Mi Albergue
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/panel/mascotas/' %}active{% endif %}" href="{% url 'mascota_lista' %}">
+                            <a class="nav-link {% if '/panel/mascotas/' in request.path %}active{% endif %}" href="{% url 'mascota_lista' %}" {% if '/panel/mascotas/' in request.path %}aria-current="page"{% endif %}>
                                 <i class="bi bi-heart-fill me-2"></i>Mascotas
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/panel/postulantes/' %}active{% endif %}" aria-disabled="true" tabindex="-1">
+                            <a class="nav-link {% if '/panel/postulantes/' in request.path %}active{% endif %}" href="{% url 'postulante_lista' %}" {% if '/panel/postulantes/' in request.path %}aria-current="page"{% endif %}>
                                 <i class="bi bi-people me-2"></i>Postulantes
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/panel/solicitudes/' %}active{% endif %}" aria-disabled="true" tabindex="-1">
+                            <a class="nav-link {% if '/panel/solicitudes/' in request.path %}active{% endif %}" href="{% url 'solicitud_lista' %}" {% if '/panel/solicitudes/' in request.path %}aria-current="page"{% endif %}>
                                 <i class="bi bi-file-earmark-text me-2"></i>Solicitudes
                             </a>
                         </li>
@@ -79,7 +73,13 @@
             </nav>
 
             <!-- Main content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 content-area">
+            <main id="main-content" class="col-md-9 ms-sm-auto col-lg-10 px-md-4 content-area" tabindex="-1">
+                <div class="mobile-topbar d-md-none">
+                    <a class="mobile-brand" href="{% url 'panel_home' %}"><i class="bi bi-paw-fill" aria-hidden="true"></i> Petly</a>
+                    <button class="btn btn-outline-success" type="button" data-bs-toggle="collapse" data-bs-target="#panel-navigation" aria-controls="panel-navigation" aria-expanded="false" aria-label="Abrir menú">
+                        <i class="bi bi-list" aria-hidden="true"></i><span class="ms-1">Menú</span>
+                    </button>
+                </div>
                 {% if messages %}
                     <div class="mb-3">
                         {% for message in messages %}
