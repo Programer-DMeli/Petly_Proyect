@@ -8,6 +8,56 @@ Documento de planificación: [`PLANNING.md`](PLANNING.md) (v2).
 La IA prepara descripciones revisables de mascotas; **el albergue conserva la
 decisión sobre las adopciones**.
 
+## Administración: instalación y arquitectura
+
+El panel administrativo que usa el equipo está en React: `http://localhost:5173/administracion/albergues`. React autentica las cuentas de negocio con Spring Boot y consume Django para administrar albergues, mascotas y verificaciones KYC. El Django Admin técnico está separado en `http://localhost:8000/admin/`; usa cuentas internas de Django y no las cuentas ADMIN de Petly.
+
+### Inicio rápido de Django
+
+Requiere Python 3.14, MariaDB con la base `database_petly`, y Spring Boot activo para iniciar sesión desde React y consultar las cuentas de albergue. Desde PowerShell, en la raíz del repositorio:
+
+```powershell
+cd backend-admin
+py -3.14 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+```
+
+Completa `backend-admin/.env` con credenciales de MariaDB, `DJANGO_SECRET_KEY`, `SPRING_JWT_SECRET` e `INTERNAL_API_SECRET`. El secreto JWT debe coincidir con Spring; el secreto interno debe tener al menos 32 bytes y coincidir con el de Spring. En una base vacía, primero inicia Spring para que aplique Flyway. Luego, desde `backend-admin/`, ejecuta:
+
+```powershell
+python manage.py check
+python manage.py migrate
+python manage.py runserver 127.0.0.1:8000
+```
+
+En otra terminal, configura `web/.env` con `VITE_API_USUARIO_URL=http://localhost:8080` y `VITE_API_ADMINISTRACION_URL=http://localhost:8000`, y arranca React:
+
+```powershell
+cd web
+npm ci
+npm run dev -- --strictPort
+```
+
+Abre `http://localhost:5173`. Las migraciones de Django y Spring son independientes aunque usen la misma base. No borres ni marques migraciones como aplicadas sin revisar primero el esquema y los historiales.
+
+### Cómo se conectan React, Django y Spring
+
+```text
+Navegador (React, 5173)
+  ├─ inicio de sesión y cuentas de negocio ──> Spring Boot (8080)
+  ├─ albergues, mascotas y KYC ──────────────> Django REST (8000)
+  └─ reglas de compatibilidad ───────────────> Spring Boot (8080)
+
+Django REST ── ORM / migraciones Django ──> MariaDB
+Spring Boot ── Flyway ────────────────────> MariaDB
+```
+
+Spring es la autoridad de cuentas, contraseñas y JWT. React envía ese JWT como `Authorization: Bearer …` a la API que corresponda. Django valida la firma y los claims con `SPRING_JWT_SECRET`, resuelve la identidad local vinculada por `spring_id` y vuelve a aplicar permisos por rol en cada endpoint. Django no guarda la contraseña de negocio. El formulario ADMIN de React consulta en Django los albergues y cuentas disponibles; Django confirma con Spring que el responsable tenga rol ALBERGUE antes de vincularlo. La pantalla de compatibilidad de React consulta Spring directamente.
+
+La guía completa —incluidos requisitos, configuración de variables, migraciones, rutas, arquitectura por apps y solución de problemas— está en [`backend-admin/README.md`](backend-admin/README.md).
+
 ## Estructura del repositorio
 
 Un solo repositorio, sin repositorios Git anidados:
