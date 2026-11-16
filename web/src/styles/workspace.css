@@ -391,6 +391,103 @@
   color: #155a3f;
   background: #e8f5ed;
 }
+.adoption-analytics {
+  display: grid;
+  gap: 1.25rem;
+}
+.adoption-analytics__heading,
+.adoption-analytics__chart {
+  display: grid;
+  gap: 0.85rem;
+}
+.adoption-analytics__heading h1,
+.adoption-analytics__heading p,
+.adoption-analytics__chart h2,
+.adoption-analytics__chart p {
+  margin-top: 0;
+}
+.adoption-analytics__heading h1,
+.adoption-analytics__chart h2 {
+  color: var(--petly-primary, #125643);
+}
+.adoption-analytics__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+.adoption-analytics__total {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--petly-text-muted, #62756c);
+}
+.adoption-analytics__total strong {
+  color: var(--petly-primary, #125643);
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.1;
+}
+.adoption-analytics__charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  align-items: start;
+  gap: 1.25rem;
+}
+.adoption-analytics__chart {
+  min-width: 0;
+}
+.adoption-bar-chart {
+  display: grid;
+  gap: 0.9rem;
+  width: 100%;
+}
+.adoption-bar-chart__row {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 6.5rem) minmax(3rem, 1fr) 2.25rem;
+  align-items: center;
+  gap: 0.7rem;
+}
+.adoption-bar-chart__label {
+  color: var(--petly-text-muted, #62756c);
+  font-size: 0.92rem;
+  text-align: right;
+  text-transform: capitalize;
+}
+.adoption-bar-chart__track {
+  height: 1rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--petly-surface-soft, #f0f4f1);
+}
+.adoption-bar-chart__bar {
+  display: block;
+  height: 100%;
+  min-width: 0.2rem;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2d9670, var(--petly-primary, #125643));
+  transition: width 240ms ease;
+}
+.adoption-bar-chart__value {
+  color: var(--petly-primary, #125643);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.adoption-analytics__empty {
+  margin: 0;
+  padding: 1rem;
+  border-radius: 12px;
+  color: var(--petly-text-muted, #62756c);
+  background: var(--petly-surface-soft, #f7faf8);
+}
+@media (max-width: 560px) {
+  .adoption-analytics__charts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .adoption-bar-chart__row {
+    grid-template-columns: minmax(4rem, 5rem) minmax(2.5rem, 1fr) 1.75rem;
+    gap: 0.5rem;
+  }
+  .adoption-bar-chart__label {
+    font-size: 0.82rem;
+  }
+}
 .shelter-reviews__success {
   padding: 0.75rem 1rem;
   border-radius: 10px;

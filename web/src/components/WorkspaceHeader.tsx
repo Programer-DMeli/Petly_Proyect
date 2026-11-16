@@ -162,6 +162,11 @@ const groups: Record<string, Group[]> = {
       label: 'Gestión',
       items: [
         {
+          label: 'Analítica de adopciones',
+          to: '/administracion/analitica/adopciones',
+          description: 'Consulta las adopciones entregadas por mes y especie.',
+        },
+        {
           label: 'Albergues y responsables',
           to: '/administracion/albergues',
           description: 'Registro, consulta y administración.',
