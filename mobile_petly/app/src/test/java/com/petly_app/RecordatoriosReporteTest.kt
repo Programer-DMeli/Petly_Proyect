@@ -20,7 +20,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 class RecordatoriosReporteTest {
     @Test fun ocultaReportesEntregadosAunqueSpringTodaviaLosDevuelvaComoPendientes() {
         val fecha = "2026-11-10T12:00:00"
-        val avisos = (1L..6).map { RecordatorioReporteDto(it, fecha, "PENDIENTE") }
+        val avisos = (1L..6).map { RecordatorioReporteDto(it, fecha, anticipacion_dias = 7, estado = "PENDIENTE") }
         val activo = SeguimientoDto(1, 7, "Luna", "Huellitas", fecha, "VISITA", "PROGRAMADO")
         val disponibles = cruzarPlazos(avisos, listOf(
             activo,

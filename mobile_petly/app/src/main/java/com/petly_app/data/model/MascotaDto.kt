@@ -5,7 +5,8 @@ data class Mascota(
     val edadMeses: Int?, val temperamento: String, val energia: String,
     val descripcion: String, val albergue: String, val ubicacion: String,
     val estado: String, val fotografiaUrl: String? = null,
-    val compatibilidad: Compatibilidad? = null
+    val compatibilidad: Compatibilidad? = null,
+    val albergueId: Long? = null
 )
 
 data class Compatibilidad(

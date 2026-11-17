@@ -4,8 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,6 +28,9 @@ enum class PetlyTab { INICIO, CATALOGO, NOVEDADES, MENSAJES, PERFIL }
 
 @Composable
 fun MainAppScreen(
+    selectedTab: PetlyTab,
+    onSelectTab: (PetlyTab) -> Unit,
+    snackbarHostState: SnackbarHostState,
     catalogoState: CatalogoUiState,
     perfilState: PerfilUiState,
     disponibilidadState: DisponibilidadUiState = DisponibilidadUiState(),
@@ -64,16 +66,15 @@ fun MainAppScreen(
     solicitudesChat: List<Triple<Long, Long, String>> = emptyList(),
     reportReminders: @Composable () -> Unit = {}
 ) {
-    var selectedTab by rememberSaveable { mutableStateOf(PetlyTab.INICIO) }
-
     ChatPanel(chatState, onOpenChat, onEditChat, onSendChat, onRetryChat, onEditFailedChat, onClearChat)
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = { if (!isPreview && !chatState.open) ChatButton { onOpenChat(true) } },
         bottomBar = {
             PetlyBottomNavigationBar(
                 selectedTab = selectedTab,
                 unreadNotifications = notificacionesState.noLeidas,
-                onSelectTab = { selectedTab = it }
+                onSelectTab = onSelectTab
             )
         },
         containerColor = ScreenMintBackground
@@ -87,9 +88,9 @@ fun MainAppScreen(
                                 onEditFilters(catalogoState.filters.copy(especie = especie))
                                 onApplyFilters()
                             }
-                            selectedTab = PetlyTab.CATALOGO
+                            onSelectTab(PetlyTab.CATALOGO)
                         },
-                        onNavigateProfile = { selectedTab = PetlyTab.PERFIL },
+                        onNavigateProfile = { onSelectTab(PetlyTab.PERFIL) },
                         onNavigateDetail = onDetailPet
                     )
                 }
@@ -103,7 +104,7 @@ fun MainAppScreen(
                         onPage = onChangePage,
                         onRetry = onRetryCatalog,
                         onDetail = onDetailPet,
-                        onProfile = { selectedTab = PetlyTab.PERFIL },
+                        onProfile = { onSelectTab(PetlyTab.PERFIL) },
                         onExit = onExit
                     )
                 }
@@ -123,7 +124,7 @@ fun MainAppScreen(
                         onEdit = onEditPerfil,
                         onSave = onSavePerfil,
                         onRetry = onLoadPerfil,
-                        onBack = { selectedTab = PetlyTab.INICIO },
+                        onBack = { onSelectTab(PetlyTab.INICIO) },
                         onShare = onShareAutorizaciones,
                         onOpenKyc = onOpenKyc,
                         onOpenNotifications = onOpenNotifications,

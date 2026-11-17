@@ -4,11 +4,15 @@ import com.petly_app.data.model.SolicitudAdopcionDraft
 import com.petly_app.data.model.SolicitudAdopcionValidation
 import com.petly_app.data.remote.*
 import com.google.gson.Gson
+import com.google.gson.JsonElement
+import com.google.gson.JsonParser
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CancellationException
+import retrofit2.HttpException
 
 object SolicitudAdopcionManager {
     private var generation = 0
@@ -24,23 +28,30 @@ object SolicitudAdopcionManager {
     val error = errores.asStateFlow()
     suspend fun fotosGuardadas(mascotaId: Long): List<FotoHogarDto> = ids[mascotaId]?.let { fotosApi?.listar(it) } ?: emptyList()
 
-    var lastId: Long? = null
-    fun clear() { generation++; errores.value = ""; draftMap.clear(); _submitted.value = emptyList(); api = null; fotosApi = null; lastId = null; ids.clear(); estados.clear(); fotosLocales.clear() }
-    suspend fun cargar() {
-        val epoch = generation
-        val service = api ?: return
-        val rows = mutableListOf<com.google.gson.JsonElement>()
+    fun clear() { generation++; errores.value = ""; draftMap.clear(); _submitted.value = emptyList(); api = null; fotosApi = null; ids.clear(); estados.clear(); fotosLocales.clear() }
+
+    suspend fun listarSolicitudes(): List<SolicitudPersistida> {
+        val service = checkNotNull(api)
+        val gson = Gson()
+        val rows = mutableListOf<SolicitudPersistida>()
         var page = 1
         do {
             val response = service.listar(page++)
-            if (epoch != generation) return
-            rows.addAll(if (response.isJsonArray) response.asJsonArray.toList() else response.asJsonObject.getAsJsonArray("results").toList())
+            val results = if (response.isJsonArray) response.asJsonArray else response.asJsonObject.getAsJsonArray("results")
+            results.mapTo(rows) { gson.fromJson(it, SolicitudPersistida::class.java) }
             val more = !response.isJsonArray && response.asJsonObject.get("next")?.let { !it.isJsonNull } == true
         } while (more)
+        return rows
+    }
+
+    suspend fun cargar() {
+        val epoch = generation
+        if (api == null) return
+        val rows = listarSolicitudes()
+        if (epoch != generation) return
         ids.clear(); estados.clear()
         draftMap.entries.removeAll { it.value.finalizado }
-        _submitted.value = rows.map { Gson().fromJson(it, SolicitudPersistida::class.java) }
-            .filter { it.estado in listOf("PENDIENTE", "OBSERVADA", "APROBADA") }
+        _submitted.value = rows.filter { it.estado in listOf("PENDIENTE", "OBSERVADA", "APROBADA") }
             .onEach { ids[it.mascota] = it.id; estados[it.mascota] = it.estado }
             .map {
                 val defaults = Gson().toJsonTree(SolicitudAdopcionDraft()).asJsonObject
@@ -76,8 +87,11 @@ object SolicitudAdopcionManager {
         val epoch = generation
         val service = api ?: return mapOf("servidor" to "Inicia sesión para enviar una solicitud real.")
         try {
-            lastId = ids[draft.mascotaId] ?: service.crear(CrearSolicitud(draft.mascotaId, draft.motivoAdopcion, draft.copy(dniVerificado = false))).id.also { ids[draft.mascotaId] = it }
+            val solicitudId = ids[draft.mascotaId] ?: service.crear(
+                CrearSolicitud(draft.mascotaId, draft.motivoAdopcion, draft.copy(dniVerificado = false))
+            ).id
             if (epoch != generation) return mapOf("servidor" to "La sesión cambió. Vuelve a entrar.")
+            ids[draft.mascotaId] = solicitudId
             for (uri in fotosLocales[draft.mascotaId].orEmpty()) {
                 val bytes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     resolver!!.openInputStream(uri)!!.use { it.readNBytes(5 * 1024 * 1024 + 1) }
@@ -86,11 +100,14 @@ object SolicitudAdopcionManager {
                 val mime = resolver!!.getType(uri)
                 require(mime in listOf("image/jpeg", "image/png")) { "Solo se admiten JPEG y PNG." }
                 val body = bytes.toRequestBody(mime!!.toMediaType())
-                fotosApi!!.subir(lastId!!, okhttp3.MultipartBody.Part.createFormData("archivo", if(mime == "image/png") "hogar.png" else "hogar.jpg", body))
+                fotosApi!!.subir(solicitudId, okhttp3.MultipartBody.Part.createFormData("archivo", if(mime == "image/png") "hogar.png" else "hogar.jpg", body))
+                if (epoch != generation) return mapOf("servidor" to "La sesión cambió.")
+                fotosLocales[draft.mascotaId] = fotosLocales[draft.mascotaId].orEmpty() - uri
             }
         } catch (e: Exception) {
-            val detail = if (e is retrofit2.HttpException) e.response()?.errorBody()?.string() else null
-            return mapOf("servidor" to (detail ?: "No se pudo enviar. Comprueba tu conexión y reintenta."))
+            if (e is CancellationException) throw e
+            if (e is HttpException) return erroresSolicitud(e)
+            return mapOf("servidor" to "No se pudo completar el envío. Comprueba tu conexión y reintenta.")
         }
         if (epoch != generation) return mapOf("servidor" to "La sesión cambió.")
         val finalDraft = draft.copy(finalizado = true)
@@ -99,3 +116,20 @@ object SolicitudAdopcionManager {
         return emptyMap()
     }
 }
+
+private fun erroresSolicitud(error: HttpException): Map<String, String> {
+    val fields = runCatching {
+        JsonParser.parseString(error.response()?.errorBody()?.string()).asJsonObject.entrySet()
+            .mapNotNull { (field, value) ->
+                val messages = if (value.isJsonArray) value.asJsonArray.toList() else listOf(value)
+                messages.mapNotNull(JsonElement::mensaje).joinToString(" ")
+                    .takeIf(String::isNotBlank)?.let { field to it }
+            }.toMap()
+    }.getOrDefault(emptyMap())
+    val message = fields["autorizacion"] ?: fields["perfil"] ?: fields["detail"]
+        ?: fields.values.firstOrNull() ?: "No se pudo completar el envío (${error.code()})."
+    return fields + ("servidor" to message)
+}
+
+private fun JsonElement.mensaje(): String? =
+    if (isJsonPrimitive && asJsonPrimitive.isString) asString else null

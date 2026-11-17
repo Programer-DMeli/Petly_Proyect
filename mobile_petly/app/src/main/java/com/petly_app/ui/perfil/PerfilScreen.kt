@@ -73,6 +73,8 @@ fun PerfilScreen(
             Text(it, color = MaterialTheme.colorScheme.error)
         }
 
+        if (!preview) MisSolicitudesAdopcion()
+
         OutlinedButton(
             onClick = onOpenKyc,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
