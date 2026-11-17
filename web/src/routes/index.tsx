@@ -36,6 +36,7 @@ import GestionTestimoniosPage from '../features/albergue/perfil/pages/GestionTes
 import ResenasPage from '../features/albergue/perfil/pages/ResenasPage';
 import PerfilPublicoAlberguePage from '../features/shared/PerfilPublicoAlberguePage';
 import AnaliticaAdopcionesPage from '../features/administracion/analitica/pages/AnaliticaAdopcionesPage';
+import RolesUsuariosPage from '../features/administracion/usuarios/pages/RolesUsuariosPage';
 
 /**
  * Rutas de Petly web. Estructura prevista según PLANNING v2 §9.2:
@@ -122,6 +123,7 @@ export const router = createBrowserRouter([
         ),
         children: [
           { path: 'analitica/adopciones', element: <AnaliticaAdopcionesPage /> },
+          { path: 'usuarios', element: <RolesUsuariosPage /> },
           { path: 'albergues', element: <AlberguesAdminPage /> },
           { path: 'compatibilidad', element: <PesosCompatibilidad /> },
           { path: 'verificaciones-kyc', element: <VerificacionesKycAdminPage /> },

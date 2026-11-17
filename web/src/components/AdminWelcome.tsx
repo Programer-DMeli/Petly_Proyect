@@ -29,6 +29,16 @@ export default function AdminWelcome() {
           </span>
           <span aria-hidden="true">↗</span>
         </Link>
+        <Link to="/administracion/usuarios">
+          <span className="admin-tool-icon" aria-hidden="true">
+            ◉
+          </span>
+          <span>
+            <strong>Roles y cuentas</strong>
+            <small>Administra los accesos de la comunidad Petly.</small>
+          </span>
+          <span aria-hidden="true">↗</span>
+        </Link>
         <Link to="/administracion/verificaciones-kyc">
           <span className="admin-tool-icon" aria-hidden="true">
             ✓
