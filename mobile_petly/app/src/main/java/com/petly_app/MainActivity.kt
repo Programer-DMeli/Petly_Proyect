@@ -28,8 +28,6 @@ class MainActivity : ComponentActivity() {
     private fun acceptLink(intent: Intent?) {
         val uri = intent?.data
         if(uri?.scheme == "petly" && uri.host == "recuperacion") {
-            app.container.session.clear()
-            app.push.unlink()
             pushEvent.value = null
             resetToken.value = uri.getQueryParameter("token")
         } else if (uri?.scheme == "petly" && uri.host == "aviso" &&

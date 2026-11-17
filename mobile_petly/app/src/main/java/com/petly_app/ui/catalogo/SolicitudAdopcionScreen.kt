@@ -29,7 +29,9 @@ import androidx.compose.ui.unit.sp
 import com.petly_app.core.network.apiErrorMessage
 import com.petly_app.data.repository.SolicitudAdopcionManager
 import com.petly_app.ui.screen.HomeIcons
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SolicitudAdopcionScreen(
@@ -379,7 +381,7 @@ fun SolicitudAdopcionScreen(
                         fotos = SolicitudAdopcionManager.fotosLocales[mascotaId].orEmpty()
                         isSending = false
                         if (validationErrors.isEmpty()) {
-                            onSubmittedSuccess()
+                            withContext(Dispatchers.Main.immediate) { onSubmittedSuccess() }
                         } else {
                             errors = validationErrors
                             statusMessage = when {

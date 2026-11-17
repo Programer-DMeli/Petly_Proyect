@@ -14,7 +14,8 @@ data class ConversacionDto(
     @SerializedName("promedio_respuesta_horas") val promedioRespuestaHoras: Double?,
     @SerializedName("ultimo_mensaje") val ultimoMensaje: MensajeDto?,
     val bloqueada: Boolean = false,
-    @SerializedName("puede_enviar") val puedeEnviar: Boolean = true
+    @SerializedName("puede_enviar") val puedeEnviar: Boolean = true,
+    @SerializedName("bloqueada_por_mi") val bloqueadaPorMi: Boolean = false
 )
 data class AdjuntoMensajeDto(val id: Long, @SerializedName("nombre_original") val nombreOriginal: String, val descarga: String)
 data class MensajeDto(val id: Long, @SerializedName("remitente_id") val remitenteId: Long, val texto: String,
@@ -22,6 +23,7 @@ data class MensajeDto(val id: Long, @SerializedName("remitente_id") val remitent
     val propio: Boolean = false, val leido: Boolean = false,
     @SerializedName("bienvenida_automatica") val bienvenidaAutomatica: Boolean = false)
 data class ConversacionDetalleDto(val conversacion: ConversacionDto, val mensajes: List<MensajeDto>)
+data class MensajesNoLeidosDto(@SerializedName("no_leidos") val total: Int)
 data class ActualizacionesMensajesDto(
     val mensajes: List<MensajeDto>,
     @SerializedName("leidos_hasta_id") val leidosHastaId: Long?
@@ -29,6 +31,7 @@ data class ActualizacionesMensajesDto(
 
 interface MensajeriaApi {
     @GET("api/mensajeria/conversaciones/") suspend fun listar(): List<ConversacionDto>
+    @GET("api/mensajeria/conversaciones/no-leidos/") suspend fun contarNoLeidos(): MensajesNoLeidosDto
     @POST("api/mensajeria/conversaciones/") suspend fun crear(@Body solicitud: Map<String, Long>): ConversacionDto
     @GET("api/mensajeria/conversaciones/{id}/") suspend fun detalle(@Path("id") id: Long): ConversacionDetalleDto
     @GET("api/mensajeria/conversaciones/{id}/mensajes/")
@@ -38,6 +41,7 @@ interface MensajeriaApi {
     @POST("api/mensajeria/conversaciones/{id}/leer/")
     suspend fun marcarLeido(@Path("id") id: Long, @Body body: Map<String, Long>)
     @POST("api/mensajeria/conversaciones/{id}/bloquear/") suspend fun bloquear(@Path("id") id: Long, @Body body: Map<String, String> = emptyMap())
+    @POST("api/mensajeria/conversaciones/{id}/desbloquear/") suspend fun desbloquear(@Path("id") id: Long)
     @POST("api/mensajeria/conversaciones/{id}/reportar/") suspend fun reportar(@Path("id") id: Long, @Body body: Map<String, String>)
     @GET suspend fun descargar(@Url url: String): okhttp3.ResponseBody
 }

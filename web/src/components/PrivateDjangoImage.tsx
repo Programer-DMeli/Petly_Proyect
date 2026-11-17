@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getSession } from '../services/session';
-import { djangoBase } from '../services/http';
+import { fetchDjangoFile } from '../services/http';
 
 export default function PrivateDjangoImage({ src, alt }: { src: string; alt: string }) {
   const [objectUrl, setObjectUrl] = useState('');
@@ -9,18 +8,10 @@ export default function PrivateDjangoImage({ src, alt }: { src: string; alt: str
   useEffect(() => {
     let active = true;
     let createdUrl = '';
-    const session = getSession();
+    const controller = new AbortController();
     setObjectUrl('');
     setUnavailable(false);
-    if (!session || Date.now() >= session.expires) {
-      setUnavailable(true);
-      return () => { active = false; };
-    }
-    void fetch(`${djangoBase}${src}`, { headers: { Authorization: `Bearer ${session.token}` } })
-      .then(response => {
-        if (!response.ok) throw new Error('Foto no disponible');
-        return response.blob();
-      })
+    void fetchDjangoFile(src, { signal: controller.signal }).then(response => response.blob())
       .then(blob => {
         createdUrl = URL.createObjectURL(blob);
         if (active) setObjectUrl(createdUrl);
@@ -29,6 +20,7 @@ export default function PrivateDjangoImage({ src, alt }: { src: string; alt: str
       .catch(() => { if (active) setUnavailable(true); });
     return () => {
       active = false;
+      controller.abort();
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
   }, [src]);

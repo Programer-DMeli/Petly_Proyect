@@ -34,48 +34,42 @@ object ApiClient {
         .addConverterFactory(GsonConverterFactory.create(com.google.gson.GsonBuilder().serializeNulls().create()))
         .build()
 
-    fun authenticatedApi(session: SessionManager): Retrofit {
-        val authClient = baseClient.newBuilder()
+    fun authenticatedApi(session: SessionManager): Retrofit =
+        authenticated(BuildConfig.API_BASE_URL, session)
+
+    fun authenticatedAdminApi(session: SessionManager): Retrofit =
+        authenticated(BuildConfig.ADMIN_API_BASE_URL, session)
+
+    private fun authenticated(baseUrl: String, session: SessionManager): Retrofit {
+        val client = baseClient.newBuilder()
             .addInterceptor { chain ->
-                val token = session.token()
+                val auth = session.accessForRequest()
                 val original = chain.request()
-                val request = original.newBuilder().apply {
-                    if (token != null) header("Authorization", "Bearer $token")
-                }.build()
-                val activeChain = if (original.url.encodedPath.endsWith("/explicacion") || original.url.encodedPath == "/api/asistente/chat") chain.withReadTimeout(65, TimeUnit.SECONDS) else chain
-                val response = activeChain.proceed(request)
-                if (response.code == 401 && token != null) {
-                    session.clearIfMatches(token)
+                val builder = original.newBuilder()
+                if (auth != null) builder.header("Authorization", "Bearer ${auth.token}")
+                val path = original.url.encodedPath
+                val activeChain = if (path.endsWith("/explicacion") || path == "/api/asistente/chat") {
+                    chain.withReadTimeout(65, TimeUnit.SECONDS)
+                } else {
+                    chain
                 }
-                response
-            }
-            .build()
-
-        return Retrofit.Builder()
-            .baseUrl(BuildConfig.API_BASE_URL)
-            .client(authClient)
-            .addConverterFactory(GsonConverterFactory.create(com.google.gson.GsonBuilder().serializeNulls().create()))
-            .build()
-    }
-
-    fun authenticatedAdminApi(session: SessionManager): Retrofit {
-        val authClient = baseClient.newBuilder()
-            .addInterceptor { chain ->
-                val token = session.token()
-                val request = chain.request().newBuilder().apply {
-                    if (token != null) header("Authorization", "Bearer $token")
-                }.build()
-                val response = chain.proceed(request)
-                if (response.code == 401 && token != null) session.clearIfMatches(token)
-                response
+                val response = activeChain.proceed(builder.build())
+                if (response.code != 401 || auth == null || chain.call().isCanceled()) return@addInterceptor response
+                val renewed = try {
+                    session.accessForRequest(rejected = auth)
+                } catch (error: java.io.IOException) {
+                    response.close()
+                    throw error
+                }
+                if (renewed == null || original.method !in setOf("GET", "HEAD")) return@addInterceptor response
+                response.close()
+                activeChain.proceed(builder.header("Authorization", "Bearer ${renewed.token}").build())
             }
             .build()
         return Retrofit.Builder()
-            .baseUrl(BuildConfig.ADMIN_API_BASE_URL)
-            .client(authClient)
+            .baseUrl(baseUrl)
+            .client(client)
             .addConverterFactory(GsonConverterFactory.create(com.google.gson.GsonBuilder().serializeNulls().create()))
             .build()
     }
 }
-
-

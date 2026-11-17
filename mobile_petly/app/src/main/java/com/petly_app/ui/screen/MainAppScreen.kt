@@ -8,9 +8,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.petly_app.R
 import com.petly_app.ui.asistente.*
 import com.petly_app.data.model.CatalogoFilters
 import com.petly_app.data.model.PerfilDraft
@@ -62,6 +69,8 @@ fun MainAppScreen(
     onOpenNotifications: () -> Unit = {},
     onOpenSeguimientos: () -> Unit = {},
     mensajeriaApi: MensajeriaApi? = null,
+    unreadMessages: Int = 0,
+    onMessagesRead: () -> Unit = {},
     contentResolver: android.content.ContentResolver? = null,
     solicitudesChat: List<Triple<Long, Long, String>> = emptyList(),
     reportReminders: @Composable () -> Unit = {}
@@ -74,6 +83,7 @@ fun MainAppScreen(
             PetlyBottomNavigationBar(
                 selectedTab = selectedTab,
                 unreadNotifications = notificacionesState.noLeidas,
+                unreadMessages = unreadMessages,
                 onSelectTab = onSelectTab
             )
         },
@@ -112,8 +122,11 @@ fun MainAppScreen(
                     NovedadesScreen(onOpenNotifications, notificacionesState.noLeidas)
                 }
                 PetlyTab.MENSAJES -> {
-                    if (mensajeriaApi != null && contentResolver != null) MensajesScreen(mensajeriaApi, contentResolver, solicitudesChat)
-                    else Text("Inicia sesión para ver tus conversaciones.")
+                    if (mensajeriaApi != null && contentResolver != null) {
+                        MensajesScreen(mensajeriaApi, contentResolver, solicitudesChat, onMessagesRead)
+                    } else {
+                        Text("Inicia sesión para ver tus conversaciones.")
+                    }
                 }
                 PetlyTab.PERFIL -> {
                     CuestionarioScreen(
@@ -146,6 +159,7 @@ fun MainAppScreen(
 fun PetlyBottomNavigationBar(
     selectedTab: PetlyTab,
     unreadNotifications: Int = 0,
+    unreadMessages: Int = 0,
     onSelectTab: (PetlyTab) -> Unit
 ) {
     Surface(
@@ -184,6 +198,7 @@ fun PetlyBottomNavigationBar(
                 label = "Mensajes",
                 icon = HomeIcons.Bell,
                 isSelected = selectedTab == PetlyTab.MENSAJES,
+                unreadCount = unreadMessages,
                 onClick = { onSelectTab(PetlyTab.MENSAJES) }
             )
             BottomNavItem(
@@ -201,39 +216,45 @@ private fun BottomNavItem(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     isSelected: Boolean,
+    unreadCount: Int = 0,
     onClick: () -> Unit
 ) {
+    val unreadDescription = if (unreadCount > 0) {
+        pluralStringResource(R.plurals.mensajes_sin_leer, unreadCount, unreadCount)
+    } else {
+        null
+    }
     Column(
         modifier = Modifier
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Tab, onClick = onClick)
+            .semantics {
+                selected = isSelected
+                if (unreadDescription != null) stateDescription = unreadDescription
+            }
             .padding(vertical = 4.dp, horizontal = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        if (isSelected) {
+        BadgedBox(badge = {
+            if (unreadCount > 0) {
+                Badge(Modifier.clearAndSetSemantics {}) {
+                    Text(if (unreadCount > 99) "99+" else unreadCount.toString())
+                }
+            }
+        }) {
             Surface(
                 shape = CircleShape,
-                color = Color(0xFFC8E8DA)
+                color = if (isSelected) Color(0xFFC8E8DA) else Color.Transparent
             ) {
-                Box(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.padding(horizontal = if (isSelected) 14.dp else 0.dp, vertical = 4.dp)) {
                     Icon(
                         imageVector = icon,
-                        contentDescription = label,
-                        tint = PetlyDarkGreen,
+                        contentDescription = null,
+                        tint = if (isSelected) PetlyDarkGreen else Color(0xFF6B7D73),
                         modifier = Modifier.size(20.dp)
                     )
                 }
             }
-        } else {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = Color(0xFF6B7D73),
-                modifier = Modifier.size(20.dp)
-            )
         }
         Spacer(modifier = Modifier.height(2.dp))
         Text(

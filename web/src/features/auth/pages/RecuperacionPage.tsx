@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Feedback from '../../../components/Feedback';
 import { spring, json, errorMessage } from '../../../services/http';
-import { setSession } from '../../../services/session';
+import { resetWebPassword, sessionHeaders } from '../../../services/session';
 export default function RecuperacionPage() {
   const [params] = useSearchParams();
   const incoming = params.get('token') ?? '';
@@ -15,7 +15,6 @@ export default function RecuperacionPage() {
   const [success, setSuccess] = useState('');
   useEffect(() => {
     if (incoming) {
-      setSession(null);
       window.history.replaceState(null, '', '/recuperacion');
     }
   }, [incoming]);
@@ -25,23 +24,25 @@ export default function RecuperacionPage() {
     setSuccess('');
     try {
       if (reset && password !== confirm) throw new Error('Las contraseñas no coinciden.');
-      await spring(
+      const enviar = () => spring(
         reset ? '/api/auth/password/reset/confirm' : '/api/auth/password/reset?canal=web',
         {
           method: 'POST',
+          ...(reset ? { credentials: 'include' as const, headers: sessionHeaders } : {}),
           body: json(
             reset ? { token, nuevaPassword: password, nuevaPasswordConfirm: confirm } : { correo }
           ),
         },
         false
       );
+      if (reset) await resetWebPassword(enviar);
+      else await enviar();
       setSuccess(
         reset
           ? 'Contraseña actualizada. Inicia sesión con tu nueva contraseña.'
           : 'Si el correo existe, recibirás instrucciones. El enlace vence en 15 minutos.'
       );
       if (reset) {
-        setSession(null);
         setToken('');
         setPassword('');
         setConfirm('');

@@ -12,7 +12,9 @@ test('paneles con APIs reales: solo lectura en tres tamaños', async ({ browser 
       page.on('pageerror', e => errors.push(e.message));
       await page.route('**/api/**', async route => {
         const r = route.request();
-        if (['GET', 'OPTIONS'].includes(r.method()) || (r.method() === 'POST' && new URL(r.url()).pathname === '/api/auth/login')) return route.continue();
+        const path = new URL(r.url()).pathname;
+        const sessionEndpoint = ['/api/auth/login', '/api/auth/refresh'].includes(path);
+        if (['GET', 'OPTIONS'].includes(r.method()) || (r.method() === 'POST' && sessionEndpoint)) return route.continue();
         blocked.push(`${r.method()} ${new URL(r.url()).pathname}`); return route.abort();
       });
       await page.goto('/acceso'); await page.getByLabel('Correo', { exact: true }).fill(accounts[role].correo); await page.getByLabel('Contraseña', { exact: true }).fill(accounts[role].password);

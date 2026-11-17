@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { setSession, type Session } from '../services/session';
+import { logoutSession, type Session } from '../services/session';
 import NotificacionesMenu from './NotificacionesMenu';
 
 type Item = { label: string; to: string; description: string };
@@ -191,6 +191,8 @@ const labels: Record<string, string> = {
   ADMIN: 'Administración',
 };
 export default function WorkspaceHeader({ session }: { session: Session }) {
+  const [logoutError, setLogoutError] = useState('');
+  const [logoutBusy, setLogoutBusy] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [mobile, setMobile] = useState(false);
   const ref = useRef<HTMLElement>(null);
@@ -342,13 +344,18 @@ export default function WorkspaceHeader({ session }: { session: Session }) {
               <span className="badge">{labels[role]}</span>
               <button
                 type="button"
+                disabled={logoutBusy}
                 onClick={() => {
-                  setSession(null);
-                  void navigate('/acceso');
+                  setLogoutBusy(true);
+                  setLogoutError('');
+                  void logoutSession().then(() => navigate('/acceso'))
+                    .catch(() => setLogoutError('No se pudo cerrar la sesión. Intenta nuevamente.'))
+                    .finally(() => setLogoutBusy(false));
                 }}
               >
                 Cerrar sesión <span aria-hidden="true">↗</span>
               </button>
+              {logoutError && <p role="alert">{logoutError}</p>}
             </div>
           )}
         </div>

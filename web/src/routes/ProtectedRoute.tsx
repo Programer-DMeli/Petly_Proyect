@@ -6,7 +6,7 @@ import type { Role } from '../services/session';
 export default function ProtectedRoute({ children, role }: { children: ReactNode; role: Role }) {
   const session = useSyncExternalStore(subscribe, getSession);
   const { pathname, search, hash } = useLocation();
-  if (!session || session.expires <= Date.now()) {
+  if (!session) {
     return <Navigate to="/acceso" state={{
       solicitud: pathname.match(/^\/adoptante\/solicitudes\/(\d+)$/)?.[1],
       destinoAfiche: pathname === '/albergue' && new URLSearchParams(search).has('afiche')

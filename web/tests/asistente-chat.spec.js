@@ -11,7 +11,7 @@ async function navegar(page, path) {
 
 async function login(page, role) {
   await page.route('**/api/auth/login', route => route.fulfill({
-    json: { token: `test-${role}`, expiresIn: 3600 },
+    json: { token: `test-${role}`, expiresIn: 3600, user: { id: '42', correo: 'chat@example.test', rol: role } },
   }));
   await page.route('**/api/auth/me', route => route.fulfill({
     json: { id: '42', correo: 'chat@example.test', rol: role },
@@ -26,6 +26,8 @@ async function login(page, role) {
 test.beforeEach(async ({ page }) => {
   // Isolated UI checks: backend and provider are deliberately simulated.
   await page.route('**/api/**', route => route.fulfill({ status: 404, json: { message: 'Sin datos de prueba' } }));
+  await page.route('**/api/auth/refresh', route => route.fulfill({ status: 401 }));
+  await page.route('**/api/auth/logout', route => route.fulfill({ status: 204 }));
   await page.goto('/acceso');
 });
 

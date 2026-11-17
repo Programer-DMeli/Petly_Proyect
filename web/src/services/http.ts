@@ -1,18 +1,41 @@
-import { getSession, setSession } from './session';
-export const springBase = (
-  (import.meta.env['VITE_API_USUARIO_URL'] as string | undefined) ?? 'http://localhost:8080'
-).replace(/\/$/, '');
+import { getSession, renewSession } from './session';
+import { ApiError, springBase } from './apiConfig';
+export { ApiError, springBase };
 export const djangoBase = (
   (import.meta.env['VITE_API_ADMINISTRACION_URL'] as string | undefined) ?? 'http://localhost:8000'
 ).replace(/\/$/, '');
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-    public retryAfterSeconds = 0
-  ) {
-    super(message);
+async function send(base: string, path: string, init: RequestInit, authenticated: boolean) {
+  const headers = new Headers(init.headers);
+  if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
+  init.signal?.throwIfAborted();
+  const previous = getSession();
+  if (authenticated && !previous) throw new ApiError(401, 'Inicia sesión para continuar.');
+  const session = authenticated ? await renewSession() : null;
+  if (previous && session && previous.identity.id !== session.identity.id) {
+    throw new ApiError(401, 'La cuenta activa cambió. Vuelve a intentar.');
   }
+  init.signal?.throwIfAborted();
+  if (session) headers.set('Authorization', `Bearer ${session.token}`);
+  const fetchOnce = async () => {
+    try {
+      return await fetch(base + path, { ...init, headers });
+    } catch (error) {
+      if (init.signal?.aborted) throw error;
+      throw new Error('No se pudo conectar. Comprueba tu conexión e intenta nuevamente.');
+    }
+  };
+  const response = await fetchOnce();
+  if (response.status !== 401 || !session) return response;
+  const renewed = await renewSession(session.token).catch(async error => {
+    await response.body?.cancel();
+    throw error;
+  });
+  const method = (init.method ?? 'GET').toUpperCase();
+  if (renewed.identity.id !== session.identity.id || !['GET', 'HEAD'].includes(method)) return response;
+  init.signal?.throwIfAborted();
+  await response.body?.cancel();
+  headers.set('Authorization', `Bearer ${renewed.token}`);
+  return fetchOnce();
 }
 export async function request<T>(
   base: string,
@@ -20,24 +43,7 @@ export async function request<T>(
   init: RequestInit = {},
   authenticated = true
 ): Promise<T> {
-  const headers = new Headers(init.headers);
-  if (init.body && !(init.body instanceof FormData))
-    headers.set('Content-Type', 'application/json');
-  const session = getSession();
-  if (authenticated) {
-    if (!session || Date.now() >= session.expires) {
-      setSession(null);
-      throw new ApiError(401, 'Tu sesión venció. Inicia sesión nuevamente.');
-    }
-    headers.set('Authorization', `Bearer ${session.token}`);
-  }
-  let response: Response;
-  try {
-    response = await fetch(base + path, { ...init, headers });
-  } catch {
-    throw new Error('No se pudo conectar. Comprueba tu conexión e intenta nuevamente.');
-  }
-  if (response.status === 401 && authenticated && getSession() === session) setSession(null);
+  const response = await send(base, path, init, authenticated);
   if (!response.ok) {
     let message = `No se pudo completar la operación (${response.status}).`;
     let retryAfter = Number(response.headers.get('Retry-After')) || 0;
@@ -79,12 +85,7 @@ export const spring = <T>(path: string, init?: RequestInit, auth = true) =>
   request<T>(springBase, path, init, auth);
 export const django = <T>(path: string, init?: RequestInit) => request<T>(djangoBase, path, init);
 export async function fetchDjangoFile(path: string, init?: RequestInit) {
-  const session = getSession();
-  if (!session || Date.now() >= session.expires) {
-    setSession(null);
-    throw new ApiError(401, 'Tu sesión venció. Inicia sesión nuevamente.');
-  }
-  const response = await fetch(djangoBase + path, { ...init, headers: { Authorization: `Bearer ${session.token}` } });
+  const response = await send(djangoBase, path, init ?? {}, true);
   if (!response.ok) {
     let message = `No se pudo descargar el documento (${response.status}).`;
     try { const body = (await response.json()) as { detail?: string }; message = body.detail ?? message; } catch { /* conservar mensaje */ }

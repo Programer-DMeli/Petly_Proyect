@@ -1,8 +1,18 @@
 package com.petly_app.core.navigation
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
@@ -17,9 +27,11 @@ import androidx.navigation.navArgument
 import androidx.navigation.compose.*
 import com.petly_app.BuildConfig
 import com.petly_app.core.AppContainer
+import com.petly_app.core.session.SessionRestore
 import com.petly_app.ui.asistente.ChatViewModel
 import com.petly_app.ui.auth.*
 import com.petly_app.ui.catalogo.*
+import com.petly_app.ui.mensajes.ContadorMensajesNoLeidos
 import com.petly_app.ui.perfil.*
 import com.petly_app.ui.screen.MainAppScreen
 import com.petly_app.ui.screen.PetlyTab
@@ -45,6 +57,25 @@ fun PetlyNavHost(
     onResetHandled: () -> Unit = {}
 ) {
     val authenticated by container.session.authenticated.collectAsStateWithLifecycle()
+    val restore by container.session.restoreState.collectAsStateWithLifecycle()
+    val notice by container.session.notice.collectAsStateWithLifecycle()
+    val restoreScope = rememberCoroutineScope()
+    LaunchedEffect(container, resetToken) {
+        if (resetToken == null) container.session.restore()
+    }
+    if (resetToken == null && restore != SessionRestore.READY) {
+        Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center) {
+            if (restore == SessionRestore.RETRY) {
+                Text("No se pudo recuperar tu sesión. Comprueba tu conexión e intenta nuevamente.")
+                Button(onClick = { restoreScope.launch { container.session.restore() } }) { Text("Reintentar") }
+            } else {
+                CircularProgressIndicator()
+                Text("Recuperando sesión…")
+            }
+        }
+        return
+    }
     var preview by rememberSaveable { mutableStateOf(false) }
     // La vista de prueba no crea tokens, no inicia una sesión real y solo existe en debug.
     val isPreview = BuildConfig.DEBUG && preview
@@ -66,6 +97,9 @@ fun PetlyNavHost(
         val snackbarHostState = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
         val privateGraph = resetToken == null && (authenticated || isPreview)
+        val contadorMensajes = remember(container) {
+            ContadorMensajesNoLeidos { container.mensajeriaApi.contarNoLeidos().total }
+        }
         val notificationsFactory = remember(container, isPreview) {
             viewModelFactory { initializer { NotificacionesViewModel(container.notificacionesApi, isPreview) } }
         }
@@ -80,6 +114,11 @@ fun PetlyNavHost(
         val notificationsVm: NotificacionesViewModel = viewModel(viewModelStoreOwner = notificationsOwner, factory = notificationsFactory)
         val notificationsState by notificationsVm.state.collectAsStateWithLifecycle()
         val lifecycle = LocalLifecycleOwner.current.lifecycle
+        LaunchedEffect(privateGraph, isPreview, lifecycle, contadorMensajes) {
+            if (privateGraph && !isPreview) {
+                lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { contadorMensajes.observar() }
+            }
+        }
         LaunchedEffect(privateGraph, lifecycle) {
             if (privateGraph) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (true) {
@@ -102,7 +141,7 @@ fun PetlyNavHost(
                     }
                     val vm: AuthViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    LoginScreen(state, vm::login,
+                    LoginScreen(state.copy(error = state.error ?: notice), vm::login,
                         onRegister = { vm.clearFormState(); nav.navigate(Routes.REGISTER) { launchSingleTop = true } },
                         onCheckConnection = vm::checkConnection,
                         onRecovery = { nav.navigate("recuperacion") },
@@ -128,6 +167,7 @@ fun PetlyNavHost(
                 }
             } else {
                 composable(Routes.CATALOG) {
+                    val mensajesNoLeidos by contadorMensajes.total.collectAsStateWithLifecycle()
                     val catalogFactory = remember(container, isPreview) {
                         viewModelFactory { initializer { CatalogoViewModel(container.catalogo(isPreview)) } }
                     }
@@ -164,6 +204,8 @@ fun PetlyNavHost(
                         selectedTab = selectedTab,
                         onSelectTab = { selectedTab = it },
                         snackbarHostState = snackbarHostState,
+                        unreadMessages = mensajesNoLeidos,
+                        onMessagesRead = contadorMensajes::actualizar,
                         onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
                         reportReminders = { RecordatoriosReporte(container.reportesSeguimiento) },
                         mensajeriaApi = if (isPreview) null else container.mensajeriaApi,
@@ -201,7 +243,19 @@ fun PetlyNavHost(
                         onShareAutorizaciones = if (isPreview) null else ({ nav.navigate("autorizaciones") }),
                         onOpenKyc = { nav.navigate("verificacion-dni") },
                         onExit = {
-                            if (isPreview) { container.resetPreview(); preview = false } else container.session.clear()
+                            if (isPreview) {
+                                container.resetPreview()
+                                preview = false
+                            } else {
+                                scope.launch {
+                                    try {
+                                        container.session.logout()
+                                    } catch (error: Exception) {
+                                        if (error is kotlinx.coroutines.CancellationException) throw error
+                                        snackbarHostState.showSnackbar("No se pudo cerrar la sesión. Intenta nuevamente.")
+                                    }
+                                }
+                            }
                         }
                     )
                 }

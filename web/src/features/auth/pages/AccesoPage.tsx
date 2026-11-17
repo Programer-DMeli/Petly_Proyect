@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Feedback from '../../../components/Feedback';
 import { spring, json, errorMessage, ApiError } from '../../../services/http';
-import { setSession, roleHome } from '../../../services/session';
-import type { Identity } from '../../../services/session';
+import { loginSession, roleHome, sessionHeaders, subscribe, getSessionNotice } from '../../../services/session';
+import type { SessionReply } from '../../../services/session';
 export default function AccesoPage({ register = false }: { register?: boolean }) {
+  const notice = useSyncExternalStore(subscribe, getSessionNotice);
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -60,23 +61,12 @@ export default function AccesoPage({ register = false }: { register?: boolean })
         setPassword('');
         setConfirm('');
       } else {
-        const result = await spring<{ token: string; expiresIn: number }>(
+        const { identity } = await loginSession(() => spring<SessionReply>(
           '/api/auth/login',
-          { method: 'POST', body: json({ correo: normalizedEmail, password }) },
+          { method: 'POST', credentials: 'include', headers: sessionHeaders,
+            body: json({ correo: normalizedEmail, password }) },
           false
-        );
-        const identity = await spring<Identity>(
-          '/api/auth/me',
-          { headers: { Authorization: `Bearer ${result.token}` } },
-          false
-        );
-        if (!['ADMIN', 'ALBERGUE', 'ADOPTANTE'].includes(identity.rol))
-          throw new Error('Rol no reconocido.');
-        setSession({
-          token: result.token,
-          identity,
-          expires: Date.now() + result.expiresIn * 1000,
-        });
+        ));
         const destino = identity.rol === 'ADOPTANTE' && typeof solicitud === 'string' && /^\d+$/.test(solicitud)
           ? `/adoptante/solicitudes/${solicitud}`
           : roleHome(identity.rol);
@@ -109,7 +99,7 @@ export default function AccesoPage({ register = false }: { register?: boolean })
           ? 'Regístrate con tu correo y una contraseña de al menos 8 caracteres.'
           : 'Accede a tu espacio con tu cuenta Petly.'}
       </p>
-      <Feedback error={error} success={success} />
+      <Feedback error={error || (register ? '' : notice)} success={success} />
       {!register && (
         <p className="muted">
           Dos contraseñas incorrectas consecutivas bloquean una cuenta registrada durante 1 minuto.

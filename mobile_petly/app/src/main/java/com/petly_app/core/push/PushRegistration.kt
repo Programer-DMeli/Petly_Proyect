@@ -27,7 +27,10 @@ import java.security.SecureRandom
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-class PushRegistration(private val context: Context) {
+class PushRegistration(
+    private val context: Context,
+    private val accessToken: (Long) -> String?
+) {
     private val prefs = context.getSharedPreferences("push_registration", Context.MODE_PRIVATE)
     private val worker = Executors.newSingleThreadScheduledExecutor()
     private var scheduledRevocation: java.util.concurrent.ScheduledFuture<*>? = null
@@ -37,7 +40,7 @@ class PushRegistration(private val context: Context) {
     val configured: Boolean get() = FirebaseApp.getApps(context).isNotEmpty()
 
     @Synchronized
-    fun register(owner: Long, bearer: String) {
+    fun register(owner: Long) {
         if (!configured) return
         if (prefs.getLong("owner", 0) != owner) unlink()
         val key = activeKey() ?: ByteArray(32).also(SecureRandom()::nextBytes).hex().also {
@@ -45,7 +48,13 @@ class PushRegistration(private val context: Context) {
         }
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
             worker.execute {
-                if (activeKey() == key) send("PUT", "", key, token, bearer)
+                if (activeKey() != key) return@execute
+                try {
+                    val bearer = accessToken(owner) ?: return@execute
+                    if (activeKey() == key) send("PUT", "", key, token, bearer)
+                } catch (_: IOException) {
+                    // El registro se reintenta al volver a abrir la app.
+                }
             }
         }
     }

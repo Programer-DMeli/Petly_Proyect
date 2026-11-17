@@ -16,10 +16,10 @@ class UsuarioRepository(
             throw ContractException()
         }
         if (user.getEffectiveRole() != "ADOPTANTE") {
-            session.clear()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { session.clear() }
             throw AdoptanteOnlyException()
         }
         return user
     }
-    fun logout() = session.clear()
+    suspend fun logout() = session.logout()
 }

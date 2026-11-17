@@ -4,7 +4,7 @@ import Feedback from '../../components/Feedback';
 import { django, downloadDjango, errorMessage, json } from '../../services/http';
 
 type Message = { id: number; remitente_id: number; propio: boolean; texto: string; creado_en: string; bienvenida_automatica: boolean; leido: boolean; adjuntos: { id: number; nombre_original: string; descarga: string }[] };
-type Conversation = { id: number; solicitud_id: number | null; mascota_id: number | null; mascota: string; nombre_contacto: string; no_leidos: number; promedio_respuesta_horas: number | null; ultimo_mensaje: Message | null; bloqueada: boolean; puede_enviar: boolean };
+type Conversation = { id: number; solicitud_id: number | null; mascota_id: number | null; mascota: string; nombre_contacto: string; no_leidos: number; promedio_respuesta_horas: number | null; ultimo_mensaje: Message | null; bloqueada: boolean; bloqueada_por_mi: boolean; puede_enviar: boolean };
 type Thread = { conversacion: Conversation; mensajes: Message[] };
 type MessageUpdates = { mensajes: Message[]; leidos_hasta_id: number | null };
 
@@ -28,10 +28,21 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
+  const [moderating, setModerating] = useState(false);
   const loadList = useCallback(async () => {
     try {
       const result = await django<Conversation[]>('/api/mensajeria/conversaciones/');
       setConversations(result);
+      const current = threadRef.current;
+      const conversation = result.find(item => item.id === Number(id));
+      if (current && conversation && current.conversacion.id === conversation.id &&
+          (current.conversacion.bloqueada !== conversation.bloqueada ||
+           current.conversacion.bloqueada_por_mi !== conversation.bloqueada_por_mi ||
+           current.conversacion.puede_enviar !== conversation.puede_enviar)) {
+        const updated = { ...current, conversacion: conversation };
+        threadRef.current = updated;
+        setThread(updated);
+      }
       if (!id && activeConversationRef.current === null && !shelterId && solicitudId === null && result.length) {
         activeConversationRef.current = result[0].id;
         void navigate(`${rutaMensajes}/${result[0].id}`, { replace: true });
@@ -144,20 +155,22 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
     finally { setBusy(false); }
   }
 
-  async function moderate(action: 'bloquear' | 'reportar') {
-    if (!id) return;
+  async function moderate(action: 'bloquear' | 'desbloquear' | 'reportar') {
+    if (!id || moderating) return;
+    if (action === 'bloquear' && !window.confirm('¿Bloquear a esta persona? Ya no podrá enviarte nuevos mensajes.')) return;
+    setModerating(true);
     setError(''); setSuccess('');
     try {
-      if (action === 'bloquear') {
-        if (!window.confirm('¿Bloquear a esta persona? Ya no podrá enviarte nuevos mensajes.')) return;
-        await django(`/api/mensajeria/conversaciones/${id}/bloquear/`, { method: 'POST', body: json({}) });
-        setSuccess('Conversación bloqueada. La otra persona no podrá enviarte nuevos mensajes.');
+      if (action !== 'reportar') {
+        await django(`/api/mensajeria/conversaciones/${id}/${action}/`, { method: 'POST', body: json({}) });
+        setSuccess(action === 'bloquear' ? 'Bloqueo aplicado.' : 'Retiraste tu bloqueo.');
         await loadThread(); await loadList();
       } else {
         await django(`/api/mensajeria/conversaciones/${id}/reportar/`, { method: 'POST', body: json({ motivo: reason }) });
         setSuccess('El reporte quedó registrado para revisión.');
       }
     } catch (e) { setError(errorMessage(e)); }
+    finally { setModerating(false); }
   }
 
   async function saveWelcome() {
@@ -185,7 +198,10 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
           {thread.conversacion.bloqueada && <p role="status">Esta conversación tiene un bloqueo. {thread.conversacion.puede_enviar ? 'La otra persona no puede enviarte mensajes nuevos.' : 'Esta persona te bloqueó y no puedes enviarle mensajes.'}</p>}
           <div className="chat-directo-messages" aria-live="polite">{thread.mensajes.map(message => <article key={message.id} className={message.propio ? 'chat-directo-message mine' : 'chat-directo-message'}><p>{message.texto}</p>{message.adjuntos.map(fileItem => <button key={fileItem.id} type="button" className="secondary" onClick={() => void downloadAttachment(fileItem.descarga, fileItem.nombre_original)}>{fileItem.nombre_original} · descargar</button>)}<small>{message.bienvenida_automatica ? 'Bienvenida automática · ' : ''}{new Date(message.creado_en).toLocaleString('es-PE')}{message.propio && message.leido ? ' · Leído' : ''}</small></article>)}</div>
           <form key={id} onSubmit={e => void send(e)}><label htmlFor="chat-directo-draft">Mensaje</label><textarea id="chat-directo-draft" maxLength={4000} value={draft} onChange={e => setDraft(e.target.value)} disabled={!thread.conversacion.puede_enviar} /><label>Adjunto (JPG, PNG o PDF; máximo 10 MB)<input type="file" accept="image/jpeg,image/png,application/pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} disabled={!thread.conversacion.puede_enviar} /></label>{file && <p>{file.name}</p>}<button disabled={!thread.conversacion.puede_enviar || busy || (!draft.trim() && !file)}>{busy ? 'Enviando…' : 'Enviar'}</button></form>
-          <div className="chat-directo-actions"><label>Motivo del reporte<select value={reason} onChange={e => setReason(e.target.value)}><option value="ACOSO">Acoso o amenazas</option><option value="FRAUDE">Fraude o suplantación</option><option value="CONTENIDO">Contenido inapropiado</option><option value="OTRO">Otro motivo</option></select></label><button type="button" className="secondary" onClick={() => void moderate('reportar')}>Reportar conversación</button><button type="button" className="danger" disabled={thread.conversacion.bloqueada} onClick={() => void moderate('bloquear')}>{thread.conversacion.bloqueada ? 'Conversación bloqueada' : 'Bloquear conversación'}</button></div>
+          <div className="chat-directo-actions"><label>Motivo del reporte<select value={reason} onChange={e => setReason(e.target.value)}><option value="ACOSO">Acoso o amenazas</option><option value="FRAUDE">Fraude o suplantación</option><option value="CONTENIDO">Contenido inapropiado</option><option value="OTRO">Otro motivo</option></select></label><button type="button" className="secondary" onClick={() => void moderate('reportar')}>Reportar conversación</button><details key={id}><summary>Opciones de conversación</summary><button type="button" className={thread.conversacion.bloqueada_por_mi ? 'secondary' : 'danger'} disabled={moderating} onClick={event => {
+            event.currentTarget.closest('details')?.removeAttribute('open');
+            void moderate(thread.conversacion.bloqueada_por_mi ? 'desbloquear' : 'bloquear');
+          }}>{thread.conversacion.bloqueada_por_mi ? 'Desbloquear' : 'Bloquear'}</button></details></div>
         </> : <p>Selecciona una conversación para ver los mensajes.</p>}
       </div>
     </div>

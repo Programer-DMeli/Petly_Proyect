@@ -20,7 +20,9 @@ data class LoginResponse(
     @SerializedName("jwt") val jwt: String? = null,
     @SerializedName("jwtToken") val jwtToken: String? = null,
     @SerializedName("expiresIn") val expiresIn: Long? = null,
-    @SerializedName("expires_in") val expiresInSnake: Long? = null
+    @SerializedName("expires_in") val expiresInSnake: Long? = null,
+    val refreshToken: String? = null,
+    val user: UserDto? = null
 ) {
     fun getEffectiveToken(): String? = token ?: accessToken ?: jwt ?: jwtToken
     fun getEffectiveExpiresIn(): Long = expiresIn ?: expiresInSnake ?: 86400L

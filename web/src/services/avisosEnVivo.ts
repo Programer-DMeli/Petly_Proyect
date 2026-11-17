@@ -1,4 +1,4 @@
-import { djangoBase } from './http';
+import { fetchDjangoFile } from './http';
 
 type EventoAvisos = { tipo: 'sincronizar' } | { tipo: 'avisos'; solicitudes: number[] };
 const suscriptores = new Set<(evento: EventoAvisos) => void>();
@@ -30,9 +30,9 @@ function publicar(trama: string) {
 }
 
 // fetch permite autenticar el flujo con el mismo Bearer que las API.
-async function recibir(token: string, signal: AbortSignal, alRecibir: () => void) {
-  const respuesta = await fetch(`${djangoBase}/api/acceso/notificaciones/eventos/`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' },
+async function recibir(signal: AbortSignal, alRecibir: () => void) {
+  const respuesta = await fetchDjangoFile('/api/acceso/notificaciones/eventos/', {
+    headers: { Accept: 'text/event-stream' },
     cache: 'no-store',
     signal,
   });
@@ -64,7 +64,7 @@ async function recibir(token: string, signal: AbortSignal, alRecibir: () => void
   }
 }
 
-export function conectarAvisos(token: string) {
+export function conectarAvisos() {
   let cerrado = false;
   let intento: AbortController | undefined;
   let reintento: number | undefined;
@@ -79,7 +79,7 @@ export function conectarAvisos(token: string) {
       if (Date.now() - ultimoDato > 25_000) conexion.abort();
     }, 1000);
     try {
-      await recibir(token, conexion.signal, () => { ultimoDato = Date.now(); });
+      await recibir(conexion.signal, () => { ultimoDato = Date.now(); });
     } catch {
       // Las consultas REST siguen actualizando las pantallas hasta reconectar.
     } finally {

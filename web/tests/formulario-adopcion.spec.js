@@ -54,8 +54,10 @@ test('envía las respuestas desde el detalle y refleja la decisión del albergue
           ocurrido_en: fecha,
         });
       switch (pathname) {
+        case '/api/auth/refresh':
+          return send({ error: 'Sin sesión' }, 401);
         case '/api/auth/login':
-          return send({ token: rol, expiresIn: 3600 });
+          return send({ token: rol, expiresIn: 3600, user: { id: '1', correo: `${rol.toLowerCase()}@example.test`, rol } });
         case '/api/auth/me':
           return send({ id: '1', correo: `${rol.toLowerCase()}@example.test`, rol });
         case '/api/catalogo':

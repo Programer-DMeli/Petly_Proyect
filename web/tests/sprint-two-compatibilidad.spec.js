@@ -6,10 +6,12 @@ async function login(page,role,handle) {
  await page.route('**/api/**',async route=>{
   const path=new URL(route.request().url()).pathname;
   const send=json=>route.fulfill({json});
-  if(path==='/api/auth/login')return send({token:'token-simulado',expiresIn:3600});
+  if(path==='/api/auth/refresh')return route.fulfill({status:401});
+  if(path==='/api/auth/login')return send({token:'token-simulado',expiresIn:3600,user:{id:'7',correo:'sprint@example.test',rol:role}});
   if(path==='/api/auth/me')return send({id:'7',correo:'sprint@example.test',rol:role});
   if(await handle(route,path))return;
   if(path==='/api/perfil/favoritos'||path==='/api/autorizaciones'||path==='/api/albergues/cuentas-disponibles/')return send([]);
+  if(path==='/api/asistente/preguntas-frecuentes')return send([]);
   if(path==='/api/catalogo/opciones')return send({especies:['Perro'],tamanos:['Grande'],temperamentos:['Sociable']});
   if(path==='/api/catalogo')return send({items:[pet],total:1,page:1,pageSize:12});
   if(path==='/api/albergues/mi-perfil/')return send({id:1,nombre:'Refugio',direccion:'Lima',telefono:'999111222',email:'test@example.test',infraestructura:[],activo:true});

@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/**', route => route.fulfill({ status: 404, json: { detail: 'Sin fixture' } }));
+  await page.route('**/api/auth/refresh', route => route.fulfill({ status: 401 }));
 });
 
 const pets = [
@@ -58,7 +59,7 @@ const pets = [
 test('el catálogo React conserva el orden recibido y marca compatibilidad incompleta', async ({ page }) => {
   await page.route('http://localhost:8080/api/perfil/favoritos', route => route.fulfill({ json: [] }));
   await page.route('http://localhost:8080/api/auth/login', route =>
-    route.fulfill({ json: { token: 'token-de-prueba', expiresIn: 3600 } })
+    route.fulfill({ json: { token: 'token-de-prueba', expiresIn: 3600, user: { id: '7', correo: 'angie@example.com', rol: 'ADOPTANTE' } } })
   );
   await page.route('http://localhost:8080/api/auth/me', route =>
     route.fulfill({ json: { id: '7', correo: 'angie@example.com', rol: 'ADOPTANTE' } })

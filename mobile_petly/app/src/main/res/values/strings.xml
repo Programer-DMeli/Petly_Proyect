@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Petly</string>
+    <plurals name="mensajes_sin_leer">
+        <item quantity="one">%d mensaje sin leer</item>
+        <item quantity="other">%d mensajes sin leer</item>
+    </plurals>
 </resources>

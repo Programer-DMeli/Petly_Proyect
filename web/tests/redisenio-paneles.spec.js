@@ -18,7 +18,9 @@ async function mockApis(page, role) {
     const body = () => request.postDataJSON() ?? {};
     const send = (json, status = 200) => route.fulfill({ status, json });
     if (!['GET', 'OPTIONS'].includes(method)) writes.push({ path, method });
-    if (path === '/api/auth/login') return send({ token: 'token-ui-test', expiresIn: 3600 });
+    if (path === '/api/auth/refresh') return send({ error: 'Sin sesión' }, 401);
+    if (path === '/api/auth/login') return send({ token: 'token-ui-test', expiresIn: 3600,
+      user: { id: '7', correo: `${role.toLowerCase()}@example.test`, rol: role } });
     if (path === '/api/auth/me') return send({ id: '7', correo: `${role.toLowerCase()}@example.test`, rol: role });
     if (path === '/api/acceso/notificaciones/eventos/') return route.fulfill({ status: 204 });
     if (path === '/api/acceso/notificaciones/') return send({ ...paged([]), no_leidas: 0 });

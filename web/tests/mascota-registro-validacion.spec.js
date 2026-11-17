@@ -4,8 +4,14 @@ test('muestra el error de Django, conserva la mascota y permite corregir la foto
   let attempts = 0;
   await page.route('**/api/**', route => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/api/auth/login') return route.fulfill({ json: { token: 'prueba', expiresIn: 3600 } });
+    if (path === '/api/auth/refresh') return route.fulfill({ status: 401 });
+    if (path === '/api/auth/login') return route.fulfill({
+      json: { token: 'prueba', expiresIn: 3600, user: { id: '8', correo: 'albergue@example.test', rol: 'ALBERGUE' } },
+    });
     if (path === '/api/auth/me') return route.fulfill({ json: { id: '8', correo: 'albergue@example.test', rol: 'ALBERGUE' } });
+    if (path === '/api/albergues/mi-perfil/') return route.fulfill({
+      json: { id: 1, nombre: 'Refugio de prueba', direccion: 'Lima', telefono: '999000111', email: 'albergue@example.test' },
+    });
     if (path === '/api/mascotas/' && route.request().method() === 'POST') {
       attempts++;
       return attempts === 1

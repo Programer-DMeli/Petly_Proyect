@@ -4,12 +4,29 @@ import com.petly_app.core.network.ApiClient
 import com.petly_app.core.session.SessionManager
 import com.petly_app.data.remote.*
 import com.petly_app.data.repository.*
-import android.content.ContentResolver
+import android.content.Context
+import com.petly_app.core.session.KeystoreRefreshTokenStore
+import com.petly_app.core.session.SessionUnavailable
+import retrofit2.HttpException
 
 // Dependencias compartidas de la aplicación; no se crean al recomponer una pantalla.
-class AppContainer(private val contentResolver: ContentResolver) {
-    val session = SessionManager()
+class AppContainer(context: Context) {
+    private val contentResolver = context.contentResolver
     private val publicApi = ApiClient.publicApi()
+    private val sessionApi = publicApi.create(SessionApi::class.java)
+    val session = SessionManager(
+        KeystoreRefreshTokenStore(context),
+        renew = { credential ->
+            val response = sessionApi.refresh(SessionRequest(credential.token, credential.requestId)).execute()
+            if (!response.isSuccessful) throw HttpException(response)
+            response.body() ?: throw SessionUnavailable()
+        },
+        revoke = { credential ->
+            val response = sessionApi.logout(SessionRequest(credential.token)).execute()
+            if (!response.isSuccessful && response.code() != 401) throw HttpException(response)
+        },
+        now = android.os.SystemClock::elapsedRealtime
+    )
     private val privateApi = ApiClient.authenticatedApi(session)
     val healthRepository = HealthRepository(publicApi.create(HealthApi::class.java))
     val authRepository = AuthRepository(publicApi.create(AuthApi::class.java), session)
@@ -41,6 +58,6 @@ class AppContainer(private val contentResolver: ContentResolver) {
     val notificacionesApi = ApiClient.authenticatedAdminApi(session).create(NotificacionesApi::class.java)
     val mensajeriaApi = ApiClient.authenticatedAdminApi(session).create(MensajeriaApi::class.java)
     val autorizaciones = AutorizacionRepository(privateApi.create(AutorizacionApi::class.java))
-    val recuperacion = RecuperacionRepository(publicApi.create(RecuperacionApi::class.java))
+    val recuperacion = RecuperacionRepository(publicApi.create(RecuperacionApi::class.java), { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { session.clear() } })
     fun resetPreview() = previewPerfil.reset()
 }

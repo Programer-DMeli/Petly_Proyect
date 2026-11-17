@@ -1,5 +1,6 @@
 package com.petly_app.ui.mensajes
 
+import android.content.ContentResolver
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -10,7 +11,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.petly_app.data.remote.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -19,16 +24,28 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
+private const val ERROR_ACTUALIZACION = "No se pudieron actualizar los mensajes."
+
 @Composable
-fun MensajesScreen(api: MensajeriaApi, resolver: android.content.ContentResolver, solicitudes: List<Triple<Long, Long, String>>) {
+fun MensajesScreen(
+    api: MensajeriaApi,
+    resolver: ContentResolver,
+    solicitudes: List<Triple<Long, Long, String>>,
+    onMessagesRead: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     var conversations by remember { mutableStateOf<List<ConversacionDto>>(emptyList()) }
     var selected by remember { mutableStateOf<Long?>(null) }
     var messages by remember { mutableStateOf<List<MensajeDto>>(emptyList()) }
+    var lastReadId by remember(selected) { mutableLongStateOf(0L) }
+    var refreshRevision by remember { mutableIntStateOf(0) }
     var draft by remember { mutableStateOf("") }
     var fileUri by remember { mutableStateOf<Uri?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var moderationBusy by remember { mutableStateOf(false) }
+    var menuExpanded by remember(selected) { mutableStateOf(false) }
+    var confirmBlock by remember(selected) { mutableStateOf(false) }
     var pendingDownload by remember { mutableStateOf<ByteArray?>(null) }
     var pendingFilename by remember { mutableStateOf("adjunto") }
     val saveFile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
@@ -36,36 +53,74 @@ fun MensajesScreen(api: MensajeriaApi, resolver: android.content.ContentResolver
         pendingDownload = null
     }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { fileUri = it }
-    fun refresh() { scope.launch {
-        runCatching {
-            conversations = api.listar()
-            selected?.let { id ->
-                val detail = api.detalle(id)
-                messages = detail.mensajes
-                detail.mensajes.lastOrNull()?.let { api.marcarLeido(id, mapOf("hasta_id" to it.id)) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val notifyMessagesRead by rememberUpdatedState(onMessagesRead)
+    val conversationId = selected
+
+    fun cambiarBloqueo(id: Long, bloquear: Boolean) {
+        if (moderationBusy) return
+        moderationBusy = true
+        error = null
+        scope.launch {
+            try {
+                if (bloquear) api.bloquear(id) else api.desbloquear(id)
+                refreshRevision++
+            } catch (exception: Exception) {
+                if (exception is CancellationException) throw exception
+                error = if (bloquear) "No se pudo bloquear." else "No se pudo desbloquear."
+            } finally {
+                moderationBusy = false
             }
-        }.onFailure { error = "No se pudieron actualizar los mensajes." }
-    } }
-    fun poll() { scope.launch {
-        runCatching {
-            conversations = api.listar()
-            selected?.let { id ->
-                val cursor = messages.maxOfOrNull { it.id } ?: 0L
-                val updates = api.nuevosMensajes(id, cursor)
-                if (selected != id) return@let
-                val merged = (messages + updates.mensajes).distinctBy { it.id }.sortedBy { it.id }
-                messages = merged.map { message ->
-                    if (message.propio) message.copy(
-                        leido = updates.leidosHastaId != null && message.id <= updates.leidosHastaId
-                    ) else message
+        }
+    }
+    LaunchedEffect(api, lifecycle, conversationId, refreshRevision) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            var loadDetail = true
+            var lastReceivedId = 0L
+            var recipientReadId: Long? = null
+            while (true) {
+                try {
+                    conversations = api.listar()
+                    if (conversationId != null) {
+                        if (loadDetail) {
+                            val detail = api.detalle(conversationId)
+                            if (selected != conversationId) return@repeatOnLifecycle
+                            messages = detail.mensajes.sortedBy { it.id }
+                            lastReceivedId = messages.lastOrNull { !it.propio }?.id ?: 0L
+                            loadDetail = false
+                        } else {
+                            val cursor = messages.lastOrNull()?.id ?: 0L
+                            val updates = api.nuevosMensajes(conversationId, cursor)
+                            if (selected != conversationId) return@repeatOnLifecycle
+                            if (updates.mensajes.isNotEmpty() || updates.leidosHastaId != recipientReadId) {
+                                recipientReadId = updates.leidosHastaId
+                                val incoming = updates.mensajes.sortedBy { it.id }
+                                lastReceivedId = incoming.lastOrNull { !it.propio }?.id ?: lastReceivedId
+                                val readThrough = recipientReadId ?: 0L
+                                messages = (messages + incoming).map { message ->
+                                    if (message.propio && message.leido != (message.id <= readThrough)) {
+                                        message.copy(leido = message.id <= readThrough)
+                                    } else {
+                                        message
+                                    }
+                                }
+                            }
+                        }
+                        if (lastReceivedId > lastReadId) {
+                            api.marcarLeido(conversationId, mapOf("hasta_id" to lastReceivedId))
+                            lastReadId = lastReceivedId
+                            notifyMessagesRead()
+                        }
+                    }
+                    if (error == ERROR_ACTUALIZACION) error = null
+                } catch (exception: Exception) {
+                    if (exception is CancellationException) throw exception
+                    error = ERROR_ACTUALIZACION
                 }
-                if (updates.mensajes.any { !it.propio }) {
-                    merged.lastOrNull()?.let { api.marcarLeido(id, mapOf("hasta_id" to it.id)) }
-                }
+                delay(INTERVALO_MENSAJERIA_MS)
             }
-        }.onFailure { error = "No se pudieron actualizar los mensajes." }
-    } }
-    LaunchedEffect(Unit) { refresh(); while (true) { delay(5000); poll() } }
+        }
+    }
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("Mensajes con albergues", style = MaterialTheme.typography.headlineSmall)
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -75,14 +130,24 @@ fun MensajesScreen(api: MensajeriaApi, resolver: android.content.ContentResolver
                 solicitudes.forEach { (solicitudId, _, mascota) ->
                     OutlinedButton(enabled = !busy, onClick = {
                         busy = true
-                        scope.launch { runCatching { val created = api.crear(mapOf("solicitud_id" to solicitudId)); messages = emptyList(); selected = created.id; refresh() }
-                            .onFailure { error = "No se pudo abrir el chat de $mascota." }; busy = false }
+                        scope.launch {
+                            try {
+                                val created = api.crear(mapOf("solicitud_id" to solicitudId))
+                                messages = emptyList()
+                                selected = created.id
+                            } catch (exception: Exception) {
+                                if (exception is CancellationException) throw exception
+                                error = "No se pudo abrir el chat de $mascota."
+                            } finally {
+                                busy = false
+                            }
+                        }
                     }, modifier = Modifier.fillMaxWidth()) { Text("Abrir chat · $mascota") }
                 }
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(conversations) { conversation ->
-                    ElevatedCard(onClick = { messages = emptyList(); selected = conversation.id; refresh() }, modifier = Modifier.fillMaxWidth()) {
+                    ElevatedCard(onClick = { messages = emptyList(); selected = conversation.id }, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(14.dp)) {
                             Text("${conversation.nombreContacto} · ${conversation.mascota}", style = MaterialTheme.typography.titleMedium)
                             Text(conversation.ultimoMensaje?.texto?.takeIf { it.isNotBlank() } ?: conversation.solicitudId?.let { "Solicitud #$it" } ?: "Consulta general")
@@ -94,8 +159,43 @@ fun MensajesScreen(api: MensajeriaApi, resolver: android.content.ContentResolver
                 if (conversations.isEmpty()) item { Text("Tus conversaciones aparecerán aquí cuando un albergue abra el chat de tu solicitud.") }
             }
         } else {
-            TextButton(onClick = { selected = null; messages = emptyList(); refresh() }) { Text("← Conversaciones") }
             val activeConversation = conversations.firstOrNull { it.id == selected }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = { selected = null; messages = emptyList() }) { Text("← Conversaciones") }
+                activeConversation?.let { conversation ->
+                    Box {
+                        TextButton(onClick = { menuExpanded = true }, enabled = !moderationBusy) {
+                            Text("Opciones")
+                        }
+                        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                            DropdownMenuItem(
+                                text = { Text(if (conversation.bloqueadaPorMi) "Desbloquear" else "Bloquear") },
+                                onClick = {
+                                    menuExpanded = false
+                                    if (conversation.bloqueadaPorMi) cambiarBloqueo(conversation.id, false)
+                                    else confirmBlock = true
+                                }
+                            )
+                        }
+                    }
+                    if (confirmBlock) {
+                        AlertDialog(
+                            onDismissRequest = { confirmBlock = false },
+                            title = { Text("¿Bloquear a esta persona?") },
+                            text = { Text("Ya no podrá enviarte mensajes. Puedes desbloquearla desde Opciones.") },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    confirmBlock = false
+                                    cambiarBloqueo(conversation.id, true)
+                                }) { Text("Bloquear") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { confirmBlock = false }) { Text("Cancelar") }
+                            }
+                        )
+                    }
+                }
+            }
             if (activeConversation?.bloqueada == true) {
                 Text(if (activeConversation.puedeEnviar) "La otra persona no puede enviarte mensajes nuevos." else "Esta persona te bloqueó; no puedes enviarle mensajes.", color = MaterialTheme.colorScheme.error)
             }
@@ -131,7 +231,9 @@ fun MensajesScreen(api: MensajeriaApi, resolver: android.content.ContentResolver
                                 MultipartBody.Part.createFormData("archivo", temp.name, temp.asRequestBody(mime.toMediaTypeOrNull()))
                             }
                             api.enviar(id, draft.takeIf { it.isNotBlank() }?.toRequestBody("text/plain".toMediaTypeOrNull()), part)
-                            draft = ""; fileUri = null; refresh()
+                            draft = ""
+                            fileUri = null
+                            refreshRevision++
                         } catch (_: Exception) { error = "No se pudo enviar el mensaje. Reintenta." }
                         finally { busy = false }
                     }
@@ -139,7 +241,6 @@ fun MensajesScreen(api: MensajeriaApi, resolver: android.content.ContentResolver
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { selected?.let { id -> scope.launch { runCatching { api.reportar(id, mapOf("motivo" to "OTRO")); error = "Reporte enviado." }.onFailure { error = "No se pudo reportar." } } } }) { Text("Reportar") }
-                TextButton(enabled = activeConversation?.bloqueada != true, onClick = { selected?.let { id -> scope.launch { runCatching { api.bloquear(id); error = "Conversación bloqueada. La otra persona no podrá enviarte nuevos mensajes."; refresh() }.onFailure { error = "No se pudo bloquear." } } } }) { Text("Bloquear") }
             }
         }
     }
