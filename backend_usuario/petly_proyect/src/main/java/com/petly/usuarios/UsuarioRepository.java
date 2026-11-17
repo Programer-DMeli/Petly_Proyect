@@ -15,6 +15,12 @@ import java.util.Optional;
 @Repository
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
+    java.util.List<Usuario> findAllByOrderByIdAsc();
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM Usuario u WHERE u.rol = :rol ORDER BY u.id")
+    java.util.List<Usuario> bloquearPorRol(@Param("rol") Usuario.Rol rol);
+
     java.util.List<Usuario> findByRolOrderByIdAsc(Usuario.Rol rol);
 
     Optional<Usuario> findByUsername(String username);

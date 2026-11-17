@@ -1,0 +1,6 @@
+projectKey=petly-proyect
+serverUrl=https://holding-meters-votes-fellowship.trycloudflare.com
+serverVersion=26.11.0.134175
+dashboardUrl=https://holding-meters-votes-fellowship.trycloudflare.com/dashboard?id=petly-proyect
+ceTaskId=1cf5a65e-d4a6-4992-a8a5-9d430dec949a
+ceTaskUrl=https://holding-meters-votes-fellowship.trycloudflare.com/api/ce/task?id=1cf5a65e-d4a6-4992-a8a5-9d430dec949a
