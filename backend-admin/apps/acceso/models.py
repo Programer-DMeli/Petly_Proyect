@@ -372,6 +372,12 @@ class SolicitudAdopcion(models.Model):
         CANCELADA = "CANCELADA", "Cancelada por postulante"
         ENTREGADA = "ENTREGADA", "Entregada (adopción finalizada)"
 
+    class RevisionVeterinaria(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        APTA = "APTA", "Apta para la adopción"
+        OBSERVADA = "OBSERVADA", "Observada"
+        RECHAZADA = "RECHAZADA", "Rechazada"
+
     # Relaciones
     postulante = models.ForeignKey(
         Postulante,
@@ -430,6 +436,44 @@ class SolicitudAdopcion(models.Model):
     fecha_revision = models.DateTimeField("Fecha de revisión", null=True, blank=True)
     observaciones_revision = models.TextField("Observaciones de revisión", blank=True)
 
+    # Hitos posteriores a la aprobación, asociados a esta solicitud.
+    estado_revision_veterinaria = models.CharField(
+        "Revisión veterinaria",
+        max_length=12,
+        choices=RevisionVeterinaria.choices,
+        default=RevisionVeterinaria.PENDIENTE,
+        db_index=True,
+    )
+    ficha_veterinaria_revisada = models.JSONField(default=dict, blank=True)
+    observaciones_revision_veterinaria = models.TextField(blank=True)
+    fecha_revision_veterinaria = models.DateTimeField(null=True, blank=True)
+    revision_veterinaria_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="revisiones_veterinarias_solicitud",
+    )
+    fecha_recojo_programado = models.DateTimeField(null=True, blank=True)
+    mensaje_recojo = models.TextField(blank=True)
+    recojo_programado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recojos_solicitud_programados",
+    )
+    entrega_satisfaccion = models.PositiveSmallIntegerField(null=True, blank=True)
+    entrega_observaciones = models.TextField(blank=True)
+    entrega_confirmada_en = models.DateTimeField(null=True, blank=True)
+    entrega_confirmada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="entregas_solicitud_confirmadas",
+    )
+
     # Fechas clave
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
     fecha_entrega = models.DateField("Fecha de entrega", null=True, blank=True)
@@ -449,6 +493,13 @@ class SolicitudAdopcion(models.Model):
         ]
         # Un postulante no puede tener 2 solicitudes pendientes para la misma mascota
         constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(entrega_satisfaccion__isnull=True)
+                    | models.Q(entrega_satisfaccion__gte=1, entrega_satisfaccion__lte=5)
+                ),
+                name="solicitud_entrega_satisfaccion_1_5",
+            ),
             models.UniqueConstraint(
                 fields=["postulante", "mascota"],
                 condition=models.Q(estado__in=["PENDIENTE", "OBSERVADA"]),
@@ -488,6 +539,10 @@ class SolicitudEvento(models.Model):
         SOLICITUD_CREADA = "SOLICITUD_CREADA", "Solicitud creada"
         OBSERVADA = "OBSERVADA", "Solicitud observada"
         APROBADA = "APROBADA", "Solicitud aprobada"
+        VETERINARIA_APTA = "VETERINARIA_APTA", "Revisión veterinaria aprobada"
+        VETERINARIA_OBSERVADA = "VETERINARIA_OBSERVADA", "Revisión veterinaria observada"
+        VETERINARIA_RECHAZADA = "VETERINARIA_RECHAZADA", "Revisión veterinaria rechazada"
+        RECOJO_PROGRAMADO = "RECOJO_PROGRAMADO", "Recojo programado"
         RECHAZADA = "RECHAZADA", "Solicitud rechazada"
         CANCELADA = "CANCELADA", "Solicitud cancelada"
         CONTRATO_GENERADO = "CONTRATO_GENERADO", "Contrato generado"

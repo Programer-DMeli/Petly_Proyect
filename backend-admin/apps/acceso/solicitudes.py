@@ -26,7 +26,7 @@ TRANSICIONES = {
 
 
 @transaction.atomic
-def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=None):
+def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=None, entrega_data=None):
     """Aplica una transición bajo bloqueo para evitar dobles aprobaciones."""
     # Todas las transiciones y envíos toman primero la misma mascota.
     mascota_id = SolicitudAdopcion.objects.values_list("mascota_id", flat=True).get(pk=solicitud_id)
@@ -49,6 +49,12 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         })
 
     if nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA:
+        if not entrega_data:
+            raise ValidationError({"estado": "Completa el formulario de satisfacción para confirmar la entrega."})
+        if solicitud.estado_revision_veterinaria != SolicitudAdopcion.RevisionVeterinaria.APTA:
+            raise ValidationError({"estado_revision_veterinaria": "La revisión veterinaria debe estar aprobada."})
+        if not solicitud.fecha_recojo_programado:
+            raise ValidationError({"fecha_recojo_programado": "Programa el recojo antes de confirmar la entrega."})
         from apps.contratos.models import ContratoAdopcion
 
         contrato = getattr(solicitud, "contrato_adopcion", None)
@@ -116,6 +122,14 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
             mascota.save(update_fields=["estado", "actualizado_en"])
     elif nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA:
         solicitud.fecha_entrega = ahora.date()
+        solicitud.entrega_satisfaccion = entrega_data["satisfaccion_entrega"]
+        solicitud.entrega_observaciones = entrega_data.get("entrega_observaciones", "").strip()
+        solicitud.entrega_confirmada_en = ahora
+        solicitud.entrega_confirmada_por = usuario
+        update_fields.extend([
+            "fecha_entrega", "entrega_satisfaccion", "entrega_observaciones",
+            "entrega_confirmada_en", "entrega_confirmada_por",
+        ])
         mascota.estado = Mascota.Estado.ADOPTADO
         mascota.fecha_adopcion = ahora.date()
         mascota.save(update_fields=["estado", "fecha_adopcion", "actualizado_en"])
@@ -133,7 +147,8 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
         tipo=tipo_evento,
         estado_anterior=actual,
         estado_nuevo=nuevo_estado,
-        descripcion=motivo,
+        descripcion=("La mascota fue entregada y la adopción quedó registrada."
+                     if nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA else motivo),
         ocurrido_en=ahora,
         actor=usuario,
         visible_adoptante=True,

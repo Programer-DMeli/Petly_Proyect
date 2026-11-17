@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, AdoptanteProfile, Postulante, SolicitudAdopcion, SolicitudEvento
 
@@ -175,8 +175,8 @@ class SolicitudAdopcionAdmin(admin.ModelAdmin):
     cambiar_a_rechazada.short_description = 'Cambiar a Rechazada'
     
     def cambiar_a_entregada(self, request, queryset):
-        self._cambiar_estado_masivo(request, queryset, 'ENTREGADA', 'Entregada')
-    cambiar_a_entregada.short_description = 'Cambiar a Entregada (Adopción finalizada)'
+        self.message_user(request, 'Confirma cada entrega desde el flujo de solicitudes con el formulario de satisfacción.', level=messages.ERROR)
+    cambiar_a_entregada.short_description = 'Confirmar entrega desde Solicitudes de adopción'
 
 
 @admin.register(SolicitudEvento)

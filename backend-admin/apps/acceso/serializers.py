@@ -140,12 +140,54 @@ class SolicitudAdopcionSerializer(RespuestasPrivadasMixin, serializers.ModelSeri
     mascota_especie = serializers.CharField(source="mascota.get_especie_display", read_only=True)
     estado_display = serializers.CharField(source="get_estado_display", read_only=True)
     revisado_por_nombre = serializers.CharField(source="revisado_por.get_full_name", read_only=True)
+    ficha_veterinaria = serializers.SerializerMethodField()
+    observaciones_revision_veterinaria = serializers.SerializerMethodField()
+    entrega_satisfaccion = serializers.SerializerMethodField()
+    entrega_observaciones = serializers.SerializerMethodField()
 
     def get_postulante_nombre(self, obj):
         return obj.postulante.nombre_completo if obj.postulante_id else (obj.adoptante.email if obj.adoptante_id else "Adoptante")
 
     def get_postulante_documento(self, obj):
         return obj.postulante.documento_numero if obj.postulante_id else None
+
+    def get_ficha_veterinaria(self, obj):
+        request = self.context.get("request")
+        if not request or (request.user.rol != User.Rol.ALBERGUE and not request.user.is_staff):
+            return None
+        snapshot = obj.ficha_veterinaria_revisada or {
+            "esterilizado": obj.mascota.esterilizado,
+            "vacunas_al_dia": obj.mascota.vacunas_al_dia,
+            "desparasitado": obj.mascota.desparasitado,
+            "estado_salud_general": obj.mascota.estado_salud_general,
+            "necesidades_especiales": obj.mascota.necesidades_especiales,
+        }
+        return {
+            "esterilizado": snapshot.get("esterilizado", False),
+            "vacunas_al_dia": snapshot.get("vacunas_al_dia", False),
+            "desparasitado": snapshot.get("desparasitado", False),
+            "estado_salud_general": snapshot.get("estado_salud_general", ""),
+            "necesidades_especiales": snapshot.get("necesidades_especiales", ""),
+            "revisada_en": obj.fecha_revision_veterinaria,
+        }
+
+    def get_observaciones_revision_veterinaria(self, obj):
+        request = self.context.get("request")
+        if request and (request.user.rol == User.Rol.ALBERGUE or request.user.is_staff):
+            return obj.observaciones_revision_veterinaria
+        return ""
+
+    def get_entrega_satisfaccion(self, obj):
+        request = self.context.get("request")
+        if request and (request.user.rol == User.Rol.ALBERGUE or request.user.is_staff):
+            return obj.entrega_satisfaccion
+        return None
+
+    def get_entrega_observaciones(self, obj):
+        request = self.context.get("request")
+        if request and (request.user.rol == User.Rol.ALBERGUE or request.user.is_staff):
+            return obj.entrega_observaciones
+        return ""
 
     class Meta:
         model = SolicitudAdopcion
@@ -167,8 +209,16 @@ class SolicitudAdopcionSerializer(RespuestasPrivadasMixin, serializers.ModelSeri
             "revisado_por_nombre",
             "fecha_revision",
             "observaciones_revision",
+            "estado_revision_veterinaria",
+            "observaciones_revision_veterinaria",
+            "fecha_revision_veterinaria",
+            "ficha_veterinaria",
+            "fecha_recojo_programado",
             "fecha_solicitud",
             "fecha_entrega",
+            "entrega_satisfaccion",
+            "entrega_observaciones",
+            "entrega_confirmada_en",
             "actualizado_en",
         ]
         read_only_fields = [
@@ -205,6 +255,8 @@ class SolicitudAdopcionResumenSerializer(serializers.ModelSerializer):
             "mascota_codigo",
             "estado",
             "estado_display",
+            "estado_revision_veterinaria",
+            "fecha_recojo_programado",
             "fecha_solicitud",
             "fecha_revision",
             "observaciones_revision",
@@ -228,6 +280,53 @@ class SolicitudEstadoSerializer(serializers.Serializer):
 
     def validate_estado(self, value):
         # Validación de transiciones se hace en la vista
+        return value
+
+
+class RevisionVeterinariaSolicitudSerializer(serializers.Serializer):
+    estado_revision_veterinaria = serializers.ChoiceField(
+        choices=[choice for choice in SolicitudAdopcion.RevisionVeterinaria.choices
+                 if choice[0] != SolicitudAdopcion.RevisionVeterinaria.PENDIENTE]
+    )
+    observaciones_revision_veterinaria = serializers.CharField(
+        required=False, allow_blank=True, max_length=2000
+    )
+
+    def validate(self, attrs):
+        if (
+            attrs["estado_revision_veterinaria"]
+            in (SolicitudAdopcion.RevisionVeterinaria.OBSERVADA, SolicitudAdopcion.RevisionVeterinaria.RECHAZADA)
+            and not attrs.get("observaciones_revision_veterinaria", "").strip()
+        ):
+            raise serializers.ValidationError({
+                "observaciones_revision_veterinaria": "Indica el motivo de la observación o el rechazo."
+            })
+        return attrs
+
+
+class ProgramarRecojoSerializer(serializers.Serializer):
+    fecha_recojo_programado = serializers.DateTimeField()
+    mensaje_recojo = serializers.CharField(max_length=1500, trim_whitespace=True)
+
+    def validate_fecha_recojo_programado(self, value):
+        if value <= timezone.now():
+            raise serializers.ValidationError("La fecha y hora del recojo deben ser futuras.")
+        return value
+
+    def validate_mensaje_recojo(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("Escribe el mensaje para coordinar el recojo.")
+        return value
+
+
+class ConfirmarEntregaSerializer(serializers.Serializer):
+    confirma_entrega = serializers.BooleanField()
+    satisfaccion_entrega = serializers.IntegerField(min_value=1, max_value=5)
+    entrega_observaciones = serializers.CharField(required=False, allow_blank=True, max_length=1000)
+
+    def validate_confirma_entrega(self, value):
+        if not value:
+            raise serializers.ValidationError("Confirma que la entrega se realizó.")
         return value
 
 

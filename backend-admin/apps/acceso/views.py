@@ -18,7 +18,7 @@ import time
 
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
-from .models import Postulante, SolicitudAdopcion, SolicitudEvento, User, AdoptanteProfile, Autorizacion
+from .models import Postulante, SolicitudAdopcion, SolicitudEvento, AvisoExterno, User, AdoptanteProfile, Autorizacion
 from .solicitudes import cambiar_estado_solicitud
 from .serializers import (
     PostulanteSerializer,
@@ -30,6 +30,9 @@ from .serializers import (
     SolicitudEstadoSerializer,
     SolicitudEventoSerializer,
     SolicitudCreateSerializer,
+    RevisionVeterinariaSolicitudSerializer,
+    ProgramarRecojoSerializer,
+    ConfirmarEntregaSerializer,
     CustomTokenObtainPairSerializer,
     UserRegistrationSerializer,
     UserSerializer,
@@ -88,6 +91,10 @@ class SolicitudAdopcionPermission(IsAlbergueStaffOrReadOnly):
         if action == "cancelar":
             return request.user.rol == User.Rol.ADOPTANTE
         if action == "cambiar_estado":
+            return request.user.is_staff or (
+                request.user.rol == User.Rol.ALBERGUE and hasattr(request.user, "albergue")
+            )
+        if action in {"revisar_veterinaria", "programar_recojo", "confirmar_entrega"}:
             return request.user.is_staff or (
                 request.user.rol == User.Rol.ALBERGUE and hasattr(request.user, "albergue")
             )
@@ -201,6 +208,12 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             return SolicitudAdopcionListSerializer
         if self.action == "cambiar_estado":
             return SolicitudEstadoSerializer
+        if self.action == "revisar_veterinaria":
+            return RevisionVeterinariaSolicitudSerializer
+        if self.action == "programar_recojo":
+            return ProgramarRecojoSerializer
+        if self.action == "confirmar_entrega":
+            return ConfirmarEntregaSerializer
         if self.action == "create":
             return SolicitudCreateSerializer
         return SolicitudAdopcionSerializer
@@ -298,6 +311,132 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         solicitud = cambiar_estado_solicitud(
             solicitud.pk, nuevo_estado, request.user, observaciones
         )
+        return Response(SolicitudAdopcionSerializer(solicitud, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"], url_path="revisar-veterinaria")
+    @transaction.atomic
+    def revisar_veterinaria(self, request, pk=None):
+        solicitud = self.get_object()
+        solicitud = SolicitudAdopcion.objects.select_for_update().select_related("mascota").get(pk=solicitud.pk)
+        if solicitud.estado != SolicitudAdopcion.Estado.APROBADA:
+            raise ValidationError({"estado": "La revisión veterinaria se realiza después de aprobar la solicitud."})
+        if solicitud.fecha_recojo_programado or solicitud.estado == SolicitudAdopcion.Estado.ENTREGADA:
+            raise ValidationError({"estado_revision_veterinaria": "La revisión ya no puede cambiar después de programar el recojo."})
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        datos = serializer.validated_data
+        estado = datos["estado_revision_veterinaria"]
+        anterior = solicitud.estado_revision_veterinaria
+        mascota = solicitud.mascota
+        solicitud.estado_revision_veterinaria = estado
+        solicitud.observaciones_revision_veterinaria = datos.get("observaciones_revision_veterinaria", "").strip()
+        solicitud.ficha_veterinaria_revisada = {
+            "esterilizado": mascota.esterilizado,
+            "vacunas_al_dia": mascota.vacunas_al_dia,
+            "desparasitado": mascota.desparasitado,
+            "estado_salud_general": mascota.estado_salud_general,
+            "necesidades_especiales": mascota.necesidades_especiales,
+        }
+        solicitud.fecha_revision_veterinaria = timezone.now()
+        solicitud.revision_veterinaria_por = request.user
+        solicitud.save(update_fields=[
+            "estado_revision_veterinaria", "observaciones_revision_veterinaria",
+            "ficha_veterinaria_revisada", "fecha_revision_veterinaria",
+            "revision_veterinaria_por", "actualizado_en",
+        ])
+        tipo_evento = {
+            SolicitudAdopcion.RevisionVeterinaria.APTA: SolicitudEvento.Tipo.VETERINARIA_APTA,
+            SolicitudAdopcion.RevisionVeterinaria.OBSERVADA: SolicitudEvento.Tipo.VETERINARIA_OBSERVADA,
+            SolicitudAdopcion.RevisionVeterinaria.RECHAZADA: SolicitudEvento.Tipo.VETERINARIA_RECHAZADA,
+        }.get(estado)
+        descripcion = solicitud.observaciones_revision_veterinaria
+        evento = SolicitudEvento.objects.create(
+            solicitud=solicitud,
+            tipo=tipo_evento,
+            estado_anterior=anterior,
+            estado_nuevo=estado,
+            descripcion=descripcion,
+            actor=request.user,
+            visible_adoptante=True,
+        )
+        if solicitud.adoptante_id:
+            AvisoExterno.objects.create(evento=evento)
+        return Response(SolicitudAdopcionSerializer(solicitud, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"], url_path="programar-recojo")
+    @transaction.atomic
+    def programar_recojo(self, request, pk=None):
+        solicitud = self.get_object()
+        solicitud = SolicitudAdopcion.objects.select_for_update().select_related(
+            "mascota", "albergue", "adoptante"
+        ).get(pk=solicitud.pk)
+        if solicitud.estado != SolicitudAdopcion.Estado.APROBADA:
+            raise ValidationError({"estado": "Solo se puede programar el recojo de una solicitud aprobada."})
+        if solicitud.estado_revision_veterinaria != SolicitudAdopcion.RevisionVeterinaria.APTA:
+            raise ValidationError({"estado_revision_veterinaria": "La mascota debe quedar apta antes de programar el recojo."})
+        if not solicitud.adoptante_id:
+            raise ValidationError({"adoptante": "La solicitud no está vinculada a una cuenta adoptante."})
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        datos = serializer.validated_data
+        fecha = datos["fecha_recojo_programado"]
+        mensaje = datos["mensaje_recojo"].strip()
+        solicitud.fecha_recojo_programado = fecha
+        solicitud.mensaje_recojo = mensaje
+        solicitud.recojo_programado_por = request.user
+        solicitud.save(update_fields=[
+            "fecha_recojo_programado", "mensaje_recojo", "recojo_programado_por", "actualizado_en",
+        ])
+
+        fecha_local = timezone.localtime(fecha).strftime("%d/%m/%Y a las %H:%M")
+        texto_chat = f"Recojo acordado para {fecha_local}. {mensaje}"
+        from apps.mensajeria.models import Conversacion, Mensaje, ParticipanteConversacion
+        conversacion, _ = Conversacion.objects.get_or_create(
+            solicitud=solicitud,
+            defaults={"adoptante": solicitud.adoptante, "albergue": solicitud.albergue},
+        )
+        ParticipanteConversacion.objects.get_or_create(conversacion=conversacion, usuario=solicitud.adoptante)
+        ParticipanteConversacion.objects.get_or_create(conversacion=conversacion, usuario=solicitud.albergue.usuario)
+        Mensaje.objects.create(conversacion=conversacion, remitente=request.user, texto=texto_chat)
+        conversacion.save(update_fields=["actualizada_en"])
+
+        evento = SolicitudEvento.objects.create(
+            solicitud=solicitud,
+            tipo=SolicitudEvento.Tipo.RECOJO_PROGRAMADO,
+            estado_nuevo=solicitud.estado,
+            descripcion=texto_chat,
+            actor=request.user,
+            visible_adoptante=True,
+        )
+        AvisoExterno.objects.create(evento=evento)
+        return Response(SolicitudAdopcionSerializer(solicitud, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"], url_path="confirmar-entrega")
+    @transaction.atomic
+    def confirmar_entrega(self, request, pk=None):
+        solicitud = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if solicitud.estado != SolicitudAdopcion.Estado.APROBADA:
+            raise ValidationError({"estado": "Solo se puede confirmar la entrega de una solicitud aprobada."})
+        if solicitud.estado_revision_veterinaria != SolicitudAdopcion.RevisionVeterinaria.APTA:
+            raise ValidationError({"estado_revision_veterinaria": "La revisión veterinaria debe estar aprobada."})
+        if not solicitud.fecha_recojo_programado:
+            raise ValidationError({"fecha_recojo_programado": "Programa el recojo antes de confirmar la entrega."})
+        try:
+            solicitud = cambiar_estado_solicitud(
+                solicitud.pk,
+                SolicitudAdopcion.Estado.ENTREGADA,
+                request.user,
+                entrega_data=serializer.validated_data,
+            )
+        except Exception as exc:
+            from django.core.exceptions import ValidationError as DjangoValidationError
+            if isinstance(exc, DjangoValidationError):
+                raise ValidationError({"detail": exc.messages}) from exc
+            raise
         return Response(SolicitudAdopcionSerializer(solicitud, context={"request": request}).data)
 
     @action(detail=True, methods=["post"], url_path="cancelar")

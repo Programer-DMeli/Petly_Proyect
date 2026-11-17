@@ -17,6 +17,11 @@ type DetalleSolicitud = SolicitudAlbergue & {
   datos_compartidos?: boolean;
   mensaje_postulante?: string;
   respuestas_cuestionario?: Record<string, unknown>;
+  estado_revision_veterinaria?: 'PENDIENTE' | 'APTA' | 'OBSERVADA' | 'RECHAZADA';
+  observaciones_revision_veterinaria?: string;
+  ficha_veterinaria?: Record<string, string | boolean | null> | null;
+  fecha_recojo_programado?: string | null;
+  entrega_satisfaccion?: number | null;
 };
 
 type Decision = Extract<EstadoSolicitudAdopcion, 'APROBADA' | 'RECHAZADA' | 'OBSERVADA'>;
@@ -76,6 +81,12 @@ export default function RevisionSolicitudDialog({
   const [exito, setExito] = useState('');
   const [intento, setIntento] = useState(0);
   const [guardando, setGuardando] = useState(false);
+  const [notaVeterinaria, setNotaVeterinaria] = useState('');
+  const [fechaRecojo, setFechaRecojo] = useState('');
+  const [mensajeRecojo, setMensajeRecojo] = useState('');
+  const [satisfaccion, setSatisfaccion] = useState('5');
+  const [notasEntrega, setNotasEntrega] = useState('');
+  const [confirmada, setConfirmada] = useState(false);
   const ruta = `/api/acceso/solicitudes/${id}/`;
 
   useEffect(() => {
@@ -121,6 +132,16 @@ export default function RevisionSolicitudDialog({
     } finally {
       setGuardando(false);
     }
+  }
+
+  async function actualizarHito(accion: 'revisar-veterinaria' | 'programar-recojo' | 'confirmar-entrega', body: unknown, mensaje: string) {
+    if (guardando) return;
+    setGuardando(true); setError(''); setExito('');
+    try {
+      const actualizada = await django<DetalleSolicitud>(ruta + accion + '/', { method: 'POST', body: json(body) });
+      setSolicitud(actualizada); setExito(mensaje); onDecision(actualizada);
+    } catch (cause) { setError(errorMessage(cause)); }
+    finally { setGuardando(false); }
   }
 
   const revisable = solicitud?.estado === 'PENDIENTE' || solicitud?.estado === 'OBSERVADA';
@@ -177,6 +198,7 @@ export default function RevisionSolicitudDialog({
               Estado actual{' '}
               <span className="tracking-badge">{solicitud.estado_display ?? solicitud.estado}</span>
             </p>
+            <Feedback error={error} success={exito} />
             {solicitud.observaciones_revision && (
               <p className="adoption-comment">
                 <strong>Motivo de la última decisión</strong>
@@ -186,6 +208,42 @@ export default function RevisionSolicitudDialog({
             )}
             <h3>Formulario del adoptante</h3>
             <RespuestasAdoptante solicitud={solicitud} />
+            {solicitud.estado === 'APROBADA' && <section className="adoption-section">
+              <h3>Revisión veterinaria</h3>
+              <details>
+                <summary>Consultar ficha veterinaria de {solicitud.mascota_nombre}</summary>
+                {solicitud.ficha_veterinaria ? <dl className="adoption-fields">
+                  {Object.entries(solicitud.ficha_veterinaria).filter(([key]) => key !== 'revisada_en').map(([key, value]) =>
+                    <div key={key}><dt>{key.replaceAll('_', ' ')}</dt><dd>{typeof value === 'boolean' ? (value ? 'Sí' : 'No') : (value || 'Sin dato')}</dd></div>)}
+                </dl> : <p>No hay datos veterinarios registrados para esta mascota.</p>}
+              </details>
+              <p>Estado: <strong>{solicitud.estado_revision_veterinaria ?? 'PENDIENTE'}</strong></p>
+              {solicitud.observaciones_revision_veterinaria && <p>{solicitud.observaciones_revision_veterinaria}</p>}
+              {!solicitud.fecha_recojo_programado && <>
+                <label>Observaciones veterinarias<textarea maxLength={1000} value={notaVeterinaria} disabled={guardando} onChange={e => setNotaVeterinaria(e.target.value)} /></label>
+                <div className="actions">
+                  {(['APTA', 'OBSERVADA', 'RECHAZADA'] as const).map(estado => <button key={estado} type="button" className={estado === 'RECHAZADA' ? 'danger' : 'secondary'} disabled={guardando || (estado !== 'APTA' && !notaVeterinaria.trim())}
+                    onClick={() => void actualizarHito('revisar-veterinaria', { estado_revision_veterinaria: estado, observaciones_revision_veterinaria: notaVeterinaria }, `Revisión veterinaria: ${estado.toLowerCase()}.`)}>{estado === 'APTA' ? 'Mascota apta' : estado === 'OBSERVADA' ? 'Observar ficha' : 'Rechazar aptitud'}</button>)}
+                </div>
+              </>}
+            </section>}
+            {solicitud.estado === 'APROBADA' && solicitud.estado_revision_veterinaria === 'APTA' && <section className="adoption-section">
+              <h3>Recojo</h3>
+              {solicitud.fecha_recojo_programado && <p>Programado: {new Date(solicitud.fecha_recojo_programado).toLocaleString('es-PE')}</p>}
+              <label>Fecha y hora acordada<input type="datetime-local" value={fechaRecojo} disabled={guardando} onChange={e => setFechaRecojo(e.target.value)} /></label>
+              <label>Mensaje para coordinar<textarea maxLength={1000} value={mensajeRecojo} disabled={guardando} onChange={e => setMensajeRecojo(e.target.value)} placeholder="Punto de encuentro e indicaciones" /></label>
+              <button type="button" disabled={guardando || !fechaRecojo || !mensajeRecojo.trim()} onClick={() => void actualizarHito('programar-recojo', { fecha_recojo_programado: `${fechaRecojo}:00-05:00`, mensaje_recojo: mensajeRecojo }, 'Recojo programado y mensaje enviado al adoptante.')}>{solicitud.fecha_recojo_programado ? 'Actualizar recojo' : 'Programar recojo'}</button>
+            </section>}
+            {solicitud.estado === 'APROBADA' && solicitud.estado_revision_veterinaria === 'APTA' && solicitud.fecha_recojo_programado && <section className="adoption-section">
+              <h3>Confirmar entrega</h3>
+              {solicitud.entrega_satisfaccion ? <p>Entrega registrada · satisfacción {solicitud.entrega_satisfaccion}/5</p> : <>
+                <label>Satisfacción con la adopción<select value={satisfaccion} disabled={guardando} onChange={e => setSatisfaccion(e.target.value)}>{[5, 4, 3, 2, 1].map(n => <option key={n} value={n}>{n}/5</option>)}</select></label>
+                <label>Comentario breve (opcional)<textarea maxLength={1000} value={notasEntrega} disabled={guardando} onChange={e => setNotasEntrega(e.target.value)} /></label>
+                <label><input type="checkbox" checked={confirmada} disabled={guardando} onChange={e => setConfirmada(e.target.checked)} /> Confirmo que la entrega se realizó y la adopción fue exitosa.</label>
+                <p className="muted">Se requiere el contrato firmado con su documento final.</p>
+                <button type="button" disabled={guardando || !confirmada} onClick={() => void actualizarHito('confirmar-entrega', { confirma_entrega: true, satisfaccion_entrega: Number(satisfaccion), entrega_observaciones: notasEntrega }, 'Entrega confirmada. El expediente ya está disponible en Seguimiento.')}>Confirmar entrega y cerrar adopción</button>
+              </>}
+            </section>}
             <div className="actions">
               {solicitud.datos_compartidos !== false && <FotosHogar solicitudId={id} />}
               <Link
@@ -195,7 +253,6 @@ export default function RevisionSolicitudDialog({
                 Conversar con el adoptante
               </Link>
             </div>
-            {!revisable && <Feedback success={exito} />}
           </>
         )}
       </div>

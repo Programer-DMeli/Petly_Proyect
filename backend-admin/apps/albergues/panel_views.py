@@ -449,6 +449,9 @@ def solicitud_cambiar_estado(request, solicitud_id):
     if request.method == 'POST':
         nuevo_estado = request.POST.get('estado')
         observaciones = request.POST.get('observaciones_revision', '')
+        if nuevo_estado == SolicitudAdopcion.Estado.ENTREGADA:
+            messages.error(request, 'Confirma la entrega desde el flujo de solicitudes con el formulario de satisfacción.')
+            return render(request, 'solicitudes/partials/solicitud_fila.html', {'solicitud': solicitud})
         
         try:
             solicitud = cambiar_estado_solicitud(
