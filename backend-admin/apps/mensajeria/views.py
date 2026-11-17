@@ -235,6 +235,12 @@ class ConversacionViewSet(viewsets.ViewSet):
         BloqueoConversacion.objects.get_or_create(conversacion=conversation, bloqueador=request.user, defaults={"motivo": str(request.data.get("motivo", ""))[:500]})
         return Response({"bloqueada": True}, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=["post"], url_path="desbloquear")
+    def desbloquear(self, request, pk=None):
+        conversation = self._get(request, pk)
+        conversation.bloqueos_entre_participantes().filter(bloqueador=request.user).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=["post"], url_path="reportar")
     def reportar(self, request, pk=None):
         conversation = self._get(request, pk)

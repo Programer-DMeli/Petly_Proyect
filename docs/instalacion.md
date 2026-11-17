@@ -85,7 +85,7 @@ Verificar el reporte de instrumentación, además del código de salida Gradle: 
 
 ## React funcional y demostración de Sprint 1
 
-React incluye los tres roles. `VITE_API_USUARIO_URL=http://localhost:8080` y `VITE_API_ADMINISTRACION_URL=http://localhost:8000`; los orígenes admitidos deben coincidir. Arrancar con `cd web`, `npm ci`, `npm run dev -- --strictPort`. Puerto 5173; no permitir que Vite cambie de puerto silenciosamente. Usar http://localhost:5173. El JWT está en memoria: recargar la página requiere nuevo acceso.
+React incluye los tres roles. `VITE_API_USUARIO_URL=http://localhost:8080` y `VITE_API_ADMINISTRACION_URL=http://localhost:8000`; los orígenes admitidos deben coincidir. Arrancar con `cd web`, `npm ci`, `npm run dev -- --strictPort`. Puerto 5173; no permitir que Vite cambie de puerto silenciosamente. Usar http://localhost:5173. El JWT está en memoria. La [renovación de sesión](renovacion-sesion.md) restaura el acceso al recargar.
 
 Para correos solicitados desde React, Spring usa `WEB_RESET_LINK_BASE=http://localhost:5173/recuperacion`; Android conserva `RESET_LINK_BASE=petly://recuperacion`. El cliente envía canal=web, no una URL arbitraria. SMTP local de pruebas guarda solo el último correo en /tmp/petly-correo-prueba.eml con permisos privados. Ese archivo no se sube a Git.
 

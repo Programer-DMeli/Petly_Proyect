@@ -14,6 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.petly.auth.JwtService;
+import com.petly.auth.SesionRenovableRepository;
 import com.petly.usuarios.UsuarioRepository;
 
 /**
@@ -21,7 +22,7 @@ import com.petly.usuarios.UsuarioRepository;
  *
  * Publicos: salud y auth (registro/login), porque ahi el usuario todavia no
  * tiene token. Todo lo demas pide token en la cabecera Authorization.
- * Con JWT no hay sesion ni cookies, asi que el CSRF se apaga.
+ * La cookie de renovación se protege en el controlador con verificación de Origin y encabezado.
  */
 @Configuration
 @EnableWebSecurity
@@ -31,8 +32,8 @@ public class SecurityConfig {
     private String internalApiSecret;
 
     @Bean
-    JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService, UsuarioRepository usuarios) {
-        return new JwtAuthenticationFilter(jwtService, usuarios);
+    JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService, UsuarioRepository usuarios, SesionRenovableRepository sesiones) {
+        return new JwtAuthenticationFilter(jwtService, usuarios, sesiones);
     }
 
     @Bean
@@ -46,7 +47,7 @@ public class SecurityConfig {
                                             InternalApiFilter internalApiFilter) throws Exception {
         http
                 .cors(Customizer.withDefaults())
-                // sin cookies no hay nada que proteger contra CSRF
+                // Los endpoints de cookie comprueban Origin y el encabezado X-Petly-Client.
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -79,10 +80,10 @@ public class SecurityConfig {
                                 "/api/casos-exito/*/interacciones", "/api/casos-exito/*/interacciones/")
                         .permitAll()
                         // /me requiere token, va antes del permitAll general
-                        .requestMatchers("/api/auth/me")
+                        .requestMatchers("/api/auth/me", "/api/auth/password/change")
                         .authenticated()
                         // registro y login son publicos, recien ahi sale el token
-.requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**")
+                        .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**")
                         .permitAll()
                         // la autorizacion de consulta es exclusiva del adoptante (US-18)
                         .requestMatchers("/api/autorizaciones/**")

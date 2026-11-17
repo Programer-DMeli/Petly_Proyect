@@ -59,6 +59,35 @@ class ChatPorSolicitudTest(APITestCase):
         self.assertFalse(nube["puede_enviar"])
         self.assertEqual(self.client.post(f"{self.url}{nube['id']}/mensajes/", {"texto": "Hola"}).status_code, 423)
 
+    def test_desbloqueo_solo_retira_el_bloqueo_propio_en_todas_las_conversaciones_del_par(self):
+        self.client.force_authenticate(self.albergue)
+        luna = self.abrir(self.luna).data["id"]
+        nube = self.abrir(self.nube).data["id"]
+        self.assertEqual(self.client.post(f"{self.url}{luna}/bloquear/").status_code, 200)
+        self.client.force_authenticate(self.otro)
+        self.assertEqual(self.client.post(f"{self.url}{luna}/desbloquear/").status_code, 403)
+
+        self.client.force_authenticate(self.adoptante)
+        self.assertFalse(self.client.get(f"{self.url}{nube}/").data["conversacion"]["bloqueada_por_mi"])
+        self.assertEqual(self.client.post(f"{self.url}{nube}/desbloquear/").status_code, 204)
+        self.assertEqual(self.client.post(f"{self.url}{luna}/mensajes/", {"texto": "Bloqueado"}).status_code, 423)
+        self.assertEqual(self.client.post(f"{self.url}{luna}/bloquear/").status_code, 200)
+
+        self.client.force_authenticate(self.albergue)
+        self.assertTrue(self.client.get(f"{self.url}{nube}/").data["conversacion"]["bloqueada_por_mi"])
+        for _ in range(2):
+            self.assertEqual(self.client.post(f"{self.url}{nube}/desbloquear/").status_code, 204)
+        chat = self.client.get(f"{self.url}{luna}/").data["conversacion"]
+        self.assertTrue(chat["bloqueada"])
+        self.assertFalse(chat["bloqueada_por_mi"])
+
+        self.client.force_authenticate(self.adoptante)
+        self.assertEqual(self.client.post(f"{self.url}{luna}/mensajes/", {"texto": "Hola de nuevo"}).status_code, 201)
+        self.assertEqual(self.client.post(f"{self.url}{luna}/desbloquear/").status_code, 204)
+        self.client.force_authenticate(self.albergue)
+        self.assertEqual(self.client.post(f"{self.url}{luna}/mensajes/", {"texto": "Respuesta"}).status_code, 201)
+        self.assertEqual(len(self.client.get(f"{self.url}{luna}/").data["mensajes"]), 2)
+
     def test_contador_suma_entrantes_y_desciende_al_leer_por_rol(self):
         contador = self.url + "no-leidos/"
         self.client.force_authenticate(self.adoptante)

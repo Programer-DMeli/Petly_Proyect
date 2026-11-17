@@ -84,6 +84,7 @@ ASGI_APPLICATION = "config.asgi.application"
 # Credenciales por variables de entorno; ver `.env.example`.
 # Los permisos se validan en cada vista: ocultar una pantalla no sustituye
 # la comprobación de permisos (PLANNING v2 §5).
+DB_SSL_REQUIRED = os.getenv("DB_SSL_REQUIRED", "0") == "1"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -94,6 +95,10 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', '3306'),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            **(
+                {"ssl_verify_cert": True, "ssl_verify_identity": True}
+                if DB_SSL_REQUIRED else {}
+            ),
         },
     }
 }

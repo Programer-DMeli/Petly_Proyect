@@ -3,6 +3,7 @@ import asyncio
 import json
 import time
 
+from asgiref.sync import sync_to_async
 from django.core.handlers.asgi import ASGIRequest
 from django.db import transaction
 from django.db.models.signals import post_save
@@ -12,6 +13,9 @@ from rest_framework.decorators import api_view, permission_classes, renderer_cla
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import JSONRenderer
+from rest_framework_simplejwt.exceptions import InvalidToken
+
+from .authentication import ComprobacionSesionNoDisponible, SpringBootJWTAuthentication
 
 from .models import CanalAvisos, SolicitudEvento, User
 from .notificaciones import MENSAJES
@@ -49,11 +53,12 @@ def mensaje(tipo, datos=None):
 
 
 class FlujoAvisos:
-    def __init__(self, adoptante_id, exp):
+    def __init__(self, adoptante_id, exp, auth=None):
         self.canal = CanalAvisos.objects.filter(pk=adoptante_id).values_list("revision", "solicitudes")
         self.revision = None
         self.vencimiento = min(exp, time.time() + DURACION_MAXIMA)
         self.ultimo_envio = time.monotonic()
+        self.auth = auth
 
     def trama(self, canal):
         revision, solicitudes = canal or (0, [])
@@ -74,17 +79,32 @@ class FlujoAvisos:
             return ": latido\n\n"
         return None
 
+    def sesion_vigente(self):
+        sid = self.auth.get("sid") if self.auth is not None else None
+        if sid is None:
+            return True
+        try:
+            SpringBootJWTAuthentication.comprobar_sesion(sid, self.auth)
+        except (InvalidToken, ComprobacionSesionNoDisponible):
+            return False
+        return True
+
     def iterar(self):
         while time.time() < self.vencimiento:
             trama = self.trama(self.canal.first())
             if trama:
+                if not self.sesion_vigente():
+                    return
                 yield trama
             time.sleep(INTERVALO)
 
     async def iterar_async(self):
+        sesion_vigente = sync_to_async(self.sesion_vigente)
         while time.time() < self.vencimiento:
             trama = self.trama(await self.canal.afirst())
             if trama:
+                if not await sesion_vigente():
+                    return
                 yield trama
             await asyncio.sleep(INTERVALO)
 
@@ -101,7 +121,7 @@ class EventStreamRenderer(JSONRenderer):
 def eventos_avisos(request):
     if request.user.rol != User.Rol.ADOPTANTE or not request.user.is_active:
         raise PermissionDenied()
-    flujo = FlujoAvisos(request.user.pk, request.auth["exp"])
+    flujo = FlujoAvisos(request.user.pk, request.auth["exp"], request.auth)
     iterador = flujo.iterar_async() if isinstance(request._request, ASGIRequest) else flujo.iterar()
     return StreamingHttpResponse(iterador, content_type="text/event-stream", headers={
         "Cache-Control": "private, no-store, no-transform",

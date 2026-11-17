@@ -26,7 +26,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final int LIMITE = 10;
-    private static final long VENTANA_MS = 60_000;
+    private static final int LIMITE_SESION = 120;
     private static final String RUTA_AUTH = "/api/auth/";
 
     // ip: hora en que llegó cada pedido de esta ventana
@@ -35,12 +35,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain chain) throws ServletException, IOException {
-        if (!request.getRequestURI().startsWith(RUTA_AUTH) || request.getRequestURI().equals("/api/auth/me")) {
+        String ruta = request.getRequestURI();
+        if (!ruta.startsWith(RUTA_AUTH) || ruta.equals("/api/auth/me") || request.getMethod().equals("OPTIONS")) {
             chain.doFilter(request, response);
             return;
         }
 
-        String ip = request.getRemoteAddr();
+        boolean sesion = ruta.equals("/api/auth/refresh") || ruta.equals("/api/auth/logout");
+        int limite = sesion ? LIMITE_SESION : LIMITE;
+        String ip = (sesion ? "sesion:" : "auth:") + request.getRemoteAddr();
         Instant ahora = Instant.now();
         Deque<Instant> tiempos = pedidos.computeIfAbsent(ip, k -> new ArrayDeque<>());
 
@@ -49,7 +52,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             while (!tiempos.isEmpty() && tiempos.peekFirst().isBefore(ahora.minusSeconds(60))) {
                 tiempos.pollFirst();
             }
-            if (tiempos.size() >= LIMITE) {
+            if (tiempos.size() >= limite) {
                 response.setStatus(429);
                 response.setContentType("application/json");
                 long remaining = Math.max(1, (java.time.Duration.between(ahora, tiempos.peekFirst().plusSeconds(60)).toMillis()+999)/1000);

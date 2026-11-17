@@ -42,7 +42,7 @@ public class AuthService {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private JwtService jwtService;
+    private SesionRenovableService sesiones;
 
     @Autowired
     private JavaMailSender mailSender;
@@ -111,7 +111,7 @@ public class AuthService {
     private int blockDurationMinutes;
 
     @Transactional(noRollbackFor = {CredencialesInvalidasException.class, AuthCuentaBloqueadaException.class})
-    public LoginResponse login(LoginRequest request) {
+    public SesionRenovableService.Emision login(LoginRequest request) {
         String correo = request.getCorreo().trim().toLowerCase(java.util.Locale.ROOT);
         Usuario usuario = usuarios.bloquearPorCorreo(correo)
                 .orElseThrow(() -> new CredencialesInvalidasException("Credenciales inválidas."));
@@ -138,8 +138,7 @@ public class AuthService {
         usuario.setIntentosFallidos(0);
         usuario.setBloqueadoHasta(null);
         usuarios.save(usuario);
-        String token = jwtService.generarToken(usuario);
-        return new LoginResponse(token, new AuthResponse(usuario.getId(), usuario.getCorreo(), usuario.getRol().name()));
+        return sesiones.iniciar(usuario);
     }
 
     /**
@@ -232,10 +231,26 @@ public class AuthService {
             throw new TokenRecuperacionInvalidoException("El enlace de recuperación ya fue usado");
         }
 
-        Usuario usuario = usuarios.findById(userId)
+        Usuario usuario = usuarios.bloquearPorId(userId)
             .orElseThrow(() -> new TokenRecuperacionInvalidoException("Usuario no encontrado"));
 
+        actualizarPassword(usuario, nuevaPassword);
+    }
+
+    @Transactional
+    public void cambiarPassword(Long id, String actual, String nueva, String confirmacion) {
+        validarPassword(nueva, "nuevaPassword");
+        if (!nueva.equals(confirmacion)) throw new ApiException(400, "Las contraseñas no coinciden.");
+        Usuario usuario = usuarios.bloquearPorId(id).orElseThrow();
+        if (!passwordEncoder.matches(actual, usuario.getPasswordHash())) {
+            throw new ApiException(400, "La contraseña actual es incorrecta.");
+        }
+        actualizarPassword(usuario, nueva);
+    }
+
+    private void actualizarPassword(Usuario usuario, String nuevaPassword) {
         usuario.setPasswordHash(passwordEncoder.encode(nuevaPassword));
+        sesiones.revocarTodas(usuario.getId());
         usuario.setTokenVersion(usuario.getTokenVersion() + 1);
         usuario.setIntentosFallidos(0);
         usuario.setBloqueadoHasta(null);

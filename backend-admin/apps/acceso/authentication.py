@@ -2,8 +2,15 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth import get_user_model
+from django.db import connection
+from rest_framework.exceptions import APIException
 
 User = get_user_model()
+
+
+class ComprobacionSesionNoDisponible(APIException):
+    status_code = 503
+    default_detail = "No se pudo comprobar la sesión. Intenta nuevamente."
 
 
 class SpringBootJWTAuthentication(JWTAuthentication):
@@ -61,11 +68,40 @@ class SpringBootJWTAuthentication(JWTAuthentication):
         if token_type != "access":
             raise InvalidToken(f"Tipo de token inválido: se esperaba 'access', recibido '{token_type}'")
         
+        sid = payload.get("sid")
+        if sid is not None:
+            self.comprobar_sesion(sid, payload)
+
         # Crear AccessToken con el payload validado
         token = AccessToken()
         token.payload = payload
         return token
     
+    @staticmethod
+    def comprobar_sesion(sid, payload):
+        from django.db import DatabaseError
+        from uuid import UUID
+
+        try:
+            if str(UUID(sid)) != sid or type(payload.get("version")) is not int:
+                raise ValueError()
+            usuario_id = int(payload["sub"])
+        except (KeyError, ValueError, TypeError, AttributeError):
+            raise InvalidToken("Sesión inválida")
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """SELECT 1 FROM sesiones_renovables s JOIN usuarios u ON u.id = s.usuario_id
+                       WHERE s.id = %s AND u.id = %s AND u.token_version = %s
+                         AND s.token_version = u.token_version AND s.revocada_en IS NULL""",
+                    [sid, usuario_id, payload["version"]],
+                )
+                activa = cursor.fetchone()
+        except DatabaseError as error:
+            raise ComprobacionSesionNoDisponible() from error
+        if not activa:
+            raise InvalidToken("Sesión revocada")
+
     def get_user(self, validated_token):
         """Obtener/crear usuario local desde claims de Spring Boot."""
         try:
@@ -165,7 +201,7 @@ def spring_get(path: str, auth_header: str | None = None, timeout: float = 3.0):
     Llama a Spring Boot (GET) y devuelve JSON decodificado.
     Lanza AuthorityUnavailable si no hay respuesta 2xx.
     """
-    base = getattr(settings, "SPRING_BOOT_BASE_URL", "http://localhost:8080").rstrip("/")
+    base = settings.SPRING_API_URL.rstrip("/")
     url = f"{base}{path}"
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     if auth_header:

@@ -68,11 +68,12 @@ class ConversacionSerializer(serializers.ModelSerializer):
     no_leidos = serializers.SerializerMethodField()
     promedio_respuesta_horas = serializers.SerializerMethodField()
     bloqueada = serializers.SerializerMethodField()
+    bloqueada_por_mi = serializers.SerializerMethodField()
     puede_enviar = serializers.SerializerMethodField()
 
     class Meta:
         model = Conversacion
-        fields = ["id", "solicitud_id", "mascota_id", "mascota", "nombre_contacto", "albergue_id", "albergue_nombre", "interlocutor", "creada_en", "actualizada_en", "ultimo_mensaje", "no_leidos", "promedio_respuesta_horas", "bloqueada", "puede_enviar"]
+        fields = ["id", "solicitud_id", "mascota_id", "mascota", "nombre_contacto", "albergue_id", "albergue_nombre", "interlocutor", "creada_en", "actualizada_en", "ultimo_mensaje", "no_leidos", "promedio_respuesta_horas", "bloqueada", "bloqueada_por_mi", "puede_enviar"]
 
     def get_nombre_contacto(self, obj):
         request = self.context["request"]
@@ -81,15 +82,26 @@ class ConversacionSerializer(serializers.ModelSerializer):
         return obj.adoptante.get_full_name().strip() or "Adoptante"
 
     def get_bloqueada(self, obj):
-        if hasattr(obj, "tiene_bloqueos"):
-            return obj.tiene_bloqueos
-        return obj.bloqueos_entre_participantes().exists()
+        return bool(self._bloqueadores(obj))
+
+    def _bloqueadores(self, obj):
+        cache = getattr(self, "_bloqueadores_por_par", None)
+        if cache is None:
+            cache = self._bloqueadores_por_par = {}
+        pair = (obj.adoptante_id, obj.albergue_id)
+        if pair not in cache:
+            cache[pair] = set(obj.bloqueos_entre_participantes().values_list("bloqueador_id", flat=True))
+        return cache[pair]
+
+    def get_bloqueada_por_mi(self, obj):
+        request = self.context.get("request")
+        return bool(request and request.user.pk in self._bloqueadores(obj))
 
     def get_puede_enviar(self, obj):
         request = self.context.get("request")
         if not request:
             return False
-        return not obj.bloqueos_entre_participantes().exclude(bloqueador=request.user).exists()
+        return not (self._bloqueadores(obj) - {request.user.pk})
 
     def get_mascota(self, obj):
         return obj.solicitud.mascota.nombre if obj.solicitud_id else "Consulta general"

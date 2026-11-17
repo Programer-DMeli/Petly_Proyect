@@ -25,6 +25,10 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     @Query("SELECT u FROM Usuario u WHERE u.correo = :correo")
     Optional<Usuario> bloquearPorCorreo(@Param("correo") String correo);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM Usuario u WHERE u.id = :id")
+    Optional<Usuario> bloquearPorId(@Param("id") Long id);
+
     boolean existsByUsername(String username);
 
     boolean existsByCorreo(String correo);

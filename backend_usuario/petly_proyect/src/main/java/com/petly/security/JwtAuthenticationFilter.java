@@ -9,6 +9,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.petly.auth.JwtService;
+import com.petly.auth.SesionRenovableRepository;
 import com.petly.usuarios.UsuarioRepository;
 
 import io.jsonwebtoken.Claims;
@@ -28,7 +29,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UsuarioRepository usuarios;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UsuarioRepository usuarios) {
+    private final SesionRenovableRepository sesiones;
+
+    public JwtAuthenticationFilter(JwtService jwtService, UsuarioRepository usuarios, SesionRenovableRepository sesiones) {
+        this.sesiones = sesiones;
         this.jwtService = jwtService;
         this.usuarios = usuarios;
     }
@@ -53,14 +57,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Claims claims = jwtService.validarToken(token);
             Integer ver = claims.get("version", Integer.class);
             var usuario = usuarios.findById(Long.parseLong(claims.getSubject())).orElse(null);
-            if (ver == null || usuario == null || ver != usuario.getTokenVersion()) {
+            String sid = claims.get("sid", String.class);
+            if (ver == null || usuario == null || ver != usuario.getTokenVersion()
+                    || (sid != null && !sesiones.existsByIdAndUsuarioIdAndRevocadaEnIsNull(sid, usuario.getId()))) {
                 rechazar(response);
                 return;
             }
             var autoridad = new SimpleGrantedAuthority("ROLE_" + claims.get("rol", String.class));
             var auth = new UsernamePasswordAuthenticationToken(claims, null, List.of(autoridad));
             SecurityContextHolder.getContext().setAuthentication(auth);
-        } catch (Exception e) {
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
             rechazar(response);
             return;
         }

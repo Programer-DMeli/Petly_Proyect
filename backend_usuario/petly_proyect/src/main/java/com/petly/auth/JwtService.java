@@ -2,6 +2,7 @@ package com.petly.auth;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
@@ -26,15 +27,21 @@ public class JwtService {
     }
 
     public String generarToken(Usuario usuario) {
+        return generarToken(usuario, null);
+    }
+
+    public String generarToken(Usuario usuario, String sesionId) {
         Date ahora = new Date();
         Date vence = new Date(ahora.getTime() + 3600_000L); // 1 hora
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(usuario.getId()))
                 .claim("email", usuario.getCorreo())
                 .claim("rol", usuario.getRol().name())
                 .claim("username", usuario.getUsername())
                 .claim("type", "access")
                 .claim("version", usuario.getTokenVersion())
+                .claim("sid", sesionId)
                 .issuer("petly-spring")
                 .audience().add("petly-django").and()
                 .issuedAt(ahora)
@@ -47,6 +54,7 @@ public class JwtService {
         return Jwts.parser()
             .verifyWith(key)
             .requireIssuer("petly-spring")
+            .require("type", "access")
             .requireAudience("petly-django")
             .build()
             .parseSignedClaims(token)

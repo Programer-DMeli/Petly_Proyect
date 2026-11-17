@@ -3,11 +3,24 @@ import jwt
 import urllib.error
 from unittest.mock import patch
 from django.conf import settings
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 class SpringIdentityTest(TestCase):
+    @override_settings(SPRING_API_URL="http://127.0.0.1:8082/")
+    @patch("apps.acceso.authentication.urllib.request.urlopen")
+    def test_llamada_a_spring_usa_url_configurada(self, abrir):
+        from apps.acceso.authentication import spring_get
+
+        respuesta = abrir.return_value.__enter__.return_value
+        respuesta.status = 200
+        respuesta.read.return_value = b'{"ok": true}'
+        self.assertEqual(spring_get("/api/albergue/perfiles", "Bearer prueba"), {"ok": True})
+        peticion = abrir.call_args.args[0]
+        self.assertEqual(peticion.full_url, "http://127.0.0.1:8082/api/albergue/perfiles")
+        self.assertEqual(peticion.get_header("Authorization"), "Bearer prueba")
+
     def setUp(self):
         self.client = APIClient()
         self.identity = {"id": "101", "correo": "shelter@example.test", "rol": "ALBERGUE"}
