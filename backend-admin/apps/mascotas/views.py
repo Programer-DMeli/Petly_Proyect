@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
+from django.db import transaction
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 
@@ -197,6 +198,7 @@ class MascotaViewSet(viewsets.ModelViewSet):
             codigo=__import__("uuid").uuid4().hex[:20].upper(),
         )
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         """Override create para retornar serializer de lectura."""
         serializer = self.get_serializer(data=request.data)

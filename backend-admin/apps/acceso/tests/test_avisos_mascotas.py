@@ -1,7 +1,13 @@
+from io import BytesIO
+from tempfile import TemporaryDirectory
+
+from PIL import Image
 from django.db import IntegrityError, transaction
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from rest_framework.test import APITestCase
-from apps.acceso.models import CriteriosAviso, SolicitudEvento, User
+from apps.acceso.models import CanalAvisos, CriteriosAviso, SolicitudEvento, User
 from apps.acceso.avisos_mascotas import avisar_nueva_mascota
 from apps.albergues.models import Albergue
 from apps.mascotas.models import Mascota
@@ -48,6 +54,34 @@ class AvisosMascotasTest(APITestCase):
         self.assertEqual(self.client.get(self.url).data['results'], [])
         self.assertEqual(self.client.post(read_url).status_code, 404)
         self.assertFalse(self.client.get(self.url + 'criterios/').data['activo'])
+
+    def test_alta_desde_albergue_publica_aviso_y_actualiza_canal(self):
+        self.assertEqual(self.save_filters().status_code, 200)
+        self.client.force_authenticate(self.albergue.usuario)
+        image = BytesIO()
+        Image.new('RGB', (64, 64)).save(image, 'PNG')
+        with TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            alta = self.client.post('/api/mascotas/', {
+                'nombre': 'Luna', 'especie': 'PERRO', 'sexo': 'HEMBRA',
+                'tamanio': 'MEDIANO', 'temperamento': 'TRANQUILO',
+                'edad_anos': 1, 'edad_meses': 0,
+                'foto_principal': SimpleUploadedFile('luna.png', image.getvalue(), 'image/png'),
+            }, format='multipart')
+        self.assertEqual(alta.status_code, 201, alta.data)
+        self.assertEqual(CanalAvisos.objects.get(adoptante=self.user).revision, 1)
+        self.assertFalse(CanalAvisos.objects.filter(adoptante=self.other).exists())
+        self.client.force_authenticate(self.user)
+        response = self.client.get(self.url).data
+        self.assertEqual(response['no_leidas'], 1)
+        self.assertEqual(response['results'][0]['mascota_id'], alta.data['id'])
+        self.assertEqual(response['results'][0]['albergue_nombre'], self.albergue.nombre)
+
+    def test_no_notifica_mascota_de_albergue_inactivo(self):
+        self.save_filters()
+        self.albergue.activo = False
+        self.albergue.save(update_fields=['activo'])
+        self.pet()
+        self.assertEqual(SolicitudEvento.objects.count(), 0)
 
     def test_todos_los_filtros_son_obligatorios_y_edad_desconocida_no_coincide(self):
         self.save_filters()

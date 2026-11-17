@@ -46,6 +46,7 @@ private object Routes {
     const val CATALOG = "catalogo"
     const val PROFILE = "perfil"
     const val DETAIL = "mascota/{id}"
+    const val NOTIFICATIONS = "notificaciones"
 }
 
 @Composable
@@ -119,11 +120,13 @@ fun PetlyNavHost(
                 lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { contadorMensajes.observar() }
             }
         }
-        LaunchedEffect(privateGraph, lifecycle) {
-            if (privateGraph) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+        val currentEntry by nav.currentBackStackEntryAsState()
+        val bandejaVisible = currentEntry?.destination?.route == Routes.NOTIFICATIONS
+        LaunchedEffect(privateGraph, isPreview, lifecycle, bandejaVisible) {
+            if (privateGraph && !isPreview) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (true) {
                     notificationsVm.load()
-                    delay(30_000)
+                    delay(if (bandejaVisible) 10_000 else 30_000)
                 }
             }
         }
@@ -215,7 +218,7 @@ fun PetlyNavHost(
                                 .firstOrNull { it.second == draft.mascotaId }
                         },
                         notificacionesState = notificationsState,
-                        onOpenNotifications = { nav.navigate("notificaciones") { launchSingleTop = true } },
+                        onOpenNotifications = { nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true } },
                         chatState = chatState,
                         onOpenChat = chatVm::open,
                         onEditChat = chatVm::edit,
@@ -265,7 +268,7 @@ fun PetlyNavHost(
                     }
                     val vm: PerfilViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    CuestionarioScreen(state, onRefreshProfile = vm::refreshSummary, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }), onOpenNotifications = { nav.navigate("notificaciones") { launchSingleTop = true } }, onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
+                    CuestionarioScreen(state, onRefreshProfile = vm::refreshSummary, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }), onOpenNotifications = { nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true } }, onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
                         reportReminders = { RecordatoriosReporte(container.reportesSeguimiento) })
                 }
                 composable(
@@ -299,8 +302,7 @@ fun PetlyNavHost(
                     val event = requireNotNull(entry.arguments).getLong("evento")
                     AvisoSolicitudScreen(container.notificacionesApi, event) { nav.popBackStack() }
                 }
-                composable("notificaciones") {
-                    LaunchedEffect(Unit) { notificationsVm.load() }
+                composable(Routes.NOTIFICATIONS) {
                     NotificacionesScreen(notificationsState, { notificationsVm.load() }, notificationsVm::read,
                         notificationsVm::readAll, { notificationsVm.load(more = true) },
                         onBack = { nav.popBackStack() },

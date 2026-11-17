@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { avisosConectados, observarAvisos } from '../services/avisosEnVivo';
 import { errorMessage } from '../services/http';
 import {
@@ -15,7 +15,8 @@ import { fecha as fechaSeguimiento } from '../features/seguimiento/cronogramaDat
 import type { AvisoAdoptante } from '../services/types';
 
 type AvisoBandeja = Pick<AvisoAdoptante, 'id' | 'solicitud_id' | 'mascota_id' | 'mascota_nombre' |
-  'tipo' | 'titulo' | 'mensaje' | 'ocurrido_en' | 'leido_en' | 'seguimiento_id' | 'programado_para' | 'fecha_limite'>;
+  'tipo' | 'titulo' | 'mensaje' | 'ocurrido_en' | 'leido_en' | 'seguimiento_id' | 'programado_para' | 'fecha_limite'> &
+  Partial<Pick<AvisoAdoptante, 'albergue_nombre'>>;
 
 type Props = {
   role: 'ADOPTANTE' | 'ALBERGUE';
@@ -133,6 +134,9 @@ export default function NotificacionesMenu({ role, open, onToggle }: Props) {
       {open && (
         <div id="workspace-notifications-menu" className="workspace-menu workspace-menu--notifications">
           <p>Avisos de adopción</p>
+          {role === 'ADOPTANTE' && (
+            <Link to="/adoptante/preferencias-notificacion#aviso-mascotas">Configurar avisos de nuevas mascotas</Link>
+          )}
           {noLeidas > 0 && <button
             type="button"
             className="workspace-notifications__mark-all"
@@ -159,6 +163,7 @@ export default function NotificacionesMenu({ role, open, onToggle }: Props) {
                       <p>{aviso.mensaje}</p>
                       {aviso.tipo === 'COMPATIBILIDAD' && <span>Ver solicitud</span>}
                       {aviso.mascota_nombre && aviso.tipo !== 'COMPATIBILIDAD' && <span>Mascota: {aviso.mascota_nombre}</span>}
+                      {aviso.tipo === 'NUEVA_COINCIDENCIA' && aviso.albergue_nombre && <span>Albergue: {aviso.albergue_nombre}</span>}
                       {programacion ? aviso.programado_para && <span>Fecha programada: {fechaSeguimiento(aviso.programado_para)} (Lima)</span>
                         : aviso.fecha_limite && <span>Fecha límite: {fechaSeguimiento(aviso.fecha_limite)} (Lima)</span>}
                       <time dateTime={aviso.ocurrido_en}>{fecha(aviso.ocurrido_en)}</time>

@@ -10,6 +10,28 @@ import type {
 
 export const INTERVALO_AVISOS_MS = 5000;
 
+export type CriteriosAviso = {
+  activo: boolean;
+  especie: string;
+  tamanio: string;
+  temperamento: string;
+  edad_min_meses: number | null;
+  edad_max_meses: number | null;
+};
+
+const criteriosPath = '/api/acceso/notificaciones/criterios/';
+
+export function getCriteriosAviso() {
+  return django<CriteriosAviso>(criteriosPath);
+}
+
+export function guardarCriteriosAviso(criterios: CriteriosAviso) {
+  return django<CriteriosAviso>(criteriosPath, {
+    method: 'PUT',
+    body: JSON.stringify(criterios),
+  });
+}
+
 export function getAvisos() {
   return django<BandejaAvisosAdoptante>('/api/acceso/notificaciones/');
 }

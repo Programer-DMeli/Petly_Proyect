@@ -57,7 +57,10 @@ fun NotificacionesScreen(
             state.criterios?.let { criterios ->
                 CriteriosAvisoForm(criterios, state.busy, onSaveCriterios)
             }
-            if (state.criteriosGuardados) Text("Criterios guardados. Recibirás avisos de los próximos ingresos que coincidan.")
+            if (state.criteriosGuardados) {
+                Text(if (state.criterios?.activo == true) "Avisos activados en Android y web."
+                    else "Criterios guardados con los avisos desactivados.")
+            }
         }
         if (state.busy) item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
         state.error?.let { error -> item {
@@ -67,7 +70,7 @@ fun NotificacionesScreen(
         if (state.preview) item {
             Text("Inicia sesión para recibir avisos de mascotas y solicitudes.")
         } else if (!state.busy && state.error == null && state.items.isEmpty()) item {
-            Text("Todavía no tienes notificaciones. Guarda tus criterios para conocer nuevas mascotas y recibe novedades de tus solicitudes.")
+            Text("Todavía no tienes notificaciones. Activa los avisos de nuevas mascotas y guarda al menos un criterio.")
         }
         items(state.items, key = { it.id }) { item ->
             val esProgramacion = item.tipo == "SEGUIMIENTO_PROGRAMADO"
@@ -143,11 +146,11 @@ private fun CriteriosAvisoForm(initial: CriteriosAvisoDto, busy: Boolean, onSave
     val hasCriteria = draft.especie.isNotBlank() || draft.tamanio.isNotBlank() || draft.temperamento.isNotBlank() || low != null || high != null
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Mis criterios guardados", style = MaterialTheme.typography.titleMedium)
-        Text("Se deben cumplir todos los filtros elegidos. Los campos vacíos aceptan cualquier valor. Los avisos aparecen en esta bandeja al abrir la app.")
+        Text("Recibirás un aviso cuando una nueva mascota cumpla todos los filtros elegidos. Los criterios se comparten con la web.")
         Row { Checkbox(draft.activo, { draft = draft.copy(activo = it) }, enabled = !busy); Text("Activar avisos") }
         CriterioSelector("Especie", draft.especie, listOf("PERRO" to "Perro", "GATO" to "Gato", "OTRO" to "Otro"), !busy) { draft = draft.copy(especie = it) }
         CriterioSelector("Tamaño", draft.tamanio, listOf("PEQUENO" to "Pequeño", "MEDIANO" to "Mediano", "GRANDE" to "Grande"), !busy) { draft = draft.copy(tamanio = it) }
-        CriterioSelector("Temperamento", draft.temperamento, listOf("TRANQUILO" to "Tranquilo", "ACTIVO" to "Activo", "JUGUETON" to "Juguetón", "TIMIDO" to "Tímido", "SOCIABLE" to "Sociable", "INDEPENDIENTE" to "Independiente"), !busy) { draft = draft.copy(temperamento = it) }
+        CriterioSelector("Temperamento", draft.temperamento, listOf("TRANQUILO" to "Tranquilo", "ACTIVO" to "Activo", "JUGUETON" to "Juguetón", "TIMIDO" to "Tímido", "SOCIABLE" to "Sociable", "INDEPENDIENTE" to "Independiente", "POR_EVALUAR" to "Por evaluar"), !busy) { draft = draft.copy(temperamento = it) }
         OutlinedTextField(minimum, { minimum = it }, label = { Text("Edad mínima (meses)") }, enabled = !busy, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
         OutlinedTextField(maximum, { maximum = it }, label = { Text("Edad máxima (meses)") }, enabled = !busy, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
         if (!valid) Text("Usa edades entre 0 y 600 meses; la mínima no debe superar la máxima.", color = MaterialTheme.colorScheme.error)

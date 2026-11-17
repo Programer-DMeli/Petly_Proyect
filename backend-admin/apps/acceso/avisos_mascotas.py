@@ -10,6 +10,8 @@ from .models import CriteriosAviso, SolicitudEvento
 def avisar_nueva_mascota(sender, instance, created, raw=False, **kwargs):
     if raw or not created or instance.estado != Mascota.Estado.DISPONIBLE:
         return
+    if not instance.albergue.activo:
+        return
     criterios = CriteriosAviso.objects.filter(activo=True, adoptante__is_active=True, adoptante__rol="ADOPTANTE")
     for campo in ("especie", "tamanio", "temperamento"):
         criterios = criterios.filter(Q(**{campo: ""}) | Q(**{campo: getattr(instance, campo)}))
@@ -23,5 +25,5 @@ def avisar_nueva_mascota(sender, instance, created, raw=False, **kwargs):
             continue
         SolicitudEvento.objects.get_or_create(
             destinatario_id=criterio.adoptante_id, mascota_coincidente=instance,
-            defaults={"tipo": "NUEVA_COINCIDENCIA"},
+            defaults={"tipo": SolicitudEvento.Tipo.NUEVA_COINCIDENCIA},
         )

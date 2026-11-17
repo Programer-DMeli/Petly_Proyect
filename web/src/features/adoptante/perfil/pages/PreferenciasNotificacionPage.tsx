@@ -6,6 +6,7 @@ import {
   guardarPreferenciasNotificacion,
 } from '../../../../services/notificacionesApi';
 import type { PreferenciasNotificacion } from '../../../../services/types';
+import CriteriosAvisoMascotas from './CriteriosAvisoMascotas';
 
 const canales = [
   { clave: 'email', etiqueta: 'Correo electrónico' },
@@ -50,29 +51,33 @@ export default function PreferenciasNotificacionPage() {
   }
 
   return (
-    <section className="card">
+    <div className="workspace">
       <h1>Preferencias de notificación</h1>
-      <p>Elige por qué canales quieres recibir alertas de adopción y seguimiento.</p>
-      <Feedback error={error} success={success} />
-      {!preferencias ? (
-        <p>Cargando preferencias...</p>
-      ) : (
-        <form onSubmit={event => void guardar(event)}>
-          <fieldset disabled={busy}>
-            {canales.map(({ clave, etiqueta }) => (
-              <label key={clave}>
-                <input
-                  type="checkbox"
-                  checked={preferencias[clave]}
-                  onChange={e => setPreferencias({ ...preferencias, [clave]: e.target.checked })}
-                />
-                {etiqueta}
-              </label>
-            ))}
-            <button>Guardar preferencias</button>
-          </fieldset>
-        </form>
-      )}
-    </section>
+      <CriteriosAvisoMascotas />
+      <section className="card">
+        <h2>Canales de notificación</h2>
+        <p>Elige por qué canales quieres recibir alertas de adopción y seguimiento.</p>
+        <Feedback error={error} success={success} />
+        {!preferencias && !error ? (
+          <p>Cargando preferencias...</p>
+        ) : preferencias && (
+          <form onSubmit={event => void guardar(event)}>
+            <fieldset disabled={busy}>
+              {canales.map(({ clave, etiqueta }) => (
+                <label key={clave}>
+                  <input
+                    type="checkbox"
+                    checked={preferencias[clave]}
+                    onChange={e => setPreferencias({ ...preferencias, [clave]: e.target.checked })}
+                  />
+                  {etiqueta}
+                </label>
+              ))}
+              <button>Guardar preferencias</button>
+            </fieldset>
+          </form>
+        )}
+      </section>
+    </div>
   );
 }
