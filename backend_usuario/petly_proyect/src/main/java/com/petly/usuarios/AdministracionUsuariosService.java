@@ -13,9 +13,11 @@ import com.petly.usuarios.dto.UsuarioAdministracionResponse;
 public class AdministracionUsuariosService {
 
     private final UsuarioRepository usuarios;
+    private final SincronizarRolDjango sincronizadorDjango;
 
-    public AdministracionUsuariosService(UsuarioRepository usuarios) {
+    public AdministracionUsuariosService(UsuarioRepository usuarios, SincronizarRolDjango sincronizadorDjango) {
         this.usuarios = usuarios;
+        this.sincronizadorDjango = sincronizadorDjango;
     }
 
     @Transactional(readOnly = true)
@@ -50,7 +52,8 @@ public class AdministracionUsuariosService {
         if (rolActual != rolNuevo) {
             objetivo.setRol(rolNuevo);
             objetivo.setTokenVersion(objetivo.getTokenVersion() + 1);
-            usuarios.save(objetivo);
+            usuarios.saveAndFlush(objetivo);
+            sincronizadorDjango.sincronizar(objetivo);
         }
         return UsuarioAdministracionResponse.desde(objetivo);
     }
