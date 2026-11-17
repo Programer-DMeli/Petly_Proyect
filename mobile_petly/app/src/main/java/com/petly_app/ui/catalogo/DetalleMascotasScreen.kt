@@ -40,7 +40,9 @@ fun DetalleMascotaScreen(
     preview: Boolean,
     onRetry: () -> Unit,
     onBack: () -> Unit,
-    onConsejos: () -> Unit = {}
+    onConsejos: () -> Unit = {},
+    onAuthorizeShelter: (suspend (Long) -> Unit)? = null,
+    onSolicitudEnviada: () -> Unit = {}
 ) {
     val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
     val favoritoError by FavoritosManager.error.collectAsStateWithLifecycle()
@@ -61,7 +63,14 @@ fun DetalleMascotaScreen(
             mascotaId = state.mascota.id,
             mascotaNombre = state.mascota.nombre,
             onDismiss = { showSolicitudForm = false },
-            onSubmittedSuccess = { showSolicitudForm = false }
+            onSubmittedSuccess = {
+                showSolicitudForm = false
+                onSolicitudEnviada()
+            },
+            albergueNombre = state.mascota.albergue,
+            onAuthorizeShelter = state.mascota.albergueId?.let { id ->
+                onAuthorizeShelter?.let { authorize -> suspend { authorize(id) } }
+            }
         )
     } else {
         Column(

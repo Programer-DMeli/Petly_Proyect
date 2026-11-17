@@ -1,5 +1,6 @@
 package com.petly_app.core.navigation
 
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.Lifecycle
@@ -21,9 +22,11 @@ import com.petly_app.ui.auth.*
 import com.petly_app.ui.catalogo.*
 import com.petly_app.ui.perfil.*
 import com.petly_app.ui.screen.MainAppScreen
+import com.petly_app.ui.screen.PetlyTab
 import com.petly_app.ui.seguimiento.SeguimientosScreen
 import com.petly_app.ui.seguimiento.SeguimientosViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private object Routes {
     const val LOGIN = "login"
@@ -50,15 +53,18 @@ fun PetlyNavHost(
         com.petly_app.data.repository.SolicitudAdopcionManager.clear()
         if (authenticated && !isPreview) {
             com.petly_app.data.repository.FavoritosManager.api = container.favoritosApi
-            com.petly_app.data.repository.FavoritosManager.cargar()
             com.petly_app.data.repository.SolicitudAdopcionManager.api = container.solicitudesApi
             com.petly_app.data.repository.SolicitudAdopcionManager.fotosApi = container.fotosHogarApi
             com.petly_app.data.repository.SolicitudAdopcionManager.resolver = container.resolver
+            launch { com.petly_app.data.repository.FavoritosManager.cargar() }
             runCatching { com.petly_app.data.repository.SolicitudAdopcionManager.cargar() }
         }
     }
     key(authenticated, isPreview, resetToken) {
         val nav = rememberNavController()
+        var selectedTab by rememberSaveable { mutableStateOf(PetlyTab.INICIO) }
+        val snackbarHostState = remember { SnackbarHostState() }
+        val scope = rememberCoroutineScope()
         val privateGraph = resetToken == null && (authenticated || isPreview)
         val notificationsFactory = remember(container, isPreview) {
             viewModelFactory { initializer { NotificacionesViewModel(container.notificacionesApi, isPreview) } }
@@ -155,6 +161,9 @@ fun PetlyNavHost(
                     }
 
                     MainAppScreen(
+                        selectedTab = selectedTab,
+                        onSelectTab = { selectedTab = it },
+                        snackbarHostState = snackbarHostState,
                         onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
                         reportReminders = { RecordatoriosReporte(container.reportesSeguimiento) },
                         mensajeriaApi = if (isPreview) null else container.mensajeriaApi,
@@ -271,7 +280,17 @@ fun PetlyNavHost(
                     }
                     val vm: DetalleMascotaViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
-                    DetalleMascotaScreen(state, isPreview, vm::load, onBack = { nav.popBackStack() }, onConsejos = vm::consejos)
+                    DetalleMascotaScreen(
+                        state, isPreview, vm::load,
+                        onBack = { nav.popBackStack() },
+                        onConsejos = vm::consejos,
+                        onAuthorizeShelter = if (isPreview) null else container.autorizaciones::allow,
+                        onSolicitudEnviada = {
+                            selectedTab = PetlyTab.PERFIL
+                            nav.popBackStack(Routes.CATALOG, inclusive = false)
+                            scope.launch { snackbarHostState.showSnackbar("Solicitud enviada") }
+                        }
+                    )
                 }
             }
         }

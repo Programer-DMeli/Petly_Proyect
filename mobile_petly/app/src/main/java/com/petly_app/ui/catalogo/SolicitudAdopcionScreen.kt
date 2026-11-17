@@ -26,7 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.petly_app.data.model.SolicitudAdopcionDraft
+import com.petly_app.core.network.apiErrorMessage
 import com.petly_app.data.repository.SolicitudAdopcionManager
 import com.petly_app.ui.screen.HomeIcons
 import kotlinx.coroutines.launch
@@ -36,7 +36,9 @@ fun SolicitudAdopcionScreen(
     mascotaId: Long,
     mascotaNombre: String,
     onDismiss: () -> Unit,
-    onSubmittedSuccess: () -> Unit = {}
+    onSubmittedSuccess: () -> Unit = onDismiss,
+    albergueNombre: String = "",
+    onAuthorizeShelter: (suspend () -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var draft by remember { mutableStateOf(SolicitudAdopcionManager.getDraft(mascotaId, mascotaNombre)) }
@@ -44,7 +46,8 @@ fun SolicitudAdopcionScreen(
     var isVerifyingDni by remember { mutableStateOf(false) }
     var isSending by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
-    var successDialogOpen by remember { mutableStateOf(false) }
+    var consentDialogOpen by remember { mutableStateOf(false) }
+    var isAuthorizing by remember { mutableStateOf(false) }
 
     var fotosGuardadas by remember { mutableStateOf<List<ByteArray>>(emptyList()) }
     LaunchedEffect(mascotaId) {
@@ -80,7 +83,8 @@ fun SolicitudAdopcionScreen(
                 Button(enabled = !isSending && fotos.isNotEmpty(), onClick = { scope.launch {
                     isSending = true
                     val result = SolicitudAdopcionManager.enviarSolicitud(draft)
-                    statusMessage = if (result.isEmpty()) "Fotos guardadas en la solicitud." else result.values.joinToString(" ")
+                    fotos = SolicitudAdopcionManager.fotosLocales[mascotaId].orEmpty()
+                    statusMessage = result["servidor"] ?: "Fotos guardadas en la solicitud."
                     isSending = false
                 } }) { Text("Adjuntar fotos a la solicitud") }
             }
@@ -340,15 +344,6 @@ fun SolicitudAdopcionScreen(
             errors["puedeCubrirGastosVeterinarios"]?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
         }
 
-        statusMessage?.let { msg ->
-            Text(
-                text = msg,
-                color = Color(0xFF126858),
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp
-            )
-        }
-
         FormSectionCard(title = "Fotos privadas del hogar") {
             Text("Hasta tres imágenes JPEG/PNG de 5 MB. Solo tú y el albergue autorizado pueden consultarlas.")
             Text("${fotos.size} fotografías seleccionadas")
@@ -358,22 +353,47 @@ fun SolicitudAdopcionScreen(
         }
         // BOTONES INFERIORES
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            statusMessage?.let { msg ->
+                Text(
+                    text = msg,
+                    color = if (errors.isEmpty()) Color(0xFF126858) else MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
+            if ("autorizacion" in errors && onAuthorizeShelter != null) {
+                OutlinedButton(
+                    onClick = { consentDialogOpen = true },
+                    enabled = !isAuthorizing,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (isAuthorizing) "Guardando autorización…" else "Autorizar al albergue")
+                }
+            }
             // Enviar Solicitud
             Button(
                 onClick = {
                     scope.launch {
                         isSending = true
                         val validationErrors = SolicitudAdopcionManager.enviarSolicitud(draft)
+                        fotos = SolicitudAdopcionManager.fotosLocales[mascotaId].orEmpty()
                         isSending = false
                         if (validationErrors.isEmpty()) {
-                            successDialogOpen = true
+                            onSubmittedSuccess()
                         } else {
                             errors = validationErrors
-                            statusMessage = validationErrors["servidor"] ?: "Revisa los campos obligatorios antes de enviar la solicitud."
+                            statusMessage = when {
+                                "autorizacion" in validationErrors && onAuthorizeShelter != null ->
+                                    "Autoriza a $albergueNombre a consultar tu perfil para enviar la solicitud."
+                                SolicitudAdopcionManager.identificador(mascotaId) != null ->
+                                    "Tu solicitud ya se registró. Quedan fotos por adjuntar. ${validationErrors["servidor"].orEmpty()}"
+                                else -> validationErrors["servidor"]
+                                    ?: "Revisa los campos obligatorios antes de enviar la solicitud."
+                            }
                         }
                     }
                 },
-                enabled = !isSending,
+                enabled = !isSending && !isAuthorizing && ("autorizacion" !in errors || onAuthorizeShelter == null),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF126858)),
                 modifier = Modifier
@@ -381,7 +401,11 @@ fun SolicitudAdopcionScreen(
                     .height(50.dp)
             ) {
                 Text(
-                    text = if (isSending) "Enviando solicitud…" else "Enviar solicitud de Adopcion",
+                    text = when {
+                        isSending -> "Enviando solicitud…"
+                        SolicitudAdopcionManager.identificador(mascotaId) != null -> "Reintentar adjuntar fotos"
+                        else -> "Enviar solicitud de adopción"
+                    },
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -410,37 +434,31 @@ fun SolicitudAdopcionScreen(
         }
     }
 
-    if (successDialogOpen) {
+    if (consentDialogOpen && onAuthorizeShelter != null) {
         AlertDialog(
-            onDismissRequest = {
-                successDialogOpen = false
-                onSubmittedSuccess()
-                onDismiss()
-            },
-            title = {
-                Text(
-                    text = "¡Solicitud Enviada con Éxito! 🐾",
-                    fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F3A2E)
-                )
-            },
+            onDismissRequest = { consentDialogOpen = false },
+            title = { Text("Compartir con $albergueNombre") },
             text = {
-                Text(
-                    text = "Tu Solicitud de Adopción para $mascotaNombre ha sido enviada al albergue. Solicitud #${SolicitudAdopcionManager.lastId} registrada como PENDIENTE. No reserva la mascota.",
-                    fontSize = 14.sp,
-                    color = Color(0xFF4A6258)
-                )
+                Text("Permites que este albergue consulte tus respuestas de perfil y las fotos privadas que adjuntes. Puedes revocar el permiso desde «Compartir mi perfil».")
             },
             confirmButton = {
                 TextButton(onClick = {
-                    successDialogOpen = false
-                    onSubmittedSuccess()
-                    onDismiss()
-                }) {
-                    Text("Entendido", fontWeight = FontWeight.Bold, color = Color(0xFF126858))
-                }
-            }
+                    consentDialogOpen = false
+                    isAuthorizing = true
+                    scope.launch {
+                        try {
+                            onAuthorizeShelter()
+                            errors = emptyMap()
+                            statusMessage = "Autorización guardada. Ya puedes enviar tu solicitud."
+                        } catch (error: Exception) {
+                            statusMessage = "No se pudo guardar la autorización. ${apiErrorMessage(error)}"
+                        } finally {
+                            isAuthorizing = false
+                        }
+                    }
+                }) { Text("Autorizar") }
+            },
+            dismissButton = { TextButton(onClick = { consentDialogOpen = false }) { Text("Cancelar") } }
         )
     }
 }
