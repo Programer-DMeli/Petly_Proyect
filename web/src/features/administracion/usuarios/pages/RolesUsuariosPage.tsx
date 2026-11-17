@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
 import { errorMessage, json, spring } from '../../../../services/http';
 import { getSession, type Role } from '../../../../services/session';
+import { useDialogFocus } from '../../../../services/useDialogFocus';
 
 type UsuarioAdmin = {
   id: number;
@@ -26,9 +27,16 @@ export default function RolesUsuariosPage() {
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
   const [guardandoId, setGuardandoId] = useState<number | null>(null);
+  const [pendiente, setPendiente] = useState<UsuarioAdmin | null>(null);
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const miId = Number(getSession()?.identity.id);
+  useDialogFocus(pendiente !== null, () => {
+    if (guardandoId === null) {
+      setPendiente(null);
+      setError('');
+    }
+  });
 
   const cargar = useCallback(async (signal?: AbortSignal) => {
     setCargando(true);
@@ -77,6 +85,7 @@ export default function RolesUsuariosPage() {
       setUsuarios(actuales => actuales.map(item => item.id === actualizado.id ? actualizado : item));
       setRoles(actuales => ({ ...actuales, [actualizado.id]: actualizado.rol }));
       setMensaje(`El rol de ${actualizado.correo} se actualizó. La cuenta deberá iniciar sesión nuevamente.`);
+      setPendiente(null);
     } catch (causa) {
       setError(errorMessage(causa));
     } finally {
@@ -91,7 +100,7 @@ export default function RolesUsuariosPage() {
       <p className="muted">Consulta las cuentas Petly y administra el rol que define sus permisos.</p>
     </header>
 
-    <Feedback error={error} success={mensaje} />
+    <Feedback error={pendiente ? '' : error} success={mensaje} />
     <section className="card admin-user-roles__panel" aria-labelledby="roles-cuentas-titulo">
       <div className="admin-user-roles__toolbar">
         <div>
@@ -151,8 +160,8 @@ export default function RolesUsuariosPage() {
                       type="button"
                       className="button"
                       disabled={!cambiado || propio || guardandoId !== null}
-                      onClick={() => void guardar(usuario)}
-                    >{guardandoId === usuario.id ? 'Guardando…' : 'Guardar'}</button>
+                      onClick={() => { setError(''); setPendiente(usuario); }}
+                    >Guardar</button>
                   </td>
                 </tr>;
               })}</tbody>
@@ -162,5 +171,37 @@ export default function RolesUsuariosPage() {
         {filtrados.length} de {usuarios.length} cuentas
       </p>}
     </section>
+    {pendiente && <div className="admin-user-roles__overlay">
+      <section
+        className="card admin-user-roles__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirmar-cambio-rol-titulo"
+        aria-describedby="confirmar-cambio-rol-detalle"
+      >
+        <p className="eyebrow">Confirmar permisos</p>
+        <h2 id="confirmar-cambio-rol-titulo">¿Cambiar el rol de esta cuenta?</h2>
+        <p id="confirmar-cambio-rol-detalle">
+          <strong>{pendiente.correo}</strong> pasará de <strong>{ETIQUETAS[pendiente.rol]}</strong> a{' '}
+          <strong>{ETIQUETAS[roles[pendiente.id] ?? pendiente.rol]}</strong>. El cambio se sincronizará con Django
+          y revocará las sesiones activas de la cuenta.
+        </p>
+        {error && <p className="feedback error" role="alert">{error}</p>}
+        <div className="admin-user-roles__dialog-actions">
+          <button
+            type="button"
+            className="secondary"
+            disabled={guardandoId !== null}
+            onClick={() => { setPendiente(null); setError(''); }}
+          >Cancelar</button>
+          <button
+            type="button"
+            className="button"
+            disabled={guardandoId !== null}
+            onClick={() => void guardar(pendiente)}
+          >{guardandoId === pendiente.id ? 'Aplicando cambio…' : 'Confirmar cambio'}</button>
+        </div>
+      </section>
+    </div>}
   </main>;
 }

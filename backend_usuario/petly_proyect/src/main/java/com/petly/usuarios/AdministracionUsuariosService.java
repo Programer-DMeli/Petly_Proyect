@@ -29,8 +29,14 @@ public class AdministracionUsuariosService {
 
     @Transactional
     public UsuarioAdministracionResponse actualizarRol(long actorId, long usuarioId, ActualizarRolRequest request) {
+        if (actorId <= 0) {
+            throw new ApiException(401, "La sesión no identifica una cuenta válida.");
+        }
         if (usuarioId <= 0) {
             throw new ApiException(400, "El identificador del usuario debe ser positivo.");
+        }
+        if (request == null || request.rol() == null) {
+            throw new ApiException(400, "Selecciona un rol válido para la cuenta.");
         }
 
         // Serializa los cambios de administradores para evitar que dos peticiones
