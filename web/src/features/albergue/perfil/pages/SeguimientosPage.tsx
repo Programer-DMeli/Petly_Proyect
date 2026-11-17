@@ -10,6 +10,10 @@ type Expediente = {
   mascota_nombre: string;
   adoptante_nombre: string;
   adoptante_email: string | null;
+  fecha_entrega: string | null;
+  entrega_confirmada_en: string | null;
+  entrega_satisfaccion: number | null;
+  entrega_observaciones: string;
   evaluacion: Evaluacion | null;
   cronograma: Seguimiento[];
 };
@@ -133,6 +137,8 @@ function Detalle({ expediente, busy, ejecutar }: { expediente: Expediente; busy:
     <p>Adoptante: <strong>{expediente.adoptante_nombre}</strong>
       {expediente.adoptante_email && expediente.adoptante_email !== expediente.adoptante_nombre &&
         <> · {expediente.adoptante_email}</>}</p>
+    {expediente.entrega_confirmada_en && <p className="feedback success">Mascota entregada · {fecha(expediente.entrega_confirmada_en)} · Satisfacción {expediente.entrega_satisfaccion ?? '—'}/5</p>}
+    {expediente.entrega_observaciones && <p className="seguimiento-texto">Comentario de entrega: {expediente.entrega_observaciones}</p>}
     {proximo && <p className="feedback success"><strong>Próximo hito</strong> · {modalidad[proximo.modalidad]} · {fecha(proximo.programado_para)}</p>}
     {vencidas.length > 0 && <p className="feedback error">⚠ Entregas vencidas: {vencidas.length}
       {alertasPorEmitir.length > 0 && <> · Alertas por emitir: {alertasPorEmitir.length}</>}

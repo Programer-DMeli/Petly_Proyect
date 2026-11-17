@@ -173,6 +173,7 @@ class RegistrarEntregaContratoView(APIView):
     def post(self, request, solicitud_id):
         from django.db import transaction
         from apps.acceso.solicitudes import cambiar_estado_solicitud
+        from apps.acceso.serializers import ConfirmarEntregaSerializer
 
         with transaction.atomic():
             contrato = ContratoAdopcion.objects.select_for_update().select_related(
@@ -185,9 +186,12 @@ class RegistrarEntregaContratoView(APIView):
                 return Response({"detail": "Solo el albergue propietario registra la entrega."}, status=403)
             if contrato.estado != ContratoAdopcion.Estado.FIRMADO or not contrato.documento_firmado:
                 return Response({"detail": "Se requieren ambas firmas y el documento final antes de la entrega."}, status=409)
+            serializer = ConfirmarEntregaSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
             try:
                 solicitud = cambiar_estado_solicitud(
-                    solicitud.pk, SolicitudAdopcion.Estado.ENTREGADA, request.user
+                    solicitud.pk, SolicitudAdopcion.Estado.ENTREGADA, request.user,
+                    entrega_data=serializer.validated_data,
                 )
             except DjangoValidationError as exc:
                 raise ValidationError({"detail": exc.messages}) from exc

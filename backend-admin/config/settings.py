@@ -5,6 +5,7 @@ Variables de entorno: ver `.env.example`. En desarrollo se puede crear un
 archivo `.env` (excluido de Git) que se carga con python-dotenv.
 """
 import os
+import ssl
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -102,6 +103,11 @@ DATABASES = {
         },
     }
 }
+if os.getenv("DB_SSL", "false").strip().lower() in {"1", "true", "yes"}:
+    ssl_ca = os.getenv("DB_SSL_CA", "").strip()
+    DATABASES["default"]["OPTIONS"]["ssl"] = ssl.create_default_context(
+        cafile=ssl_ca or None
+    )
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

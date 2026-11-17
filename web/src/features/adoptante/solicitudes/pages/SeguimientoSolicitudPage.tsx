@@ -118,7 +118,10 @@ export default function SeguimientoSolicitudPage() {
             </span>
           </p>
           {seguimiento.estadoActual === 'ENTREGADA' && (
-            <Link to={`/adoptante/seguimientos-postadopcion?solicitud=${seguimiento.solicitudId}`}>Ver cronograma posadopción</Link>
+            <div className="feedback success">
+              <strong>Expediente de adopción abierto</strong> · La entrega fue confirmada.
+              {' '}<Link to={`/adoptante/seguimientos-postadopcion?solicitud=${seguimiento.solicitudId}`}>Ver cronograma posadopción</Link>
+            </div>
           )}
           <FotosHogar solicitudId={seguimiento.solicitudId}/>
           <h2>Historial de cambios</h2>

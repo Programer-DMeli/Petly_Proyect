@@ -90,6 +90,8 @@ export interface SolicitudAdopcion {
   albergue?: number;
   fecha_solicitud: string;
   estado: EstadoSolicitudAdopcion;
+  estado_revision_veterinaria?: 'PENDIENTE' | 'APTA' | 'OBSERVADA' | 'RECHAZADA';
+  fecha_recojo_programado?: string | null;
 }
 
 /** Evento persistido que registra un cambio en el estado de una solicitud (US-08). */

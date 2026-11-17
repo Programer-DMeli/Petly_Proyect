@@ -227,10 +227,15 @@ class ExpedienteAlbergueSerializer(serializers.ModelSerializer):
     adoptante_nombre = serializers.SerializerMethodField()
     evaluacion = ExpedientePostAdopcionSerializer(source="expediente_post_adopcion", read_only=True)
     cronograma = SeguimientoPostAdopcionSerializer(source="seguimientos_post_adopcion", many=True)
+    fecha_entrega = serializers.DateField(read_only=True)
+    entrega_confirmada_en = serializers.DateTimeField(read_only=True)
+    entrega_satisfaccion = serializers.IntegerField(read_only=True)
+    entrega_observaciones = serializers.CharField(read_only=True)
 
     class Meta:
         model = SolicitudAdopcion
-        fields = ["id", "mascota_nombre", "adoptante_email", "adoptante_nombre", "evaluacion", "cronograma"]
+        fields = ["id", "mascota_nombre", "adoptante_email", "adoptante_nombre", "fecha_entrega",
+                  "entrega_confirmada_en", "entrega_satisfaccion", "entrega_observaciones", "evaluacion", "cronograma"]
 
     def get_adoptante_nombre(self, obj):
         if not obj.adoptante:

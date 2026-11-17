@@ -304,7 +304,7 @@ class SolicitudAdopcionSprint2APITest(TestCase):
     def test_no_se_cancela_una_solicitud_aprobada(self):
         solicitud = self._decision_request()
         solicitud.estado = SolicitudAdopcion.Estado.APROBADA
-        solicitud.save(update_fields=["estado"])
+        solicitud.save(update_fields=["estado", "estado_revision_veterinaria", "fecha_recojo_programado"])
         response = self.client.post(f"/api/acceso/solicitudes/{solicitud.pk}/cancelar/")
         self.assertEqual(response.status_code, 400)
         solicitud.refresh_from_db()
@@ -328,7 +328,9 @@ class SolicitudAdopcionSprint2APITest(TestCase):
     def test_permite_entregar_con_contrato_firmado(self):
         solicitud = self._decision_request()
         solicitud.estado = SolicitudAdopcion.Estado.APROBADA
-        solicitud.save(update_fields=["estado"])
+        solicitud.estado_revision_veterinaria = SolicitudAdopcion.RevisionVeterinaria.APTA
+        solicitud.fecha_recojo_programado = timezone.now() + timezone.timedelta(days=1)
+        solicitud.save(update_fields=["estado", "estado_revision_veterinaria", "fecha_recojo_programado"])
         ContratoAdopcion.objects.create(
             solicitud=solicitud,
             estado=ContratoAdopcion.Estado.FIRMADO,
@@ -338,10 +340,12 @@ class SolicitudAdopcionSprint2APITest(TestCase):
         )
 
         cambiada = cambiar_estado_solicitud(
-            solicitud.pk, SolicitudAdopcion.Estado.ENTREGADA, self.owner
+            solicitud.pk, SolicitudAdopcion.Estado.ENTREGADA, self.owner,
+            entrega_data={"satisfaccion_entrega": 5, "entrega_observaciones": "Entrega exitosa."},
         )
 
         self.assertEqual(cambiada.estado, SolicitudAdopcion.Estado.ENTREGADA)
+        self.assertEqual(cambiada.entrega_satisfaccion, 5)
         self.mascota.refresh_from_db()
         self.assertEqual(self.mascota.estado, Mascota.Estado.ADOPTADO)
 
