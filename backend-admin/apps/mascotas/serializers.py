@@ -1,7 +1,10 @@
 """Serializadores de mascotas (US-11, US-12, US-13)."""
+from datetime import date
+
+from django.utils import timezone
 from rest_framework import serializers
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Mascota
+from .models import Mascota, RegistroClinico
 
 
 def validate_image_file(value):
@@ -88,6 +91,20 @@ class MascotaFilter(DjangoFilterBackend):
         return queryset
 
 
+class RegistroClinicoSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False, min_value=1)
+    fecha = serializers.DateField(input_formats=["iso-8601"])
+
+    class Meta:
+        model = RegistroClinico
+        fields = ["id", "tipo", "fecha"]
+
+    def validate_fecha(self, fecha):
+        if not date(1000, 1, 1) <= fecha <= timezone.localdate():
+            raise serializers.ValidationError("Ingresa una fecha válida que no sea futura.")
+        return fecha
+
+
 class MascotaSerializer(serializers.ModelSerializer):
     """Serializador completo para lectura."""
 
@@ -102,6 +119,13 @@ class MascotaSerializer(serializers.ModelSerializer):
     foto_mejorada_ia = serializers.ImageField(read_only=True)
     evidencia_vacunacion = serializers.ImageField(read_only=True)
     evidencia_esterilizacion = serializers.ImageField(read_only=True)
+    registros_clinicos = serializers.SerializerMethodField()
+
+    def get_registros_clinicos(self, mascota):
+        request = self.context.get("request")
+        if not request or getattr(request.user, "rol", None) != "ALBERGUE" or mascota.albergue.usuario_id != request.user.pk:
+            return []
+        return RegistroClinicoSerializer(mascota.registros_clinicos.all(), many=True).data
 
     class Meta:
         model = Mascota
@@ -132,6 +156,7 @@ class MascotaSerializer(serializers.ModelSerializer):
             "estado_salud_general",
             "evidencia_vacunacion",
             "evidencia_esterilizacion",
+            "registros_clinicos",
             "foto_principal",
             "foto_original_ia",
             "foto_mejorada_ia",
@@ -220,6 +245,8 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
     evidencia_esterilizacion = serializers.ImageField(required=False, allow_null=True, validators=[validate_evidence_image])
     eliminar_evidencia_vacunacion = serializers.BooleanField(write_only=True, required=False, default=False)
     eliminar_evidencia_esterilizacion = serializers.BooleanField(write_only=True, required=False, default=False)
+    # El formulario multipart envía la lista como JSON junto con las imágenes.
+    registros_clinicos = serializers.JSONField(write_only=True, required=False)
 
     class Meta:
         model = Mascota
@@ -243,6 +270,7 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             "evidencia_esterilizacion",
             "eliminar_evidencia_vacunacion",
             "eliminar_evidencia_esterilizacion",
+            "registros_clinicos",
             "foto_principal",
             "foto_mejorada_confirmada",
             "fotos_adicionales",
@@ -270,13 +298,38 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"fotos_adicionales": "Sprint 1 admite una sola fotografía."})
         return attrs
 
+    def validate_registros_clinicos(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Envía una lista de registros clínicos.")
+        serializer = RegistroClinicoSerializer(data=value, many=True)
+        if not serializer.is_valid():
+            raise serializers.ValidationError([
+                f"Registro {index}: {message}"
+                for index, errors in enumerate(serializer.errors, start=1)
+                for messages in errors.values()
+                for message in messages
+            ])
+
+        registros = serializer.validated_data
+        ids = [registro["id"] for registro in registros if "id" in registro]
+        if len(ids) != len(set(ids)):
+            raise serializers.ValidationError("Envía cada registro existente una sola vez.")
+        if ids and (self.instance is None or len(self.instance.registros_clinicos.in_bulk(ids)) != len(ids)):
+            raise serializers.ValidationError("Los registros que se editan deben pertenecer a esta mascota.")
+        return registros
+
     def create(self, validated_data):
+        registros = validated_data.pop("registros_clinicos", [])
         validated_data.pop("foto_mejorada_confirmada", None)
         validated_data.pop("eliminar_evidencia_vacunacion", None)
         validated_data.pop("eliminar_evidencia_esterilizacion", None)
-        return super().create(validated_data)
+        mascota = super().create(validated_data)
+        for registro in registros:
+            mascota.registros_clinicos.create(**registro)
+        return mascota
 
     def update(self, instance, validated_data):
+        registros = validated_data.pop("registros_clinicos", [])
         improved_confirmed = validated_data.pop("foto_mejorada_confirmada", False)
         photo_replaced = "foto_principal" in validated_data
         remove_vaccination = validated_data.pop("eliminar_evidencia_vacunacion", False)
@@ -289,6 +342,12 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             validated_data.pop("evidencia_esterilizacion", None)
         original_photo_name = instance.foto_principal.name if improved_confirmed and instance.foto_principal else None
         instance = super().update(instance, validated_data)
+        for registro in registros:
+            registro_id = registro.pop("id", None)
+            if registro_id is None:
+                instance.registros_clinicos.create(**registro)
+            else:
+                instance.registros_clinicos.filter(pk=registro_id).update(**registro)
         if improved_confirmed:
             # Reuse the stored names: the original file remains in storage and
             # the improved upload is already saved as foto_principal.

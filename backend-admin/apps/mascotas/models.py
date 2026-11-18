@@ -146,6 +146,20 @@ class Mascota(models.Model):
         return transiciones.get(self.estado, [])
 
 
+class RegistroClinico(models.Model):
+    class Tipo(models.TextChoices):
+        VACUNACION = "VACUNACION", "Vacunación"
+        ESTERILIZACION = "ESTERILIZACION", "Esterilización"
+        DESPARASITACION = "DESPARASITACION", "Desparasitación"
+
+    mascota = models.ForeignKey(Mascota, on_delete=models.CASCADE, related_name="registros_clinicos")
+    tipo = models.CharField(max_length=15, choices=Tipo.choices)
+    fecha = models.DateField()
+
+    class Meta:
+        ordering = ["-fecha", "-pk"]
+
+
 class PedidoAfiche(models.Model):
     class Estado(models.TextChoices):
         PENDIENTE = "PENDIENTE", "Pendiente"

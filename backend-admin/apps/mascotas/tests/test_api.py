@@ -1,4 +1,6 @@
 """Tests de API para Mascotas."""
+import json
+
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
@@ -130,6 +132,103 @@ class MascotaAPITest(TestCase):
         }, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('evidencia_vacunacion', response.data)
+
+    def test_historial_clinico_se_guarda_junto_con_la_ficha_multipart(self):
+        self._auth(self.user)
+        registros = [
+            {'tipo': 'VACUNACION', 'fecha': '2024-05-03'},
+            {'tipo': 'ESTERILIZACION', 'fecha': '2024-05-02'},
+            {'tipo': 'DESPARASITACION', 'fecha': '2024-05-01'},
+        ]
+        creada = self.client.post('/api/mascotas/', {
+            'nombre': 'Nube', 'especie': 'GATO', 'sexo': 'HEMBRA',
+            'foto_principal': foto_prueba('nube.png'),
+            'evidencia_vacunacion': foto_prueba('vacunas.png'),
+            'vacunas_al_dia': 'true',
+            'registros_clinicos': json.dumps(registros),
+        }, format='multipart')
+        self.assertEqual(creada.status_code, status.HTTP_201_CREATED, creada.data)
+        url = f"/api/mascotas/{creada.data['id']}/"
+        ficha = self.client.get(url).data
+        self.assertEqual(ficha['registros_clinicos'], creada.data['registros_clinicos'])
+        self.assertEqual([
+            {'tipo': item['tipo'], 'fecha': item['fecha']} for item in ficha['registros_clinicos']
+        ], registros)
+        self.assertTrue(ficha['vacunas_al_dia'])
+        self.assertTrue(ficha['evidencia_vacunacion'])
+        anterior = ficha['registros_clinicos'][0]
+        editada = self.client.patch(url, {
+            'registros_clinicos': json.dumps([{**anterior, 'fecha': '2024-05-04'}]),
+        }, format='multipart')
+        self.assertEqual(editada.status_code, status.HTTP_200_OK, editada.data)
+        self.assertEqual(self.client.get(url).data['registros_clinicos'], [
+            {**anterior, 'fecha': '2024-05-04'}, *ficha['registros_clinicos'][1:],
+        ])
+
+    def test_historial_clinico_respeta_mascota_y_albergue(self):
+        otra = Mascota.objects.create(
+            albergue=self.albergue, nombre='Otra', codigo='PET-002',
+            especie=Mascota.Especie.GATO, sexo=Mascota.Sexo.HEMBRA,
+        )
+        self._auth(self.user)
+        url = f'/api/mascotas/{self.mascota.pk}/'
+        otra_url = f'/api/mascotas/{otra.pk}/'
+        datos = {'tipo': 'VACUNACION', 'fecha': '2024-03-01'}
+        primera = self.client.patch(url, {'registros_clinicos': [datos]}, format='json')
+        segunda = self.client.patch(otra_url, {'registros_clinicos': [datos]}, format='json')
+        self.assertEqual(primera.status_code, status.HTTP_200_OK, primera.data)
+        self.assertEqual(segunda.status_code, status.HTTP_200_OK, segunda.data)
+        registro_propio = primera.data['registros_clinicos'][0]
+        registro_ajeno = segunda.data['registros_clinicos'][0]
+        correccion = {**registro_propio, 'fecha': '2024-03-02'}
+        rechazo = self.client.patch(url, {
+            'nombre': 'Cambio inválido', 'registros_clinicos': [correccion, registro_ajeno],
+        }, format='json')
+        self.assertEqual(rechazo.status_code, status.HTTP_400_BAD_REQUEST, rechazo.data)
+        ficha = self.client.get(url).data
+        self.assertEqual(ficha['nombre'], self.mascota.nombre)
+        self.assertEqual(ficha['registros_clinicos'], [registro_propio])
+        editada = self.client.patch(url, {'registros_clinicos': [correccion]}, format='json')
+        self.assertEqual(editada.data['registros_clinicos'], [correccion])
+        self.assertEqual(self.client.get(otra_url).data['registros_clinicos'], [registro_ajeno])
+
+        Albergue.objects.create(usuario=self.other_user, nombre='A2', direccion='D2')
+        self._auth(self.other_user)
+        self.assertEqual(self.client.get(url).status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(self.client.patch(url, {'registros_clinicos': [correccion]}, format='json').status_code,
+                         status.HTTP_404_NOT_FOUND)
+
+    def test_ficha_anterior_sin_registros_conserva_sus_indicadores(self):
+        self.mascota.vacunas_al_dia = True
+        self.mascota.esterilizado = True
+        self.mascota.desparasitado = True
+        self.mascota.save(update_fields=['vacunas_al_dia', 'esterilizado', 'desparasitado'])
+        self._auth(self.user)
+        url = f'/api/mascotas/{self.mascota.pk}/'
+        ficha = self.client.get(url).data
+        self.assertEqual(ficha['registros_clinicos'], [])
+        for campo in ('vacunas_al_dia', 'esterilizado', 'desparasitado'):
+            self.assertTrue(ficha[campo])
+        respuesta = self.client.patch(url, {'estado_salud_general': 'Control normal.'}, format='json')
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK, respuesta.data)
+        self.assertEqual(respuesta.data['registros_clinicos'], [])
+
+    def test_historial_clinico_rechaza_tipos_y_fechas_invalidos(self):
+        self._auth(self.user)
+        url = f'/api/mascotas/{self.mascota.pk}/'
+        for registro in (
+            {'tipo': 'OTRO', 'fecha': '2024-01-01'},
+            {'tipo': 'VACUNACION', 'fecha': '2024-02-30'},
+            {'tipo': 'VACUNACION', 'fecha': '9999-01-01'},
+            {'tipo': 'VACUNACION', 'fecha': '0999-01-01'},
+            {'tipo': 'VACUNACION'},
+            'no es un registro',
+        ):
+            with self.subTest(registro=registro):
+                respuesta = self.client.patch(url, {'registros_clinicos': [registro]}, format='json')
+                self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST, respuesta.data)
+                self.assertIn('registros_clinicos', respuesta.data)
+        self.assertEqual(self.client.get(url).data['registros_clinicos'], [])
 
     @patch(
         "apps.mascotas.descripcion_ia.generar_borrador",
