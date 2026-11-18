@@ -1,4 +1,6 @@
 """Modelos de acceso y postulantes (US-18, US-21)."""
+import uuid
+
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
@@ -671,3 +673,31 @@ class EntregaExterna(models.Model):
             models.UniqueConstraint(fields=["aviso", "canal", "destino"], name="entrega_externa_unica")
         ]
         indexes = [models.Index(fields=["estado", "proximo_intento"])]
+
+
+class EventoAuditoria(models.Model):
+    """Registro inmutable de acciones sensibles originadas en Django."""
+
+    class Origen(models.TextChoices):
+        DJANGO = "DJANGO", "Django"
+
+    evento_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    # ID de usuario Petly (Spring), guardado como instantánea y sin FK.
+    actor_usuario_id = models.PositiveBigIntegerField(null=True, blank=True)
+    actor_rol = models.CharField(max_length=20)
+    accion = models.CharField(max_length=80)
+    origen = models.CharField(max_length=10, choices=Origen.choices, default=Origen.DJANGO, editable=False)
+    recurso_tipo = models.CharField(max_length=80, blank=True)
+    recurso_id = models.CharField(max_length=100, blank=True)
+    ocurrido_en = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        db_table = "acceso_eventoauditoria"
+        verbose_name = "Evento de auditoría"
+        verbose_name_plural = "Eventos de auditoría"
+        ordering = ["-ocurrido_en", "-id"]
+        indexes = [
+            models.Index(fields=["actor_usuario_id", "ocurrido_en"], name="acceso_audit_actor_dt"),
+            models.Index(fields=["accion", "ocurrido_en"], name="acceso_audit_accion_dt"),
+            models.Index(fields=["ocurrido_en"], name="acceso_audit_fecha"),
+        ]
