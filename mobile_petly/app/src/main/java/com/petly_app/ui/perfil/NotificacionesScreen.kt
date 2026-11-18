@@ -1,5 +1,9 @@
 package com.petly_app.ui.perfil
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -7,11 +11,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.petly_app.data.remote.CriteriosAvisoDto
+import com.petly_app.data.remote.NotificacionDto
+import com.petly_app.ui.screen.HomeIcons
+import com.petly_app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -32,45 +42,92 @@ fun NotificacionesScreen(
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
     LazyColumn(
-        modifier = Modifier.fillMaxSize().safeDrawingPadding(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxSize().background(Background).safeDrawingPadding(),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            onBack?.let { TextButton(onClick = it) { Text("Volver") } }
-            Text("Notificaciones", style = MaterialTheme.typography.headlineMedium)
-            Text("Conoce nuevas mascotas y sigue tus solicitudes de adopción.")
-            if (!state.preview) {
-                TextButton(onClick = { editing = !editing; if (editing) onLoadCriterios() }, enabled = !state.busy) {
-                    Text(if (editing) "Cerrar criterios" else "Avisos de nuevas mascotas")
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                onBack?.let { TextButton(onClick = it) { Text("Volver") } }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(shape = RoundedCornerShape(18.dp), color = Secondary) {
+                        Icon(HomeIcons.Bell, null, Modifier.padding(14.dp).size(28.dp), tint = PrimaryDark)
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Notificaciones", style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text("Conoce nuevas mascotas y sigue tus solicitudes de adopción.",
+                            style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                    }
                 }
-                Text("${state.noLeidas} sin leer")
-                Row {
-                    TextButton(onClick = onRefresh, enabled = !state.busy) { Text("Actualizar") }
-                    TextButton(onClick = onReadAll, enabled = !state.busy && state.noLeidas > 0) {
-                        Text("Marcar todas como leídas")
+                if (!state.preview) {
+                    Surface(shape = RoundedCornerShape(12.dp), color = Secondary) {
+                        Text("${state.noLeidas} sin leer", Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.labelLarge, color = PrimaryDark)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(onClick = onRefresh, enabled = !state.busy,
+                            border = BorderStroke(1.dp, Border),
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Actualizar") }
+                        OutlinedButton(onClick = onReadAll, enabled = !state.busy && state.noLeidas > 0,
+                            border = BorderStroke(1.dp, Border),
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Marcar todas como leídas") }
+                    }
+                    TextButton(
+                        onClick = { editing = !editing; if (editing) onLoadCriterios() },
+                        enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) {
+                        Icon(HomeIcons.Dog, null, Modifier.size(22.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (editing) "Cerrar criterios" else "Avisos de nuevas mascotas")
                     }
                 }
             }
         }
         if (editing && !state.preview) item {
-            state.criterios?.let { criterios ->
-                CriteriosAvisoForm(criterios, state.busy, onSaveCriterios)
-            }
-            if (state.criteriosGuardados) {
-                Text(if (state.criterios?.activo == true) "Avisos activados en Android y web."
-                    else "Criterios guardados con los avisos desactivados.")
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Surface),
+                border = BorderStroke(1.dp, Border)) {
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    state.criterios?.let { CriteriosAvisoForm(it, state.busy, onSaveCriterios) }
+                    if (state.criteriosGuardados) Text(
+                        if (state.criterios?.activo == true) "Avisos activados en Android y web."
+                        else "Criterios guardados con los avisos desactivados.",
+                        color = PrimaryDark, style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
-        if (state.busy) item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
+        if (state.busy) item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LinearProgressIndicator(Modifier.fillMaxWidth(), color = Primary, trackColor = Secondary)
+                Text("Actualizando notificaciones…", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            }
+        }
         state.error?.let { error -> item {
-            Text(error, color = MaterialTheme.colorScheme.error)
-            TextButton(onClick = { if (editing) onLoadCriterios() else onRefresh() }, enabled = !state.busy) { Text("Reintentar") }
+            Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("No pudimos actualizar los avisos", fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text(error, color = MaterialTheme.colorScheme.onErrorContainer)
+                    TextButton(onClick = { if (editing) onLoadCriterios() else onRefresh() }, enabled = !state.busy) {
+                        Text("Reintentar")
+                    }
+                }
+            }
         } }
-        if (state.preview) item {
-            Text("Inicia sesión para recibir avisos de mascotas y solicitudes.")
-        } else if (!state.busy && state.error == null && state.items.isEmpty()) item {
-            Text("Todavía no tienes notificaciones. Activa los avisos de nuevas mascotas y guarda al menos un criterio.")
+        if (state.preview || (!state.busy && state.error == null && state.items.isEmpty())) item {
+            Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Surface),
+                border = BorderStroke(1.dp, Border)) {
+                Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(HomeIcons.Bell, null, Modifier.size(40.dp), tint = Primary)
+                    Text(if (state.preview) "Tus novedades, en un solo lugar" else "Tu bandeja está al día",
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text(if (state.preview) "Inicia sesión para recibir avisos de mascotas y solicitudes."
+                        else "Todavía no tienes notificaciones. Activa los avisos de nuevas mascotas y guarda al menos un criterio.",
+                        style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                }
+            }
         }
         items(state.items, key = { it.id }) { item ->
             val esProgramacion = item.tipo == "SEGUIMIENTO_PROGRAMADO"
@@ -82,41 +139,96 @@ fun NotificacionesScreen(
                     else -> onOpenPet(item.mascota_id)
                 }
             }
-            Card(
-                onClick = abrir,
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = if (item.leido_en == null)
-                    MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)
-            ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(if (item.leido_en == null) "Nueva · ${item.titulo}" else item.titulo,
-                        fontWeight = FontWeight.Bold)
-                    Text("${item.mascota_nombre} · ${item.albergue_nombre}")
-                    if (item.solicitud_id != null) Text("Solicitud #${item.solicitud_id} · Estado actual: ${item.estado_actual}",
-                        style = MaterialTheme.typography.labelMedium)
-                    Text(item.mensaje)
-                    if (esProgramacion) {
-                        item.programado_para?.let { Text("Fecha programada: ${fechaLimiteLima(it)}") }
-                    } else {
-                        item.fecha_limite?.let { Text("Fecha límite: ${fechaLimiteLima(it)}") }
+            NotificacionCard(item, state.busy, abrir, { onRead(item.id) })
+        }
+        if (state.hasMore) item {
+            OutlinedButton(onClick = onMore, enabled = !state.busy, border = BorderStroke(1.dp, Border),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Ver anteriores")
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificacionCard(item: NotificacionDto, busy: Boolean, onOpen: () -> Unit, onRead: () -> Unit) {
+    val unread = item.leido_en == null
+    val icon = when {
+        item.tipo == "NUEVA_COINCIDENCIA" -> HomeIcons.Dog
+        item.tipo.startsWith("VETERINARIA_") -> HomeIcons.CompanionHeart
+        item.tipo in setOf("APROBADA", "ENTREGADA", "CONTRATO_FIRMADO") -> HomeIcons.Check
+        item.seguimiento_id != null || item.tipo == "RECOJO_PROGRAMADO" -> HomeIcons.Calendar
+        else -> HomeIcons.Clipboard
+    }
+    Card(
+        onClick = onOpen,
+        modifier = Modifier.fillMaxWidth().semantics { stateDescription = if (unread) "Sin leer" else "Leída" },
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Surface),
+        border = BorderStroke(if (unread) 2.dp else 1.dp, if (unread) Primary else Border),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(shape = RoundedCornerShape(14.dp), color = if (unread) Secondary else Background) {
+                    Icon(icon, null, Modifier.padding(10.dp).size(24.dp), tint = Primary)
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (unread) Box(Modifier.size(8.dp).background(Primary, CircleShape))
+                        Text(if (unread) "Sin leer" else "Leída", style = MaterialTheme.typography.labelMedium, color = PrimaryDark)
                     }
-                    if (item.descripcion.isNotBlank()) Text("Observaciones: ${item.descripcion}")
-                    Text(notificationDate(item.ocurrido_en), style = MaterialTheme.typography.bodySmall)
-                    TextButton(onClick = abrir) {
-                        Text(when {
-                            esProgramacion -> "Ver seguimiento"
-                            item.seguimiento_id != null -> "Abrir reporte"
-                            else -> "Ver mascota"
-                        })
-                    }
-                    if (item.leido_en == null) TextButton(onClick = { onRead(item.id) }, enabled = !state.busy) {
-                        Text("Marcar como leída")
+                    Text(item.titulo, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(item.mascota_nombre, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = PrimaryDark)
+                Text(item.albergue_nombre, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            }
+            if (item.solicitud_id != null) {
+                Surface(shape = RoundedCornerShape(12.dp), color = Background, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Solicitud #${item.solicitud_id}", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                        Text("Estado actual: ${item.estado_actual}", style = MaterialTheme.typography.labelLarge, color = PrimaryDark)
                     }
                 }
             }
-        }
-        if (state.hasMore) item {
-            TextButton(onClick = onMore, enabled = !state.busy) { Text("Ver anteriores") }
+            Text(item.mensaje, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+            if (item.tipo == "SEGUIMIENTO_PROGRAMADO") {
+                item.programado_para?.let { Text("Fecha programada: ${fechaLimiteLima(it)}", color = PrimaryDark) }
+            } else {
+                item.fecha_limite?.let { Text("Fecha límite: ${fechaLimiteLima(it)}", color = PrimaryDark) }
+            }
+            if (item.descripcion.isNotBlank()) {
+                Surface(shape = RoundedCornerShape(12.dp), color = Background, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Observaciones", style = MaterialTheme.typography.labelLarge, color = TextPrimary)
+                        Text(item.descripcion, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                    }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(HomeIcons.Clock, null, Modifier.size(16.dp), tint = TextSecondary)
+                Text(notificationDate(item.ocurrido_en), style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            }
+            HorizontalDivider(color = Border)
+            OutlinedButton(onClick = onOpen, border = BorderStroke(1.dp, Border),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryDark),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text(when {
+                    item.tipo == "SEGUIMIENTO_PROGRAMADO" -> "Ver seguimiento"
+                    item.seguimiento_id != null -> "Abrir reporte"
+                    else -> "Ver mascota"
+                })
+                Spacer(Modifier.width(8.dp))
+                Icon(HomeIcons.ArrowRight, null, Modifier.size(18.dp))
+            }
+            if (unread) TextButton(onClick = onRead, enabled = !busy,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Icon(HomeIcons.Check, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Marcar como leída")
+            }
         }
     }
 }
