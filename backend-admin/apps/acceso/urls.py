@@ -22,6 +22,7 @@ from .eventos_avisos import eventos_avisos
 from .analitica import AnaliticaAdopcionesView
 from .roles_internos import SincronizarRolInternoView
 from .auditoria_interna import FeedEventosAuditoriaInternoView
+from .privacidad import BajaDatosAdoptanteInternoView, ExportarDatosAdoptanteInternoView
 from .notificaciones import FeedInternoCoincidenciasView, NotificacionViewSet
 from .integracion import (
     PerfilCompartidoView,
@@ -46,6 +47,8 @@ urlpatterns = [
     path("interno/notificaciones/coincidencias/", FeedInternoCoincidenciasView.as_view(), name="feed_interno_coincidencias"),
     path("interno/roles/", SincronizarRolInternoView.as_view(), name="sincronizar_rol_interno"),
     path("interno/auditoria/eventos/", FeedEventosAuditoriaInternoView.as_view(), name="feed_eventos_auditoria_interno"),
+    path("interno/privacidad/exportacion/", ExportarDatosAdoptanteInternoView.as_view(), name="exportacion_privacidad_interna"),
+    path("interno/privacidad/baja/", BajaDatosAdoptanteInternoView.as_view(), name="baja_privacidad_interna"),
     path("solicitudes/<int:pk>/fotos-hogar/", FotosHogarView.as_view()),
     path("solicitudes/<int:pk>/fotos-hogar/<int:foto_id>/", FotoHogarView.as_view()),
     path("", include(router.urls)),

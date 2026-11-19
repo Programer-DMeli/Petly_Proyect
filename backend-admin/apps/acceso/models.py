@@ -703,3 +703,25 @@ class EventoAuditoria(models.Model):
             models.Index(fields=["ocurrido_en"], name="acceso_audit_fecha"),
             models.Index(fields=["sincronizado_spring_en", "ocurrido_en"], name="acceso_audit_sync_dt"),
         ]
+
+
+class SolicitudPrivacidadDjango(models.Model):
+    """Seguimiento idempotente de la parte Django de una baja de cuenta."""
+
+    class Estado(models.TextChoices):
+        ARCHIVOS_PENDIENTES = "ARCHIVOS_PENDIENTES", "Pendiente de eliminar archivos privados"
+        COMPLETADA = "COMPLETADA", "Completada"
+
+    operacion_id = models.UUIDField(unique=True)
+    # Huella HMAC para evitar guardar el identificador personal en el registro operativo.
+    usuario_hash = models.CharField(max_length=64, unique=True)
+    estado = models.CharField(max_length=24, choices=Estado.choices, default=Estado.ARCHIVOS_PENDIENTES)
+    archivos_pendientes = models.JSONField(default=list, blank=True)
+    retenciones = models.JSONField(default=list, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    completado_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Operación de privacidad Django"
+        verbose_name_plural = "Operaciones de privacidad Django"
+        ordering = ["-creado_en"]
