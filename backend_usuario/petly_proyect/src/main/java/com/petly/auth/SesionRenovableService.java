@@ -102,6 +102,11 @@ public class SesionRenovableService {
         sesiones.revocarTodas(usuarioId, Instant.now());
     }
 
+    @Transactional
+    public void eliminarTodas(Long usuarioId) {
+        sesiones.deleteByUsuarioId(usuarioId);
+    }
+
     private Emision emitir(Usuario usuario, String id, String renovacion, Instant expira) {
         var identity = new AuthResponse(usuario.getId(), usuario.getCorreo(), usuario.getRol().name());
         return new Emision(new LoginResponse(jwt.generarToken(usuario, id), identity), renovacion, expira);

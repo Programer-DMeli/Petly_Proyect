@@ -87,8 +87,12 @@ public class Usuario implements UserDetails {
 
     @Column(name = "token_version", nullable = false)
     private int tokenVersion = 0;
+    @Column(name = "cuenta_eliminada", nullable = false)
+    private boolean cuentaEliminada = false;
     public int getTokenVersion() { return tokenVersion; }
     public void setTokenVersion(int value) { tokenVersion = value; }
+    public boolean isCuentaEliminada() { return cuentaEliminada; }
+    public void setCuentaEliminada(boolean value) { cuentaEliminada = value; }
 
     // Constructors
     protected Usuario() {}
@@ -180,6 +184,6 @@ public class Usuario implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return !cuentaEliminada;
     }
 }

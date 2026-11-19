@@ -18,6 +18,8 @@ public interface RecuperacionTokenRepository extends JpaRepository<RecuperacionT
 
     List<RecuperacionToken> findByUsuarioIdAndUsadoEnIsNull(Long usuarioId);
 
+    void deleteByUsuarioId(Long usuarioId);
+
     /**
      * Marca un token como usado de forma atomica (US-24, un solo uso).
      * Devuelve 1 solo si el token existia y seguia sin usar; 0 si ya fue
