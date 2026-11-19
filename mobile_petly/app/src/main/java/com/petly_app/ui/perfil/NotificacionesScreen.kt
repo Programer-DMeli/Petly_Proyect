@@ -13,6 +13,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -25,6 +27,10 @@ import com.petly_app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+
+private val NotificationsBackground = lerp(Background, Secondary, 0.36f)
+private val NotificationCardShape = RoundedCornerShape(24.dp)
+private val CompletedNotificationTypes = setOf("APROBADA", "ENTREGADA", "CONTRATO_FIRMADO")
 
 @Composable
 fun NotificacionesScreen(
@@ -42,7 +48,7 @@ fun NotificacionesScreen(
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(Background).safeDrawingPadding(),
+        modifier = Modifier.fillMaxSize().background(NotificationsBackground).safeDrawingPadding(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -156,17 +162,20 @@ private fun NotificacionCard(item: NotificacionDto, busy: Boolean, onOpen: () ->
     val icon = when {
         item.tipo == "NUEVA_COINCIDENCIA" -> HomeIcons.Dog
         item.tipo.startsWith("VETERINARIA_") -> HomeIcons.CompanionHeart
-        item.tipo in setOf("APROBADA", "ENTREGADA", "CONTRATO_FIRMADO") -> HomeIcons.Check
+        item.tipo in CompletedNotificationTypes -> HomeIcons.Check
         item.seguimiento_id != null || item.tipo == "RECOJO_PROGRAMADO" -> HomeIcons.Calendar
         else -> HomeIcons.Clipboard
     }
+    val formattedDate = remember(item.ocurrido_en) { notificationDate(item.ocurrido_en) }
     Card(
         onClick = onOpen,
-        modifier = Modifier.fillMaxWidth().semantics { stateDescription = if (unread) "Sin leer" else "Leída" },
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface),
-        border = BorderStroke(if (unread) 2.dp else 1.dp, if (unread) Primary else Border),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        enabled = !busy,
+        modifier = Modifier.fillMaxWidth()
+            .shadow(6.dp, NotificationCardShape, clip = false, ambientColor = PrimaryDark, spotColor = Primary)
+            .semantics { stateDescription = if (unread) "Sin leer" else "Leída" },
+        shape = NotificationCardShape,
+        colors = CardDefaults.cardColors(containerColor = Surface, disabledContainerColor = Surface),
+        border = BorderStroke(if (unread) 2.dp else 1.dp, if (unread) Primary else Border)
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -178,7 +187,7 @@ private fun NotificacionCard(item: NotificacionDto, busy: Boolean, onOpen: () ->
                         if (unread) Box(Modifier.size(8.dp).background(Primary, CircleShape))
                         Text(if (unread) "Sin leer" else "Leída", style = MaterialTheme.typography.labelMedium, color = PrimaryDark)
                     }
-                    Text(item.titulo, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text(item.titulo, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PrimaryDark)
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -209,11 +218,19 @@ private fun NotificacionCard(item: NotificacionDto, busy: Boolean, onOpen: () ->
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(HomeIcons.Clock, null, Modifier.size(16.dp), tint = TextSecondary)
-                Text(notificationDate(item.ocurrido_en), style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                Text(formattedDate, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
             }
             HorizontalDivider(color = Border)
-            OutlinedButton(onClick = onOpen, border = BorderStroke(1.dp, Border),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryDark),
+            Button(
+                onClick = onOpen,
+                enabled = !busy,
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Primary,
+                    contentColor = Surface,
+                    disabledContainerColor = Border,
+                    disabledContentColor = TextSecondary
+                ),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text(when {
                     item.tipo == "SEGUIMIENTO_PROGRAMADO" -> "Ver seguimiento"
