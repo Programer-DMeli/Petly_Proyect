@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { contactoAfiche } from '../../../../services/afichesApi';
 import Feedback from '../../../../components/Feedback';
 import { django, json, errorMessage, mediaUrl } from '../../../../services/http';
-import type { AdminPet, Page, Shelter } from '../../../../services/types';
+import type { AdminPet, Page, RegistroClinico, Shelter, TipoRegistroClinico } from '../../../../services/types';
 import PosterMascota from './PosterMascota';
 const initial = {
   nombre: '',
@@ -44,9 +44,18 @@ const labels = {
   temperamento: 'Temperamento',
   energia: 'Energía',
 };
+const tiposClinicos: Record<TipoRegistroClinico, string> = {
+  VACUNACION: 'Vacunación',
+  ESTERILIZACION: 'Esterilización',
+  DESPARASITACION: 'Desparasitación',
+};
+type RegistroEnEdicion = Omit<RegistroClinico, 'id'> & { id?: number; clave: string; modificado: boolean };
+
 export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: Shelter }) {
   const [items, setItems] = useState<AdminPet[]>([]);
   const [draft, setDraft] = useState(initial);
+  const [registros, setRegistros] = useState<RegistroEnEdicion[]>([]);
+  const siguienteRegistro = useRef(0);
   const [id, setId] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [fileIsImproved, setFileIsImproved] = useState(false);
@@ -101,6 +110,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
     setDescriptionSuggestion('');
     setId(null);
     setDraft(initial);
+    setRegistros([]);
     setFile(null);
     setFileIsImproved(false);
     setVaccinationFile(null); setSterilizationFile(null); setEvidenceCurrent({ vacunacion: null, esterilizacion: null });
@@ -108,6 +118,15 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
     setRemoveVaccination(false); setRemoveSterilization(false); setEvidenceErrors({});
     setImprovedPhoto(null);
     setInputVersion(v => v + 1);
+  }
+  function agregarRegistro() {
+    const clave = `nuevo-${siguienteRegistro.current++}`;
+    setRegistros(actuales => [...actuales, { clave, tipo: 'VACUNACION', fecha: '', modificado: true }]);
+  }
+  function editarRegistro(clave: string, cambio: Partial<Pick<RegistroClinico, 'tipo' | 'fecha'>>) {
+    setRegistros(actuales => actuales.map(registro => registro.clave === clave
+      ? { ...registro, ...cambio, modificado: true }
+      : registro));
   }
   async function save() {
     setBusy(true);
@@ -131,6 +150,9 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
       form.set('esterilizado', String(draft.esterilizado));
       form.set('vacunas_al_dia', String(draft.vacunas_al_dia));
       form.set('desparasitado', String(draft.desparasitado));
+      const cambiosClinicos = registros.filter(registro => registro.modificado)
+        .map(({ id: registroId, tipo, fecha }) => ({ id: registroId, tipo, fecha }));
+      if (cambiosClinicos.length) form.set('registros_clinicos', json(cambiosClinicos));
       if (file) form.append('foto_principal', file);
       if (vaccinationFile) form.append('evidencia_vacunacion', vaccinationFile);
       if (sterilizationFile) form.append('evidencia_esterilizacion', sterilizationFile);
@@ -219,6 +241,9 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
         setSuggestion(null);
         setDescriptionSuggestion('');
         setId(pet.id);
+        setRegistros((pet.registros_clinicos ?? []).map(registro => ({
+          ...registro, clave: `registro-${registro.id}`, modificado: false,
+        })));
         setDraft({
           nombre: pet.nombre,
           especie: pet.especie,
@@ -386,6 +411,36 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
               <label><input type="checkbox" checked={draft.esterilizado} onChange={e => setDraft({ ...draft, esterilizado: e.target.checked })} /> Esterilizada</label>
               <label><input type="checkbox" checked={draft.desparasitado} onChange={e => setDraft({ ...draft, desparasitado: e.target.checked })} /> Desparasitada</label>
             </div>
+            <section aria-labelledby="pet-clinical-history-title">
+              <h5 id="pet-clinical-history-title">Historial clínico</h5>
+              {registros.length === 0 && <p className="muted">Aún no hay registros con fecha.</p>}
+              {registros.map((registro, index) => (
+                <div key={registro.clave} className="grid" role="group" aria-label={`Registro clínico ${index + 1}`}>
+                  <label>
+                    Tipo de procedimiento
+                    <select value={registro.tipo} onChange={e => editarRegistro(registro.clave, { tipo: e.target.value as TipoRegistroClinico })}>
+                      {Object.entries(tiposClinicos).map(([tipo, etiqueta]) => <option key={tipo} value={tipo}>{etiqueta}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    Fecha del procedimiento
+                    <input type="date" min="1000-01-01" required value={registro.fecha}
+                      onChange={e => editarRegistro(registro.clave, { fecha: e.target.value })} />
+                  </label>
+                  {registro.id === undefined && (
+                    <div className="actions">
+                      <button type="button" className="secondary"
+                        onClick={() => setRegistros(actuales => actuales.filter(item => item.clave !== registro.clave))}>
+                        Quitar registro nuevo
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div className="actions">
+                <button type="button" className="secondary" onClick={agregarRegistro}>Agregar registro clínico</button>
+              </div>
+            </section>
             {([['vacunacion', 'Evidencia de vacunación', setVaccinationFile, evidenceCurrent.vacunacion, removeVaccination, setRemoveVaccination], ['esterilizacion', 'Evidencia de esterilización', setSterilizationFile, evidenceCurrent.esterilizacion, removeSterilization, setRemoveSterilization]] as const).map(([key, title, select, stored, removing, setRemoving]) => {
               const preview = evidencePreviews[key] ?? (stored && !removing ? mediaUrl(stored) : null);
               return <div className="pet-vet-evidence" key={key}>
@@ -527,6 +582,16 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
             meses
           </p>
           <p>{detail.estado}</p>
+          {!!detail.registros_clinicos?.length && <>
+            <h4>Historial clínico</h4>
+            <ul>
+              {detail.registros_clinicos.map(registro => (
+                <li key={registro.id}>
+                  {tiposClinicos[registro.tipo]} · <time dateTime={registro.fecha}>{registro.fecha.split('-').reverse().join('/')}</time>
+                </li>
+              ))}
+            </ul>
+          </>}
           <button onClick={() => setDetail(null)}>Cerrar detalle</button>
         </article>
       )}

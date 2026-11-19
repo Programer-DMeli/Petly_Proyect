@@ -141,6 +141,14 @@ export interface Infrastructure {
   equipamiento: string;
   activo: boolean;
 }
+export type TipoRegistroClinico = 'VACUNACION' | 'ESTERILIZACION' | 'DESPARASITACION';
+
+export interface RegistroClinico {
+  id: number;
+  tipo: TipoRegistroClinico;
+  fecha: string;
+}
+
 export interface AdminPet {
   id: number;
   nombre: string;
@@ -160,6 +168,7 @@ export interface AdminPet {
   estado_salud_general: string;
   evidencia_vacunacion: string | null;
   evidencia_esterilizacion: string | null;
+  registros_clinicos?: RegistroClinico[];
   estado: string;
   foto_principal: string | null;
   foto_original_ia?: string | null;

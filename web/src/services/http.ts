@@ -63,6 +63,7 @@ export async function request<T>(
         edad_anos: 'Edad: años', edad_meses: 'Edad: meses adicionales', raza: 'Raza',
         descripcion: 'Descripción', estado_salud_general: 'Estado de salud general',
         evidencia_vacunacion: 'Evidencia de vacunación', evidencia_esterilizacion: 'Evidencia de esterilización',
+        registros_clinicos: 'Historial clínico',
         non_field_errors: 'Formulario',
       };
       const validationFields = data.campos ?? (response.status === 400 ?
