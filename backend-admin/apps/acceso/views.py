@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
+from django.http import FileResponse
 from django.db.models import Q, Count
 from django.db import transaction
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -17,6 +18,7 @@ from django.core.cache import cache
 import time
 
 from apps.albergues.models import Albergue
+from apps.mascotas.ficha_veterinaria import generar_ficha_veterinaria
 from apps.mascotas.models import Mascota
 from .models import Postulante, SolicitudAdopcion, SolicitudEvento, AvisoExterno, User, AdoptanteProfile, Autorizacion
 from .solicitudes import cambiar_estado_solicitud
@@ -238,6 +240,19 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+    @action(detail=True, methods=["get"], url_path="ficha-veterinaria", permission_classes=[IsAdoptante])
+    def ficha_veterinaria(self, request, pk=None):
+        solicitud = generics.get_object_or_404(self.get_queryset(), pk=pk, adoptante_id=request.user.pk)
+        if solicitud.estado != SolicitudAdopcion.Estado.ENTREGADA:
+            raise PermissionDenied("La ficha veterinaria estará disponible cuando se confirme la entrega.")
+
+        response = FileResponse(
+            generar_ficha_veterinaria(solicitud.mascota), as_attachment=True,
+            filename=f"ficha_veterinaria_solicitud_{solicitud.pk}.pdf", content_type="application/pdf",
+        )
         response["Cache-Control"] = "private, no-store"
         return response
 

@@ -273,6 +273,7 @@ Comandos de diagnóstico desde `backend-admin/`:
 python manage.py check
 python manage.py showmigrations
 python manage.py migrate --plan
+python -m pip install -r requirements-test.txt
 python manage.py test --settings=config.test_settings
 ```
 
