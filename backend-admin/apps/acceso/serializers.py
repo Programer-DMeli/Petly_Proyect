@@ -9,6 +9,7 @@ from django.utils import timezone
 from .models import Postulante, SolicitudAdopcion, SolicitudEvento, User, AdoptanteProfile, Autorizacion
 from apps.mascotas.serializers import MascotaListSerializer
 from apps.mascotas.models import Mascota
+from .authentication import comprobar_suspension_spring
 
 User = get_user_model()
 
@@ -425,6 +426,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         user = User.objects.filter(models.Q(username__iexact=username) | models.Q(email__iexact=username)).first()
         
         if user:
+            if user.usuario_spring_id:
+                comprobar_suspension_spring(user.usuario_spring_id)
             # Verificar si está bloqueado
             if user.bloqueado_hasta and user.bloqueado_hasta > timezone.now():
                 raise serializers.ValidationError(

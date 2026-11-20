@@ -67,7 +67,8 @@ public class SesionRenovableService {
         Usuario usuario = usuarios.bloquearPorId(usuarioId).orElseThrow(SesionRenovableService::invalida);
         SesionRenovable sesion = sesiones.bloquear(id).orElseThrow(SesionRenovableService::invalida);
         if (sesion.revocadaEn != null || !sesion.expiraEn.isAfter(Instant.now())
-                || sesion.tokenVersion != usuario.getTokenVersion()) throw invalida();
+                || sesion.tokenVersion != usuario.getTokenVersion() || !usuario.isEnabled()
+                || usuario.tieneSuspensionVigente(java.time.LocalDateTime.now())) throw invalida();
 
         String hash = AuthService.hash(token);
         String operacionHash = AuthService.hash(operacion);

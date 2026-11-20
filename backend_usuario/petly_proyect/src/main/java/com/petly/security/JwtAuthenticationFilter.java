@@ -58,7 +58,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Integer ver = claims.get("version", Integer.class);
             var usuario = usuarios.findById(Long.parseLong(claims.getSubject())).orElse(null);
             String sid = claims.get("sid", String.class);
-            if (ver == null || usuario == null || !usuario.isEnabled() || ver != usuario.getTokenVersion()
+            if (ver == null || usuario == null || !usuario.isEnabled()
+                    || usuario.tieneSuspensionVigente(java.time.LocalDateTime.now())
+                    || ver != usuario.getTokenVersion()
                     || (sid != null && !sesiones.existsByIdAndUsuarioIdAndRevocadaEnIsNull(sid, usuario.getId()))) {
                 rechazar(response);
                 return;

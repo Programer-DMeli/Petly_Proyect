@@ -106,6 +106,9 @@ public class Usuario implements UserDetails {
     public void setCuentaEliminada(boolean value) { cuentaEliminada = value; }
     public boolean isCuentaSuspendida() { return cuentaSuspendida; }
     public void setCuentaSuspendida(boolean value) { cuentaSuspendida = value; }
+    public boolean tieneSuspensionVigente(LocalDateTime ahora) {
+        return cuentaSuspendida && (suspensionHasta == null || suspensionHasta.isAfter(ahora));
+    }
     public String getMotivoSuspension() { return motivoSuspension; }
     public void setMotivoSuspension(String value) { motivoSuspension = value; }
     public LocalDateTime getSuspendidaEn() { return suspendidaEn; }
@@ -195,7 +198,9 @@ public class Usuario implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return bloqueadoHasta == null || bloqueadoHasta.isBefore(LocalDateTime.now());
+        LocalDateTime ahora = LocalDateTime.now();
+        boolean sinBloqueoPorIntentos = bloqueadoHasta == null || !bloqueadoHasta.isAfter(ahora);
+        return sinBloqueoPorIntentos && !tieneSuspensionVigente(ahora);
     }
 
     @Override

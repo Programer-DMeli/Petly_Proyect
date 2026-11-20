@@ -3,6 +3,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth import get_user_model
 from django.db import connection
+from django.utils import timezone
 from rest_framework.exceptions import APIException
 
 User = get_user_model()
@@ -69,6 +70,7 @@ class SpringBootJWTAuthentication(JWTAuthentication):
             raise InvalidToken(f"Tipo de token inválido: se esperaba 'access', recibido '{token_type}'")
         
         sid = payload.get("sid")
+        self.comprobar_estado_cuenta(payload)
         if sid is not None:
             self.comprobar_sesion(sid, payload)
 
@@ -76,6 +78,38 @@ class SpringBootJWTAuthentication(JWTAuthentication):
         token = AccessToken()
         token.payload = payload
         return token
+
+    @staticmethod
+    def comprobar_estado_cuenta(payload):
+        """Comprueba versión y suspensión contra la identidad Spring compartida."""
+        from django.db import DatabaseError
+
+        try:
+            usuario_id = int(payload["sub"])
+            version = payload.get("version")
+            if type(version) is not int:
+                raise ValueError()
+        except (KeyError, ValueError, TypeError):
+            raise InvalidToken("Identidad inválida")
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """SELECT token_version, cuenta_suspendida, suspension_hasta
+                       FROM usuarios WHERE id = %s""",
+                    [usuario_id],
+                )
+                cuenta = cursor.fetchone()
+        except DatabaseError as error:
+            raise ComprobacionSesionNoDisponible() from error
+
+        if not cuenta or cuenta[0] != version:
+            raise InvalidToken("Sesión revocada")
+        suspendida, hasta = cuenta[1], cuenta[2]
+        if hasta is not None and timezone.is_naive(hasta):
+            hasta = timezone.make_aware(hasta, timezone.get_current_timezone())
+        if suspendida and (hasta is None or hasta > timezone.now()):
+            raise InvalidToken("Cuenta suspendida")
     
     @staticmethod
     def comprobar_sesion(sid, payload):
@@ -101,6 +135,29 @@ class SpringBootJWTAuthentication(JWTAuthentication):
             raise ComprobacionSesionNoDisponible() from error
         if not activa:
             raise InvalidToken("Sesión revocada")
+
+
+def comprobar_suspension_spring(usuario_id):
+    """Niega identidades locales vinculadas a una cuenta Spring suspendida."""
+    from django.db import DatabaseError
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT cuenta_suspendida, suspension_hasta FROM usuarios WHERE id = %s",
+                [usuario_id],
+            )
+            cuenta = cursor.fetchone()
+    except DatabaseError as error:
+        raise ComprobacionSesionNoDisponible() from error
+
+    if not cuenta:
+        raise InvalidToken("Usuario Spring no encontrado")
+    suspendida, hasta = cuenta
+    if hasta is not None and timezone.is_naive(hasta):
+        hasta = timezone.make_aware(hasta, timezone.get_current_timezone())
+    if suspendida and (hasta is None or hasta > timezone.now()):
+        raise InvalidToken("Cuenta suspendida")
 
     def get_user(self, validated_token):
         """Obtener/crear usuario local desde claims de Spring Boot."""
@@ -157,6 +214,12 @@ class DjangoJWTAuthentication(JWTAuthentication):
             raise InvalidToken("Audience inválido para token Django")
         
         return token
+
+    def get_user(self, validated_token):
+        user = super().get_user(validated_token)
+        if user.usuario_spring_id:
+            comprobar_suspension_spring(user.usuario_spring_id)
+        return user
 
 
 class DualJWTAuthentication(JWTAuthentication):
