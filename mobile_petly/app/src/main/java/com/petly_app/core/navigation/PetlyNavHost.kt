@@ -87,6 +87,7 @@ fun PetlyNavHost(
             com.petly_app.data.repository.FavoritosManager.api = container.favoritosApi
             com.petly_app.data.repository.SolicitudAdopcionManager.api = container.solicitudesApi
             com.petly_app.data.repository.SolicitudAdopcionManager.fotosApi = container.fotosHogarApi
+            com.petly_app.data.repository.SolicitudAdopcionManager.fichaVeterinariaApi = container.fichaVeterinariaApi
             com.petly_app.data.repository.SolicitudAdopcionManager.resolver = container.resolver
             launch { com.petly_app.data.repository.FavoritosManager.cargar() }
             runCatching { com.petly_app.data.repository.SolicitudAdopcionManager.cargar() }

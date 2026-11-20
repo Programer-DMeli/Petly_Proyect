@@ -47,7 +47,9 @@ class AppContainer(context: Context) {
     fun perfil(preview: Boolean): PerfilRepository = if (preview) previewPerfil else remotePerfil
     fun catalogo(preview: Boolean): CatalogoRepository = if (preview) previewCatalogo else remoteCatalogo
     fun disponibilidad(preview: Boolean): DisponibilidadRepository = if (preview) previewDisponibilidad else remoteDisponibilidad
-    val fotosHogarApi = ApiClient.authenticatedAdminApi(session).create(FotosHogarApi::class.java)
+    private val documentosApi = ApiClient.authenticatedAdminApi(session)
+    val fotosHogarApi = documentosApi.create(FotosHogarApi::class.java)
+    val fichaVeterinariaApi = documentosApi.create(FichaVeterinariaApi::class.java)
     val resolver = contentResolver
     val favoritosApi = privateApi.create(FavoritosApi::class.java)
     val solicitudesApi = privateApi.create(SolicitudesApi::class.java)

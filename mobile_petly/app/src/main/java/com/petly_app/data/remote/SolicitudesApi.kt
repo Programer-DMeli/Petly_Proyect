@@ -20,3 +20,9 @@ interface FotosHogarApi {
     @GET suspend fun descargar(@Url url: String): okhttp3.ResponseBody
 }
 data class FotoHogarDto(val id: Long, val url: String, val tipo: String)
+
+interface FichaVeterinariaApi {
+    @Streaming
+    @GET("api/acceso/solicitudes/{id}/ficha-veterinaria/")
+    suspend fun descargar(@Path("id") id: Long): okhttp3.ResponseBody
+}

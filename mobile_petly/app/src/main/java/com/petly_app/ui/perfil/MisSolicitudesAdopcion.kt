@@ -1,5 +1,8 @@
 package com.petly_app.ui.perfil
 
+import android.provider.DocumentsContract
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +22,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -26,6 +32,10 @@ import com.petly_app.data.remote.HistorialSolicitud
 import com.petly_app.data.remote.SolicitudPersistida
 import com.petly_app.data.repository.SolicitudAdopcionManager
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun MisSolicitudesAdopcion() {
@@ -33,6 +43,44 @@ internal fun MisSolicitudesAdopcion() {
     var seleccion by remember { mutableStateOf<SolicitudPersistida?>(null) }
     var error by remember { mutableStateOf(false) }
     var intento by remember { mutableIntStateOf(0) }
+
+    val resolver = LocalContext.current.contentResolver
+    val scope = rememberCoroutineScope()
+    var fichaPendiente by rememberSaveable { mutableStateOf<Long?>(null) }
+    var descargando by remember { mutableStateOf(false) }
+    var resultadoDescarga by remember { mutableStateOf<Boolean?>(null) }
+    val guardarFicha = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri ->
+        val solicitudId = fichaPendiente
+        fichaPendiente = null
+        if (uri != null && solicitudId != null) {
+            descargando = true
+            scope.launch {
+                var guardado = false
+                try {
+                    val api = checkNotNull(SolicitudAdopcionManager.fichaVeterinariaApi)
+                    withContext(Dispatchers.IO) {
+                        api.descargar(solicitudId).use { pdf ->
+                            checkNotNull(resolver.openOutputStream(uri, "w")).use { output ->
+                                pdf.byteStream().copyTo(output)
+                            }
+                        }
+                        guardado = true
+                    }
+                    resultadoDescarga = true
+                } catch (exception: Exception) {
+                    if (exception is CancellationException) throw exception
+                    resultadoDescarga = false
+                } finally {
+                    if (!guardado) withContext(NonCancellable + Dispatchers.IO) {
+                        runCatching { DocumentsContract.deleteDocument(resolver, uri) }
+                    }
+                    descargando = false
+                }
+            }
+        }
+    }
 
     LaunchedEffect(intento) {
         error = false
@@ -47,6 +95,17 @@ internal fun MisSolicitudesAdopcion() {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Mis solicitudes de adopción", style = MaterialTheme.typography.titleMedium)
+            if (descargando) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                Text("Guardando ficha veterinaria…")
+            }
+            resultadoDescarga?.let { guardado ->
+                Text(
+                    if (guardado) "Ficha veterinaria guardada."
+                    else "No se pudo guardar la ficha veterinaria. Inténtalo de nuevo.",
+                    color = if (guardado) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
+                )
+            }
             val lista = solicitudes
             when {
                 error -> {
@@ -60,6 +119,16 @@ internal fun MisSolicitudesAdopcion() {
                         Text(solicitud.mascota_nombre ?: "Solicitud #${solicitud.id}")
                         Text(nombreEstado(solicitud.estado), style = MaterialTheme.typography.bodyMedium)
                         TextButton(onClick = { seleccion = solicitud }) { Text("Ver seguimiento") }
+                        if (solicitud.estado.equals("ENTREGADA", ignoreCase = true)) {
+                            TextButton(
+                                enabled = !descargando && fichaPendiente == null,
+                                onClick = {
+                                    resultadoDescarga = null
+                                    fichaPendiente = solicitud.id
+                                    guardarFicha.launch("ficha-veterinaria-${solicitud.id}.pdf")
+                                }
+                            ) { Text("Descargar ficha veterinaria (PDF)") }
+                        }
                     }
                 }
             }
