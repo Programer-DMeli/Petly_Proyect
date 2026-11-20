@@ -12,6 +12,11 @@ type UsuarioAdmin = {
   apellidos: string | null;
   rol: Role;
   creadoEn: string | null;
+  cuentaSuspendida: boolean;
+  motivoSuspension: string | null;
+  suspendidaEn: string | null;
+  suspensionHasta: string | null;
+  suspendidaPorId: number | null;
 };
 
 const ROLES: Role[] = ['ADOPTANTE', 'ALBERGUE', 'ADMIN'];
@@ -28,12 +33,24 @@ export default function RolesUsuariosPage() {
   const [cargando, setCargando] = useState(true);
   const [guardandoId, setGuardandoId] = useState<number | null>(null);
   const [pendiente, setPendiente] = useState<UsuarioAdmin | null>(null);
+  const [suspensionPendiente, setSuspensionPendiente] = useState<UsuarioAdmin | null>(null);
+  const [motivoSuspension, setMotivoSuspension] = useState('');
+  const [hastaSuspension, setHastaSuspension] = useState('');
+  const [suspendiendoId, setSuspendiendoId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const miId = Number(getSession()?.identity.id);
   useDialogFocus(pendiente !== null, () => {
     if (guardandoId === null) {
       setPendiente(null);
+      setError('');
+    }
+  });
+  useDialogFocus(suspensionPendiente !== null, () => {
+    if (suspendiendoId === null) {
+      setSuspensionPendiente(null);
+      setMotivoSuspension('');
+      setHastaSuspension('');
       setError('');
     }
   });
@@ -73,7 +90,7 @@ export default function RolesUsuariosPage() {
 
   async function guardar(usuario: UsuarioAdmin) {
     const nuevoRol = roles[usuario.id];
-    if (!nuevoRol || nuevoRol === usuario.rol || guardandoId !== null) return;
+    if (!nuevoRol || nuevoRol === usuario.rol || guardandoId !== null || suspendiendoId !== null) return;
     setGuardandoId(usuario.id);
     setError('');
     setMensaje('');
@@ -93,6 +110,34 @@ export default function RolesUsuariosPage() {
     }
   }
 
+  async function suspender(usuario: UsuarioAdmin) {
+    const motivo = motivoSuspension.trim();
+    if (!motivo || motivo.length > 500 || suspendiendoId !== null || guardandoId !== null) return;
+    if (hastaSuspension && new Date(hastaSuspension).getTime() <= Date.now()) {
+      setError('La fecha de vencimiento debe ser futura.');
+      return;
+    }
+
+    setSuspendiendoId(usuario.id);
+    setError('');
+    setMensaje('');
+    try {
+      const actualizado = await spring<UsuarioAdmin>(`/api/admin/usuarios/${usuario.id}/suspension`, {
+        method: 'PATCH',
+        body: json({ motivo, hasta: hastaSuspension || null }),
+      });
+      setUsuarios(actuales => actuales.map(item => item.id === actualizado.id ? actualizado : item));
+      setMensaje(`La cuenta ${actualizado.correo} quedó suspendida y sus sesiones fueron cerradas.`);
+      setSuspensionPendiente(null);
+      setMotivoSuspension('');
+      setHastaSuspension('');
+    } catch (causa) {
+      setError(errorMessage(causa));
+    } finally {
+      setSuspendiendoId(null);
+    }
+  }
+
   return <main className="admin-user-roles">
     <header className="admin-user-roles__heading">
       <p className="eyebrow">Administración · Accesos</p>
@@ -100,14 +145,14 @@ export default function RolesUsuariosPage() {
       <p className="muted">Consulta las cuentas Petly y administra el rol que define sus permisos.</p>
     </header>
 
-    <Feedback error={pendiente ? '' : error} success={mensaje} />
+    <Feedback error={pendiente || suspensionPendiente ? '' : error} success={mensaje} />
     <section className="card admin-user-roles__panel" aria-labelledby="roles-cuentas-titulo">
       <div className="admin-user-roles__toolbar">
         <div>
           <h2 id="roles-cuentas-titulo">Cuentas registradas</h2>
           <p className="muted">Los cambios de rol cierran las sesiones activas de esa cuenta.</p>
         </div>
-        <button type="button" className="secondary" onClick={() => void cargar()} disabled={cargando || guardandoId !== null}>
+        <button type="button" className="secondary" onClick={() => void cargar()} disabled={cargando || guardandoId !== null || suspendiendoId !== null}>
           Actualizar lista
         </button>
       </div>
@@ -131,6 +176,7 @@ export default function RolesUsuariosPage() {
                 <th scope="col">Nombre</th>
                 <th scope="col">Rol actual</th>
                 <th scope="col">Cambiar rol</th>
+                <th scope="col">Estado de cuenta</th>
                 <th scope="col"><span className="admin-user-roles__visually-hidden">Acciones</span></th>
               </tr></thead>
               <tbody>{filtrados.map(usuario => {
@@ -156,12 +202,28 @@ export default function RolesUsuariosPage() {
                     >{ROLES.map(rol => <option key={rol} value={rol}>{ETIQUETAS[rol]}</option>)}</select>
                   </td>
                   <td>
+                    <span className={`admin-user-roles__badge ${usuario.cuentaSuspendida ? 'admin-user-roles__badge--suspendida' : 'admin-user-roles__badge--activa'}`}>
+                      {usuario.cuentaSuspendida ? 'Suspendida' : 'Activa'}
+                    </span>
+                    {usuario.cuentaSuspendida && usuario.motivoSuspension && <small className="admin-user-roles__suspension-detail">
+                      {usuario.motivoSuspension} · {usuario.suspensionHasta
+                        ? `Hasta ${new Date(usuario.suspensionHasta).toLocaleString('es-PE')}`
+                        : 'Sin vencimiento'}
+                    </small>}
+                  </td>
+                  <td>
                     <button
                       type="button"
                       className="button"
-                      disabled={!cambiado || propio || guardandoId !== null}
+                      disabled={!cambiado || propio || guardandoId !== null || suspendiendoId !== null}
                       onClick={() => { setError(''); setPendiente(usuario); }}
-                    >Guardar</button>
+                    >Guardar rol</button>
+                    <button
+                      type="button"
+                      className="secondary admin-user-roles__suspend-button"
+                      disabled={propio || usuario.cuentaSuspendida || guardandoId !== null || suspendiendoId !== null}
+                      onClick={() => { setError(''); setMotivoSuspension(''); setHastaSuspension(''); setSuspensionPendiente(usuario); }}
+                    >{usuario.cuentaSuspendida ? 'Suspendida' : 'Suspender'}</button>
                   </td>
                 </tr>;
               })}</tbody>
@@ -200,6 +262,57 @@ export default function RolesUsuariosPage() {
             disabled={guardandoId !== null}
             onClick={() => void guardar(pendiente)}
           >{guardandoId === pendiente.id ? 'Aplicando cambio…' : 'Confirmar cambio'}</button>
+        </div>
+      </section>
+    </div>}
+    {suspensionPendiente && <div className="admin-user-roles__overlay">
+      <section
+        className="card admin-user-roles__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirmar-suspension-titulo"
+        aria-describedby="confirmar-suspension-detalle"
+      >
+        <p className="eyebrow">Seguridad de la plataforma</p>
+        <h2 id="confirmar-suspension-titulo">Suspender cuenta</h2>
+        <p id="confirmar-suspension-detalle">
+          La cuenta <strong>{suspensionPendiente.correo}</strong> perderá acceso y sus sesiones activas se cerrarán.
+          Si dejas la fecha vacía, la suspensión no tendrá vencimiento.
+        </p>
+        <label className="admin-user-roles__dialog-field" htmlFor="motivo-suspension">Motivo (obligatorio)
+          <textarea
+            id="motivo-suspension"
+            value={motivoSuspension}
+            maxLength={500}
+            rows={4}
+            required
+            onChange={event => setMotivoSuspension(event.target.value)}
+            placeholder="Describe por qué se restringe esta cuenta"
+          />
+          <small>{motivoSuspension.length}/500 caracteres</small>
+        </label>
+        <label className="admin-user-roles__dialog-field" htmlFor="hasta-suspension">Vigencia (opcional)
+          <input
+            id="hasta-suspension"
+            type="datetime-local"
+            value={hastaSuspension}
+            onChange={event => setHastaSuspension(event.target.value)}
+          />
+        </label>
+        {error && <p className="feedback error" role="alert">{error}</p>}
+        <div className="admin-user-roles__dialog-actions">
+          <button
+            type="button"
+            className="secondary"
+            disabled={suspendiendoId !== null}
+            onClick={() => { setSuspensionPendiente(null); setMotivoSuspension(''); setHastaSuspension(''); setError(''); }}
+          >Cancelar</button>
+          <button
+            type="button"
+            className="button"
+            disabled={suspendiendoId !== null || !motivoSuspension.trim() || motivoSuspension.length > 500}
+            onClick={() => void suspender(suspensionPendiente)}
+          >{suspendiendoId === suspensionPendiente.id ? 'Aplicando suspensión…' : 'Confirmar suspensión'}</button>
         </div>
       </section>
     </div>}

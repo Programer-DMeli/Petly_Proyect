@@ -1682,6 +1682,47 @@
   background: #e9f3f5;
   color: #245b67;
 }
+.admin-user-roles__badge--activa {
+  background: #edf5ed;
+  color: var(--petly-primary-dark);
+}
+.admin-user-roles__badge--suspendida {
+  background: #fff0ed;
+  color: #9c3026;
+}
+.admin-user-roles__suspension-detail {
+  display: block;
+  max-width: 15rem;
+  margin-top: 0.35rem;
+  color: var(--petly-text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.admin-user-roles__suspend-button {
+  margin: 0.5rem 0 0;
+  white-space: nowrap;
+}
+.admin-user-roles__dialog-field {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  color: var(--petly-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+.admin-user-roles__dialog-field textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+.admin-user-roles__dialog-field small {
+  justify-self: end;
+  color: var(--petly-text-secondary);
+  font-weight: 400;
+}
+.admin-user-roles__dialog-field input,
+.admin-user-roles__dialog-field textarea {
+  width: 100%;
+}
 .admin-user-roles__count,
 .admin-user-roles__empty {
   margin: 0;
