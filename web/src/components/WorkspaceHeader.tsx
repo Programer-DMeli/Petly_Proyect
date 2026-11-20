@@ -76,6 +76,11 @@ const groups: Record<string, Group[]> = {
           to: '/adoptante/preferencias-notificacion',
           description: 'Configura avisos de nuevas mascotas y canales de alerta.',
         },
+        {
+          label: 'Privacidad y datos',
+          to: '/adoptante/privacidad',
+          description: 'Descarga tus datos o solicita la baja de tu cuenta.',
+        },
       ],
     },
   ],

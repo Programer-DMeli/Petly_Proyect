@@ -1,0 +1,130 @@
+.privacy-page {
+  display: grid;
+  gap: 1.25rem;
+  width: min(100% - 2rem, 980px);
+  margin: 0 auto 2rem;
+}
+
+.privacy-page__header {
+  padding: 0.5rem 0;
+}
+
+.privacy-page__header h1,
+.privacy-page__result h1 {
+  margin: 0.25rem 0 0.5rem;
+  color: var(--petly-primary-dark, #125643);
+}
+
+.privacy-page__header > p:last-child,
+.privacy-page__section p,
+.privacy-page__result > p {
+  color: var(--petly-text-muted, #62756c);
+}
+
+.privacy-page__section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.privacy-page__section h2,
+.privacy-page__dialog h2,
+.privacy-page__retentions h2 {
+  margin-top: 0;
+  color: var(--petly-primary-dark, #125643);
+}
+
+.privacy-page__section p:last-child {
+  margin-bottom: 0;
+}
+
+.privacy-page__section--danger {
+  border-color: #e8b9b4;
+}
+
+.privacy-page__pending {
+  min-width: min(100%, 360px);
+}
+
+.privacy-page__pending p,
+.privacy-page__status {
+  color: #8a4b17;
+}
+
+.privacy-page__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.privacy-page__backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(13 35 29 / 58%);
+}
+
+.privacy-page__dialog {
+  width: min(100%, 560px);
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 22%);
+}
+
+.privacy-page__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+}
+
+.privacy-page__check input {
+  margin-top: 0.25rem;
+}
+
+.privacy-page--public {
+  min-height: 60vh;
+  align-content: center;
+}
+
+.privacy-page__result {
+  max-width: 760px;
+  padding: clamp(1.5rem, 4vw, 3rem);
+}
+
+.privacy-page__retentions {
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: var(--petly-surface-muted, #f4f7f5);
+}
+
+.privacy-page__retentions li + li {
+  margin-top: 0.5rem;
+}
+
+.privacy-page__result > a {
+  display: inline-flex;
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: var(--petly-primary, #176d57);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (max-width: 680px) {
+  .privacy-page__section {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .privacy-page__section > button {
+    width: 100%;
+  }
+}
