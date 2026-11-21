@@ -14,6 +14,7 @@ export default function SolicitudesAdoptantePage() {
   const [busy, setBusy] = useState(true);
   const [refresh, setRefresh] = useState(0);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [downloadingFichaId, setDownloadingFichaId] = useState<number | null>(null);
   const load = useCallback(async () => {
     setBusy(true); setError(''); setSuccess('');
     try {
@@ -29,6 +30,20 @@ export default function SolicitudesAdoptantePage() {
   async function downloadContract(contract: ContratoAdopcion) {
     try { await downloadDjango(`/api/contratos/${contract.public_id}/descargar/`, `contrato-adopcion-${contract.solicitud_id}.pdf`); }
     catch (e) { setError(errorMessage(e)); }
+  }
+  async function downloadFicha(solicitudId: number) {
+    setDownloadingFichaId(solicitudId);
+    setError('');
+    try {
+      await downloadDjango(
+        `/api/acceso/solicitudes/${solicitudId}/ficha-veterinaria/`,
+        `ficha_veterinaria_solicitud_${solicitudId}.pdf`,
+      );
+    } catch (e) {
+      setError(`No se pudo descargar la ficha veterinaria. ${errorMessage(e)}`);
+    } finally {
+      setDownloadingFichaId(null);
+    }
   }
   async function cancelRequest(item: SolicitudAdopcion) {
     const confirmar = window.confirm(
@@ -64,6 +79,10 @@ export default function SolicitudesAdoptantePage() {
           {contract.url_firma && <a href={contract.url_firma} target="_blank" rel="noreferrer">Abrir firma electrónica</a>}
           {contract.documento_disponible && <button className="secondary" onClick={() => void downloadContract(contract)}>Descargar contrato firmado</button>}
         </div>)}
+        {item.estado === 'ENTREGADA' && <button
+          type="button" className="secondary" disabled={downloadingFichaId !== null}
+          onClick={() => void downloadFicha(item.id)}
+        >{downloadingFichaId === item.id ? 'Descargando ficha veterinaria…' : 'Descargar ficha veterinaria'}</button>}
         <Link className="button" to={`/adoptante/solicitudes/${item.id}`}>Ver seguimiento</Link>
         <Link className="button secondary" to={`/adoptante/mensajes?solicitud=${item.id}${item.mascota ? `&mascota=${item.mascota}` : ''}`}>
           Abrir chat con el albergue
