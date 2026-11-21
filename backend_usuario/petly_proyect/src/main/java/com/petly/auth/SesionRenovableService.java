@@ -14,6 +14,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import com.petly.auth.dto.AuthResponse;
 import com.petly.auth.dto.LoginResponse;
+import com.petly.config.ConfiguracionGlobalService;
 import com.petly.common.exception.ApiException;
 import com.petly.usuarios.Usuario;
 import com.petly.usuarios.UsuarioRepository;
@@ -32,17 +33,16 @@ public class SesionRenovableService {
     private final SesionRenovableRepository sesiones;
     private final UsuarioRepository usuarios;
     private final JwtService jwt;
-    private final Duration duracion;
+    private final ConfiguracionGlobalService configuracion;
     private final SecretKeySpec claveRotacion;
 
     public SesionRenovableService(SesionRenovableRepository sesiones, UsuarioRepository usuarios, JwtService jwt,
-            @Value("${petly.session.refresh-days:30}") int dias,
+            ConfiguracionGlobalService configuracion,
             @Value("${spring.jwt.secret}") String clave) {
-        if (dias < 1 || dias > 365) throw new IllegalArgumentException("Duración de sesión inválida");
         this.sesiones = sesiones;
         this.usuarios = usuarios;
         this.jwt = jwt;
-        this.duracion = Duration.ofDays(dias);
+        this.configuracion = configuracion;
         this.claveRotacion = new SecretKeySpec(clave.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
     }
 
@@ -52,6 +52,7 @@ public class SesionRenovableService {
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);
         String token = id + "." + BASE64.encodeToString(bytes);
+        Duration duracion = Duration.ofDays(configuracion.obtener().getExpiracionSesionDias());
         Instant expira = Instant.now().plus(duracion);
         sesiones.save(new SesionRenovable(id, usuario.getId(), usuario.getTokenVersion(), AuthService.hash(token), expira));
         return emitir(usuario, id, token, expira);

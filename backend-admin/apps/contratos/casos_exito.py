@@ -10,11 +10,11 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
 from apps.acceso.models import SolicitudAdopcion, User
+from config.parametros_sistema import obtener_limite_imagen_bytes
 from .models import CasoExitoAdopcion, FotoCasoExito
 
 
 MAX_FOTOS_CASO = 5
-MAX_FOTO_BYTES = 5 * 1024 * 1024
 MAX_CASO_FOTOS_BYTES = 20 * 1024 * 1024
 MAX_PIXELES_FOTO = 20_000_000
 
@@ -93,10 +93,13 @@ class CrearCasoExitoSerializer(serializers.Serializer):
         return solicitud
 
     def validate_fotos(self, archivos):
+        limite_imagen = obtener_limite_imagen_bytes()
         total = 0
         for archivo in archivos:
-            if archivo.size <= 0 or archivo.size > MAX_FOTO_BYTES:
-                raise serializers.ValidationError("Cada foto debe pesar más de 0 y hasta 5 MB.")
+            if archivo.size <= 0 or archivo.size > limite_imagen:
+                raise serializers.ValidationError(
+                    f"Cada foto debe pesar más de 0 y hasta {limite_imagen // (1024 * 1024)} MB, según la configuración global."
+                )
             total += archivo.size
             if total > MAX_CASO_FOTOS_BYTES:
                 raise serializers.ValidationError("Las fotos juntas no pueden superar 20 MB.")

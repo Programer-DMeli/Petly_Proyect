@@ -5,7 +5,10 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.petly.auditoria.AuditoriaService;
 import com.petly.common.exception.ApiException;
+import com.petly.usuarios.Usuario;
+import com.petly.usuarios.UsuarioRepository;
 
 /** Lectura y validación de parámetros globales; la API ADMIN se agrega en US-75/2. */
 @Service
@@ -16,29 +19,39 @@ public class ConfiguracionGlobalService {
     public static final int EXPIRACION_SESION_DIAS_MAXIMA = 365;
 
     private final ConfiguracionGlobalRepository configuraciones;
+    private final UsuarioRepository usuarios;
+    private final AuditoriaService auditoria;
 
-    public ConfiguracionGlobalService(ConfiguracionGlobalRepository configuraciones) {
+    public ConfiguracionGlobalService(
+            ConfiguracionGlobalRepository configuraciones,
+            UsuarioRepository usuarios,
+            AuditoriaService auditoria) {
         this.configuraciones = configuraciones;
+        this.usuarios = usuarios;
+        this.auditoria = auditoria;
     }
 
     @Transactional(readOnly = true)
     public ConfiguracionGlobal obtener() {
         return configuraciones.findById(ConfiguracionGlobal.CLAVE_GLOBAL)
-                .orElseGet(() -> new ConfiguracionGlobal(
-                        ConfiguracionGlobal.MAX_IMAGEN_MB_PREDETERMINADO,
-                        ConfiguracionGlobal.EXPIRACION_SESION_DIAS_PREDETERMINADA));
+                .orElseThrow(() -> new ApiException(503, "La configuración global no está inicializada."));
     }
 
     @Transactional
-    public ConfiguracionGlobal actualizar(int maxImagenMb, int expiracionSesionDias) {
+    public ConfiguracionGlobal actualizar(long actorId, int maxImagenMb, int expiracionSesionDias) {
         validar(maxImagenMb, expiracionSesionDias);
-        ConfiguracionGlobal configuracion = configuraciones.findById(ConfiguracionGlobal.CLAVE_GLOBAL)
-                .orElseGet(() -> new ConfiguracionGlobal(
-                        ConfiguracionGlobal.MAX_IMAGEN_MB_PREDETERMINADO,
-                        ConfiguracionGlobal.EXPIRACION_SESION_DIAS_PREDETERMINADA));
+        Usuario actor = usuarios.findById(actorId)
+                .orElseThrow(() -> new ApiException(401, "La sesión no identifica una cuenta válida."));
+        if (actor.getRol() != Usuario.Rol.ADMIN) {
+            throw new ApiException(403, "Solo ADMIN puede cambiar los parámetros globales.");
+        }
+        ConfiguracionGlobal configuracion = obtener();
         configuracion.setMaxImagenMb(maxImagenMb);
         configuracion.setExpiracionSesionDias(expiracionSesionDias);
-        return configuraciones.save(configuracion);
+        ConfiguracionGlobal guardada = configuraciones.saveAndFlush(configuracion);
+        auditoria.registrar(actorId, actor.getRol().name(), "PARAMETROS_GLOBALES_ACTUALIZADOS",
+                "CONFIGURACION_GLOBAL", ConfiguracionGlobal.CLAVE_GLOBAL);
+        return guardada;
     }
 
     private static void validar(int maxImagenMb, int expiracionSesionDias) {

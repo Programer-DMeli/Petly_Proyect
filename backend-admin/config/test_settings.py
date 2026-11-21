@@ -6,6 +6,7 @@ SPRING_JWT_SECRET = __import__("secrets").token_urlsafe(48)
 # writable sandbox on Windows, causing image upload tests to fail.
 MEDIA_ROOT = BASE_DIR / "media"
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+PETLY_TEST_MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 # Unit tests never call a real paid provider implicitly.
 GEMINI_API_KEY = ""

@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 
 from apps.acceso.models import SolicitudAdopcion, User
 from apps.albergues.models import Albergue
+from config.parametros_sistema import obtener_limite_imagen_bytes
 from .models import (AdjuntoMensaje, BienvenidaAlbergue, BloqueoConversacion,
                      Conversacion, Mensaje, ParticipanteConversacion, ReporteConversacion)
 from .serializers import ConversacionSerializer, MensajeSerializer
@@ -181,8 +182,14 @@ class ConversacionViewSet(viewsets.ViewSet):
             content_type = (upload.content_type or mimetypes.guess_type(upload.name)[0] or "").lower()
             if content_type not in ALLOWED_TYPES or os.path.splitext(upload.name)[1].lower() not in {".jpg", ".jpeg", ".png", ".pdf"}:
                 raise ValidationError({"archivo": "Adjunta una imagen JPEG/PNG o un PDF."})
-            if upload.size > MAX_ATTACHMENT_BYTES:
-                raise ValidationError({"archivo": "El archivo supera el límite de 10 MB."})
+            if content_type.startswith("image/"):
+                limite_imagen = obtener_limite_imagen_bytes()
+                if upload.size > limite_imagen:
+                    raise ValidationError({
+                        "archivo": f"La imagen supera el límite global de {limite_imagen // (1024 * 1024)} MB."
+                    })
+            elif upload.size > MAX_ATTACHMENT_BYTES:
+                raise ValidationError({"archivo": "El archivo PDF supera el límite de 10 MB."})
             signature = upload.read(8)
             upload.seek(0)
             valid_signature = {
