@@ -83,6 +83,7 @@ class Mascota(models.Model):
     desparasitado = models.BooleanField("Desparasitado", default=False)
     necesidades_especiales = models.TextField("Necesidades especiales", blank=True)
     estado_salud_general = models.TextField("Estado de salud general", blank=True)
+    alerta_clinica = models.CharField("Alerta clínica", max_length=2000, blank=True, default="")
     evidencia_vacunacion = models.ImageField("Evidencia de vacunación", upload_to="mascotas/veterinaria/vacunacion/", blank=True, null=True)
     evidencia_esterilizacion = models.ImageField("Evidencia de esterilización", upload_to="mascotas/veterinaria/esterilizacion/", blank=True, null=True)
 

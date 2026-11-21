@@ -120,12 +120,20 @@ class MascotaSerializer(serializers.ModelSerializer):
     evidencia_vacunacion = serializers.ImageField(read_only=True)
     evidencia_esterilizacion = serializers.ImageField(read_only=True)
     registros_clinicos = serializers.SerializerMethodField()
+    alerta_clinica = serializers.SerializerMethodField()
+
+    def _es_albergue_propietario(self, mascota):
+        request = self.context.get("request")
+        return bool(request and getattr(request.user, "rol", None) == "ALBERGUE"
+                    and mascota.albergue.usuario_id == request.user.pk)
 
     def get_registros_clinicos(self, mascota):
-        request = self.context.get("request")
-        if not request or getattr(request.user, "rol", None) != "ALBERGUE" or mascota.albergue.usuario_id != request.user.pk:
+        if not self._es_albergue_propietario(mascota):
             return []
         return RegistroClinicoSerializer(mascota.registros_clinicos.all(), many=True).data
+
+    def get_alerta_clinica(self, mascota) -> str:
+        return mascota.alerta_clinica if self._es_albergue_propietario(mascota) else ""
 
     class Meta:
         model = Mascota
@@ -154,6 +162,7 @@ class MascotaSerializer(serializers.ModelSerializer):
             "desparasitado",
             "necesidades_especiales",
             "estado_salud_general",
+            "alerta_clinica",
             "evidencia_vacunacion",
             "evidencia_esterilizacion",
             "registros_clinicos",
@@ -266,6 +275,7 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             "desparasitado",
             "necesidades_especiales",
             "estado_salud_general",
+            "alerta_clinica",
             "evidencia_vacunacion",
             "evidencia_esterilizacion",
             "eliminar_evidencia_vacunacion",

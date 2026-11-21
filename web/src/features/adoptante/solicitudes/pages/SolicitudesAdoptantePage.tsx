@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
 import { errorMessage, spring, django, downloadDjango } from '../../../../services/http';
 import type { ContratoAdopcion, SolicitudAdopcion } from '../../../../services/types';
+import AlertaClinicaAdoptante from './AlertaClinicaAdoptante';
 
 type Page<T> = T[] | { results: T[] };
 
@@ -79,10 +80,12 @@ export default function SolicitudesAdoptantePage() {
           {contract.url_firma && <a href={contract.url_firma} target="_blank" rel="noreferrer">Abrir firma electrónica</a>}
           {contract.documento_disponible && <button className="secondary" onClick={() => void downloadContract(contract)}>Descargar contrato firmado</button>}
         </div>)}
-        {item.estado === 'ENTREGADA' && <button
-          type="button" className="secondary" disabled={downloadingFichaId !== null}
-          onClick={() => void downloadFicha(item.id)}
-        >{downloadingFichaId === item.id ? 'Descargando ficha veterinaria…' : 'Descargar ficha veterinaria'}</button>}
+        {item.estado === 'ENTREGADA' && <>
+          <AlertaClinicaAdoptante solicitudId={item.id} />
+          <button type="button" className="secondary" disabled={downloadingFichaId !== null}
+            onClick={() => void downloadFicha(item.id)}
+          >{downloadingFichaId === item.id ? 'Descargando ficha veterinaria…' : 'Descargar ficha veterinaria'}</button>
+        </>}
         <Link className="button" to={`/adoptante/solicitudes/${item.id}`}>Ver seguimiento</Link>
         <Link className="button secondary" to={`/adoptante/mensajes?solicitud=${item.id}${item.mascota ? `&mascota=${item.mascota}` : ''}`}>
           Abrir chat con el albergue

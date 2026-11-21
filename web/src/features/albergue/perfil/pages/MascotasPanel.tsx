@@ -21,6 +21,7 @@ const initial = {
   desparasitado: false,
   necesidades_especiales: '',
   estado_salud_general: '',
+  alerta_clinica: '',
 };
 const choices = {
   especie: ['PERRO', 'GATO', 'OTRO'],
@@ -260,6 +261,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
           desparasitado: pet.desparasitado ?? false,
           necesidades_especiales: pet.necesidades_especiales ?? '',
           estado_salud_general: pet.estado_salud_general ?? '',
+          alerta_clinica: pet.alerta_clinica ?? '',
         });
         setEvidenceCurrent({ vacunacion: pet.evidencia_vacunacion ?? null, esterilizacion: pet.evidencia_esterilizacion ?? null });
         setEvidencePreviews({});
@@ -451,6 +453,22 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
               </div>;
             })}
             <label>Necesidades especiales<textarea maxLength={2000} value={draft.necesidades_especiales} onChange={e => setDraft({ ...draft, necesidades_especiales: e.target.value })} placeholder="Medicación, dieta específica u otros cuidados" /></label>
+            <label>
+              Alerta clínica
+              <textarea maxLength={2000} value={draft.alerta_clinica} aria-describedby="alerta-clinica-ayuda"
+                onChange={e => setDraft({ ...draft, alerta_clinica: e.target.value })}
+                placeholder="Condición médica o alergia que requiere cuidados específicos" />
+            </label>
+            <small id="alerta-clinica-ayuda" className="muted">
+              El adoptante titular podrá verla después de la entrega. Guarda los cambios para actualizarla o retirarla.
+            </small>
+            {draft.alerta_clinica && (
+              <div className="actions">
+                <button type="button" className="secondary" onClick={() => setDraft({ ...draft, alerta_clinica: '' })}>
+                  Quitar alerta clínica
+                </button>
+              </div>
+            )}
           </section>
           <div className="pet-ai-tools">
             <p className="muted">{id

@@ -1404,6 +1404,18 @@ textarea:focus-visible {
   color: #856404;
 }
 
+.alerta-clinica {
+  margin-block: 0.75rem;
+}
+.alerta-clinica h3 {
+  margin: 0 0 0.35rem;
+}
+.alerta-clinica p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .alert--info {
   background: #d1ecf1;
   border: 1px solid #bee5eb;

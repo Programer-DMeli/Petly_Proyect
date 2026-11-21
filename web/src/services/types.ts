@@ -166,6 +166,7 @@ export interface AdminPet {
   desparasitado: boolean;
   necesidades_especiales: string;
   estado_salud_general: string;
+  alerta_clinica?: string;
   evidencia_vacunacion: string | null;
   evidencia_esterilizacion: string | null;
   registros_clinicos?: RegistroClinico[];

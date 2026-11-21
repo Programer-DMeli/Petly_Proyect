@@ -243,18 +243,29 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
         response["Cache-Control"] = "private, no-store"
         return response
 
-    @action(detail=True, methods=["get"], url_path="ficha-veterinaria", permission_classes=[IsAdoptante])
-    def ficha_veterinaria(self, request, pk=None):
-        solicitud = generics.get_object_or_404(self.get_queryset(), pk=pk, adoptante_id=request.user.pk)
+    def _solicitud_entregada_del_titular(self, pk):
+        solicitud = generics.get_object_or_404(self.get_queryset(), pk=pk, adoptante_id=self.request.user.pk)
         if solicitud.estado != SolicitudAdopcion.Estado.ENTREGADA:
             raise PermissionDenied("La ficha veterinaria estará disponible cuando se confirme la entrega.")
+        return solicitud
 
+    @action(detail=True, methods=["get"], url_path="ficha-veterinaria", permission_classes=[IsAdoptante])
+    def ficha_veterinaria(self, request, pk=None):
+        solicitud = self._solicitud_entregada_del_titular(pk)
         response = FileResponse(
             generar_ficha_veterinaria(solicitud.mascota), as_attachment=True,
             filename=f"ficha_veterinaria_solicitud_{solicitud.pk}.pdf", content_type="application/pdf",
         )
         response["Cache-Control"] = "private, no-store"
         return response
+
+    @action(detail=True, methods=["get"], url_path="alerta-clinica", permission_classes=[IsAdoptante])
+    def alerta_clinica(self, request, pk=None):
+        solicitud = self._solicitud_entregada_del_titular(pk)
+        return Response(
+            {"alerta_clinica": solicitud.mascota.alerta_clinica},
+            headers={"Cache-Control": "private, no-store"},
+        )
 
     def perform_create(self, serializer):
         # Recheck under a row lock so concurrent submissions cannot both pass validation.
