@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { contactoAfiche } from '../../../../services/afichesApi';
 import Feedback from '../../../../components/Feedback';
 import { django, json, errorMessage, mediaUrl } from '../../../../services/http';
+import { useMaxImagenMb } from '../../../../services/useMaxImagenMb';
 import type { AdminPet, Page, RegistroClinico, Shelter, TipoRegistroClinico } from '../../../../services/types';
 import PosterMascota from './PosterMascota';
 const initial = {
@@ -53,6 +54,7 @@ const tiposClinicos: Record<TipoRegistroClinico, string> = {
 type RegistroEnEdicion = Omit<RegistroClinico, 'id'> & { id?: number; clave: string; modificado: boolean };
 
 export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: Shelter }) {
+  const maxImagenMb = useMaxImagenMb();
   const [items, setItems] = useState<AdminPet[]>([]);
   const [draft, setDraft] = useState(initial);
   const [registros, setRegistros] = useState<RegistroEnEdicion[]>([]);
@@ -135,12 +137,12 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
     setSuccess('');
     try {
       if (!id && !file) throw new Error('Agrega una fotografía JPEG o PNG.');
-      if (file && (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024))
-        throw new Error('La fotografía debe ser JPEG/PNG y no superar 5 MB.');
+      if (file && (!['image/jpeg', 'image/png'].includes(file.type) || file.size > maxImagenMb * 1024 * 1024))
+        throw new Error(`La fotografía debe ser JPEG/PNG y no superar ${maxImagenMb} MB.`);
       const invalidEvidence: Record<string, string> = {};
       for (const [key, evidence] of [['vacunacion', vaccinationFile], ['esterilizacion', sterilizationFile]] as const) {
-        if (evidence && (!['image/jpeg', 'image/png'].includes(evidence.type) || evidence.size > 5 * 1024 * 1024))
-          invalidEvidence[key] = 'Adjunta una imagen JPEG o PNG de hasta 5 MB.';
+        if (evidence && (!['image/jpeg', 'image/png'].includes(evidence.type) || evidence.size > maxImagenMb * 1024 * 1024))
+          invalidEvidence[key] = `Adjunta una imagen JPEG o PNG de hasta ${maxImagenMb} MB.`;
       }
       setEvidenceErrors(invalidEvidence);
       if (Object.keys(invalidEvidence).length) throw new Error('Revisa las evidencias veterinarias indicadas.');
@@ -447,7 +449,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
               const preview = evidencePreviews[key] ?? (stored && !removing ? mediaUrl(stored) : null);
               return <div className="pet-vet-evidence" key={key}>
                 <label>{title}<input type="file" accept="image/jpeg,image/png" onChange={e => { const selectedFile = e.target.files?.[0] ?? null; select(selectedFile); setRemoving(false); setEvidenceErrors(old => ({ ...old, [key]: '' })); if (selectedFile) { const reader = new FileReader(); reader.onload = () => { if (typeof reader.result === 'string') setEvidencePreviews(old => ({ ...old, [key]: reader.result as string })); }; reader.readAsDataURL(selectedFile); } else setEvidencePreviews(old => { const next = { ...old }; delete next[key]; return next; }); }} /></label>
-                <small className="muted">JPEG o PNG, máximo 5 MB.</small>
+                <small className="muted">JPEG o PNG, máximo {maxImagenMb} MB.</small>
                 {preview && <div className="pet-vet-preview"><img src={preview} alt={`Vista previa: ${title.toLowerCase()}`} /><button type="button" className="secondary" onClick={() => { select(null); setEvidencePreviews(old => { const next = { ...old }; delete next[key]; return next; }); if (stored) setRemoving(true); }}>Eliminar evidencia</button></div>}
                 {evidenceErrors[key] && <p className="feedback error" role="alert">{evidenceErrors[key]}</p>}
               </div>;
@@ -496,7 +498,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
             <p className="muted pet-ai-tools__note">Las sugerencias no se guardan automáticamente. Revisa los cambios y confirma con “Guardar cambios de mascota”.</p>
           </div>
           <label>
-            {id ? 'Reemplazar fotografía (opcional)' : 'Fotografía JPEG/PNG, máximo 5 MB'}
+            {id ? 'Reemplazar fotografía (opcional)' : `Fotografía JPEG/PNG, máximo ${maxImagenMb} MB`}
             <input
               key={inputVersion}
               type="file"

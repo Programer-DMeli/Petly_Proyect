@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
 import { django, errorMessage } from '../../../../services/http';
+import { useMaxImagenMb } from '../../../../services/useMaxImagenMb';
 import FotoCasoExitoPrivada, { type FotoCasoExito } from '../../../shared/FotoCasoExitoPrivada';
 
 type AdopcionDisponible = {
@@ -27,7 +28,6 @@ type Coleccion<T> = T[] | { results: T[]; next: string | null };
 
 const API = '/api/contratos/casos-exito/';
 const MAX_FOTOS = 5;
-const MAX_FOTO_BYTES = 5 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 
 function rows<T>(data: Coleccion<T>) {
@@ -53,6 +53,7 @@ async function cargarHistorias(): Promise<CasoExito[]> {
 }
 
 export default function CasosExitoPage() {
+  const maxImagenMb = useMaxImagenMb();
   const [adopciones, setAdopciones] = useState<AdopcionDisponible[]>([]);
   const [historias, setHistorias] = useState<CasoExito[]>([]);
   const [solicitudId, setSolicitudId] = useState('');
@@ -94,8 +95,8 @@ export default function CasosExitoPage() {
       return;
     }
     if (seleccion.some(file => !['image/jpeg', 'image/png'].includes(file.type)
-      || file.size <= 0 || file.size > MAX_FOTO_BYTES)) {
-      setError('Cada foto debe ser JPEG o PNG y pesar hasta 5 MB.');
+      || file.size <= 0 || file.size > maxImagenMb * 1024 * 1024)) {
+      setError(`Cada foto debe ser JPEG o PNG y pesar hasta ${maxImagenMb} MB.`);
       setFotos([]);
       return;
     }
@@ -163,7 +164,7 @@ export default function CasosExitoPage() {
               value={historia} onChange={event => setHistoria(event.target.value)}
               placeholder="¿Cómo fue la llegada a casa? ¿Qué momento especial quisieras compartir?" />
           </label>
-          <label htmlFor="caso-exito-fotos">Fotos de tu historia (JPEG o PNG; hasta 5 fotos de 5 MB)
+          <label htmlFor="caso-exito-fotos">Fotos de tu historia (JPEG o PNG; hasta 5 fotos de {maxImagenMb} MB cada una)
             <input id="caso-exito-fotos" type="file" accept="image/jpeg,image/png" multiple required
               onChange={event => seleccionarFotos(event.currentTarget.files)} />
           </label>

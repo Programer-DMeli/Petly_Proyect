@@ -38,6 +38,7 @@ import PerfilPublicoAlberguePage from '../features/shared/PerfilPublicoAlbergueP
 import AnaliticaAdopcionesPage from '../features/administracion/analitica/pages/AnaliticaAdopcionesPage';
 import RolesUsuariosPage from '../features/administracion/usuarios/pages/RolesUsuariosPage';
 import AuditoriaPage from '../features/administracion/auditoria/pages/AuditoriaPage';
+import ConfiguracionGlobalPage from '../features/administracion/configuracion/pages/ConfiguracionGlobalPage';
 import PrivacidadPage from '../features/adoptante/perfil/pages/PrivacidadPage';
 import CuentaEliminadaPage from '../features/adoptante/perfil/pages/CuentaEliminadaPage';
 
@@ -127,6 +128,7 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         children: [
+          { path: 'configuracion-global', element: <ConfiguracionGlobalPage /> },
           { path: 'analitica/adopciones', element: <AnaliticaAdopcionesPage /> },
           { path: 'usuarios', element: <RolesUsuariosPage /> },
           { path: 'auditoria', element: <AuditoriaPage /> },

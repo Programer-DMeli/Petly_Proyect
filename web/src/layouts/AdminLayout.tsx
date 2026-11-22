@@ -7,6 +7,7 @@ export default function AdminLayout() {
       {pathname === '/administracion/albergues' && <AdminWelcome />}
       <div id="herramientas-admin">
         <Link to="/administracion/compatibilidad">Configurar pesos de compatibilidad</Link>
+        <Link to="/administracion/configuracion-global">Configuración global</Link>
         <Outlet />
       </div>
     </div>
