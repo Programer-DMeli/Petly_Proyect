@@ -280,6 +280,18 @@ class SolicitudAdopcionSprint2APITest(TestCase):
             mascota=self.mascota, albergue=self.albergue,
         )
 
+    def test_listado_incluye_albergue_para_resena_de_adopcion_entregada(self):
+        solicitud = self._decision_request()
+        solicitud.estado = SolicitudAdopcion.Estado.ENTREGADA
+        solicitud.save(update_fields=["estado"])
+
+        respuesta = self.client.get("/api/acceso/solicitudes/")
+        self.assertEqual(respuesta.status_code, 200)
+        filas = respuesta.data["results"] if isinstance(respuesta.data, dict) else respuesta.data
+        fila = next(fila for fila in filas if fila["id"] == solicitud.pk)
+        self.assertEqual(fila["albergue"], self.albergue.pk)
+        self.assertEqual(fila["estado"], "ENTREGADA")
+
     def test_titular_cancela_y_se_conserva_evento_fecha(self):
         solicitud = self._decision_request()
         response = self.client.post(f"/api/acceso/solicitudes/{solicitud.pk}/cancelar/")

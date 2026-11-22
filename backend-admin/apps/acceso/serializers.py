@@ -267,6 +267,7 @@ class SolicitudAdopcionListSerializer(RespuestasPrivadasMixin, SolicitudAdopcion
     class Meta(SolicitudAdopcionResumenSerializer.Meta):
         fields = [
             *SolicitudAdopcionResumenSerializer.Meta.fields,
+            "albergue",
             "mensaje_postulante",
             "respuestas_cuestionario",
         ]

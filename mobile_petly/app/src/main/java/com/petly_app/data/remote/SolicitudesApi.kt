@@ -4,7 +4,14 @@ import com.petly_app.data.model.SolicitudAdopcionDraft
 import retrofit2.http.*
 
 data class CrearSolicitud(val mascotaId: Long, val mensajePostulante: String, val respuestasCuestionario: SolicitudAdopcionDraft)
-data class SolicitudPersistida(val id: Long, val mascota: Long, val estado: String, val mascota_nombre: String?, val respuestas_cuestionario: SolicitudAdopcionDraft?)
+data class SolicitudPersistida(
+    val id: Long,
+    val mascota: Long,
+    val estado: String,
+    val mascota_nombre: String?,
+    val respuestas_cuestionario: SolicitudAdopcionDraft?,
+    val albergue: Long? = null
+)
 data class HistorialSolicitud(val estadoActual: String, val eventos: List<EventoSolicitud>)
 data class EventoSolicitud(val id: Long, val tipo_display: String, val descripcion: String?)
 interface SolicitudesApi {

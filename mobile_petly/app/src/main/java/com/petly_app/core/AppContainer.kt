@@ -53,6 +53,7 @@ class AppContainer(context: Context) {
     val resolver = contentResolver
     val favoritosApi = privateApi.create(FavoritosApi::class.java)
     val solicitudesApi = privateApi.create(SolicitudesApi::class.java)
+    val resenasApi = privateApi.create(ResenasApi::class.java)
     val seguimientosApi = privateApi.create(SeguimientosApi::class.java)
     val reportesSeguimiento = ReportesSeguimientoRepository(
         seguimientosApi, privateApi.create(ReportesSeguimientoApi::class.java), contentResolver

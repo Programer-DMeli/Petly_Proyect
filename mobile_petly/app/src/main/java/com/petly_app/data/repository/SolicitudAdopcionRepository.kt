@@ -17,6 +17,7 @@ import retrofit2.HttpException
 object SolicitudAdopcionManager {
     private var generation = 0
     var api: SolicitudesApi? = null
+    var resenasApi: ResenasApi? = null
     var fichaVeterinariaApi: FichaVeterinariaApi? = null
     var fotosApi: FotosHogarApi? = null
     var resolver: android.content.ContentResolver? = null
@@ -29,7 +30,7 @@ object SolicitudAdopcionManager {
     val error = errores.asStateFlow()
     suspend fun fotosGuardadas(mascotaId: Long): List<FotoHogarDto> = ids[mascotaId]?.let { fotosApi?.listar(it) } ?: emptyList()
 
-    fun clear() { generation++; errores.value = ""; draftMap.clear(); _submitted.value = emptyList(); api = null; fotosApi = null; fichaVeterinariaApi = null; ids.clear(); estados.clear(); fotosLocales.clear() }
+    fun clear() { generation++; errores.value = ""; draftMap.clear(); _submitted.value = emptyList(); api = null; fotosApi = null; fichaVeterinariaApi = null; resenasApi = null; ids.clear(); estados.clear(); fotosLocales.clear() }
 
     suspend fun listarSolicitudes(): List<SolicitudPersistida> {
         val service = checkNotNull(api)
