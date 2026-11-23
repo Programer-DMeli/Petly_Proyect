@@ -1,7 +1,6 @@
 package com.petly.solicitudes;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 import com.petly.notificaciones.PreferenciasNotificacionService;
@@ -20,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class EnviarRecordatoriosSeguimiento {
 
     private static final Logger log = LoggerFactory.getLogger(EnviarRecordatoriosSeguimiento.class);
-    private static final ZoneId ZONA_PETLY = ZoneId.of("America/Lima");
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy 'a las' HH:mm");
 
     private final RecordatorioSeguimientoRepository recordatorios;
@@ -46,8 +44,7 @@ public class EnviarRecordatoriosSeguimiento {
     }
 
     @Transactional
-    public void enviarPendiente(Long seguimientoId, int anticipacionDias, String mascotaNombre) {
-        LocalDateTime ahora = LocalDateTime.now(ZONA_PETLY);
+    public void enviarPendiente(Long seguimientoId, int anticipacionDias, String mascotaNombre, LocalDateTime ahora) {
         var recordatorio = recordatorios
                 .bloquearPorSeguimientoYAnticipacion(seguimientoId, anticipacionDias).orElse(null);
         if (recordatorio == null || recordatorio.getEstado() != RecordatorioSeguimiento.Estado.PENDIENTE

@@ -1,5 +1,5 @@
 from contextlib import closing
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as utc_timezone
 from io import BytesIO
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -195,30 +195,55 @@ class AlertasIncumplimientoTest(APITestCase):
         self.assertEqual(ExpedientePostAdopcion.objects.filter(solicitud=self.solicitud).count(), 1)
         self.assertEqual(ExpedientePostAdopcion.objects.get(solicitud=self.solicitud).cerrado_por, self.albergue_user)
 
-    @override_settings(INTERNAL_API_SECRET="solo-pruebas", RECORDATORIOS_ANTICIPACION_HORAS=24)
-    def test_recordatorios_solo_dentro_de_ventana_y_para_el_titular(self):
+    @override_settings(INTERNAL_API_SECRET="solo-pruebas", RECORDATORIOS_ANTICIPACION_HORAS=72)
+    def test_recordatorios_a_tres_y_un_dia_sin_duplicar_y_para_el_titular(self):
         self.adoptante.usuario_spring_id = 123
         self.adoptante.save(update_fields=["usuario_spring_id"])
-        proxima = self.crear_seguimiento(self.solicitud, fecha=timezone.now() + timedelta(hours=3))
-        self.crear_seguimiento(self.solicitud, fecha=timezone.now() + timedelta(days=2))
-        visita = self.crear_seguimiento(self.solicitud, fecha=timezone.now() + timedelta(hours=3))
+        limite = datetime(2026, 12, 10, 17, tzinfo=utc_timezone.utc)
+        proxima = self.crear_seguimiento(self.solicitud, fecha=limite)
+        otra = self.crear_seguimiento(self.solicitud, fecha=limite)
+        cancelada = self.crear_seguimiento(self.solicitud, fecha=limite)
+        visita = self.crear_seguimiento(self.solicitud, fecha=limite)
         visita.requiere_reporte = False
         visita.save(update_fields=["requiere_reporte"])
 
         feed = "/api/contratos/reportes/feed-recordatorios/"
         self.assertEqual(self.client.post(feed).status_code, 401)
-        for _ in range(2):
-            self.assertEqual(self.client.post(feed, HTTP_X_INTERNAL_SECRET="solo-pruebas").status_code, 200)
-        self.assertEqual(SolicitudEvento.objects.get(tipo="RECORDATORIO_REPORTE").seguimiento_id, proxima.pk)
-
         self.client.force_authenticate(self.adoptante)
         bandeja = "/api/acceso/notificaciones/"
-        aviso = self.client.get(bandeja).data["results"][0]
-        self.assertEqual(aviso["seguimiento_id"], proxima.pk)
-        self.assertEqual(aviso["mascota_nombre"], "Luna")
-        self.assertIsNotNone(aviso["fecha_limite"])
+
+        def sincronizar(ahora):
+            with patch("django.utils.timezone.now", return_value=ahora):
+                for _ in range(2):
+                    respuesta = self.client.post(feed, HTTP_X_INTERNAL_SECRET="solo-pruebas")
+                    self.assertEqual(respuesta.status_code, 200)
+                return self.client.get(bandeja).data["results"]
+
+        self.assertEqual(sincronizar(limite - timedelta(days=3, seconds=1)), [])
+        avisos = sincronizar(limite - timedelta(days=3))
+        self.assertCountEqual([(a["seguimiento_id"], a["tipo"]) for a in avisos], [
+            (proxima.pk, "RECORDATORIO_REPORTE"), (otra.pk, "RECORDATORIO_REPORTE"),
+            (cancelada.pk, "RECORDATORIO_REPORTE"),
+        ])
+        self.assertTrue(all(a["mascota_nombre"] == "Luna" and a["fecha_limite"] for a in avisos))
+
         ReporteBienestarPostAdopcion.objects.create(seguimiento=proxima, estado_bienestar="BUENO")
-        self.assertEqual(self.client.get(bandeja).data["results"], [])
+        cancelada.estado = SeguimientoPostAdopcion.Estado.CANCELADO
+        cancelada.save(update_fields=["estado"])
+        tardia = self.crear_seguimiento(self.solicitud, fecha=limite)
+        avisos = sincronizar(limite - timedelta(days=1))
+        self.assertCountEqual([(a["seguimiento_id"], a["tipo"]) for a in avisos], [
+            (otra.pk, "REPORTE_1_DIA"), (tardia.pk, "REPORTE_1_DIA"),
+        ])
+        self.assertFalse(SolicitudEvento.objects.filter(seguimiento=visita).exists())
+        self.assertEqual(SolicitudEvento.objects.get(seguimiento=cancelada).tipo, "RECORDATORIO_REPORTE")
+        self.assertEqual(SolicitudEvento.objects.filter(seguimiento=proxima).count(), 1)
+        self.assertEqual(SolicitudEvento.objects.filter(seguimiento=otra).count(), 2)
+        self.assertEqual(SolicitudEvento.objects.filter(seguimiento=tardia).count(), 1)
+        self.assertEqual(sincronizar(limite), [])
+
+        self.client.force_authenticate(User.objects.create_user(username="otro-titular"))
+        self.assertEqual(sincronizar(limite - timedelta(days=1)), [])
 
     def test_emision_idempotente_y_reporte_tardio_con_foto_privada(self):
         url = f"{self.seguimientos_url}{self.seguimiento.pk}/"

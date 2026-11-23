@@ -9,12 +9,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -28,6 +31,17 @@ class RecordatoriosAdoptanteControllerTest {
     @Autowired UsuarioRepository usuarios;
     @Autowired JwtService jwt;
     @Autowired RecordatorioSeguimientoRepository recordatorios;
+
+    @Test
+    void persisteDosAnticipacionesPorSeguimientoYRechazaUnaRepetida() {
+        var titular = usuario("persistencia");
+        recordatorios.saveAllAndFlush(List.of(
+                new RecordatorioSeguimiento(106L, titular.getId(), LIMITE, 3),
+                new RecordatorioSeguimiento(106L, titular.getId(), LIMITE, 1)));
+        assertEquals(2, recordatorios.findByAdoptanteIdOrderByFechaLimiteAsc(titular.getId()).size());
+        assertThrows(DataIntegrityViolationException.class, () -> recordatorios.saveAndFlush(
+                new RecordatorioSeguimiento(106L, titular.getId(), LIMITE, 1)));
+    }
 
     @Test
     void listaSoloLosReportesPendientesDelTitularSinRomperElHistorial() throws Exception {
