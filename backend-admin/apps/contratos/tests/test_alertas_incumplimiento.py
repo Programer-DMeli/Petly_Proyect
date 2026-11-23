@@ -1,9 +1,11 @@
+from contextlib import closing
 from datetime import timedelta
 from io import BytesIO
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from PIL import Image
+from pypdf import PdfReader
 
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -150,6 +152,48 @@ class AlertasIncumplimientoTest(APITestCase):
         self.assertEqual(expediente["evaluacion"]["calificacion_adaptacion"], 4)
         self.assertIsNotNone(expediente["evaluacion"]["cerrado_en"])
         self.assertEqual(expediente["cronograma"][0]["estado_entrega"], "FUERA_DE_PLAZO")
+
+    def test_descarga_certificado_solo_del_expediente_cerrado_y_cierre_unico(self):
+        actividad = f"{self.seguimientos_url}{self.seguimiento.pk}/"
+        expediente = f"/api/contratos/expedientes/{self.solicitud.pk}/"
+        certificado = expediente + "certificado/"
+        evaluar = {"calificacion_adaptacion": 4, "observaciones_cierre": "Bien adaptada"}
+        ReporteBienestarPostAdopcion.objects.create(seguimiento=self.seguimiento, estado_bienestar="BUENO")
+
+        self.client.force_authenticate(self.albergue_user)
+        evaluacion = self.client.post(actividad + "evaluar-expediente/", evaluar)
+        self.assertEqual(evaluacion.status_code, 200)
+        self.assertEqual(self.client.get(certificado).status_code, 409)
+
+        self.client.force_authenticate(self.otro_albergue_user)
+        self.assertEqual(self.client.get(expediente).status_code, 404)
+        self.assertEqual(self.client.post(actividad + "evaluar-expediente/", {"calificacion_adaptacion": 1}).status_code, 404)
+        self.assertEqual(self.client.post(actividad + "cerrar-expediente/", {"confirmar": True}).status_code, 404)
+
+        self.client.force_authenticate(self.albergue_user)
+        primer_cierre = self.client.post(actividad + "cerrar-expediente/", {"confirmar": True})
+        self.assertEqual(primer_cierre.status_code, 201)
+        cerrado = primer_cierre.data["expediente_cierre"]
+        self.assertEqual(cerrado["id"], evaluacion.data["id"])
+        self.assertEqual(cerrado["calificacion_adaptacion"], 4)
+        self.assertEqual(self.client.post(actividad + "evaluar-expediente/", evaluar).status_code, 409)
+        self.assertEqual(self.client.post(actividad + "cerrar-expediente/", {"confirmar": True}).data, primer_cierre.data)
+        self.assertEqual(self.client.get(expediente).data["evaluacion"], cerrado)
+
+        for _ in range(2):
+            with closing(self.client.get(certificado)) as descarga:
+                self.assertEqual(descarga.status_code, 200)
+                self.assertEqual(descarga["Content-Type"], "application/pdf")
+                self.assertIn(f"certificado-seguimiento-{self.solicitud.pk}.pdf", descarga["Content-Disposition"])
+                texto = "\n".join(p.extract_text() for p in PdfReader(BytesIO(b"".join(descarga.streaming_content))).pages)
+                for dato in ("Luna", "Huellitas", "adoptante", f"#{self.solicitud.pk}", "4/5", "Bien adaptada"):
+                    self.assertIn(dato, texto)
+
+        for usuario in (self.adoptante, self.otro_albergue_user):
+            self.client.force_authenticate(usuario)
+            self.assertEqual(self.client.get(certificado).status_code, 404)
+        self.assertEqual(ExpedientePostAdopcion.objects.filter(solicitud=self.solicitud).count(), 1)
+        self.assertEqual(ExpedientePostAdopcion.objects.get(solicitud=self.solicitud).cerrado_por, self.albergue_user)
 
     @override_settings(INTERNAL_API_SECRET="solo-pruebas", RECORDATORIOS_ANTICIPACION_HORAS=24)
     def test_recordatorios_solo_dentro_de_ventana_y_para_el_titular(self):
