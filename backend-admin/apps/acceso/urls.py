@@ -20,6 +20,7 @@ from .kyc_views import VerificacionKycViewSet
 from .dispositivos import GestionarPushView, VincularPushView
 from .eventos_avisos import eventos_avisos
 from .analitica import AnaliticaAdopcionesView
+from .analitica_exportaciones import ExportarAnaliticaAdopcionesView
 from .roles_internos import SincronizarRolInternoView
 from .auditoria_interna import FeedEventosAuditoriaInternoView
 from .privacidad import BajaDatosAdoptanteInternoView, ExportarDatosAdoptanteInternoView
@@ -41,6 +42,7 @@ from .fotos_hogar import FotosHogarView, FotoHogarView
 urlpatterns = [
     path("notificaciones/eventos/", eventos_avisos, name="eventos_avisos"),
     path("analitica/adopciones/", AnaliticaAdopcionesView.as_view(), name="analitica_adopciones"),
+    path("analitica/adopciones/exportar/", ExportarAnaliticaAdopcionesView.as_view(), name="analitica_adopciones_exportar"),
     path("notificaciones/dispositivos/", VincularPushView.as_view()),
     path("notificaciones/dispositivos/rotar/", GestionarPushView.as_view(), {"operacion": "rotar"}),
     path("notificaciones/dispositivos/revocar/", GestionarPushView.as_view(), {"operacion": "revocar"}),
