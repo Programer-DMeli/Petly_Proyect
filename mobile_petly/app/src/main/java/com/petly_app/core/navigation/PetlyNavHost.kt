@@ -37,7 +37,8 @@ import com.petly_app.ui.screen.MainAppScreen
 import com.petly_app.ui.screen.PetlyTab
 import com.petly_app.ui.seguimiento.SeguimientosScreen
 import com.petly_app.ui.seguimiento.SeguimientosViewModel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 
 private object Routes {
@@ -54,6 +55,7 @@ fun PetlyNavHost(
     container: AppContainer,
     resetToken: String? = null,
     pushEvent: Long? = null,
+    notificationUpdates: Flow<Unit> = emptyFlow(),
     onPushHandled: () -> Unit = {},
     onResetHandled: () -> Unit = {}
 ) {
@@ -124,12 +126,9 @@ fun PetlyNavHost(
         }
         val currentEntry by nav.currentBackStackEntryAsState()
         val bandejaVisible = currentEntry?.destination?.route == Routes.NOTIFICATIONS
-        LaunchedEffect(privateGraph, isPreview, lifecycle, bandejaVisible) {
+        LaunchedEffect(privateGraph, isPreview, lifecycle, bandejaVisible, notificationUpdates) {
             if (privateGraph && !isPreview) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                while (true) {
-                    notificationsVm.load()
-                    delay(if (bandejaVisible) 10_000 else 30_000)
-                }
+                notificationsVm.observe(bandejaVisible, notificationUpdates)
             }
         }
         LaunchedEffect(authenticated, resetToken, pushEvent) {
@@ -302,7 +301,7 @@ fun PetlyNavHost(
                     arguments = listOf(navArgument("evento") { type = NavType.LongType })
                 ) { entry ->
                     val event = requireNotNull(entry.arguments).getLong("evento")
-                    AvisoSolicitudScreen(container.notificacionesApi, event) { nav.popBackStack() }
+                    AvisoSolicitudScreen(notificationsVm::openNotice, event) { nav.popBackStack() }
                 }
                 composable(Routes.NOTIFICATIONS) {
                     NotificacionesScreen(notificationsState, { notificationsVm.load() }, notificationsVm::read,

@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     PetlyNavHost(
                         container, resetToken.value, pushEvent.value,
+                        notificationUpdates = app.push.updates,
                         onPushHandled = { pushEvent.value = null; intent.data = null },
                         onResetHandled = { resetToken.value = null; intent.data = null }
                     )

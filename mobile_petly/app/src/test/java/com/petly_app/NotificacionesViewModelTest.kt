@@ -5,6 +5,8 @@ import com.petly_app.ui.perfil.NotificacionesViewModel
 import com.petly_app.ui.perfil.notificationDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.*
@@ -22,13 +24,18 @@ class NotificacionesViewModelTest {
         override suspend fun criterios() = saved
         override suspend fun guardarCriterios(criterios: CriteriosAvisoDto): CriteriosAvisoDto { saved = criterios; return saved }
         val pages = mutableListOf<Int>()
+        var countRequests = 0
         var rows = (1L..3L).map { id -> NotificacionDto(id, 10, 20, "Luna", "Huellitas",
-            "Solicitud aprobada", "Tu solicitud fue aprobada", "", "APROBADA", "2026-11-05T05:10:00Z", null) }
+            "Solicitud aprobada", "Tu solicitud fue aprobada", "", "APROBADA", "2026-11-05T05:10:0${4 - id}Z", null) }
         var failRead = false
         override suspend fun listar(page: Int): NotificacionesPagina {
             pages.add(page)
             return NotificacionesPagina(rows.drop((page - 1) * 2).take(2),
-                if (page == 1) "?page=2" else null, rows.count { it.leido_en == null })
+                if (page * 2 < rows.size) "?page=${page + 1}" else null, rows.count { it.leido_en == null })
+        }
+        override suspend fun contarNoLeidas(): NotificacionesContador {
+            countRequests++
+            return NotificacionesContador(rows.count { it.leido_en == null })
         }
         override suspend fun leer(id: Long): NotificacionDto {
             if (failRead) throw java.io.IOException()
@@ -45,11 +52,47 @@ class NotificacionesViewModelTest {
         vm.load(true); advanceUntilIdle()
         assertEquals(3, vm.state.value.items.size)
         vm.load(); advanceUntilIdle()
-        assertEquals(listOf(1, 2, 1, 2), api.pages)
+        assertEquals(listOf(1, 2, 1), api.pages)
         assertEquals(listOf(1L, 2L, 3L), vm.state.value.items.map { it.id })
         assertFalse(vm.state.value.hasMore)
         vm.load(true); advanceUntilIdle()
-        assertEquals(4, api.pages.size)
+        assertEquals(3, api.pages.size)
+    }
+
+    @Test fun pushActualizaSegunLaPantallaYLaConsultaDeRespaldoEsCadaMinuto() = runTest {
+        val api = FakeApi()
+        val vm = NotificacionesViewModel(api)
+        val push = MutableSharedFlow<Unit>()
+        val outside = backgroundScope.launch { vm.observe(inboxVisible = false, push) }
+        runCurrent()
+        assertEquals(1, api.countRequests)
+        assertTrue(api.pages.isEmpty())
+        assertEquals(3, vm.state.value.noLeidas)
+
+        push.emit(Unit)
+        runCurrent()
+        assertEquals(2, api.countRequests)
+        assertTrue(api.pages.isEmpty())
+        outside.cancel()
+
+        backgroundScope.launch { vm.observe(inboxVisible = true, push) }
+        runCurrent()
+        assertEquals(listOf(1), api.pages)
+        vm.load(more = true)
+        runCurrent()
+        advanceTimeBy(59_999)
+        runCurrent()
+        assertEquals(listOf(1, 2), api.pages)
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(listOf(1, 2, 1), api.pages)
+
+        api.rows = listOf(api.rows.first().copy(id = 4, ocurrido_en = "2026-11-05T05:10:04Z")) + api.rows
+        push.emit(Unit)
+        runCurrent()
+        assertEquals(listOf(1, 2, 1, 1), api.pages)
+        assertEquals(listOf(4L, 1L, 2L, 3L), vm.state.value.items.map { it.id })
+        assertEquals(4, vm.state.value.noLeidas)
     }
 
     @Test fun lecturaConfirmadaSeConservaYElContadorNoDisminuyeDosVeces() = runTest {

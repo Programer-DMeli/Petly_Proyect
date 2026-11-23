@@ -233,8 +233,17 @@ class NotificacionViewSet(viewsets.GenericViewSet):
         qs = self.get_queryset()
         page = self.paginate_queryset(qs)
         response = self.get_paginated_response(self.get_serializer(page, many=True).data)
-        campo = campo_lectura(request.user)
-        response.data["no_leidas"] = qs.filter(**{f"{campo}__isnull": True}).count()
+        response.data["no_leidas"] = self.sin_leer(qs).count()
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+    def sin_leer(self, qs):
+        campo = campo_lectura(self.request.user)
+        return qs.filter(**{f"{campo}__isnull": True})
+
+    @action(detail=False, methods=["get"], url_path="no-leidas")
+    def no_leidas(self, request):
+        response = Response({"no_leidas": self.sin_leer(self.get_queryset()).count()})
         response["Cache-Control"] = "private, no-store"
         return response
 
@@ -243,12 +252,12 @@ class NotificacionViewSet(viewsets.GenericViewSet):
         evento = self.get_object()
         # Reintentar conserva la fecha de la primera lectura.
         campo = campo_lectura(request.user)
-        self.get_queryset().filter(pk=evento.pk, **{f"{campo}__isnull": True}).update(**{campo: timezone.now()})
+        self.sin_leer(self.get_queryset()).filter(pk=evento.pk).update(**{campo: timezone.now()})
         evento.refresh_from_db()
         return Response(self.get_serializer(evento).data)
 
     @action(detail=False, methods=["post"], url_path="leer-todas")
     def leer_todas(self, request):
         campo = campo_lectura(request.user)
-        actualizadas = self.get_queryset().filter(**{f"{campo}__isnull": True}).update(**{campo: timezone.now()})
+        actualizadas = self.sin_leer(self.get_queryset()).update(**{campo: timezone.now()})
         return Response({"actualizadas": actualizadas})

@@ -31,6 +31,8 @@ data class NotificacionesPagina(
     val no_leidas: Int
 )
 
+data class NotificacionesContador(val no_leidas: Int)
+
 data class CriteriosAvisoDto(
     val activo: Boolean = false,
     val especie: String = "",
@@ -49,6 +51,9 @@ interface NotificacionesApi {
 
     @GET("api/acceso/notificaciones/")
     suspend fun listar(@Query("page") page: Int = 1): NotificacionesPagina
+
+    @GET("api/acceso/notificaciones/no-leidas/")
+    suspend fun contarNoLeidas(): NotificacionesContador
 
     @POST("api/acceso/notificaciones/{id}/leer/")
     suspend fun leer(@Path("id") id: Long): NotificacionDto

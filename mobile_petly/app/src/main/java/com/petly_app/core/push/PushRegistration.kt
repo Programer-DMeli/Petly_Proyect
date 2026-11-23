@@ -16,6 +16,9 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.petly_app.BuildConfig
 import com.petly_app.MainActivity
 import com.petly_app.R
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -36,6 +39,8 @@ class PushRegistration(
     private var scheduledRevocation: java.util.concurrent.ScheduledFuture<*>? = null
     private val http = OkHttpClient.Builder().followRedirects(false).callTimeout(15, TimeUnit.SECONDS).build()
     private val notifications = context.getSystemService(NotificationManager::class.java)
+    private val received = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val updates = received.asSharedFlow()
 
     val configured: Boolean get() = FirebaseApp.getApps(context).isNotEmpty()
 
@@ -116,6 +121,7 @@ class PushRegistration(
     @Synchronized
     fun show(event: Long, binding: String) {
         if (!matches(binding)) return
+        received.tryEmit(Unit)
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return

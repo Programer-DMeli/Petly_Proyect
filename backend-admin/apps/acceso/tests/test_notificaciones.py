@@ -96,6 +96,24 @@ class NotificacionesTest(APITestCase):
     def test_requiere_autenticacion(self):
         self.client.force_authenticate(None)
         self.assertEqual(self.client.get(self.url).status_code, 401)
+        self.assertEqual(self.client.get(self.url + "no-leidas/").status_code, 401)
+
+    def test_contador_solo_incluye_avisos_visibles_sin_leer_del_usuario(self):
+        evento = self.evento()
+        self.evento(visible_adoptante=False)
+        self.evento(leido_en=evento.ocurrido_en)
+        url = self.url + "no-leidas/"
+
+        response = self.client.get(url)
+        self.assertEqual(response.data, {"no_leidas": 1})
+        self.assertEqual(response["Cache-Control"], "private, no-store")
+        self.client.post(f"{self.url}{evento.pk}/leer/")
+        self.assertEqual(self.client.get(url).data, {"no_leidas": 0})
+
+        self.client.force_authenticate(self.otro)
+        self.assertEqual(self.client.get(url).data, {"no_leidas": 0})
+        self.client.force_authenticate(self.staff)
+        self.assertEqual(self.client.get(url).data, {"no_leidas": 3})
 
     def test_albergue_recibe_estados_y_mantiene_lectura_independiente(self):
         creada = self.evento()

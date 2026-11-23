@@ -13,19 +13,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.petly_app.data.remote.NotificacionDto
-import com.petly_app.data.remote.NotificacionesApi
 import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 
 @Composable
-fun AvisoSolicitudScreen(api: NotificacionesApi, event: Long, onBack: () -> Unit) {
+fun AvisoSolicitudScreen(read: suspend (Long) -> NotificacionDto, event: Long, onBack: () -> Unit) {
     var notice by remember(event) { mutableStateOf<NotificacionDto?>(null) }
     var error by remember(event) { mutableStateOf<String?>(null) }
     var retry by remember(event) { mutableIntStateOf(0) }
     LaunchedEffect(event, retry) {
         error = null
         try {
-            notice = api.leer(event)
+            notice = read(event)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: Exception) {
