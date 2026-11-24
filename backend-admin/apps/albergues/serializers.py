@@ -42,6 +42,7 @@ class AlbergueSerializer(serializers.ModelSerializer):
             "nombre",
             "descripcion",
             "direccion",
+            "foto_url",
             "telefono",
             "email",
             "sitio_web",
@@ -81,6 +82,7 @@ class AlberguePublicoSerializer(serializers.ModelSerializer):
             "nombre",
             "descripcion",
             "direccion",
+            "foto_url",
             "telefono",
             "email",
             "sitio_web",
@@ -99,6 +101,11 @@ class AlbergueCreateUpdateSerializer(serializers.ModelSerializer):
 
     propietario_spring_id = serializers.IntegerField(min_value=1, write_only=True, required=False)
     activo = OptionalBooleanField(required=False)
+
+    def validate_foto_url(self, value):
+        if value and not value.lower().startswith(("https://", "http://")):
+            raise serializers.ValidationError("Ingresa una URL HTTP o HTTPS.")
+        return value
 
     def validate(self, attrs):
         request = self.context['request']
@@ -161,6 +168,7 @@ class AlbergueCreateUpdateSerializer(serializers.ModelSerializer):
             "nombre",
             "descripcion",
             "direccion",
+            "foto_url",
             "telefono",
             "email",
             "sitio_web",

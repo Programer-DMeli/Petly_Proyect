@@ -2605,6 +2605,57 @@
   }
 }
 
+.resenas-perfil,
+.resenas-resumen {
+  display: grid;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2rem);
+  padding: clamp(1rem, 3vw, 1.75rem);
+  border: 1px solid #d9e8df;
+  border-radius: 18px;
+  background: #f5faf7;
+}
+
+.resenas-perfil {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+
+.resenas-perfil img,
+.resenas-perfil__sin-foto {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+}
+
+.resenas-perfil img { object-fit: cover; }
+.resenas-perfil__sin-foto {
+  display: grid;
+  place-items: center;
+  padding: 0.75rem;
+  text-align: center;
+  color: #35594a;
+  background: #e0eee5;
+}
+
+.resenas-perfil h2 { margin-top: 0; }
+.resenas-perfil p { overflow-wrap: anywhere; }
+.resenas-resumen { grid-template-columns: auto minmax(0, 1fr); }
+.resenas-resumen__puntaje { display: grid; gap: 0.25rem; text-align: center; }
+.resenas-resumen__puntaje strong { font-size: clamp(2.4rem, 6vw, 3.5rem); line-height: 1; }
+.resenas-resumen__puntaje .shelter-review__stars { font-size: 1.35rem; }
+.resenas-resumen__barras { display: grid; gap: 0.45rem; }
+.resenas-resumen__barras > div {
+  display: grid;
+  grid-template-columns: 2.2rem minmax(0, 1fr) minmax(2ch, auto);
+  align-items: center;
+  gap: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.resenas-resumen progress {
+  width: 100%;
+  block-size: 0.6rem;
+  accent-color: #a76b0b;
+}
 .resena-registrada {
   display: flex;
   align-items: center;
@@ -2626,3 +2677,8 @@
 .resena-dialog h2 { margin: 0; }
 .resena-dialog textarea { width: 100%; }
 .resena-dialog .shelter-review-form__stars { flex-wrap: wrap; }
+
+@media (max-width: 560px) {
+  .resenas-perfil, .resenas-resumen { grid-template-columns: minmax(0, 1fr); }
+  .resenas-perfil :is(img, .resenas-perfil__sin-foto) { max-height: 13rem; }
+}

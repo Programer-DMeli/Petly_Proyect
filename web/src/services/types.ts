@@ -120,6 +120,7 @@ export interface Shelter {
   nombre: string;
   direccion: string;
   descripcion: string;
+  foto_url?: string;
   telefono: string;
   email: string;
   capacidad_maxima: number;

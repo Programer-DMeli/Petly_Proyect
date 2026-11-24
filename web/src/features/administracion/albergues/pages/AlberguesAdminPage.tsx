@@ -12,6 +12,7 @@ const initial = {
   nombre: '',
   direccion: '',
   descripcion: '',
+  foto_url: '',
   telefono: '',
   email: '',
   sitio_web: '',
@@ -29,6 +30,7 @@ const labels = {
   telefono: 'Teléfono de contacto',
   email: 'Correo institucional',
   sitio_web: 'Sitio web',
+  foto_url: 'URL de la foto del albergue',
   horario_atencion: 'Horario de atención',
   responsable_nombre: 'Nombre del responsable',
   responsable_email: 'Correo del responsable',
@@ -112,6 +114,7 @@ export default function AlberguesAdminPage() {
       nombre: s.nombre,
       direccion: s.direccion,
       descripcion: s.descripcion,
+      foto_url: s.foto_url ?? '',
       telefono: s.telefono,
       email: s.email,
       sitio_web: s.sitio_web,
@@ -298,10 +301,10 @@ export default function AlberguesAdminPage() {
                   <label key={key}>
                     {labels[key]}
                     <input
-                      type={key.includes('email') ? 'email' : key === 'sitio_web' ? 'url' : 'text'}
+                      type={key.includes('email') ? 'email' : key === 'sitio_web' || key === 'foto_url' ? 'url' : 'text'}
                       required={key === 'nombre' || key === 'direccion'}
                       maxLength={
-                        key.includes('telefono')
+                        key === 'foto_url' ? 500 : key.includes('telefono')
                           ? 20
                           : key === 'direccion'
                             ? 255

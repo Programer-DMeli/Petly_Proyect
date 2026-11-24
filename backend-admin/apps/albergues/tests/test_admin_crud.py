@@ -16,10 +16,19 @@ class AdminCrudTest(TestCase):
     @patch('apps.acceso.authentication.spring_get')
     def test_create_edit_delete_and_owner_preserved(self, authority):
         authority.return_value = {'id':101,'correo':'owner@example.test','rol':'ALBERGUE'}
-        r=self.client.post('/api/albergues/', {'nombre':'Refugio nuevo','direccion':'Lima','capacidad_maxima':30,'propietario_spring_id':101},format='json')
+        foto = "https://refugio.example.com/fachada.jpg"
+        r=self.client.post('/api/albergues/', {
+            'nombre':'Refugio nuevo', 'direccion':'Lima', 'capacidad_maxima':30,
+            'propietario_spring_id':101, 'foto_url':foto, 'descripcion':'Refugio de animales rescatados.',
+        },format='json')
         self.assertEqual(r.status_code,201)
         self.assertEqual(r.data['propietario_spring_id'],101)
         self.assertEqual(r.data['usuario_id'],self.owner.id)
+        self.client.force_authenticate(self.owner)
+        perfil = self.client.get('/api/albergues/mi-perfil/').data
+        self.assertEqual(perfil["foto_url"], foto)
+        self.assertEqual(perfil["descripcion"], "Refugio de animales rescatados.")
+        self.client.force_authenticate(self.admin, token='token-test')
         self.assertFalse(get_user_model().objects.get(pk=self.owner.pk).has_usable_password())
         pk=r.data['id']
         self.assertEqual(self.client.patch(f'/api/albergues/{pk}/',{'nombre':'Editado','activo':False},format='json').status_code,200)

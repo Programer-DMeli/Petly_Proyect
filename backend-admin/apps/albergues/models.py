@@ -8,6 +8,7 @@ class Albergue(models.Model):
 
     nombre = models.CharField("Nombre", max_length=150)
     descripcion = models.TextField("Descripción", blank=True)
+    foto_url = models.URLField("URL de la foto", max_length=500, blank=True)
     direccion = models.CharField("Dirección", max_length=255)
     telefono = models.CharField("Teléfono", max_length=20, blank=True)
     email = models.EmailField("Email de contacto", blank=True)

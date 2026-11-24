@@ -12,7 +12,7 @@ type Resena = {
   creado_en: string;
   moderada_en: string | null;
 };
-type Albergue = { id: number; nombre: string };
+type Albergue = { id: number; nombre: string; descripcion?: string; foto_url?: string };
 const API = '/api/albergue/resenas';
 
 function fecha(value: string | null) {
@@ -31,6 +31,10 @@ export default function ResenasPage() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fotoFallida, setFotoFallida] = useState(false);
+  const cantidades = [5, 4, 3, 2, 1].map(estrellas => resenas.filter(item => item.calificacion === estrellas).length);
+  const promedio = resenas.length
+    ? resenas.reduce((suma, item) => suma + item.calificacion, 0) / resenas.length : 0;
 
   const cargar = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -105,12 +109,40 @@ export default function ResenasPage() {
   }
 
   return <section className="card shelter-reviews-management" aria-labelledby="gestion-resenas-titulo">
-    <p className="eyebrow">Comunidad</p>
     <h1 id="gestion-resenas-titulo">Reseñas recibidas</h1>
-    <p className="muted">Responde a las opiniones y controla cuáles se muestran en el perfil público.</p>
-    {albergue && <p><Link to={'/albergues/' + albergue.id}>Ver perfil público de {albergue.nombre}</Link></p>}
+    {albergue && <div className="resenas-perfil">
+      {albergue.foto_url && !fotoFallida
+        ? <img src={albergue.foto_url} alt={`Foto de ${albergue.nombre}`} referrerPolicy="no-referrer"
+          onError={() => setFotoFallida(true)} />
+        : <div className="resenas-perfil__sin-foto">Foto del albergue pendiente</div>}
+      <div>
+        <h2>{albergue.nombre}</h2>
+        <p>{albergue.descripcion?.trim() || 'Este albergue todavía no tiene una descripción.'}</p>
+        <Link to={'/albergues/' + albergue.id}>Ver perfil público de {albergue.nombre}</Link>
+      </div>
+    </div>}
     <Feedback error={error} />
     {success && <p className="shelter-reviews-management__success" role="status">{success}</p>}
+    {!loading && albergue && <section className="resenas-resumen" aria-label="Calificación del albergue">
+      <div className="resenas-resumen__puntaje">
+        <strong>{resenas.length ? promedio.toFixed(1) : '—'}</strong>
+        <span className="shelter-review__stars" aria-label={`${promedio.toFixed(1)} de 5 estrellas`}>
+          {'★'.repeat(Math.round(promedio))}{'☆'.repeat(5 - Math.round(promedio))}
+        </span>
+        <span className="muted">{resenas.length} {resenas.length === 1 ? 'reseña recibida' : 'reseñas recibidas'}</span>
+      </div>
+      <div className="resenas-resumen__barras">
+        {cantidades.map((cantidad, indice) => {
+          const estrellas = 5 - indice;
+          return <div key={estrellas}>
+            <span aria-hidden="true">{estrellas} ★</span>
+            <progress value={cantidad} max={resenas.length || 1}
+              aria-label={`${cantidad} ${cantidad === 1 ? 'opinión' : 'opiniones'} de ${estrellas} ${estrellas === 1 ? 'estrella' : 'estrellas'}`} />
+            <span aria-hidden="true">{cantidad}</span>
+          </div>;
+        })}
+      </div>
+    </section>}
     {loading ? <p role="status">Cargando reseñas…</p>
       : resenas.length === 0 ? <p className="success-stories-empty">Todavía no has recibido reseñas.</p>
         : <div className="shelter-reviews-management__list">

@@ -19,7 +19,7 @@ class AlbergueAdmin(admin.ModelAdmin):
     ordering = ('nombre',)
     
     fieldsets = (
-        ('Información básica', {'fields': ('usuario', 'usuario_link', 'nombre', 'descripcion', 'activo')}),
+        ('Información básica', {'fields': ('usuario', 'usuario_link', 'nombre', 'descripcion', 'foto_url', 'activo')}),
         ('Ubicación y contacto', {'fields': ('direccion', 'telefono', 'email', 'sitio_web', 'horario_atencion')}),
         ('Capacidad', {'fields': ('capacidad_maxima',)}),
         ('Responsable', {'fields': ('responsable_nombre', 'responsable_telefono', 'responsable_email')}),

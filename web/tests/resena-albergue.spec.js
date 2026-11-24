@@ -68,3 +68,30 @@ test('el adoptante ve el cierre, envía su opinión y recupera su reseña al reg
   await expect(page.getByRole('button', { name: 'Opiniones y reseñas' })).toHaveCount(0);
   expect(consultas).toBeGreaterThan(consultasPrevias);
 });
+
+test('el albergue ve su foto, el resumen y las opiniones recibidas', async ({ page }) => {
+  const foto = '/foto-albergue-prueba.png';
+  await page.route('**' + foto, route => route.fulfill({
+    contentType: 'image/png',
+    body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jWZkAAAAASUVORK5CYII=', 'base64'),
+  }));
+  await ingresar(page, 'ALBERGUE', (route, path) => {
+    if (path === '/api/albergues/mi-perfil/') return route.fulfill({ json: {
+      id: 9, nombre: 'Refugio Nube', descripcion: 'Cuidamos a animales rescatados.',
+      foto_url: new URL(foto, 'http://localhost:5173').href,
+    } });
+    if (path === '/api/albergue/resenas') return route.fulfill({ json: [
+      { id: 1, calificacion: 4, comentario: 'Atención amable.', estado_moderacion: 'VISIBLE', creado_en: '2026-11-24T10:00:00' },
+      { id: 2, calificacion: 5, comentario: 'Excelente atención.', estado_moderacion: 'VISIBLE', creado_en: '2026-11-24T10:00:00' },
+    ] });
+    return route.fulfill({ json: { results: [], next: null } });
+  });
+  await page.getByRole('button', { name: 'Comunidad', exact: true }).click();
+  await page.getByRole('link', { name: /Reseñas recibidas/ }).click();
+  await expect(page.getByRole('img', { name: 'Foto de Refugio Nube' })).toBeVisible();
+  await expect(page.getByText('Cuidamos a animales rescatados.')).toBeVisible();
+  const resumen = page.getByRole('region', { name: 'Calificación del albergue' });
+  await expect(resumen.getByText('4.5', { exact: true })).toBeVisible();
+  await expect(resumen.getByRole('progressbar', { name: '1 opinión de 4 estrellas' })).toBeVisible();
+  await expect(page.getByText('Atención amable.')).toBeVisible();
+});
