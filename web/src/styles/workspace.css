@@ -410,6 +410,40 @@
 .adoption-analytics__chart h2 {
   color: var(--petly-primary, #125643);
 }
+.adoption-analytics__filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(12rem, 1fr)) auto;
+  align-items: end;
+  gap: 1rem;
+}
+.adoption-analytics__filters > div:not(.adoption-analytics__exports) {
+  display: grid;
+  gap: 0.4rem;
+}
+.adoption-analytics__filters label {
+  color: var(--petly-text-muted, #62756c);
+  font-weight: 600;
+}
+.adoption-analytics__filters input {
+  min-height: 2.75rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--petly-border, #cfe4d8);
+  border-radius: 8px;
+  color: var(--petly-text, #173c30);
+  background: var(--petly-surface, #fff);
+  font: inherit;
+}
+.adoption-analytics__exports {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.adoption-analytics__period {
+  margin: -0.5rem 0 0;
+  color: var(--petly-text-muted, #62756c);
+  font-size: 0.9rem;
+}
 .adoption-analytics__summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
@@ -477,6 +511,12 @@
   background: var(--petly-surface-soft, #f7faf8);
 }
 @media (max-width: 560px) {
+  .adoption-analytics__filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .adoption-analytics__exports {
+    grid-column: auto;
+  }
   .adoption-analytics__charts {
     grid-template-columns: minmax(0, 1fr);
   }

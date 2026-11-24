@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
-import { django, errorMessage } from '../../../../services/http';
+import { django, downloadDjango, errorMessage } from '../../../../services/http';
 
 type AdopcionesPorMes = {
   anio: number;
@@ -19,7 +19,10 @@ type AnaliticaAdopciones = {
 };
 
 const API = '/api/acceso/analitica/adopciones/';
+const EXPORT_API = '/api/acceso/analitica/adopciones/exportar/';
 const MESES = new Intl.DateTimeFormat('es-PE', { month: 'short' });
+type RangoFechas = { desde: string; hasta: string };
+type FormatoExportacion = 'xlsx' | 'pdf';
 
 function nombreMes(anio: number, mes: number) {
   const abreviado = MESES.format(new Date(anio, mes - 1, 1));
@@ -87,25 +90,66 @@ export default function AnaliticaAdopcionesPage() {
   const [datos, setDatos] = useState<AnaliticaAdopciones | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [desde, setDesde] = useState('');
+  const [hasta, setHasta] = useState('');
+  const [rangoAplicado, setRangoAplicado] = useState<RangoFechas>({ desde: '', hasta: '' });
+  const [descargando, setDescargando] = useState<FormatoExportacion | null>(null);
+  const consultaActual = useRef<AbortController | null>(null);
 
-  const cargar = useCallback(async (signal?: AbortSignal) => {
+  const cargar = useCallback(async (rango: RangoFechas) => {
+    consultaActual.current?.abort();
+    const controller = new AbortController();
+    consultaActual.current = controller;
     setLoading(true);
+    setDatos(null);
     setError('');
     try {
-      const resultado = await django<AnaliticaAdopciones>(API, { signal });
-      if (!signal?.aborted) setDatos(resultado);
+      const parametros = new URLSearchParams();
+      if (rango.desde) parametros.set('desde', rango.desde);
+      if (rango.hasta) parametros.set('hasta', rango.hasta);
+      const query = parametros.toString();
+      const resultado = await django<AnaliticaAdopciones>(query ? `${API}?${query}` : API, {
+        signal: controller.signal,
+      });
+      if (!controller.signal.aborted) setDatos(resultado);
     } catch (cause) {
-      if (!signal?.aborted) setError(errorMessage(cause));
+      if (!controller.signal.aborted) setError(errorMessage(cause));
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
-    void cargar(controller.signal);
-    return () => controller.abort();
+    void cargar({ desde: '', hasta: '' });
+    return () => consultaActual.current?.abort();
   }, [cargar]);
+
+  async function aplicarRango(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const rango = { desde, hasta };
+    setRangoAplicado(rango);
+    await cargar(rango);
+  }
+
+  async function descargar(formato: FormatoExportacion) {
+    setDescargando(formato);
+    setError('');
+    try {
+      const parametros = new URLSearchParams({ formato });
+      if (rangoAplicado.desde) parametros.set('desde', rangoAplicado.desde);
+      if (rangoAplicado.hasta) parametros.set('hasta', rangoAplicado.hasta);
+      const inicio = rangoAplicado.desde || 'inicio';
+      const fin = rangoAplicado.hasta || 'actualidad';
+      await downloadDjango(
+        `${EXPORT_API}?${parametros.toString()}`,
+        `reporte-adopciones-${inicio}-a-${fin}.${formato}`,
+      );
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setDescargando(null);
+    }
+  }
 
   return <main className="adoption-analytics">
     <header className="adoption-analytics__heading">
@@ -113,8 +157,46 @@ export default function AnaliticaAdopcionesPage() {
       <h1>Adopciones</h1>
       <p className="muted">Consulta las mascotas entregadas, agrupadas por fecha y especie.</p>
     </header>
+    <form className="card adoption-analytics__filters" onSubmit={event => void aplicarRango(event)}>
+      <div>
+        <label htmlFor="analitica-desde">Desde</label>
+        <input
+          id="analitica-desde"
+          type="date"
+          value={desde}
+          max={hasta || undefined}
+          onChange={event => setDesde(event.target.value)}
+        />
+      </div>
+      <div>
+        <label htmlFor="analitica-hasta">Hasta</label>
+        <input
+          id="analitica-hasta"
+          type="date"
+          value={hasta}
+          min={desde || undefined}
+          onChange={event => setHasta(event.target.value)}
+        />
+      </div>
+      <button type="submit" disabled={loading || Boolean(desde && hasta && desde > hasta)}>
+        {loading ? 'Actualizando…' : 'Aplicar periodo'}
+      </button>
+      <div className="adoption-analytics__exports" aria-label="Exportar reporte">
+        <button type="button" className="secondary" disabled={loading || !datos || descargando !== null}
+          onClick={() => void descargar('xlsx')}>
+          {descargando === 'xlsx' ? 'Preparando Excel…' : 'Descargar Excel'}
+        </button>
+        <button type="button" className="secondary" disabled={loading || !datos || descargando !== null}
+          onClick={() => void descargar('pdf')}>
+          {descargando === 'pdf' ? 'Preparando PDF…' : 'Descargar PDF'}
+        </button>
+      </div>
+    </form>
+    <p className="adoption-analytics__period" role="status">
+      Periodo aplicado: {rangoAplicado.desde || 'sin fecha inicial'} — {rangoAplicado.hasta || 'sin fecha final'}
+    </p>
     <Feedback error={error} />
-    {error && <button type="button" className="secondary" onClick={() => void cargar()}>
+    {error && <button type="button" className="secondary" onClick={() => void cargar(rangoAplicado)}>
       Reintentar
     </button>}
     {loading ? <p role="status">Cargando estadísticas de adopción…</p>
