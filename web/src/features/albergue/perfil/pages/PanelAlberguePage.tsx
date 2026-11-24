@@ -6,6 +6,7 @@ import type { Shelter, Profile } from '../../../../services/types';
 import MascotasPanel from './MascotasPanel';
 import InfraestructuraPanel from './InfraestructuraPanel';
 import PermanenciaMetricCard from './PermanenciaMetricCard';
+import ConversionMetricCard from './ConversionMetricCard';
 type ShelterDraft = Pick<
   Shelter,
   | 'nombre'
@@ -103,7 +104,10 @@ export default function PanelAlberguePage() {
           ))}
         </nav>
       )}
-      {shelter && <PermanenciaMetricCard />}
+      {shelter && <>
+        <PermanenciaMetricCard />
+        <ConversionMetricCard />
+      </>}
       {step === 0 && (
         <>
           <h2>Mi albergue</h2>
