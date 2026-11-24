@@ -2,6 +2,7 @@ import json
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import patch
+from urllib.error import HTTPError
 from django.test import SimpleTestCase, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
@@ -49,6 +50,23 @@ class GeminiTest(SimpleTestCase):
             self.assertEqual(pet.descripcion, original)
         send.side_effect = TimeoutError()
         with self.assertRaises(ErrorProveedorDescripcion): generar_borrador(self.pet())
+
+    @patch('apps.mascotas.gemini.sleep')
+    @patch('apps.mascotas.gemini.urlopen')
+    def test_retries_once_on_provider_unavailability(self, send, pause):
+        def unavailable():
+            return HTTPError('https://generativelanguage.googleapis.com', 503, 'Unavailable', {}, BytesIO())
+
+        send.side_effect = [unavailable(), self.response({'description': 'Luna busca una familia.'})]
+        self.assertEqual(generar_borrador(self.pet()), 'Luna busca una familia.')
+        self.assertEqual(send.call_count, 2)
+        pause.assert_called_once_with(1)
+
+        send.reset_mock()
+        send.side_effect = [unavailable(), unavailable()]
+        with self.assertRaisesMessage(ErrorProveedorDescripcion, 'temporalmente ocupado'):
+            generar_borrador(self.pet())
+        self.assertEqual(send.call_count, 2)
 
     @override_settings(GEMINI_API_KEY='', PET_DESCRIPTION_API_URL='', PET_DESCRIPTION_API_TOKEN='')
     @patch('apps.mascotas.gemini.urlopen')

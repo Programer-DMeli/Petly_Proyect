@@ -151,7 +151,7 @@ public class ChatGeminiService {
     private final ObjectMapper json = new ObjectMapper();
 
     public ChatGeminiService(@Value("${GEMINI_API_KEY:}") String key,
-            @Value("${GEMINI_CHAT_MODEL:${GEMINI_MODEL:gemini-3.1-flash-lite}}") String model,
+            @Value("${GEMINI_CHAT_MODEL:${GEMINI_MODEL:gemini-3.5-flash-lite}}") String model,
             @Value("${GEMINI_TIMEOUT_SECONDS:20}") int timeout) {
         this.key = key;
         this.model = model;

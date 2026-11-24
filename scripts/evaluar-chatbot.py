@@ -27,7 +27,7 @@ classpath = next(item.get("value") for item in ET.parse(report).findall("./prope
 config = dotenv_values(root / "backend_usuario/petly_proyect/.env")
 env = dict(os.environ, **{key: value for key, value in config.items() if value is not None})
 if not env.get("GEMINI_CHAT_MODEL"):
-    env["GEMINI_CHAT_MODEL"] = env.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
+    env["GEMINI_CHAT_MODEL"] = env.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 with tempfile.TemporaryDirectory(prefix="petly-chat-eval-") as temporary:
     cases_path = args.cases
     if args.ids:

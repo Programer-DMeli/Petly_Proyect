@@ -4,6 +4,7 @@ import json
 import logging
 import re
 from io import BytesIO
+from time import monotonic, sleep
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 from PIL import Image
@@ -42,9 +43,20 @@ def generar(mascota, prompt, schema, incluir_foto=True):
     req = Request(f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
                   data=json.dumps(payload).encode(), headers={'x-goog-api-key': settings.GEMINI_API_KEY,
                   'Content-Type': 'application/json'}, method='POST')
+    logger = logging.getLogger(__name__)
     try:
-        with urlopen(req, timeout=settings.GEMINI_TIMEOUT_SECONDS) as response:
-            raw = response.read(65537)
+        started = monotonic()
+        for attempt in range(2):
+            try:
+                with urlopen(req, timeout=settings.GEMINI_TIMEOUT_SECONDS) as response:
+                    raw = response.read(65537)
+                break
+            except HTTPError as exc:
+                if exc.code != 503 or attempt != 0 or monotonic() - started >= 10:
+                    raise
+                exc.close()
+                logger.warning('Gemini respondió HTTP 503; se reintentará una vez')
+                sleep(1)
         if len(raw) > 65536:
             raise ValueError('oversized')
         envelope = json.loads(raw)
@@ -56,7 +68,11 @@ def generar(mascota, prompt, schema, incluir_foto=True):
             raise ValueError('object required')
         return result
     except (HTTPError, URLError, OSError, ValueError, KeyError, IndexError, TypeError) as exc:
-        logging.getLogger(__name__).warning('Gemini no disponible: tipo=%s http=%s', type(exc).__name__, getattr(exc, 'code', None))
+        logger.warning('Gemini no disponible: tipo=%s http=%s', type(exc).__name__, getattr(exc, 'code', None))
+        if isinstance(exc, HTTPError):
+            exc.close()
+            if exc.code == 503:
+                raise ErrorProveedorDescripcion('Gemini está temporalmente ocupado. Vuelve a intentar en unos instantes.') from exc
         raise ErrorProveedorDescripcion('Gemini no pudo generar una sugerencia válida. Puedes reintentar.') from exc
 
 

@@ -2,10 +2,12 @@ package com.petly.catalogo;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 /** Complementary explanations only. No generated score enters the rules engine. */
@@ -16,7 +18,7 @@ public class GeminiConsejosService {
     private final RestTemplate http;
     private final ObjectMapper json = new ObjectMapper();
     public GeminiConsejosService(@Value("${GEMINI_API_KEY:}") String key,
-            @Value("${GEMINI_MODEL:gemini-3.1-flash-lite}") String model,
+            @Value("${GEMINI_MODEL:gemini-3.5-flash-lite}") String model,
             @Value("${GEMINI_TIMEOUT_SECONDS:20}") int timeout) {
         this.key = key; this.model = model;
         var factory = new SimpleClientHttpRequestFactory();
@@ -64,8 +66,7 @@ public class GeminiConsejosService {
                             "properties", properties, "required", List.of("explicacion", "recomendaciones"))));
             var headers = new HttpHeaders(); headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("x-goog-api-key", key);
-            String raw = http.postForObject("https://generativelanguage.googleapis.com/v1beta/models/"
-                    + model + ":generateContent", new HttpEntity<>(body, headers), String.class);
+            String raw = requestExplanation(new HttpEntity<>(body, headers));
             if (raw == null || raw.length() > 65536) return unavailable("NO_DISPONIBLE");
             var candidate = json.readTree(raw).path("candidates").path(0);
             if (!"STOP".equals(candidate.path("finishReason").asText())) {
@@ -93,10 +94,13 @@ public class GeminiConsejosService {
             // Whitelist output: even an injected score/rank field is discarded.
             return Map.of("estado", "DISPONIBLE", "explicacion", explanation.asText(),
                     "recomendaciones", recommendations, "versionReglas", score.get("versionReglas"));
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            return unavailable("NO_DISPONIBLE");
         } catch (Exception ex) {
             Throwable cause = ex;
             while (cause.getCause() != null && cause.getCause() != cause) cause = cause.getCause();
-            if (ex instanceof org.springframework.web.client.HttpStatusCodeException httpError) {
+            if (ex instanceof HttpStatusCodeException httpError) {
                 String providerStatus = "no_identificado";
                 String category = "no_identificada";
                 try {
@@ -110,6 +114,20 @@ public class GeminiConsejosService {
                 log.warn("Gemini: error HTTP={}, estado={}, categoria={}", httpError.getStatusCode().value(), providerStatus, category);
             } else log.warn("Gemini: fallo tipo={}, causa={}", ex.getClass().getSimpleName(), cause.getClass().getSimpleName());
             return unavailable("NO_DISPONIBLE");
+        }
+    }
+    private String requestExplanation(HttpEntity<?> request) throws InterruptedException {
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent";
+        long started = System.nanoTime();
+        try {
+            return http.postForObject(url, request, String.class);
+        } catch (HttpStatusCodeException ex) {
+            if (ex.getStatusCode().value() != 503 || System.nanoTime() - started >= TimeUnit.SECONDS.toNanos(10)) {
+                throw ex;
+            }
+            log.warn("Gemini respondió HTTP 503; se reintentará una vez");
+            Thread.sleep(1000);
+            return http.postForObject(url, request, String.class);
         }
     }
     private Map<String, Object> unavailable(String state) {

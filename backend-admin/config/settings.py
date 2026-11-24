@@ -322,7 +322,7 @@ SPECTACULAR_SETTINGS = {
 
 # Gemini: secret remains on the server.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 GEMINI_TIMEOUT_SECONDS = max(1, min(60, int(os.getenv("GEMINI_TIMEOUT_SECONDS", "20"))))
 
 RECORDATORIOS_HORIZONTE_HORAS = int(os.getenv("RECORDATORIOS_HORIZONTE_HORAS", "72"))

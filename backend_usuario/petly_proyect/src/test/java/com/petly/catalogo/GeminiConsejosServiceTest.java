@@ -47,10 +47,7 @@ class GeminiConsejosServiceTest {
         assertEquals(100, ((Map<?,?>) original.get("compatibilidad")).get("porcentaje")); server.verify();
     }
     @Test void invalidHttpAndTransportResponsesAreOptional() {
-        for (var response : List.of(withServerError(),
-                withStatus(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body("{\"error\":{\"status\":\"UNAVAILABLE\",\"message\":\"This model is currently experiencing high demand.\"}}"), withSuccess("{}", MediaType.APPLICATION_JSON),
+        for (var response : List.of(withServerError(), withSuccess("{}", MediaType.APPLICATION_JSON),
                 withSuccess("not-json", MediaType.APPLICATION_JSON), withException(new java.net.SocketTimeoutException()))) {
             var service = new GeminiConsejosService("fake", "gemini-2.5-flash", 1);
             var server = MockRestServiceServer.bindTo((RestTemplate) ReflectionTestUtils.getField(service,"http")).build();
@@ -58,6 +55,27 @@ class GeminiConsejosServiceTest {
             var original = detail(); assertEquals("NO_DISPONIBLE",service.explicar(original).get("estado"));
             assertEquals(100, ((Map<?,?>) original.get("compatibilidad")).get("porcentaje")); server.verify();
         }
+    }
+
+    @Test void retriesOnceOnProviderUnavailability() {
+        var service = new GeminiConsejosService("fake", "gemini-3.5-flash-lite", 1);
+        var server = MockRestServiceServer.bindTo((RestTemplate) ReflectionTestUtils.getField(service, "http")).build();
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent";
+        var unavailable = withStatus(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE);
+        server.expect(requestTo(url)).andRespond(unavailable);
+        server.expect(requestTo(url)).andRespond(withSuccess("""
+                {"candidates":[{"finishReason":"STOP","content":{"parts":[
+                {"text":"{\\"explicacion\\":\\"Rutina compatible.\\",\\"recomendaciones\\":[]}"}
+                ]}}]}
+                """, MediaType.APPLICATION_JSON));
+        assertEquals("DISPONIBLE", service.explicar(detail()).get("estado"));
+        server.verify();
+
+        server.reset();
+        server.expect(requestTo(url)).andRespond(unavailable);
+        server.expect(requestTo(url)).andRespond(unavailable);
+        assertEquals("NO_DISPONIBLE", service.explicar(detail()).get("estado"));
+        server.verify();
     }
 
     @Test void rejectsVerboseResponsesInsteadOfTruncatingTheirMeaning() throws Exception {
