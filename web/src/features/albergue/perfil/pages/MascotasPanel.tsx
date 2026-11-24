@@ -6,6 +6,7 @@ import { django, json, errorMessage, mediaUrl } from '../../../../services/http'
 import { useMaxImagenMb } from '../../../../services/useMaxImagenMb';
 import type { AdminPet, Page, RegistroClinico, Shelter, TipoRegistroClinico } from '../../../../services/types';
 import PosterMascota from './PosterMascota';
+import CertificadosVeterinarios from './CertificadosVeterinarios';
 const initial = {
   nombre: '',
   especie: 'PERRO',
@@ -454,6 +455,7 @@ export default function MascotasPanel({ shelter: suppliedShelter }: { shelter?: 
                 {evidenceErrors[key] && <p className="feedback error" role="alert">{evidenceErrors[key]}</p>}
               </div>;
             })}
+            <CertificadosVeterinarios key={id ?? 'nueva'} mascotaId={id} />
             <label>Necesidades especiales<textarea maxLength={2000} value={draft.necesidades_especiales} onChange={e => setDraft({ ...draft, necesidades_especiales: e.target.value })} placeholder="Medicación, dieta específica u otros cuidados" /></label>
             <label>
               Alerta clínica
