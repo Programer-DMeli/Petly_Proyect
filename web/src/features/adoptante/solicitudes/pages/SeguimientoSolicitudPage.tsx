@@ -6,6 +6,7 @@ import { errorMessage, spring } from '../../../../services/http';
 import { avisosConectados, observarAvisos } from '../../../../services/avisosEnVivo';
 import { INTERVALO_AVISOS_MS } from '../../../../services/notificacionesApi';
 import type { SeguimientoSolicitud } from '../../../../services/types';
+import OpinionesAlbergue from '../../../shared/OpinionesAlbergue';
 
 const estadoLabel: Record<string, string> = {
   PENDIENTE: 'Pendiente',
@@ -85,12 +86,13 @@ export default function SeguimientoSolicitudPage() {
     });
     void consultar();
     const timer = window.setInterval(actualizar, INTERVALO_AVISOS_MS);
-    document.addEventListener('visibilitychange', actualizar);
+    const alVolver = () => { if (!document.hidden) void consultar(); };
+    document.addEventListener('visibilitychange', alVolver);
     return () => {
       controller.abort();
       dejarDeObservar();
       window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', actualizar);
+      document.removeEventListener('visibilitychange', alVolver);
     };
   }, [solicitudId, refresh]);
 
@@ -119,10 +121,13 @@ export default function SeguimientoSolicitudPage() {
           </p>
           {seguimiento.estadoActual === 'ENTREGADA' && (
             <div className="feedback success">
-              <strong>Expediente de adopción abierto</strong> · La entrega fue confirmada.
+              <strong>{seguimiento.cerradoEn ? 'Cierre de adopción validado' : 'Expediente de adopción abierto'}</strong>
+              {' · '}{seguimiento.cerradoEn ? formatDate(seguimiento.cerradoEn) : 'La entrega fue confirmada.'}
               {' '}<Link to={`/adoptante/seguimientos-postadopcion?solicitud=${seguimiento.solicitudId}`}>Ver cronograma posadopción</Link>
             </div>
           )}
+          {seguimiento.estadoActual === 'ENTREGADA' && seguimiento.cerradoEn && seguimiento.albergueId > 0 &&
+            <OpinionesAlbergue key={seguimiento.albergueId} albergueId={seguimiento.albergueId} />}
           <FotosHogar solicitudId={seguimiento.solicitudId}/>
           <h2>Historial de cambios</h2>
           {seguimiento.eventos.length === 0 ? (

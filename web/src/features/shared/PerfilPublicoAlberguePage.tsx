@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Feedback from '../../components/Feedback';
 import CasoExitoInteracciones from './CasoExitoInteracciones';
+import OpinionesAlbergue from './OpinionesAlbergue';
 import { getSession, subscribe } from '../../services/session';
-import { djangoBase, errorMessage, json, mediaUrl, request, springBase } from '../../services/http';
+import { djangoBase, errorMessage, mediaUrl, request, springBase } from '../../services/http';
 
 type PerfilAlberguePublico = {
   id: number;
@@ -87,10 +87,6 @@ export default function PerfilPublicoAlberguePage() {
   const [resumenResenas, setResumenResenas] = useState<ResumenResenas | null>(null);
   const [resenasCargando, setResenasCargando] = useState(true);
   const [resenasError, setResenasError] = useState('');
-  const [calificacion, setCalificacion] = useState(0);
-  const [comentario, setComentario] = useState('');
-  const [enviandoResena, setEnviandoResena] = useState(false);
-  const [resenaEnviada, setResenaEnviada] = useState(false);
 
   const cargar = useCallback(async (signal?: AbortSignal) => {
     if (!Number.isSafeInteger(albergueId) || albergueId < 1) {
@@ -138,28 +134,6 @@ export default function PerfilPublicoAlberguePage() {
   const testimonio = testimonios[indice];
   const anterior = () => setIndice(actual => (actual - 1 + testimonios.length) % testimonios.length);
   const siguiente = () => setIndice(actual => (actual + 1) % testimonios.length);
-
-  const enviarResena = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setEnviandoResena(true);
-    setResenasError('');
-    setResenaEnviada(false);
-    try {
-      const actualizada = await request<ResumenResenas>(
-        springBase,
-        `/api/albergues/${albergueId}/resenas`,
-        { method: 'POST', body: json({ calificacion, comentario: comentario.trim() }) },
-      );
-      setResumenResenas(actualizada);
-      setComentario('');
-      setCalificacion(0);
-      setResenaEnviada(true);
-    } catch (cause) {
-      setResenasError(errorMessage(cause));
-    } finally {
-      setEnviandoResena(false);
-    }
-  };
 
   const fechaResena = (value: string) => {
     const date = new Date(value);
@@ -236,45 +210,10 @@ export default function PerfilPublicoAlberguePage() {
             </div>
           </div>
           {resenasError && <Feedback error={resenasError} />}
-          {resenaEnviada && <p className="shelter-reviews__success" role="status">Tu reseña se publicó correctamente.</p>}
-
-          {session?.identity.rol === 'ADOPTANTE' ? <form className="shelter-review-form" onSubmit={enviarResena}>
-            <h3>Cuéntanos cómo fue la atención</h3>
-            <fieldset className="shelter-review-form__rating" disabled={enviandoResena}>
-              <legend>Tu calificación</legend>
-              <div className="shelter-review-form__stars">
-                {[1, 2, 3, 4, 5].map(valor => <button
-                  key={valor}
-                  type="button"
-                  className={`shelter-review-form__star${valor <= calificacion ? ' is-selected' : ''}`}
-                  aria-label={`${valor} ${valor === 1 ? 'estrella' : 'estrellas'}`}
-                  aria-pressed={valor === calificacion}
-                  onClick={() => setCalificacion(valor)}>
-                  ★
-                </button>)}
-              </div>
-            </fieldset>
-            <label htmlFor="comentario-resena">Comentario</label>
-            <textarea
-              id="comentario-resena"
-              value={comentario}
-              onChange={event => setComentario(event.target.value)}
-              maxLength={1000}
-              rows={4}
-              required
-              placeholder="Comparte tu experiencia con este albergue…"
-            />
-            <div className="shelter-review-form__footer">
-              <small>{comentario.length}/1000 caracteres. Solo pueden reseñar adoptantes con una adopción entregada.</small>
-              <button type="submit" disabled={enviandoResena || calificacion < 1 || !comentario.trim()}>
-                {enviandoResena ? 'Enviando…' : 'Publicar reseña'}
-              </button>
-            </div>
-          </form> : session ? <p className="muted shelter-reviews__login-hint">
-            Solo los adoptantes con una adopción entregada pueden publicar una reseña.
-          </p> : <p className="muted shelter-reviews__login-hint">
-            <Link to="/acceso">Inicia sesión como adoptante</Link> para compartir tu experiencia.
-          </p>}
+          {session?.identity.rol === 'ADOPTANTE' && <>
+            <OpinionesAlbergue key={`${session.identity.id}-${albergueId}`} albergueId={albergueId} permitirPublicar={false} />
+            <p className="muted"><Link to="/adoptante/solicitudes">Ir a Mis solicitudes</Link> para reseñar una adopción cerrada.</p>
+          </>}
 
           {resenasCargando ? null : resumenResenas?.resenas.length ? <div className="shelter-reviews__list">
             {resumenResenas.resenas.map(resena => <article className="shelter-review" key={resena.id}>

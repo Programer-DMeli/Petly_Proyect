@@ -2604,3 +2604,25 @@
     flex-direction: column;
   }
 }
+
+.resena-registrada {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  color: #176048;
+}
+.resena-dialog {
+  width: min(92vw, 32rem);
+  max-height: calc(100dvh - 2rem);
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  color: inherit;
+  background: #fff;
+}
+.resena-dialog::backdrop { background: rgb(14 34 27 / 62%); }
+.resena-dialog .shelter-review-form { padding: clamp(1rem, 4vw, 1.75rem); margin: 0; }
+.resena-dialog h2 { margin: 0; }
+.resena-dialog textarea { width: 100%; }
+.resena-dialog .shelter-review-form__stars { flex-wrap: wrap; }

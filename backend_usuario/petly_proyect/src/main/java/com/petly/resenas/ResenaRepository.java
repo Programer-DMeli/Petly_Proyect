@@ -57,6 +57,11 @@ public class ResenaRepository {
         return total == null ? 0 : total;
     }
 
+    public Integer calificacionPropia(long usuarioId, long albergueId) {
+        return db.query("SELECT calificacion FROM resenas_albergue WHERE usuario_id = ? AND albergue_id = ?",
+                rs -> rs.next() ? rs.getInt("calificacion") : null, usuarioId, albergueId);
+    }
+
     @Transactional
     public void crear(long usuarioId, long albergueId, CrearResenaRequest request) {
         db.update(

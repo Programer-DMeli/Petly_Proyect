@@ -110,6 +110,8 @@ export interface EventoSeguimientoSolicitud {
 export interface SeguimientoSolicitud {
   solicitudId: number;
   estadoActual: EstadoSolicitudAdopcion;
+  albergueId: number;
+  cerradoEn: string | null;
   eventos: EventoSeguimientoSolicitud[];
 }
 

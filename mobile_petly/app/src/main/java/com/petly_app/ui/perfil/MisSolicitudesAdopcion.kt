@@ -29,7 +29,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.petly_app.data.remote.EstadoResena
 import com.petly_app.data.remote.HistorialSolicitud
+import com.petly_app.data.remote.ResenasApi
 import com.petly_app.data.remote.SolicitudPersistida
 import com.petly_app.data.repository.HistoriasAdopcion
 import com.petly_app.data.repository.HistoriasAdopcionRepository
@@ -45,11 +49,16 @@ internal fun MisSolicitudesAdopcion(
     onOpenAgendaVacunas: ((Long) -> Unit)? = null,
     listarSolicitudes: suspend () -> List<SolicitudPersistida> = SolicitudAdopcionManager::listarSolicitudes,
     historiasRepository: HistoriasAdopcionRepository? = null,
+    resenasApi: ResenasApi? = SolicitudAdopcionManager.resenasApi,
+    consultarHistorial: suspend (Long) -> HistorialSolicitud = {
+        checkNotNull(SolicitudAdopcionManager.api).seguimiento(it)
+    },
 ) {
     var solicitudes by remember { mutableStateOf<List<SolicitudPersistida>?>(null) }
     var seleccion by remember { mutableStateOf<SolicitudPersistida?>(null) }
-    var albergueAResenar by rememberSaveable { mutableStateOf<Long?>(null) }
-    val estadoResenas = remember { mutableStateMapOf<Long, String>() }
+    val estadoResenas = remember(resenasApi) { mutableStateMapOf<Long, EstadoResena>() }
+    var consultaResenas by remember { mutableIntStateOf(0) }
+    var errorResenas by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf(false) }
     var intento by remember { mutableIntStateOf(0) }
     var historias by remember(historiasRepository) { mutableStateOf<HistoriasAdopcion?>(null) }
@@ -58,6 +67,24 @@ internal fun MisSolicitudesAdopcion(
     var cargandoHistorias by remember { mutableStateOf(false) }
     var errorHistorias by remember { mutableStateOf(false) }
     val hayEntregadas = solicitudes?.any { it.estado.equals("ENTREGADA", ignoreCase = true) } == true
+    val albergues = solicitudes.orEmpty().mapNotNull { it.albergue?.takeIf { id -> id > 0 } }.toSet()
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { consultaResenas++ }
+    LaunchedEffect(resenasApi, albergues, consultaResenas) {
+        if (resenasApi == null) return@LaunchedEffect
+        errorResenas = false
+        albergues.forEach { id ->
+            launch {
+                try {
+                    estadoResenas[id] = resenasApi.estado(id)
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (_: Exception) {
+                    errorResenas = true
+                }
+            }
+        }
+    }
 
     val resolver = LocalContext.current.contentResolver
     val scope = rememberCoroutineScope()
@@ -151,6 +178,7 @@ internal fun MisSolicitudesAdopcion(
                         Text(solicitud.mascota_nombre ?: "Solicitud #${solicitud.id}")
                         Text(nombreEstado(solicitud.estado), style = MaterialTheme.typography.bodyMedium)
                         TextButton(onClick = { seleccion = solicitud }) { Text("Ver seguimiento") }
+                        estadoResenas[solicitud.albergue]?.takeIf { it.registrada }?.let { ResenaRegistrada(it) }
                         if (solicitud.estado.equals("ENTREGADA", ignoreCase = true)) {
                             if (onOpenAgendaVacunas != null) {
                                 TextButton(onClick = { onOpenAgendaVacunas(solicitud.id) }) { Text("Agenda de vacunas") }
@@ -177,20 +205,11 @@ internal fun MisSolicitudesAdopcion(
                                     enabled = !cargandoHistorias && !errorHistorias,
                                 ) { Text("Compartir mi historia") }
                             }
-                            solicitud.albergue?.takeIf { it > 0 }?.let { albergueId ->
-                                val estado = estadoResenas[albergueId]
-                                if (estado == null) {
-                                    TextButton(onClick = { albergueAResenar = albergueId }) {
-                                        Text("Calificar al albergue")
-                                    }
-                                } else {
-                                    Text(estado, style = MaterialTheme.typography.bodyMedium)
-                                }
-                            }
                         }
                     }
                 }
             }
+            if (errorResenas) TextButton(onClick = { consultaResenas++ }) { Text("Reintentar consulta de reseñas") }
             if (hayEntregadas && historiasRepository != null) {
                 when {
                     cargandoHistorias -> Text("Cargando historias de adopción…")
@@ -222,20 +241,16 @@ internal fun MisSolicitudesAdopcion(
         )
     }
 
-    albergueAResenar?.let { albergueId ->
-        ResenaAlbergueDialog(
-            albergueId = albergueId,
-            onDismiss = { albergueAResenar = null },
-            onRegistrada = { mensaje ->
-                estadoResenas[albergueId] = mensaje
-                albergueAResenar = null
-            }
-        )
-    }
-
     seleccion?.let { solicitud ->
         HistorialDeSolicitud(
             solicitud,
+            consultarHistorial = consultarHistorial,
+            resenasApi = resenasApi,
+            estadoResenas = estadoResenas,
+            onRegistrada = { id, estado ->
+                estadoResenas[id] = estado
+                consultaResenas++
+            },
             onUpdated = { estado ->
                 solicitudes = solicitudes?.map { if (it.id == solicitud.id) it.copy(estado = estado) else it }
             },
@@ -247,6 +262,10 @@ internal fun MisSolicitudesAdopcion(
 @Composable
 private fun HistorialDeSolicitud(
     solicitud: SolicitudPersistida,
+    consultarHistorial: suspend (Long) -> HistorialSolicitud,
+    resenasApi: ResenasApi?,
+    estadoResenas: Map<Long, EstadoResena>,
+    onRegistrada: (Long, EstadoResena) -> Unit,
     onUpdated: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -256,8 +275,7 @@ private fun HistorialDeSolicitud(
     LaunchedEffect(solicitud.id, intento) {
         error = false
         try {
-            val api = checkNotNull(SolicitudAdopcionManager.api)
-            historial = api.seguimiento(solicitud.id).also { onUpdated(it.estadoActual) }
+            historial = consultarHistorial(solicitud.id).also { onUpdated(it.estadoActual) }
         } catch (exception: Exception) {
             if (exception is CancellationException) throw exception
             error = true
@@ -269,6 +287,17 @@ private fun HistorialDeSolicitud(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(nombreEstado(historial?.estadoActual ?: solicitud.estado))
+                val cierre = historial?.cerradoEn
+                if (historial?.estadoActual == "ENTREGADA" && !cierre.isNullOrBlank()) {
+                    Text("Cierre de adopción validado", style = MaterialTheme.typography.titleSmall)
+                    Text(notificationDate(cierre))
+                    val albergueId = historial?.albergueId ?: solicitud.albergue
+                    if (albergueId != null && albergueId > 0 && resenasApi != null) {
+                        OpinionesAlbergue(albergueId, resenasApi, estadoResenas[albergueId]) {
+                            onRegistrada(albergueId, it)
+                        }
+                    }
+                }
                 val eventos = historial?.eventos
                 when {
                     error -> {

@@ -9,7 +9,7 @@ from apps.acceso.models import SolicitudAdopcion, User
 
 
 class ElegibilidadResenaView(APIView):
-    """Valida internamente si el adoptante completó una adopción con el albergue."""
+    """Valida si el albergue cerró una adopción entregada del titular."""
 
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
@@ -38,7 +38,8 @@ class ElegibilidadResenaView(APIView):
             adoptante__rol=User.Rol.ADOPTANTE,
             albergue_id=albergue_id,
             estado=SolicitudAdopcion.Estado.ENTREGADA,
+            expediente_post_adopcion__cerrado_en__isnull=False,
         ).exists()
         if not elegible:
-            return Response({"detail": "No existe una adopción entregada entre estas cuentas."}, status=403)
+            return Response({"detail": "El albergue todavía no ha validado el cierre de una adopción entregada."}, status=403)
         return Response({"elegible": True})

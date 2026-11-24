@@ -47,6 +47,9 @@ public class ResenaService {
 
     public ResumenResenasResponse crear(long adoptanteId, long albergueId, CrearResenaRequest request) {
         validarAlbergue(albergueId);
+        if (resenas.calificacionPropia(adoptanteId, albergueId) != null) {
+            throw new ApiException(409, "Ya registraste una reseña para este albergue.");
+        }
         validarInteraccion(adoptanteId, albergueId);
         try {
             resenas.crear(adoptanteId, albergueId, request);
@@ -55,6 +58,14 @@ public class ResenaService {
         }
         return resumen(albergueId);
     }
+
+    public EstadoResena estadoPropio(long adoptanteId, long albergueId) {
+        validarAlbergue(albergueId);
+        Integer calificacion = resenas.calificacionPropia(adoptanteId, albergueId);
+        return new EstadoResena(calificacion != null, calificacion);
+    }
+
+    public record EstadoResena(boolean registrada, Integer calificacion) {}
 
     private ResumenResenasResponse resumen(long albergueId) {
         var promedio = resenas.promedio(albergueId).setScale(2, RoundingMode.HALF_UP);
@@ -80,11 +91,11 @@ public class ResenaService {
         try {
             var response = http.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), ElegibilidadResenaResponse.class);
             if (response.getBody() == null || !response.getBody().elegible()) {
-                throw new ApiException(403, "Necesitas una adopción entregada por este albergue para dejar una reseña.");
+                throw new ApiException(403, "El albergue debe validar el cierre de tu adopción antes de que puedas reseñarlo.");
             }
         } catch (HttpStatusCodeException ex) {
             if (ex.getStatusCode().value() == 403 || ex.getStatusCode().value() == 404) {
-                throw new ApiException(403, "Necesitas una adopción entregada por este albergue para dejar una reseña.");
+                throw new ApiException(403, "El albergue debe validar el cierre de tu adopción antes de que puedas reseñarlo.");
             }
             if (ex.getStatusCode().is4xxClientError()) {
                 throw new ApiException(400, "No se pudo validar la interacción con el albergue.");

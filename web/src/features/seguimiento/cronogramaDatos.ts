@@ -7,6 +7,7 @@ export type Evaluacion = {
 export type Seguimiento = {
   id: number;
   solicitud_id: number;
+  albergue_id: number;
   mascota_nombre: string;
   albergue_nombre: string;
   programado_para: string;

@@ -1,5 +1,5 @@
 """Vistas de acceso y postulantes (US-18, US-21)."""
-from rest_framework import viewsets, permissions, status, filters, generics, throttling
+from rest_framework import viewsets, permissions, status, filters, generics, throttling, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -541,9 +541,13 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             campo = tipo_fecha.get(evento.tipo)
             if campo and campo not in fecha_por_tipo:
                 fecha_por_tipo[campo] = evento.ocurrido_en
+        expediente = getattr(solicitud, "expediente_post_adopcion", None)
         return Response({
             "solicitudId": solicitud.pk,
+            "albergueId": solicitud.albergue_id,
             "estadoActual": solicitud.estado,
+            "cerradoEn": serializers.DateTimeField().to_representation(expediente.cerrado_en)
+            if expediente and expediente.cerrado_en else None,
             "eventos": serialized,
             "fechasClave": fecha_por_tipo,
         })

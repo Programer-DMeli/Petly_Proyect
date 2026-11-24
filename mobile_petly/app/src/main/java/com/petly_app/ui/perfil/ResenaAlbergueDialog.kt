@@ -34,7 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.petly_app.core.network.apiErrorMessage
 import com.petly_app.data.remote.CrearResena
-import com.petly_app.data.repository.SolicitudAdopcionManager
+import com.petly_app.data.remote.EstadoResena
+import com.petly_app.data.remote.ResenasApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -42,7 +43,12 @@ import retrofit2.HttpException
 private const val MaxComentario = 1000
 
 @Composable
-internal fun ResenaAlbergueDialog(albergueId: Long, onDismiss: () -> Unit, onRegistrada: (String) -> Unit) {
+internal fun ResenaAlbergueDialog(
+    albergueId: Long,
+    api: ResenasApi,
+    onDismiss: () -> Unit,
+    onRegistrada: (EstadoResena) -> Unit,
+) {
     val scope = rememberCoroutineScope()
     var calificacion by rememberSaveable(albergueId) { mutableIntStateOf(0) }
     var comentario by rememberSaveable(albergueId) { mutableStateOf("") }
@@ -51,7 +57,7 @@ internal fun ResenaAlbergueDialog(albergueId: Long, onDismiss: () -> Unit, onReg
 
     AlertDialog(
         onDismissRequest = { if (!enviando) onDismiss() },
-        title = { Text("Calificar al albergue") },
+        title = { Text("Calificar y opinar") },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
@@ -85,7 +91,7 @@ internal fun ResenaAlbergueDialog(albergueId: Long, onDismiss: () -> Unit, onReg
                 OutlinedTextField(
                     value = comentario,
                     onValueChange = { if (it.length <= MaxComentario) comentario = it },
-                    label = { Text("Tu reseña") },
+                    label = { Text("Tu opinión") },
                     supportingText = { Text("${comentario.length}/$MaxComentario") },
                     enabled = !enviando,
                     minLines = 3,
@@ -102,14 +108,13 @@ internal fun ResenaAlbergueDialog(albergueId: Long, onDismiss: () -> Unit, onReg
                     error = null
                     scope.launch {
                         try {
-                            val api = checkNotNull(SolicitudAdopcionManager.resenasApi)
                             api.crear(albergueId, CrearResena(calificacion, comentario.trim()))
-                            onRegistrada("Tu reseña fue publicada.")
+                            onRegistrada(EstadoResena(true, calificacion))
                         } catch (exception: Exception) {
                             if (exception is CancellationException) throw exception
                             when ((exception as? HttpException)?.code()) {
-                                409 -> onRegistrada("Ya registraste una reseña para este albergue.")
-                                403 -> error = "Necesitas una adopción entregada por este albergue para dejar una reseña."
+                                409 -> onRegistrada(EstadoResena(true, null))
+                                403 -> error = "El albergue debe validar el cierre de tu adopción antes de que puedas reseñarlo."
                                 else -> error = apiErrorMessage(exception)
                             }
                         } finally {

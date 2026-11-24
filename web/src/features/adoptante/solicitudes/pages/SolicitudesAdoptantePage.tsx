@@ -4,6 +4,7 @@ import Feedback from '../../../../components/Feedback';
 import { errorMessage, spring, django, downloadDjango } from '../../../../services/http';
 import type { ContratoAdopcion, SolicitudAdopcion } from '../../../../services/types';
 import AlertaClinicaAdoptante from './AlertaClinicaAdoptante';
+import OpinionesAlbergue from '../../../shared/OpinionesAlbergue';
 
 type Page<T> = T[] | { results: T[] };
 
@@ -81,6 +82,7 @@ export default function SolicitudesAdoptantePage() {
           {contract.documento_disponible && <button className="secondary" onClick={() => void downloadContract(contract)}>Descargar contrato firmado</button>}
         </div>)}
         {item.estado === 'ENTREGADA' && <>
+          {item.albergue && <OpinionesAlbergue key={item.albergue} albergueId={item.albergue} permitirPublicar={false} />}
           <AlertaClinicaAdoptante solicitudId={item.id} />
           <button type="button" className="secondary" disabled={downloadingFichaId !== null}
             onClick={() => void downloadFicha(item.id)}

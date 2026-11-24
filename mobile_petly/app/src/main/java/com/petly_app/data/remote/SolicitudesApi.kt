@@ -12,7 +12,12 @@ data class SolicitudPersistida(
     val respuestas_cuestionario: SolicitudAdopcionDraft?,
     val albergue: Long? = null
 )
-data class HistorialSolicitud(val estadoActual: String, val eventos: List<EventoSolicitud>)
+data class HistorialSolicitud(
+    val estadoActual: String,
+    val eventos: List<EventoSolicitud>,
+    val albergueId: Long? = null,
+    val cerradoEn: String? = null,
+)
 data class EventoSolicitud(val id: Long, val tipo_display: String, val descripcion: String?)
 interface SolicitudesApi {
     @POST("api/solicitudes") suspend fun crear(@Body datos: CrearSolicitud): SolicitudPersistida

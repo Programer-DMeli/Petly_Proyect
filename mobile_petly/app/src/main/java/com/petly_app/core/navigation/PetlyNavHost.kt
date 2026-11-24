@@ -301,7 +301,8 @@ fun PetlyNavHost(
                     SeguimientosScreen(state, vm::load, vm::select, vm::edit, vm::submit,
                         onBack = { nav.popBackStack() },
                         onOpenReporte = { nav.navigate("reportes-seguimiento/$it") },
-                        objetivoId = entry.arguments?.getLong("actividad")?.takeIf { it > 0 })
+                        objetivoId = entry.arguments?.getLong("actividad")?.takeIf { it > 0 },
+                        resenasApi = if (isPreview) null else container.resenasApi)
                 }
                 composable(
                     "reportes-seguimiento/{entrega}",

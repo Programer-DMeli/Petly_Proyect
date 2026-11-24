@@ -34,7 +34,7 @@ class AgendaVacunasScreenTest {
         ui.onNodeWithText("Entregada").assertExists()
         ui.onNodeWithText("Aprobada").assertExists()
         ui.onNodeWithText("Descargar ficha veterinaria (PDF)").assertExists()
-        ui.onNodeWithText("Calificar al albergue").assertExists()
+        ui.onNodeWithText("Opiniones y reseñas").assertDoesNotExist()
         ui.onAllNodesWithText("Agenda de vacunas").assertCountEquals(1)
         ui.onNodeWithText("Agenda de vacunas").performClick()
         ui.runOnIdle { assertEquals(42L, solicitudAbierta) }

@@ -195,6 +195,38 @@ class AlertasIncumplimientoTest(APITestCase):
         self.assertEqual(ExpedientePostAdopcion.objects.filter(solicitud=self.solicitud).count(), 1)
         self.assertEqual(ExpedientePostAdopcion.objects.get(solicitud=self.solicitud).cerrado_por, self.albergue_user)
 
+    @override_settings(INTERNAL_API_SECRET="solo-pruebas")
+    def test_reseña_se_habilita_solo_tras_el_cierre_visible_para_el_adoptante(self):
+        self.adoptante.usuario_spring_id = 321
+        self.adoptante.save(update_fields=["usuario_spring_id"])
+        actividad = f"{self.seguimientos_url}{self.seguimiento.pk}/"
+        historial = f"/api/acceso/solicitudes/{self.solicitud.pk}/historial-seguimiento/"
+        elegibilidad = "/api/contratos/resenas/eligibilidad/"
+        params = {"adoptante_id": 321, "albergue_id": self.albergue.pk}
+        headers = {"HTTP_X_INTERNAL_SECRET": "solo-pruebas"}
+
+        self.client.force_authenticate(self.adoptante)
+        self.assertIsNone(self.client.get(historial).data["cerradoEn"])
+        self.assertEqual(self.client.get(elegibilidad, params, **headers).status_code, 403)
+        ReporteBienestarPostAdopcion.objects.create(seguimiento=self.seguimiento, estado_bienestar="BUENO")
+        self.client.force_authenticate(self.albergue_user)
+        self.assertEqual(self.client.post(actividad + "evaluar-expediente/", {
+            "calificacion_adaptacion": 5,
+        }).status_code, 200)
+        self.assertEqual(self.client.get(elegibilidad, params, **headers).status_code, 403)
+        cierre = self.client.post(actividad + "cerrar-expediente/", {"confirmar": True})
+        self.assertEqual(cierre.status_code, 201)
+
+        self.client.force_authenticate(self.adoptante)
+        datos = self.client.get(historial).data
+        self.assertEqual(datos["albergueId"], self.albergue.pk)
+        self.assertEqual(datos["cerradoEn"], cierre.data["expediente_cierre"]["cerrado_en"])
+        self.assertEqual(self.client.get(actividad).data["albergue_id"], self.albergue.pk)
+        self.assertEqual(self.client.get(elegibilidad, params, **headers).data, {"elegible": True})
+        self.assertEqual(self.client.get(
+            elegibilidad, {**params, "albergue_id": self.otro_albergue.pk}, **headers,
+        ).status_code, 403)
+
     @override_settings(INTERNAL_API_SECRET="solo-pruebas", RECORDATORIOS_ANTICIPACION_HORAS=72)
     def test_recordatorios_a_tres_y_un_dia_sin_duplicar_y_para_el_titular(self):
         self.adoptante.usuario_spring_id = 123

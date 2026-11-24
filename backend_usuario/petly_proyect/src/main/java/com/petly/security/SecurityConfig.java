@@ -75,6 +75,8 @@ public class SecurityConfig {
                         // Solo adoptantes pueden publicar reseñas; el backend valida la interacción.
                         .requestMatchers(HttpMethod.POST, "/api/albergues/*/resenas", "/api/albergues/*/resenas/")
                         .hasRole("ADOPTANTE")
+                        .requestMatchers(HttpMethod.GET, "/api/albergues/*/resenas/mi-resena")
+                        .hasRole("ADOPTANTE")
                         // Los comentarios visibles y el contador son públicos; las escrituras requieren sesión.
                         .requestMatchers(HttpMethod.GET,
                                 "/api/casos-exito/*/interacciones", "/api/casos-exito/*/interacciones/")

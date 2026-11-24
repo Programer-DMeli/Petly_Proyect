@@ -31,7 +31,8 @@ data class SeguimientoDto(
     val reporte_bienestar: ReporteBienestarDto? = null,
     val expediente_cierre: com.google.gson.JsonObject? = null,
     val requiere_reporte: Boolean? = null,
-    val estado_entrega: String? = null
+    val estado_entrega: String? = null,
+    val albergue_id: Long? = null,
 )
 
 data class SeguimientosPagina(val results: List<SeguimientoDto>, val next: String?)

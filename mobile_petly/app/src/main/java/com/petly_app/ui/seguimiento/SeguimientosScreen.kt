@@ -7,9 +7,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.petly_app.ui.perfil.notificationDate
+import com.petly_app.ui.perfil.OpinionesAlbergue
+import com.petly_app.data.remote.EstadoResena
+import com.petly_app.data.remote.ResenasApi
 import com.petly_app.data.repository.admiteReporte
 
 @Composable
@@ -21,9 +26,11 @@ fun SeguimientosScreen(
     onSubmit: () -> Unit,
     onBack: () -> Unit,
     onOpenReporte: ((Long) -> Unit)? = null,
-    objetivoId: Long? = null
+    objetivoId: Long? = null,
+    resenasApi: ResenasApi? = null,
 ) {
     val lista = rememberLazyListState()
+    val resenasRegistradas = remember(resenasApi) { mutableStateMapOf<Long, EstadoResena>() }
     val indiceObjetivo = state.items.indexOfFirst { it.id == objetivoId }
     LaunchedEffect(objetivoId, indiceObjetivo) {
         if (indiceObjetivo >= 0) lista.scrollToItem(indiceObjetivo + 1)
@@ -73,6 +80,17 @@ fun SeguimientosScreen(
                         "FUERA_DE_PLAZO" -> Text("Enviado fuera de plazo", color = MaterialTheme.colorScheme.error)
                     }
                     Text("Estado: ${when (row.estado) { "PROGRAMADO" -> "Programado"; "REALIZADO" -> "Realizado"; "CANCELADO" -> "Cancelado"; else -> row.estado }}")
+                    val cierre = row.expediente_cierre?.get("cerrado_en")?.takeIf { it.isJsonPrimitive }?.asString
+                    if (cierre != null) {
+                        Text("Cierre de adopción validado", style = MaterialTheme.typography.titleSmall)
+                        Text(notificationDate(cierre))
+                        val albergueId = row.albergue_id
+                        if (albergueId != null && albergueId > 0 && resenasApi != null) {
+                            OpinionesAlbergue(albergueId, resenasApi, resenasRegistradas[albergueId]) {
+                                resenasRegistradas[albergueId] = it
+                            }
+                        }
+                    }
                     if (row.admiteReporte() && onOpenReporte != null) {
                         TextButton(onClick = { onOpenReporte(row.id) }) { Text("Abrir reporte") }
                     }

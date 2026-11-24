@@ -5,6 +5,7 @@ import { Hito, Reporte } from '../../../seguimiento/Cronograma';
 import { fecha, type Bienestar, type Seguimiento } from '../../../seguimiento/cronogramaDatos';
 import { django, errorMessage, json } from '../../../../services/http';
 import { useMaxImagenMb } from '../../../../services/useMaxImagenMb';
+import OpinionesAlbergue from '../../../shared/OpinionesAlbergue';
 
 type Asesoria = Seguimiento['asesorias_veterinarias'][number];
 type Pagina = { results: Seguimiento[]; next: string | null };
@@ -160,8 +161,13 @@ export default function ReportesPostAdopcionPage() {
     <Feedback error={error || (entregaNoDisponible ? 'Esta entrega no está disponible.' : '')} success={success} />
     {loading ? <p role="status">Cargando tu cronograma…</p> : error && rows.length === 0 ? <button type="button" onClick={() => void load()}>Reintentar</button>
       : visibles.length === 0 ? <p>Aún no tienes seguimientos postadopción programados.</p>
-      : <ol className="seguimiento-cronograma">{tarjetas.map(row => <Hito row={row} key={row.id} adoptante>
+      : <ol className="seguimiento-cronograma">{tarjetas.map((row, index) => <Hito row={row} key={row.id} adoptante>
         <strong>{row.mascota_nombre}</strong> · Solicitud #{row.solicitud_id} · {row.albergue_nombre}
+        {row.expediente_cierre?.cerrado_en &&
+          tarjetas.findIndex(item => item.solicitud_id === row.solicitud_id) === index && <>
+          <p><strong>Cierre de adopción validado</strong> · {fecha(row.expediente_cierre.cerrado_en)} (Lima)</p>
+          {row.albergue_id > 0 && <OpinionesAlbergue albergueId={row.albergue_id} />}
+        </>}
         <section aria-labelledby={`asesorias-title-${row.id}`}>
           <h3 id={`asesorias-title-${row.id}`}>Asesoría técnica o veterinaria gratuita</h3>
           {row.asesorias_veterinarias?.length > 0 && <ul>

@@ -111,6 +111,7 @@ class ExpedientePostAdopcionSerializer(serializers.ModelSerializer):
 
 class SeguimientoPostAdopcionSerializer(serializers.ModelSerializer):
     solicitud_id = serializers.IntegerField()
+    albergue_id = serializers.IntegerField(source="solicitud.albergue_id", read_only=True)
     mascota_nombre = serializers.CharField(source="solicitud.mascota.nombre", read_only=True)
     adoptante_email = serializers.EmailField(source="solicitud.adoptante.email", read_only=True, allow_null=True)
     albergue_nombre = serializers.CharField(source="solicitud.albergue.nombre", read_only=True)
@@ -124,7 +125,7 @@ class SeguimientoPostAdopcionSerializer(serializers.ModelSerializer):
         model = SeguimientoPostAdopcion
         fields = ["id", "solicitud_id", "mascota_nombre", "adoptante_email", "programado_para",
                   "modalidad", "estado", "notas", "creado_en", "actualizado_en",
-                  "albergue_nombre", "asesorias_veterinarias", "expediente_cierre", "reporte_bienestar"]
+                  "albergue_id", "albergue_nombre", "asesorias_veterinarias", "expediente_cierre", "reporte_bienestar"]
         fields += ["alerta_incumplimiento", "requiere_reporte", "estado_entrega", "cancelado_en"]
         read_only_fields = ["id", "estado", "creado_en", "actualizado_en", "cancelado_en"]
 
