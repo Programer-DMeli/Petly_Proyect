@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.petly_app.data.remote.HistorialSolicitud
 import com.petly_app.data.remote.SolicitudPersistida
+import com.petly_app.data.repository.HistoriasAdopcion
+import com.petly_app.data.repository.HistoriasAdopcionRepository
 import com.petly_app.data.repository.SolicitudAdopcionManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +44,7 @@ import kotlinx.coroutines.withContext
 internal fun MisSolicitudesAdopcion(
     onOpenAgendaVacunas: ((Long) -> Unit)? = null,
     listarSolicitudes: suspend () -> List<SolicitudPersistida> = SolicitudAdopcionManager::listarSolicitudes,
+    historiasRepository: HistoriasAdopcionRepository? = null,
 ) {
     var solicitudes by remember { mutableStateOf<List<SolicitudPersistida>?>(null) }
     var seleccion by remember { mutableStateOf<SolicitudPersistida?>(null) }
@@ -49,6 +52,12 @@ internal fun MisSolicitudesAdopcion(
     val estadoResenas = remember { mutableStateMapOf<Long, String>() }
     var error by remember { mutableStateOf(false) }
     var intento by remember { mutableIntStateOf(0) }
+    var historias by remember(historiasRepository) { mutableStateOf<HistoriasAdopcion?>(null) }
+    var historiaSolicitudId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var intentoHistorias by remember { mutableIntStateOf(0) }
+    var cargandoHistorias by remember { mutableStateOf(false) }
+    var errorHistorias by remember { mutableStateOf(false) }
+    val hayEntregadas = solicitudes?.any { it.estado.equals("ENTREGADA", ignoreCase = true) } == true
 
     val resolver = LocalContext.current.contentResolver
     val scope = rememberCoroutineScope()
@@ -98,6 +107,23 @@ internal fun MisSolicitudesAdopcion(
         }
     }
 
+    LaunchedEffect(historiasRepository, hayEntregadas, intentoHistorias) {
+        if (historiasRepository == null || !hayEntregadas) return@LaunchedEffect
+        cargandoHistorias = true
+        errorHistorias = false
+        try {
+            val actualizadas = historiasRepository.cargar()
+            historias = actualizadas
+            if (historiaSolicitudId !in actualizadas.elegibles) historiaSolicitudId = null
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            errorHistorias = true
+        } finally {
+            cargandoHistorias = false
+        }
+    }
+
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Mis solicitudes de adopción", style = MaterialTheme.typography.titleMedium)
@@ -137,6 +163,20 @@ internal fun MisSolicitudesAdopcion(
                                     guardarFicha.launch("ficha-veterinaria-${solicitud.id}.pdf")
                                 }
                             ) { Text("Descargar ficha veterinaria (PDF)") }
+                            val estadoHistoria = historias?.enviadas?.get(solicitud.id)
+                            if (estadoHistoria != null) {
+                                Text("Historia de adopción · ${estadoHistoria.estado_display}")
+                                if (estadoHistoria.estado == "RECHAZADO") {
+                                    estadoHistoria.motivo_revision?.takeIf { it.isNotBlank() }?.let { motivo ->
+                                        Text("Motivo del rechazo: $motivo", color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            } else if (historias?.elegibles?.contains(solicitud.id) == true) {
+                                TextButton(
+                                    onClick = { historiaSolicitudId = solicitud.id },
+                                    enabled = !cargandoHistorias && !errorHistorias,
+                                ) { Text("Compartir mi historia") }
+                            }
                             solicitud.albergue?.takeIf { it > 0 }?.let { albergueId ->
                                 val estado = estadoResenas[albergueId]
                                 if (estado == null) {
@@ -151,7 +191,35 @@ internal fun MisSolicitudesAdopcion(
                     }
                 }
             }
+            if (hayEntregadas && historiasRepository != null) {
+                when {
+                    cargandoHistorias -> Text("Cargando historias de adopción…")
+                    errorHistorias -> {
+                        Text("No se pudieron cargar tus historias de adopción.", color = MaterialTheme.colorScheme.error)
+                        TextButton(onClick = { intentoHistorias++ }) { Text("Reintentar historias") }
+                    }
+                    historias?.enviadas?.isNotEmpty() == true ->
+                        TextButton(onClick = { intentoHistorias++ }) { Text("Actualizar historias") }
+                }
+            }
         }
+    }
+
+    val solicitudHistoria = solicitudes?.firstOrNull { it.id == historiaSolicitudId }
+    if (historiasRepository != null && solicitudHistoria != null &&
+        historias?.elegibles?.contains(solicitudHistoria.id) == true
+    ) {
+        CompartirHistoriaDialog(
+            solicitud = solicitudHistoria,
+            repository = historiasRepository,
+            onDismiss = { historiaSolicitudId = null },
+            onEnviada = { enviada ->
+                historias = historias?.let { actual ->
+                    HistoriasAdopcion(actual.elegibles - enviada.solicitud_id, actual.enviadas + (enviada.solicitud_id to enviada))
+                }
+                historiaSolicitudId = null
+            },
+        )
     }
 
     albergueAResenar?.let { albergueId ->

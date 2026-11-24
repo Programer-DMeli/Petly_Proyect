@@ -147,7 +147,7 @@ const groups: Record<string, Group[]> = {
         {
           label: 'Testimonios destacados',
           to: '/albergue/testimonios',
-          description: 'Elige historias aprobadas para mostrarlas en tu perfil público.',
+          description: 'Revisa historias recibidas y destaca las aprobadas en tu perfil público.',
         },
         {
           label: 'Eventos',

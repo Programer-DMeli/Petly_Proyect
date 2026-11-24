@@ -2,19 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
 import { django, errorMessage, json, mediaUrl } from '../../../../services/http';
+import RevisionCasosExitoPage, { type CasoPublicado } from '../../../shared/RevisionCasosExitoPage';
 
 type Albergue = { id: number; nombre: string };
-type FotoTestimonio = { id: number; descarga_url: string; mime_type: string };
-type Testimonio = {
-  id: number;
-  albergue_id: number;
-  mascota_nombre: string;
-  albergue_nombre: string;
-  historia: string;
-  publicado_en: string;
-  destacado: boolean;
-  fotos: FotoTestimonio[];
-};
 type Coleccion<T> = T[] | { results: T[]; next: string | null };
 
 const API = '/api/contratos/casos-exito/';
@@ -24,11 +14,11 @@ function rows<T>(data: Coleccion<T>) {
 }
 
 async function cargarPublicados(albergueId: number, signal?: AbortSignal) {
-  const todos: Testimonio[] = [];
+  const todos: CasoPublicado[] = [];
   let pagina = 1;
   let siguiente: string | null;
   do {
-    const respuesta = await django<Coleccion<Testimonio>>(
+    const respuesta = await django<Coleccion<CasoPublicado>>(
       `${API}publicados/?albergue_id=${albergueId}&page=${pagina}&page_size=100`,
       { signal },
     );
@@ -48,7 +38,7 @@ function fecha(value: string) {
 
 export default function GestionTestimoniosPage() {
   const [albergue, setAlbergue] = useState<Albergue | null>(null);
-  const [testimonios, setTestimonios] = useState<Testimonio[]>([]);
+  const [testimonios, setTestimonios] = useState<CasoPublicado[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState('');
@@ -77,7 +67,7 @@ export default function GestionTestimoniosPage() {
     return () => controller.abort();
   }, [cargar]);
 
-  async function cambiarDestacado(testimonio: Testimonio) {
+  async function cambiarDestacado(testimonio: CasoPublicado) {
     const nuevoEstado = !testimonio.destacado;
     setBusyId(testimonio.id);
     setError('');
@@ -104,9 +94,13 @@ export default function GestionTestimoniosPage() {
     <header>
       <p className="eyebrow">Comunidad Petly</p>
       <h1>Testimonios destacados</h1>
-      <p className="muted">Elige qué historias aprobadas quieres mostrar en el perfil público de tu albergue.</p>
+      <p className="muted">Revisa las historias que recibiste y elige cuáles destacar en tu perfil público.</p>
       {albergue && <p><Link to={`/albergues/${albergue.id}`}>Ver perfil público de {albergue.nombre}</Link></p>}
     </header>
+    <RevisionCasosExitoPage role="ALBERGUE" onAprobada={caso => {
+      setTestimonios(actuales => [caso, ...actuales.filter(actual => actual.id !== caso.id)]);
+    }} />
+    <h2>Historias publicadas</h2>
     <Feedback error={error} success={success} />
     <div className="actions">
       <button type="button" className="secondary" disabled={loading || busyId !== null}
@@ -121,7 +115,7 @@ export default function GestionTestimoniosPage() {
         {testimonios.map(testimonio => <article className="card success-story-card" key={testimonio.id}>
           <div className="success-story-card__heading">
             <div>
-              <h2>{testimonio.mascota_nombre}</h2>
+              <h3>{testimonio.mascota_nombre}</h3>
               <p className="muted">Publicada {fecha(testimonio.publicado_en)}</p>
             </div>
             <strong>{testimonio.destacado ? 'Destacada' : 'Publicada'}</strong>

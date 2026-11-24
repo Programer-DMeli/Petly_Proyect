@@ -214,6 +214,7 @@ fun PetlyNavHost(
                         onMessagesRead = contadorMensajes::actualizar,
                         onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
                         onOpenAgendaVacunas = { solicitud -> nav.navigate("agenda-vacunas/$solicitud") { launchSingleTop = true } },
+                        historiasRepository = container.historiasAdopcion,
                         reportReminders = { RecordatoriosReporte(container.reportesSeguimiento) },
                         mensajeriaApi = if (isPreview) null else container.mensajeriaApi,
                         contentResolver = container.resolver,
@@ -274,6 +275,7 @@ fun PetlyNavHost(
                     val state by vm.state.collectAsStateWithLifecycle()
                     CuestionarioScreen(state, onRefreshProfile = vm::refreshSummary, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }), onOpenNotifications = { nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true } }, onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
                         onOpenAgendaVacunas = { solicitud -> nav.navigate("agenda-vacunas/$solicitud") { launchSingleTop = true } },
+                        historiasRepository = container.historiasAdopcion,
                         reportReminders = { RecordatoriosReporte(container.reportesSeguimiento) })
                 }
                 if (!isPreview) composable(

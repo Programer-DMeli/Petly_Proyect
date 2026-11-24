@@ -29,6 +29,7 @@ import com.petly_app.ui.perfil.DisponibilidadUiState
 import com.petly_app.ui.perfil.PerfilUiState
 import com.petly_app.ui.perfil.NotificacionesState
 import com.petly_app.data.remote.MensajeriaApi
+import com.petly_app.data.repository.HistoriasAdopcionRepository
 import com.petly_app.ui.mensajes.MensajesScreen
 
 enum class PetlyTab { INICIO, CATALOGO, NOVEDADES, MENSAJES, PERFIL }
@@ -74,6 +75,7 @@ fun MainAppScreen(
     contentResolver: android.content.ContentResolver? = null,
     solicitudesChat: List<Triple<Long, Long, String>> = emptyList(),
     onOpenAgendaVacunas: ((Long) -> Unit)? = null,
+    historiasRepository: HistoriasAdopcionRepository? = null,
     reportReminders: @Composable () -> Unit = {}
 ) {
     ChatPanel(chatState, onOpenChat, onEditChat, onSendChat, onRetryChat, onEditFailedChat, onClearChat)
@@ -144,6 +146,7 @@ fun MainAppScreen(
                         onOpenNotifications = onOpenNotifications,
                         onOpenSeguimientos = onOpenSeguimientos,
                         onOpenAgendaVacunas = onOpenAgendaVacunas,
+                        historiasRepository = historiasRepository,
                         reportReminders = reportReminders,
                         onDetailPet = onDetailPet,
                         onAddFranja = onAddFranja,

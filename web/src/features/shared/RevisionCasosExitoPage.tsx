@@ -1,25 +1,32 @@
 import { useCallback, useEffect, useState } from 'react';
 import Feedback from '../../components/Feedback';
-import { django, errorMessage } from '../../services/http';
+import { django, errorMessage, json } from '../../services/http';
 import FotoCasoExitoPrivada, { type FotoCasoExito } from './FotoCasoExitoPrivada';
 
 type Role = 'ALBERGUE' | 'ADMIN';
-type CasoPendiente = {
+export type CasoPublicado = {
   id: number;
-  solicitud_id: number;
   mascota_nombre: string;
-  albergue_nombre: string;
   historia: string;
-  estado: string;
-  estado_display: string;
-  creado_en: string;
+  publicado_en: string;
+  destacado: boolean;
   fotos: FotoCasoExito[];
+};
+type CasoPendiente = Pick<CasoPublicado, 'id' | 'mascota_nombre' | 'historia' | 'fotos'> & {
+  solicitud_id: number;
+  albergue_nombre: string;
+  creado_en: string;
 };
 type Page = { results: CasoPendiente[]; next: string | null };
 
 const API = '/api/contratos/casos-exito/';
 
-export default function RevisionCasosExitoPage({ role }: { role: Role }) {
+export default function RevisionCasosExitoPage({ role, onAprobada }: {
+  role: Role;
+  onAprobada?: (caso: CasoPublicado) => void;
+}) {
+  const Titulo = onAprobada ? 'h2' : 'h1';
+  const NombreMascota = onAprobada ? 'h3' : 'h2';
   const [casos, setCasos] = useState<CasoPendiente[]>([]);
   const [motivos, setMotivos] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
@@ -60,12 +67,14 @@ export default function RevisionCasosExitoPage({ role }: { role: Role }) {
     setError('');
     setSuccess('');
     try {
-      await django(`${API}${caso.id}/revisar/`, {
+      const revisada = await django<Omit<CasoPublicado, 'publicado_en'> & { publicado_en: string | null }>(`${API}${caso.id}/revisar/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decision, motivo }),
+        body: json({ decision, motivo }),
       });
       setCasos(actuales => actuales.filter(item => item.id !== caso.id));
+      if (decision === 'APROBAR' && revisada.publicado_en) {
+        onAprobada?.({ ...revisada, publicado_en: revisada.publicado_en });
+      }
       setSuccess(decision === 'APROBAR'
         ? `La historia de ${caso.mascota_nombre} fue aprobada y publicada.`
         : `La historia de ${caso.mascota_nombre} fue rechazada.`);
@@ -83,8 +92,8 @@ export default function RevisionCasosExitoPage({ role }: { role: Role }) {
 
   return <section className="card">
     <header>
-      <p className="eyebrow">Comunidad Petly</p>
-      <h1>Revisión de historias de adopción</h1>
+      {!onAprobada && <p className="eyebrow">Comunidad Petly</p>}
+      <Titulo>{onAprobada ? 'Historias pendientes de revisión' : 'Revisión de historias de adopción'}</Titulo>
       <p className="muted">Revisa el relato y las fotos antes de publicar. Las historias rechazadas no aparecen en la sección pública.</p>
     </header>
     <Feedback error={error} success={success} />
@@ -97,7 +106,7 @@ export default function RevisionCasosExitoPage({ role }: { role: Role }) {
       : casos.length === 0 ? <p>No hay historias pendientes de revisión.</p>
         : <div className="list-stack">
           {casos.map(caso => <article className="card" key={caso.id}>
-            <h2>{caso.mascota_nombre}</h2>
+            <NombreMascota>{caso.mascota_nombre}</NombreMascota>
             <p className="muted">Albergue: {caso.albergue_nombre} · Solicitud #{caso.solicitud_id} · Enviada {new Date(caso.creado_en).toLocaleDateString('es-PE')}</p>
             <p className="case-story">{caso.historia}</p>
             <h3>Fotos adjuntas ({caso.fotos.length})</h3>

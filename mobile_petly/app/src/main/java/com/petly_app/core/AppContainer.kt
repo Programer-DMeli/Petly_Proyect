@@ -50,6 +50,9 @@ class AppContainer(context: Context) {
     private val documentosApi = ApiClient.authenticatedAdminApi(session)
     val fotosHogarApi = documentosApi.create(FotosHogarApi::class.java)
     val fichaVeterinariaApi = documentosApi.create(FichaVeterinariaApi::class.java)
+    val historiasAdopcion = HistoriasAdopcionRepository(
+        documentosApi.create(HistoriasAdopcionApi::class.java), contentResolver
+    )
     val resolver = contentResolver
     val favoritosApi = privateApi.create(FavoritosApi::class.java)
     val solicitudesApi = privateApi.create(SolicitudesApi::class.java)

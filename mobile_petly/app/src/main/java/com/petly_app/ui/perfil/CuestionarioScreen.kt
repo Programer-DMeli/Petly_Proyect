@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.petly_app.data.model.PerfilDraft
+import com.petly_app.data.repository.HistoriasAdopcionRepository
 import com.petly_app.ui.common.PreviewNotice
 import com.petly_app.ui.screen.HomeIcons
 import kotlinx.coroutines.delay
@@ -63,6 +64,7 @@ fun CuestionarioScreen(
     onExit: () -> Unit = {},
     onOpenSeguimientos: () -> Unit = {},
     onOpenAgendaVacunas: ((Long) -> Unit)? = null,
+    historiasRepository: HistoriasAdopcionRepository? = null,
     reportReminders: @Composable () -> Unit = {}
 ) {
     var currentSubScreen by rememberSaveable { mutableStateOf("DASHBOARD") }
@@ -79,6 +81,7 @@ fun CuestionarioScreen(
                 onOpenNotifications = onOpenNotifications,
                 onOpenSeguimientos = onOpenSeguimientos,
                 onOpenAgendaVacunas = onOpenAgendaVacunas,
+                historiasRepository = historiasRepository,
                 reportReminders = reportReminders,
                 onDetailPet = onDetailPet,
                 onExit = onExit

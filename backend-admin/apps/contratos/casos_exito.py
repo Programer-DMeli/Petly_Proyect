@@ -6,7 +6,7 @@ from PIL import Image, UnidentifiedImageError
 from rest_framework import mixins, permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from apps.acceso.models import SolicitudAdopcion, User
@@ -42,7 +42,8 @@ class CasoExitoReadSerializer(serializers.ModelSerializer):
         model = CasoExitoAdopcion
         fields = [
             "id", "solicitud_id", "mascota_nombre", "albergue_nombre", "historia",
-            "estado", "estado_display", "motivo_revision", "destacado", "creado_en", "fotos",
+            "estado", "estado_display", "motivo_revision", "destacado", "creado_en",
+            "publicado_en", "fotos",
         ]
         read_only_fields = fields
 
@@ -201,7 +202,10 @@ class CasoExitoAdopcionViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, v
             return self.get_paginated_response(serializer.data)
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"], url_path="revisar")
+    @action(
+        detail=True, methods=["post"], url_path="revisar",
+        parser_classes=[JSONParser, MultiPartParser, FormParser],
+    )
     def revisar(self, request, pk=None):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -282,7 +286,10 @@ class CasoExitoAdopcionViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, v
             return self.get_paginated_response(serializer.data)
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"], url_path="destacar")
+    @action(
+        detail=True, methods=["post"], url_path="destacar",
+        parser_classes=[JSONParser, MultiPartParser, FormParser],
+    )
     def destacar(self, request, pk=None):
         if request.user.rol != User.Rol.ALBERGUE:
             raise PermissionDenied("Solo el albergue propietario puede destacar testimonios.")

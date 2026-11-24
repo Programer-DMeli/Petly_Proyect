@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.petly_app.data.model.completionPercent
 import com.petly_app.data.repository.FavoritosManager
+import com.petly_app.data.repository.HistoriasAdopcionRepository
 import com.petly_app.ui.auth.AccessIcons
 import com.petly_app.ui.catalogo.FavoritosDialog
 import com.petly_app.ui.common.PreviewNotice
@@ -45,6 +46,7 @@ fun PerfilScreen(
     onExit: () -> Unit = {},
     onOpenSeguimientos: () -> Unit = {},
     onOpenAgendaVacunas: ((Long) -> Unit)? = null,
+    historiasRepository: HistoriasAdopcionRepository? = null,
     reportReminders: @Composable () -> Unit = {}
 ) {
     val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
@@ -74,7 +76,7 @@ fun PerfilScreen(
             Text(it, color = MaterialTheme.colorScheme.error)
         }
 
-        if (!preview) MisSolicitudesAdopcion(onOpenAgendaVacunas)
+        if (!preview) MisSolicitudesAdopcion(onOpenAgendaVacunas, historiasRepository = historiasRepository)
 
         OutlinedButton(
             onClick = onOpenKyc,
