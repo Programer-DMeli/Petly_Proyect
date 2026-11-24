@@ -46,7 +46,8 @@ public class PrivacidadController {
             @Valid @RequestBody SolicitarBajaRequest request,
             Authentication authentication) {
         Map<String, Object> resultado = privacidad.solicitarBaja(usuarioId(authentication), request.operacionId());
-        HttpStatus status = "COMPLETADA".equals(resultado.get("estado")) ? HttpStatus.OK : HttpStatus.ACCEPTED;
+        HttpStatus status = resultado.get("estado") == SolicitudPrivacidad.Estado.COMPLETADA
+                ? HttpStatus.OK : HttpStatus.ACCEPTED;
         return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).body(resultado);
     }
 
