@@ -1,4 +1,6 @@
 """Autenticación JWT para validar tokens de Spring Boot (US-21)."""
+import logging
+
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth import get_user_model
@@ -7,6 +9,7 @@ from django.utils import timezone
 from rest_framework.exceptions import APIException
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class ComprobacionSesionNoDisponible(APIException):
@@ -101,6 +104,8 @@ class SpringBootJWTAuthentication(JWTAuthentication):
                 )
                 cuenta = cursor.fetchone()
         except DatabaseError as error:
+            logger.warning("Fallo de BD al comprobar cuenta: tipo=%s código=%s",
+                           type(error).__name__, error.args[0] if error.args and type(error.args[0]) is int else None)
             raise ComprobacionSesionNoDisponible() from error
 
         if not cuenta or cuenta[0] != version:
@@ -132,6 +137,8 @@ class SpringBootJWTAuthentication(JWTAuthentication):
                 )
                 activa = cursor.fetchone()
         except DatabaseError as error:
+            logger.warning("Fallo de BD al comprobar sesión: tipo=%s código=%s",
+                           type(error).__name__, error.args[0] if error.args and type(error.args[0]) is int else None)
             raise ComprobacionSesionNoDisponible() from error
         if not activa:
             raise InvalidToken("Sesión revocada")

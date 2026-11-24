@@ -27,6 +27,27 @@ class ChatPorSolicitudTest(APITestCase):
             "solicitud_id": solicitud.pk, "mascota_id": mascota_id or solicitud.mascota_id,
         })
 
+    def test_resumen_conserva_datos_y_acota_consultas(self):
+        self.client.force_authenticate(self.albergue)
+        first = self.abrir(self.luna).data["id"]
+        second = self.abrir(self.nube).data["id"]
+        self.client.post(f"{self.url}{first}/mensajes/", {"texto": "Hola"})
+        self.client.post(f"{self.url}{second}/mensajes/", {"texto": "Bienvenida a Nube"})
+        self.client.post(f"{self.url}{first}/bloquear/")
+        self.client.force_authenticate(self.adoptante)
+        messages = self.client.get(f"{self.url}{first}/").data["mensajes"]
+        self.client.post(f"{self.url}{first}/leer/", {"hasta_id": messages[-1]["id"]})
+
+        full = self.client.get(self.url).data
+        with self.assertNumQueries(6):
+            summary = self.client.get(self.url, {"resumen": "1"})
+        self.assertEqual(summary.status_code, 200)
+        self.assertEqual(summary.data, [{**item, "promedio_respuesta_horas": None} for item in full])
+        rows = {item["id"]: item for item in summary.data}
+        self.assertEqual(rows[first]["no_leidos"], 0)
+        self.assertEqual(rows[second]["no_leidos"], 1)
+        self.assertFalse(rows[second]["puede_enviar"])
+
     def test_solicitudes_del_mismo_albergue_tienen_conversaciones_distintas(self):
         self.client.force_authenticate(self.adoptante)
         general = self.client.post(self.url, {"albergue_id": self.refugio.pk})

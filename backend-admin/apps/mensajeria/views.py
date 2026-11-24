@@ -2,7 +2,7 @@ import mimetypes
 import os
 
 from django.db import transaction
-from django.db.models import F, OuterRef, Q, Subquery
+from django.db.models import Count, F, OuterRef, Q, Subquery
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -51,7 +51,39 @@ class ConversacionViewSet(viewsets.ViewSet):
         conversations = self.conversaciones_del_usuario(request.user).select_related(
             "albergue", "albergue__usuario", "adoptante", "solicitud__mascota",
         ).prefetch_related("participantes")
-        return Response(ConversacionSerializer(conversations, many=True, context={"request": request}).data)
+        context = {"request": request}
+        if request.query_params.get("resumen") == "1":
+            user = request.user
+            latest = Mensaje.objects.filter(conversacion_id=OuterRef("pk")).order_by("-creado_en", "-pk")
+            last_read = ParticipanteConversacion.objects.filter(conversacion_id=OuterRef("conversacion_id"), usuario=user)
+            conversations = list(conversations.annotate(ultimo_id=Subquery(latest.values("pk")[:1])))
+            if not conversations:
+                return Response([])
+            conversations_by_id = {conversation.pk: conversation for conversation in conversations}
+            latest_ids = [conversation.ultimo_id for conversation in conversations if conversation.ultimo_id]
+            context["ultimos"] = Mensaje.objects.select_related("remitente").prefetch_related("adjuntos").in_bulk(latest_ids)
+            context["read_states_by_conversation"] = {
+                conversation.pk: {participant.usuario_id: participant.leido_hasta for participant in conversation.participantes.all()}
+                for conversation in conversations
+            }
+            for message in context["ultimos"].values():
+                # Attach the already loaded conversation used by the read receipt serializer.
+                message.conversacion = conversations_by_id[message.conversacion_id]
+            unread = Mensaje.objects.filter(conversacion_id__in=conversations_by_id).exclude(remitente=user).annotate(
+                leido_hasta=Subquery(last_read.values("leido_hasta")[:1]),
+                participante_id=Subquery(last_read.values("pk")[:1]),
+            ).filter(participante_id__isnull=False).filter(
+                Q(leido_hasta__isnull=True) | Q(creado_en__gt=F("leido_hasta")),
+            ).order_by().values_list("conversacion_id").annotate(total=Count("pk"))
+            context["no_leidos_por_conversacion"] = dict(unread)
+            pairs = BloqueoConversacion.objects.filter(
+                conversacion__adoptante_id__in={conversation.adoptante_id for conversation in conversations},
+                conversacion__albergue_id__in={conversation.albergue_id for conversation in conversations},
+            ).values_list("conversacion__adoptante_id", "conversacion__albergue_id", "bloqueador_id")
+            context["bloqueadores_por_par"] = {}
+            for adoptante, albergue, blocker in pairs:
+                context["bloqueadores_por_par"].setdefault((adoptante, albergue), set()).add(blocker)
+        return Response(ConversacionSerializer(conversations, many=True, context=context).data)
 
     @action(detail=False, methods=["get"], url_path="no-leidos")
     def no_leidos(self, request):
@@ -123,9 +155,12 @@ class ConversacionViewSet(viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         conversation = self._get(request, pk)
-        messages = conversation.mensajes.select_related("conversacion__albergue__usuario").prefetch_related("adjuntos", "conversacion__participantes").all()
-        return Response({"conversacion": ConversacionSerializer(conversation, context={"request": request}).data,
-                         "mensajes": MensajeSerializer(messages, many=True, context={"request": request}).data})
+        messages = list(conversation.mensajes.select_related("remitente").prefetch_related("adjuntos"))
+        context = {"request": request, "mensajes_del_hilo": messages, "read_states_by_conversation": {
+            conversation.pk: {participant.usuario_id: participant.leido_hasta for participant in conversation.participantes.all()},
+        }}
+        return Response({"conversacion": ConversacionSerializer(conversation, context=context).data,
+                         "mensajes": MensajeSerializer(messages, many=True, context=context).data})
 
     def _get(self, request, pk):
         conversation = get_object_or_404(Conversacion.objects.select_related("albergue", "albergue__usuario", "adoptante", "solicitud__mascota").prefetch_related("participantes"), pk=pk)
@@ -133,43 +168,44 @@ class ConversacionViewSet(viewsets.ViewSet):
             raise PermissionDenied()
         return conversation
 
-    @transaction.atomic
-    @action(detail=True, methods=["get", "post"], url_path="mensajes", parser_classes=[MultiPartParser, FormParser, JSONParser])
+    @action(detail=True, methods=["get"], url_path="mensajes", parser_classes=[MultiPartParser, FormParser, JSONParser])
     def mensajes(self, request, pk=None):
         conversation = self._get(request, pk)
-        if request.method == "GET":
-            raw_cursor = request.query_params.get("despues_de_id", "0")
-            try:
-                cursor = int(raw_cursor)
-            except (TypeError, ValueError):
-                raise ValidationError({"despues_de_id": "El cursor debe ser un identificador entero no negativo."})
-            if cursor < 0:
-                raise ValidationError({"despues_de_id": "El cursor debe ser un identificador entero no negativo."})
+        raw_cursor = request.query_params.get("despues_de_id", "0")
+        try:
+            cursor = int(raw_cursor)
+        except (TypeError, ValueError):
+            raise ValidationError({"despues_de_id": "El cursor debe ser un identificador entero no negativo."})
+        if cursor < 0:
+            raise ValidationError({"despues_de_id": "El cursor debe ser un identificador entero no negativo."})
 
-            nuevos = conversation.mensajes.filter(pk__gt=cursor).select_related(
-                "remitente", "conversacion__albergue__usuario"
-            ).prefetch_related("adjuntos", "conversacion__participantes")
-            destinatario_id = (
-                conversation.albergue.usuario_id
-                if request.user.pk == conversation.adoptante_id
-                else conversation.adoptante_id
-            )
-            leido_hasta = conversation.participantes.filter(
-                usuario_id=destinatario_id
-            ).values_list("leido_hasta", flat=True).first()
-            leidos_hasta_id = None
-            if leido_hasta:
-                leidos_hasta_id = conversation.mensajes.filter(
-                    remitente=request.user,
-                    creado_en__lte=leido_hasta,
-                ).order_by("-pk").values_list("pk", flat=True).first()
-            response = Response({
-                "mensajes": MensajeSerializer(nuevos, many=True, context={"request": request}).data,
-                "leidos_hasta_id": leidos_hasta_id,
-            })
-            response["Cache-Control"] = "private, no-store"
-            return response
+        nuevos = conversation.mensajes.filter(pk__gt=cursor).select_related("remitente").prefetch_related("adjuntos")
+        destinatario_id = (
+            conversation.albergue.usuario_id
+            if request.user.pk == conversation.adoptante_id
+            else conversation.adoptante_id
+        )
+        leido_hasta = next((
+            participant.leido_hasta for participant in conversation.participantes.all()
+            if participant.usuario_id == destinatario_id
+        ), None)
+        leidos_hasta_id = None
+        if leido_hasta:
+            leidos_hasta_id = conversation.mensajes.filter(
+                remitente=request.user,
+                creado_en__lte=leido_hasta,
+            ).order_by("-pk").values_list("pk", flat=True).first()
+        response = Response({
+            "mensajes": MensajeSerializer(nuevos, many=True, context={"request": request}).data,
+            "leidos_hasta_id": leidos_hasta_id,
+        })
+        response["Cache-Control"] = "private, no-store"
+        return response
 
+    @mensajes.mapping.post
+    @transaction.atomic
+    def enviar_mensaje(self, request, pk=None):
+        conversation = self._get(request, pk)
         if conversation.bloqueos_entre_participantes().exclude(bloqueador=request.user).exists():
             return Response({"detail": "No puedes enviar mensajes a una persona que te bloqueó."}, status=423)
         text = str(request.data.get("texto", request.data.get("contenido", ""))).strip()

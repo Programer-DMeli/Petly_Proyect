@@ -50,7 +50,7 @@ class MensajeSerializer(serializers.ModelSerializer):
         read_states_by_conversation = self.context.setdefault("read_states_by_conversation", {})
         read_states = read_states_by_conversation.get(conversation.pk)
         if read_states is None:
-            read_states = dict(conversation.participantes.values_list("usuario_id", "leido_hasta"))
+            read_states = {participant.usuario_id: participant.leido_hasta for participant in conversation.participantes.all()}
             read_states_by_conversation[conversation.pk] = read_states
         read_at = read_states.get(recipient_id)
         return bool(read_at and obj.creado_en <= read_at)
@@ -85,10 +85,12 @@ class ConversacionSerializer(serializers.ModelSerializer):
         return bool(self._bloqueadores(obj))
 
     def _bloqueadores(self, obj):
+        pair = (obj.adoptante_id, obj.albergue_id)
+        if "bloqueadores_por_par" in self.context:
+            return self.context["bloqueadores_por_par"].get(pair, set())
         cache = getattr(self, "_bloqueadores_por_par", None)
         if cache is None:
             cache = self._bloqueadores_por_par = {}
-        pair = (obj.adoptante_id, obj.albergue_id)
         if pair not in cache:
             cache[pair] = set(obj.bloqueos_entre_participantes().values_list("bloqueador_id", flat=True))
         return cache[pair]
@@ -110,11 +112,28 @@ class ConversacionSerializer(serializers.ModelSerializer):
         return self.get_nombre_contacto(obj)
 
     def get_ultimo_mensaje(self, obj):
-        message = obj.mensajes.order_by("-creado_en", "-id").first()
+        if "ultimos" in self.context:
+            message = self.context["ultimos"].get(obj.ultimo_id)
+        elif "mensajes_del_hilo" in self.context:
+            messages = self.context["mensajes_del_hilo"]
+            message = messages[-1] if messages else None
+        else:
+            message = obj.mensajes.select_related("remitente").prefetch_related("adjuntos").order_by("-creado_en", "-id").first()
         return MensajeSerializer(message, context=self.context).data if message else None
 
     def get_no_leidos(self, obj):
+        if "no_leidos_por_conversacion" in self.context:
+            return self.context["no_leidos_por_conversacion"].get(obj.pk, 0)
         request = self.context["request"]
+        if "mensajes_del_hilo" in self.context:
+            states = self.context["read_states_by_conversation"][obj.pk]
+            if request.user.pk not in states:
+                return 0
+            read_at = states[request.user.pk]
+            return sum(
+                message.remitente_id != request.user.pk and (not read_at or message.creado_en > read_at)
+                for message in self.context["mensajes_del_hilo"]
+            )
         participant = obj.participantes.filter(usuario=request.user).first()
         if not participant:
             return 0
@@ -124,14 +143,22 @@ class ConversacionSerializer(serializers.ModelSerializer):
         return unread.count()
 
     def get_promedio_respuesta_horas(self, obj):
-        messages = list(obj.mensajes.exclude(bienvenida_automatica=True).order_by("creado_en", "id").values("remitente_id", "creado_en"))
+        if "ultimos" in self.context:
+            return None
+        if "mensajes_del_hilo" in self.context:
+            messages = (
+                (message.remitente_id, message.creado_en) for message in self.context["mensajes_del_hilo"]
+                if not message.bienvenida_automatica
+            )
+        else:
+            messages = obj.mensajes.exclude(bienvenida_automatica=True).order_by("creado_en", "id").values_list("remitente_id", "creado_en")
         waits = []
         runs = []
-        for message in messages:
-            if not runs or runs[-1]["remitente_id"] != message["remitente_id"]:
-                runs.append({"remitente_id": message["remitente_id"], "primero": message["creado_en"], "ultimo": message["creado_en"]})
+        for sender_id, sent_at in messages:
+            if not runs or runs[-1]["remitente_id"] != sender_id:
+                runs.append({"remitente_id": sender_id, "primero": sent_at, "ultimo": sent_at})
             else:
-                runs[-1]["ultimo"] = message["creado_en"]
+                runs[-1]["ultimo"] = sent_at
         adoptante_id = obj.adoptante_id
         albergue_id = obj.albergue.usuario_id
         for current, following in zip(runs, runs[1:]):

@@ -26,49 +26,57 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
   const [welcome, setWelcome] = useState('');
   const [reason, setReason] = useState('ACOSO');
   const [error, setError] = useState('');
+  const [listError, setListError] = useState('');
+  const [threadError, setThreadError] = useState('');
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
   const [moderating, setModerating] = useState(false);
-  const loadList = useCallback(async () => {
+  const loadList = useCallback(async (signal?: AbortSignal) => {
     try {
-      const result = await django<Conversation[]>('/api/mensajeria/conversaciones/');
+      const result = await django<Conversation[]>('/api/mensajeria/conversaciones/?resumen=1', { signal });
+      if (signal?.aborted) return;
       setConversations(result);
+      setListError('');
       const current = threadRef.current;
-      const conversation = result.find(item => item.id === Number(id));
+      const conversation = result.find(item => item.id === activeConversationRef.current);
       if (current && conversation && current.conversacion.id === conversation.id &&
           (current.conversacion.bloqueada !== conversation.bloqueada ||
            current.conversacion.bloqueada_por_mi !== conversation.bloqueada_por_mi ||
            current.conversacion.puede_enviar !== conversation.puede_enviar)) {
-        const updated = { ...current, conversacion: conversation };
+        const updated = { ...current, conversacion: {
+          ...conversation, promedio_respuesta_horas: current.conversacion.promedio_respuesta_horas,
+        } };
         threadRef.current = updated;
         setThread(updated);
       }
-      if (!id && activeConversationRef.current === null && !shelterId && solicitudId === null && result.length) {
+      if (activeConversationRef.current === null && !shelterId && solicitudId === null && result.length) {
         activeConversationRef.current = result[0].id;
         void navigate(`${rutaMensajes}/${result[0].id}`, { replace: true });
       }
-    } catch (e) { setError(errorMessage(e)); }
-  }, [id, navigate, rutaMensajes, shelterId, solicitudId]);
+    } catch (e) { if (!signal?.aborted) setListError(errorMessage(e)); }
+  }, [navigate, rutaMensajes, shelterId, solicitudId]);
 
-  const loadThread = useCallback(async () => {
+  const loadThread = useCallback(async (signal?: AbortSignal) => {
     if (!id) { threadRef.current = null; setThread(null); return; }
     const conversationId = Number(id);
+    setThreadError('');
     try {
-      const result = await django<Thread>(`/api/mensajeria/conversaciones/${conversationId}/`);
-      if (activeConversationRef.current !== conversationId) return;
+      const result = await django<Thread>(`/api/mensajeria/conversaciones/${conversationId}/`, { signal });
+      if (signal?.aborted || activeConversationRef.current !== conversationId) return;
       threadRef.current = result;
       setThread(result);
       const lastMessageId = result.mensajes.at(-1)?.id;
-      if (lastMessageId != null) {
+      if (lastMessageId != null && result.conversacion.no_leidos > 0) {
         await django(`/api/mensajeria/conversaciones/${conversationId}/leer/`, {
-          method: 'POST', body: json({ hasta_id: lastMessageId }),
+          method: 'POST', body: json({ hasta_id: lastMessageId }), signal,
         });
       }
-      setError('');
-    } catch (e) { setError(errorMessage(e)); }
+    } catch (e) {
+      if (!signal?.aborted && activeConversationRef.current === conversationId) setThreadError(errorMessage(e));
+    }
   }, [id]);
 
-  const pollMessages = useCallback(async () => {
+  const pollMessages = useCallback(async (signal: AbortSignal) => {
     const active = threadRef.current;
     const conversationId = Number(id);
     if (!id || !active || active.conversacion.id !== conversationId) return;
@@ -76,9 +84,14 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
     try {
       const updates = await django<MessageUpdates>(
         `/api/mensajeria/conversaciones/${conversationId}/mensajes/?despues_de_id=${cursor}`,
+        { signal },
       );
       const current = threadRef.current;
-      if (!current || current.conversacion.id !== conversationId) return;
+      if (signal.aborted || activeConversationRef.current !== conversationId ||
+          !current || current.conversacion.id !== conversationId) return;
+      setThreadError('');
+      const isRead = (message: Message) => updates.leidos_hasta_id != null && message.id <= updates.leidos_hasta_id;
+      if (!updates.mensajes.length && !current.mensajes.some(message => message.propio && message.leido !== isRead(message))) return;
       const byId = new Map(current.mensajes.map(message => [message.id, message]));
       for (const message of updates.mensajes) byId.set(message.id, message);
       const merged: Thread = {
@@ -86,7 +99,7 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
         mensajes: [...byId.values()]
           .sort((a, b) => a.id - b.id)
           .map(message => message.propio
-            ? { ...message, leido: updates.leidos_hasta_id != null && message.id <= updates.leidos_hasta_id }
+            ? { ...message, leido: isRead(message) }
             : message),
       };
       threadRef.current = merged;
@@ -95,11 +108,13 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
         const lastMessageId = merged.mensajes.at(-1)?.id;
         if (lastMessageId != null) {
           await django(`/api/mensajeria/conversaciones/${conversationId}/leer/`, {
-            method: 'POST', body: json({ hasta_id: lastMessageId }),
+            method: 'POST', body: json({ hasta_id: lastMessageId }), signal,
           });
         }
       }
-    } catch (e) { setError(errorMessage(e)); }
+    } catch (e) {
+      if (!signal.aborted && activeConversationRef.current === conversationId) setThreadError(errorMessage(e));
+    }
   }, [id]);
 
   useEffect(() => {
@@ -107,7 +122,11 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
     setDraft('');
     setFile(null);
   }, [id]);
-  useEffect(() => { void loadList(); }, [loadList]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadList(controller.signal);
+    return () => controller.abort();
+  }, [loadList]);
   useEffect(() => {
     if (id || (solicitudId === null && (role !== 'ADOPTANTE' || shelterId == null))) return;
     if (solicitudId !== null && (!/^[1-9]\d*$/.test(solicitudId) || (mascotaId !== null && !/^[1-9]\d*$/.test(mascotaId)))) {
@@ -135,10 +154,25 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
     void django<{ texto: string }>('/api/mensajeria/bienvenida/').then(v => setWelcome(v.texto)).catch(e => setError(errorMessage(e)));
   }, [role]);
   useEffect(() => {
-    void loadThread();
-    const timer = window.setInterval(() => { void loadList(); void pollMessages(); }, 5000);
-    return () => window.clearInterval(timer);
-  }, [loadList, loadThread, pollMessages]);
+    const controller = new AbortController();
+    const initial = loadThread(controller.signal);
+    let timer: number;
+    let nextList = Date.now() + 15000;
+    async function tick() {
+      if (controller.signal.aborted) return;
+      if (!document.hidden) {
+        if (id && threadRef.current?.conversacion.id !== Number(id)) await loadThread(controller.signal);
+        else await pollMessages(controller.signal);
+        if (!controller.signal.aborted && Date.now() >= nextList) {
+          await loadList(controller.signal);
+          nextList = Date.now() + 15000;
+        }
+      }
+      if (!controller.signal.aborted) timer = window.setTimeout(() => void tick(), 5000);
+    }
+    void initial.then(() => { if (!controller.signal.aborted) timer = window.setTimeout(() => void tick(), 5000); });
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [id, loadList, loadThread, pollMessages]);
 
   async function send(event: React.FormEvent) {
     event.preventDefault();
@@ -185,7 +219,7 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
 
   return <section className="card">
     <h1>Mensajes</h1>
-    <Feedback error={error} success={success} />
+    <Feedback error={error || threadError || listError} success={success} />
     {role === 'ALBERGUE' && <details className="card"><summary>Mensaje de bienvenida automática</summary><label>Texto que recibirán los adoptantes al abrir el chat<textarea maxLength={1000} value={welcome} onChange={e => setWelcome(e.target.value)} /></label><button type="button" onClick={() => void saveWelcome()}>Guardar bienvenida</button></details>}
     <div className="chat-directo-layout">
       <nav aria-label="Conversaciones" className="chat-directo-list">{conversations.map(item => <button type="button" key={item.id} aria-current={String(item.id) === id} onClick={() => {
@@ -202,7 +236,8 @@ export default function ChatDirectoPage({ role }: { role: 'ADOPTANTE' | 'ALBERGU
             event.currentTarget.closest('details')?.removeAttribute('open');
             void moderate(thread.conversacion.bloqueada_por_mi ? 'desbloquear' : 'bloquear');
           }}>{thread.conversacion.bloqueada_por_mi ? 'Desbloquear' : 'Bloquear'}</button></details></div>
-        </> : <p>Selecciona una conversación para ver los mensajes.</p>}
+        </> : id ? <p role="status">{threadError ? 'Volviendo a intentar cargar la conversación…' : 'Cargando conversación…'}</p>
+          : <p>Selecciona una conversación para ver los mensajes.</p>}
       </div>
     </div>
   </section>;
