@@ -136,6 +136,23 @@ internal object HomeIcons {
         }
     }.build()
 
+    val Chat = ImageVector.Builder("Chat", 24.dp, 24.dp, 24f, 24f).apply {
+        path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            moveTo(8f, 4f)
+            lineTo(16f, 4f)
+            quadTo(21f, 4f, 21f, 9f)
+            lineTo(21f, 13f)
+            quadTo(21f, 18f, 16f, 18f)
+            lineTo(9f, 18f)
+            lineTo(3f, 21f)
+            lineTo(3f, 9f)
+            quadTo(3f, 4f, 8f, 4f)
+            close()
+            moveTo(8f, 11f)
+            lineTo(16f, 11f)
+        }
+    }.build()
+
     val Bell = ImageVector.Builder("Bell", 24.dp, 24.dp, 24f, 24f).apply {
         path(fill = null, stroke = line, strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
             moveTo(18f, 8f)

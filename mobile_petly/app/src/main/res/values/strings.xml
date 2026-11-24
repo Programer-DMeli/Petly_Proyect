@@ -4,4 +4,8 @@
         <item quantity="one">%d mensaje sin leer</item>
         <item quantity="other">%d mensajes sin leer</item>
     </plurals>
+    <plurals name="avisos_sin_leer">
+        <item quantity="one">%d aviso sin leer</item>
+        <item quantity="other">%d avisos sin leer</item>
+    </plurals>
 </resources>

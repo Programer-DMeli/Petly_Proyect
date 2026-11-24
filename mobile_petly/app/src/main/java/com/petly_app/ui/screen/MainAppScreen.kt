@@ -189,16 +189,19 @@ fun PetlyBottomNavigationBar(
                 onClick = { onSelectTab(PetlyTab.CATALOGO) }
             )
             BottomNavItem(
-                label = if (unreadNotifications > 0) "Novedades ($unreadNotifications)" else "Novedades",
+                label = "Novedades",
                 icon = HomeIcons.Bell,
                 isSelected = selectedTab == PetlyTab.NOVEDADES,
+                unreadCount = unreadNotifications,
+                unreadPlural = R.plurals.avisos_sin_leer,
                 onClick = { onSelectTab(PetlyTab.NOVEDADES) }
             )
             BottomNavItem(
                 label = "Mensajes",
-                icon = HomeIcons.Bell,
+                icon = HomeIcons.Chat,
                 isSelected = selectedTab == PetlyTab.MENSAJES,
                 unreadCount = unreadMessages,
+                unreadPlural = R.plurals.mensajes_sin_leer,
                 onClick = { onSelectTab(PetlyTab.MENSAJES) }
             )
             BottomNavItem(
@@ -212,26 +215,29 @@ fun PetlyBottomNavigationBar(
 }
 
 @Composable
-private fun BottomNavItem(
+private fun RowScope.BottomNavItem(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     isSelected: Boolean,
     unreadCount: Int = 0,
+    @androidx.annotation.PluralsRes unreadPlural: Int = R.plurals.avisos_sin_leer,
     onClick: () -> Unit
 ) {
     val unreadDescription = if (unreadCount > 0) {
-        pluralStringResource(R.plurals.mensajes_sin_leer, unreadCount, unreadCount)
+        pluralStringResource(unreadPlural, unreadCount, unreadCount)
     } else {
         null
     }
     Column(
         modifier = Modifier
+            .weight(1f)
+            .heightIn(min = 48.dp)
             .clickable(role = Role.Tab, onClick = onClick)
             .semantics {
                 selected = isSelected
                 if (unreadDescription != null) stateDescription = unreadDescription
             }
-            .padding(vertical = 4.dp, horizontal = 10.dp),
+            .padding(vertical = 4.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -260,6 +266,7 @@ private fun BottomNavItem(
         Text(
             text = label,
             fontSize = 11.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             color = if (isSelected) PetlyDarkGreen else Color(0xFF6B7D73)
         )
