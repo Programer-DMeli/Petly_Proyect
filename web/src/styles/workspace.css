@@ -510,6 +510,43 @@
   color: var(--petly-text-muted, #62756c);
   background: var(--petly-surface-soft, #f7faf8);
 }
+.adoption-ranking__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+.adoption-ranking__header h2 {
+  margin: 0;
+}
+.adoption-ranking__header label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+.adoption-ranking__scroll {
+  overflow-x: auto;
+}
+.adoption-ranking table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.adoption-ranking th,
+.adoption-ranking td {
+  padding: 0.65rem 0.8rem;
+  border-bottom: 1px solid var(--petly-border, #cfe4d8);
+  text-align: left;
+}
+.adoption-ranking td:not(:first-child) {
+  font-variant-numeric: tabular-nums;
+}
+.adoption-ranking thead,
+.adoption-ranking tfoot {
+  background: var(--petly-surface-soft, #f7faf8);
+}
 @media (max-width: 560px) {
   .adoption-analytics__filters {
     grid-template-columns: minmax(0, 1fr);

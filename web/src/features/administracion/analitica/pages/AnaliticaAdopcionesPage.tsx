@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import Feedback from '../../../../components/Feedback';
 import { django, downloadDjango, errorMessage } from '../../../../services/http';
+import RankingAdopciones from './RankingAdopciones';
 
 type AdopcionesPorMes = {
   anio: number;
@@ -226,5 +227,6 @@ export default function AnaliticaAdopcionesPage() {
           </section>
         </div>
       </>}
+    <RankingAdopciones desde={rangoAplicado.desde} hasta={rangoAplicado.hasta} />
   </main>;
 }
