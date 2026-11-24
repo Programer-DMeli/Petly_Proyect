@@ -151,11 +151,12 @@ export default function NotificacionesMenu({ role, open, onToggle }: Props) {
                 : <div className="workspace-notifications__list">
                   {avisos.map(aviso => {
                     const programacion = aviso.tipo === 'SEGUIMIENTO_PROGRAMADO';
+                    const nuevaMascota = aviso.tipo === 'NUEVA_MASCOTA' || aviso.tipo === 'NUEVA_COINCIDENCIA';
                     const destino = role === 'ALBERGUE' && aviso.solicitud_id
                       ? `/albergue/solicitudes?solicitud=${aviso.solicitud_id}`
                       : aviso.seguimiento_id
                       ? `/adoptante/seguimientos-postadopcion?${programacion ? 'seguimiento' : 'entrega'}=${aviso.seguimiento_id}#seguimiento-${aviso.seguimiento_id}`
-                      : aviso.tipo === 'NUEVA_COINCIDENCIA' && aviso.mascota_id
+                      : nuevaMascota && aviso.mascota_id
                         ? `/adoptante/catalogo/${aviso.mascota_id}` : null;
                     const clase = `workspace-notifications__item${aviso.leido_en ? '' : ' is-unread'}`;
                     const contenido = <>
@@ -163,7 +164,7 @@ export default function NotificacionesMenu({ role, open, onToggle }: Props) {
                       <p>{aviso.mensaje}</p>
                       {aviso.tipo === 'COMPATIBILIDAD' && <span>Ver solicitud</span>}
                       {aviso.mascota_nombre && aviso.tipo !== 'COMPATIBILIDAD' && <span>Mascota: {aviso.mascota_nombre}</span>}
-                      {aviso.tipo === 'NUEVA_COINCIDENCIA' && aviso.albergue_nombre && <span>Albergue: {aviso.albergue_nombre}</span>}
+                      {nuevaMascota && aviso.albergue_nombre && <span>Albergue: {aviso.albergue_nombre}</span>}
                       {programacion ? aviso.programado_para && <span>Fecha programada: {fechaSeguimiento(aviso.programado_para)} (Lima)</span>
                         : aviso.fecha_limite && <span>Fecha límite: {fechaSeguimiento(aviso.fecha_limite)} (Lima)</span>}
                       <time dateTime={aviso.ocurrido_en}>{fecha(aviso.ocurrido_en)}</time>

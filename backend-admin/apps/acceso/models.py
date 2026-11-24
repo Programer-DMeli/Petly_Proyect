@@ -542,9 +542,10 @@ class VacunaProgramada(models.Model):
 
 
 class SolicitudEvento(models.Model):
-    """Evento de solicitud o aviso de una nueva mascota coincidente."""
+    """Evento de solicitud o aviso de una nueva mascota."""
 
     class Tipo(models.TextChoices):
+        NUEVA_MASCOTA = "NUEVA_MASCOTA", "Nueva mascota disponible"
         NUEVA_COINCIDENCIA = "NUEVA_COINCIDENCIA", "Nueva mascota para ti"
         REGISTRO_HISTORICO = "REGISTRO_HISTORICO", "Registro histórico"
         SOLICITUD_CREADA = "SOLICITUD_CREADA", "Solicitud creada"

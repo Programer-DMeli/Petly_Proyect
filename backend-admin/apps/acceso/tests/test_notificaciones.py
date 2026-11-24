@@ -11,14 +11,14 @@ class NotificacionesTest(APITestCase):
     url = "/api/acceso/notificaciones/"
 
     def setUp(self):
-        self.adoptante = User.objects.create_user(username="avisos", rol=User.Rol.ADOPTANTE)
-        self.otro = User.objects.create_user(username="otro", rol=User.Rol.ADOPTANTE)
         self.staff = User.objects.create_user(username="refugio", rol=User.Rol.ALBERGUE)
         self.albergue = Albergue.objects.create(usuario=self.staff, nombre="Huellitas", direccion="Lima")
         self.mascota = Mascota.objects.create(
             albergue=self.albergue, nombre="Luna", codigo="AVISO-01",
             especie=Mascota.Especie.PERRO, sexo=Mascota.Sexo.HEMBRA,
         )
+        self.adoptante = User.objects.create_user(username="avisos", rol=User.Rol.ADOPTANTE)
+        self.otro = User.objects.create_user(username="otro", rol=User.Rol.ADOPTANTE)
         self.solicitud = SolicitudAdopcion.objects.create(
             adoptante=self.adoptante, mascota=self.mascota, albergue=self.albergue,
         )

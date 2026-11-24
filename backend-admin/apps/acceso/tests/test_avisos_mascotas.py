@@ -6,6 +6,7 @@ from django.db import IntegrityError, transaction
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
+from django.urls import reverse
 from rest_framework.test import APITestCase
 from apps.acceso.models import CanalAvisos, CriteriosAviso, SolicitudEvento, User
 from apps.acceso.avisos_mascotas import avisar_nueva_mascota
@@ -20,6 +21,7 @@ class AvisosMascotasTest(APITestCase):
         cache.clear()
         self.user = User.objects.create_user(username='adoptante')
         self.other = User.objects.create_user(username='otro')
+        CriteriosAviso.objects.create(adoptante=self.other, activo=False)
         staff = User.objects.create_user(username='albergue', rol='ALBERGUE')
         self.albergue = Albergue.objects.create(usuario=staff, nombre='Huellitas', direccion='Lima')
         self.client.force_authenticate(self.user)
@@ -76,6 +78,30 @@ class AvisosMascotasTest(APITestCase):
         self.assertEqual(response['results'][0]['mascota_id'], alta.data['id'])
         self.assertEqual(response['results'][0]['albergue_nombre'], self.albergue.nombre)
 
+    def test_publica_un_aviso_general_para_un_adoptante_sin_criterios(self):
+        self.assertTrue(self.client.get(self.url + 'criterios/').data['activo'])
+        self.assertFalse(CriteriosAviso.objects.filter(adoptante=self.user).exists())
+        self.client.force_authenticate(self.albergue.usuario)
+        image = BytesIO()
+        Image.new('RGB', (64, 64)).save(image, 'PNG')
+        with TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            alta = self.client.post('/api/mascotas/', {
+                'nombre': 'Polo', 'especie': 'GATO', 'sexo': 'MACHO',
+                'foto_principal': SimpleUploadedFile('polo.png', image.getvalue(), 'image/png'),
+            }, format='multipart')
+        self.assertEqual(alta.status_code, 201, alta.data)
+        pet = Mascota.objects.get(pk=alta.data['id'])
+        avisar_nueva_mascota(Mascota, pet, created=True)
+        self.assertEqual(CanalAvisos.objects.get(adoptante=self.user).revision, 1)
+        self.client.force_authenticate(self.user)
+        response = self.client.get(self.url).data
+        self.assertEqual(response['no_leidas'], 1)
+        self.assertEqual(response['results'][0]['tipo'], 'NUEVA_MASCOTA')
+        self.assertEqual(response['results'][0]['mascota_id'], pet.pk)
+        self.assertEqual(response['results'][0]['mascota_nombre'], 'Polo')
+        self.client.force_authenticate(self.other)
+        self.assertEqual(self.client.get(self.url).data['results'], [])
+
     def test_no_notifica_mascota_de_albergue_inactivo(self):
         self.save_filters()
         self.albergue.activo = False
@@ -104,6 +130,7 @@ class AvisosMascotasTest(APITestCase):
             SolicitudEvento.objects.create(tipo='NUEVA_COINCIDENCIA', destinatario=self.user, mascota_coincidente=pet)
 
     def test_no_retroactivo_desactivar_y_criterios_parciales(self):
+        self.save_filters(activo=False)
         self.pet()
         self.save_filters()
         self.assertEqual(SolicitudEvento.objects.count(), 0)
@@ -115,7 +142,7 @@ class AvisosMascotasTest(APITestCase):
         self.assertEqual(SolicitudEvento.objects.count(), 1)
 
     def test_validacion_permisos_y_persistencia(self):
-        for changes in [dict(edad_min_meses=37), dict(edad_max_meses=601), dict(edad_min_meses=-1), dict(especie='DRAGON'), dict(especie='', tamanio='', temperamento='', edad_min_meses=None, edad_max_meses=None)]:
+        for changes in [dict(edad_min_meses=37), dict(edad_max_meses=601), dict(edad_min_meses=-1), dict(especie='DRAGON')]:
             self.assertEqual(self.save_filters(**changes).status_code, 400)
         self.assertEqual(self.save_filters().status_code, 200)
         self.assertEqual(self.client.get(self.url + 'criterios/').data, self.filters)
@@ -135,10 +162,23 @@ class AvisosMascotasTest(APITestCase):
 
     def test_notifica_a_varios_adoptantes_y_excluye_inactivos(self):
         self.save_filters()
-        CriteriosAviso.objects.create(adoptante=self.other, activo=True, especie='PERRO')
+        CriteriosAviso.objects.filter(adoptante=self.other).update(activo=True, especie='PERRO')
         self.pet()
         self.assertEqual(SolicitudEvento.objects.count(), 2)
         self.other.is_active = False
         self.other.save()
         self.pet()
         self.assertEqual(SolicitudEvento.objects.count(), 3)
+
+    def test_general_con_preferencia_guardada_sin_filtros_es_solo_de_bandeja(self):
+        self.user.usuario_spring_id = 50
+        self.user.save(update_fields=['usuario_spring_id'])
+        self.assertEqual(self.save_filters(
+            especie='', tamanio='', temperamento='', edad_min_meses=None, edad_max_meses=None,
+        ).status_code, 200)
+        self.pet(especie='GATO')
+        self.assertEqual(SolicitudEvento.objects.get().tipo, SolicitudEvento.Tipo.NUEVA_MASCOTA)
+        with override_settings(INTERNAL_API_SECRET='solo-pruebas'):
+            response = self.client.get(reverse('feed_interno_coincidencias'), HTTP_X_INTERNAL_SECRET='solo-pruebas')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, [])

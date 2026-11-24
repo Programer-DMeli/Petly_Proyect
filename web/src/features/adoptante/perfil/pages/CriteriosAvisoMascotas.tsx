@@ -53,13 +53,9 @@ export default function CriteriosAvisoMascotas() {
     evento.preventDefault();
     if (!criterios || busy) return;
     setSuccess('');
-    const { activo, especie, tamanio, temperamento, edad_min_meses, edad_max_meses } = criterios;
+    const { edad_min_meses, edad_max_meses } = criterios;
     if (edad_min_meses !== null && edad_max_meses !== null && edad_min_meses > edad_max_meses) {
       setError('La edad mínima no puede superar la máxima.');
-      return;
-    }
-    if (activo && !especie && !tamanio && !temperamento && edad_min_meses === null && edad_max_meses === null) {
-      setError('Elige al menos un criterio para activar los avisos.');
       return;
     }
     setError('');
@@ -78,7 +74,7 @@ export default function CriteriosAvisoMascotas() {
   return (
     <section className="card" aria-labelledby="aviso-mascotas">
       <h2 id="aviso-mascotas">Avisos de nuevas mascotas</h2>
-      <p>Activa los avisos y elige al menos un criterio. Recibirás un aviso cuando una nueva mascota cumpla todos los filtros elegidos.</p>
+      <p>Con los avisos activos, las nuevas mascotas aparecen en tu bandeja. Puedes elegir filtros para recibir solo las que cumplan todos tus criterios.</p>
       <Feedback error={error} success={success} />
       {criterios ? (
         <form onSubmit={evento => void guardar(evento)}>

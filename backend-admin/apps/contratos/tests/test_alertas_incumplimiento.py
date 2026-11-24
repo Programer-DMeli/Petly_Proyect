@@ -31,7 +31,6 @@ class AlertasIncumplimientoTest(APITestCase):
 
     def setUp(self):
         cache.clear()
-        self.adoptante = User.objects.create_user(username="adoptante")
         self.albergue_user = User.objects.create_user(username="albergue", rol="ALBERGUE")
         self.otro_albergue_user = User.objects.create_user(username="otro-albergue", rol="ALBERGUE")
         self.albergue = Albergue.objects.create(
@@ -44,6 +43,7 @@ class AlertasIncumplimientoTest(APITestCase):
             albergue=self.albergue, nombre="Luna", codigo="ALERTA-1",
             especie="PERRO", sexo="HEMBRA",
         )
+        self.adoptante = User.objects.create_user(username="adoptante")
         self.solicitud = SolicitudAdopcion.objects.create(
             adoptante=self.adoptante, mascota=self.mascota, albergue=self.albergue,
             estado=SolicitudAdopcion.Estado.ENTREGADA,

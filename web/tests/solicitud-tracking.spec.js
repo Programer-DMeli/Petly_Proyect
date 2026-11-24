@@ -49,6 +49,36 @@ function event(id, type, label, date, previous = null, next = null, description 
   };
 }
 
+test('el aviso de una mascota nueva abre su ficha y se marca como leído', async ({ page }) => {
+  const fecha = '2026-11-24T10:00:00-05:00';
+  let leido = false;
+  await page.route('**/api/solicitudes/42/seguimiento', route =>
+    route.fulfill({ json: { solicitudId: 42, estadoActual: 'PENDIENTE', eventos: [] } }));
+  await page.route('**/api/acceso/notificaciones/', route => route.fulfill({
+    json: {
+      no_leidas: leido ? 0 : 1,
+      results: [{
+        id: 18, tipo: 'NUEVA_MASCOTA', titulo: 'Nueva mascota disponible', mascota_id: 71,
+        mascota_nombre: 'Polo', albergue_nombre: 'Refugio Nube', solicitud_id: null,
+        mensaje: 'Un albergue publicó una mascota disponible para adopción.',
+        ocurrido_en: fecha, leido_en: leido ? fecha : null,
+      }],
+    },
+  }));
+  await page.route('**/api/acceso/notificaciones/18/leer/', route => {
+    expect(route.request().method()).toBe('POST');
+    leido = true;
+    return route.fulfill({ json: { id: 18, leido_en: fecha } });
+  });
+
+  await loginAsAdopter(page);
+  await page.getByRole('button', { name: 'Avisos, 1 sin leer' }).click();
+  await page.getByRole('button', { name: /Nueva mascota disponible.*Polo/ }).click();
+  await expect(page).toHaveURL(/\/adoptante\/catalogo\/71$/);
+  await expect(page.getByRole('button', { name: 'Avisos', exact: true })).toBeVisible();
+  expect(leido).toBe(true);
+});
+
 test('el seguimiento ordena los eventos y actualiza el estado y el evento más reciente', async ({ page }) => {
   let requests = 0;
   let updated = false;

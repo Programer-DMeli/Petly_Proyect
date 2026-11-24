@@ -18,7 +18,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken
 from .authentication import ComprobacionSesionNoDisponible, SpringBootJWTAuthentication
 
 from .models import CanalAvisos, SolicitudEvento, User
-from .notificaciones import MENSAJES
+from .notificaciones import MENSAJES, TIPOS_AVISO_MASCOTA
 
 MAX_CAMBIOS = 64
 INTERVALO = 0.25
@@ -30,7 +30,7 @@ DURACION_MAXIMA = 600
 def registrar_cambio_avisos(sender, instance, created, raw=False, using=None, **kwargs):
     if not created or raw or not instance.visible_adoptante or instance.tipo not in MENSAJES:
         return
-    if instance.tipo == SolicitudEvento.Tipo.NUEVA_COINCIDENCIA:
+    if instance.tipo in TIPOS_AVISO_MASCOTA:
         adoptante_id = instance.destinatario_id
     elif instance.solicitud_id:
         adoptante_id = instance.solicitud.adoptante_id

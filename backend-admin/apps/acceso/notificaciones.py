@@ -21,6 +21,7 @@ from apps.mascotas.models import Mascota
 
 
 MENSAJES = {
+    "NUEVA_MASCOTA": "Un albergue publicó una mascota disponible para adopción. ¡Conócela!",
     "NUEVA_COINCIDENCIA": "Una nueva mascota coincide con tus criterios guardados. ¡Conócela!",
     "SOLICITUD_CREADA": "El albergue recibió tu solicitud y está pendiente de revisión.",
     "OBSERVADA": "El albergue necesita que revises las observaciones de tu solicitud.",
@@ -43,6 +44,7 @@ MENSAJES = {
     "ENTREGADA": "La entrega de tu mascota quedó registrada. ¡Gracias por adoptar!",
 }
 
+TIPOS_AVISO_MASCOTA = (SolicitudEvento.Tipo.NUEVA_MASCOTA, SolicitudEvento.Tipo.NUEVA_COINCIDENCIA)
 
 MENSAJES_ALBERGUE = {
     "SOLICITUD_CREADA": "Recibiste una nueva solicitud de adopción.",
@@ -121,8 +123,6 @@ class CriteriosAvisoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("La edad debe estar entre 0 y 600 meses.")
         if low is not None and high is not None and low > high:
             raise serializers.ValidationError("La edad mínima supera la máxima.")
-        if attrs.get("activo") and not any(attrs.get(k) not in (None, "") for k in ("especie", "tamanio", "temperamento", "edad_min_meses", "edad_max_meses")):
-            raise serializers.ValidationError("Guarda al menos un criterio para activar los avisos.")
         return attrs
 
 
@@ -210,7 +210,7 @@ class NotificacionViewSet(viewsets.GenericViewSet):
         return qs.filter(
             ~Q(tipo=SolicitudEvento.Tipo.RECORDATORIO_REPORTE) | ventana_tres_dias,
             ~Q(tipo=SolicitudEvento.Tipo.REPORTE_1_DIA) | ventana_un_dia,
-            Q(solicitud__adoptante=self.request.user) | Q(destinatario=self.request.user, tipo="NUEVA_COINCIDENCIA"),
+            Q(solicitud__adoptante=self.request.user) | Q(destinatario=self.request.user, tipo__in=TIPOS_AVISO_MASCOTA),
             visible_adoptante=True,
             tipo__in=MENSAJES,
         ).order_by("-ocurrido_en", "-id")
@@ -221,7 +221,7 @@ class NotificacionViewSet(viewsets.GenericViewSet):
             raise PermissionDenied("Solo los adoptantes pueden guardar criterios.")
         instance = CriteriosAviso.objects.filter(adoptante=request.user).first()
         if request.method == "GET":
-            return Response(CriteriosAvisoSerializer(instance or CriteriosAviso()).data)
+            return Response(CriteriosAvisoSerializer(instance or CriteriosAviso(activo=True)).data)
         serializer = CriteriosAvisoSerializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
         instance, _ = CriteriosAviso.objects.update_or_create(
