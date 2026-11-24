@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { obtenerConfiguracionGlobal } from './configuracionGlobal';
+import { spring } from './http';
 
 const DEFAULT_MAX_IMAGEN_MB = 5;
 
@@ -8,7 +8,7 @@ export function useMaxImagenMb() {
 
   useEffect(() => {
     let active = true;
-    void obtenerConfiguracionGlobal()
+    void spring<{ maxImagenMb: number }>('/api/configuracion/limite-imagen')
       .then(configuracion => { if (active) setMaxImagenMb(configuracion.maxImagenMb); })
       .catch(() => { /* El servidor aplica el límite real aunque la consulta no esté disponible. */ });
     return () => { active = false; };

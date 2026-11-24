@@ -25,6 +25,8 @@ class SolicitudPersistenciaTest {
         SolicitudAdopcionManager.clear()
         try {
             SolicitudAdopcionManager.api = object : SolicitudesApi {
+                override suspend fun limiteImagen() = error("No hay fotos para consultar el límite")
+
                 override suspend fun crear(datos: CrearSolicitud): SolicitudPersistida {
                     if (!autorizado) {
                         val body = """{"autorizacion":["$mensaje"]}""".toResponseBody()
@@ -58,6 +60,8 @@ class SolicitudPersistenciaTest {
         SolicitudAdopcionManager.clear()
         try {
             SolicitudAdopcionManager.api=object:SolicitudesApi {
+                override suspend fun limiteImagen() = error("No hay fotos para consultar el límite")
+
                 override suspend fun crear(datos: CrearSolicitud): SolicitudPersistida = error("No debe crear solicitudes al recuperar")
                 override suspend fun seguimiento(id: Long): HistorialSolicitud = error("No se solicitó el historial")
                 override suspend fun listar(page: Int): com.google.gson.JsonElement {

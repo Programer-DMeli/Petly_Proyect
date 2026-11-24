@@ -94,20 +94,30 @@ object SolicitudAdopcionManager {
             ).id
             if (epoch != generation) return mapOf("servidor" to "La sesión cambió. Vuelve a entrar.")
             ids[draft.mascotaId] = solicitudId
-            for (uri in fotosLocales[draft.mascotaId].orEmpty()) {
-                val bytes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    resolver!!.openInputStream(uri)!!.use { it.readNBytes(5 * 1024 * 1024 + 1) }
+            val fotos = fotosLocales[draft.mascotaId].orEmpty()
+            if (fotos.isNotEmpty()) {
+                val apiFotos = checkNotNull(fotosApi)
+                val contenido = checkNotNull(resolver)
+                val limiteMb = service.obtenerLimiteImagenMb()
+                for (uri in fotos) {
+                    if (epoch != generation) return mapOf("servidor" to "La sesión cambió. Vuelve a entrar.")
+                    val bytes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        contenido.leerImagen(uri, limiteMb * BYTES_POR_MIB, "Cada foto admite hasta $limiteMb MB.")
+                    }
+                    val mime = contenido.getType(uri)
+                    if (mime != "image/jpeg" && mime != "image/png") {
+                        return mapOf("servidor" to "Solo se admiten JPEG y PNG.")
+                    }
+                    val body = bytes.toRequestBody(mime.toMediaType())
+                    val nombre = if (mime == "image/png") "hogar.png" else "hogar.jpg"
+                    apiFotos.subir(solicitudId, okhttp3.MultipartBody.Part.createFormData("archivo", nombre, body))
+                    if (epoch != generation) return mapOf("servidor" to "La sesión cambió.")
+                    fotosLocales[draft.mascotaId] = fotosLocales[draft.mascotaId].orEmpty() - uri
                 }
-                require(bytes.size <= 5 * 1024 * 1024) { "Cada foto admite hasta 5 MB." }
-                val mime = resolver!!.getType(uri)
-                require(mime in listOf("image/jpeg", "image/png")) { "Solo se admiten JPEG y PNG." }
-                val body = bytes.toRequestBody(mime!!.toMediaType())
-                fotosApi!!.subir(solicitudId, okhttp3.MultipartBody.Part.createFormData("archivo", if(mime == "image/png") "hogar.png" else "hogar.jpg", body))
-                if (epoch != generation) return mapOf("servidor" to "La sesión cambió.")
-                fotosLocales[draft.mascotaId] = fotosLocales[draft.mascotaId].orEmpty() - uri
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
+            if (e is ImagenCargaInvalida) return mapOf("servidor" to e.message.orEmpty())
             if (e is HttpException) return erroresSolicitud(e)
             return mapOf("servidor" to "No se pudo completar el envío. Comprueba tu conexión y reintenta.")
         }

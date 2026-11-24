@@ -3,6 +3,7 @@ package com.petly.auth;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -211,6 +212,39 @@ class SesionRenovableTest {
                 .andExpect(jsonPath("$.content[0].actorRol").value("ADMIN"))
                 .andExpect(jsonPath("$.content[0].recursoId").value(cuenta.getId().toString()))
                 .andExpect(jsonPath("$.content[0].ocurridoEn").exists());
+    }
+
+    @Test
+    void configuracionAdminSeReflejaEnLaConsultaDeImagenYEnSesionesNuevas() throws Exception {
+        String alias = UUID.randomUUID().toString();
+        Usuario admin = usuarios.saveAndFlush(
+                new Usuario(alias, alias + "@petly.test", passwords.encode(PASSWORD), Usuario.Rol.ADMIN));
+        Usuario cuenta = usuario();
+        var sesion = sesiones.iniciar(cuenta);
+        String autorizacionAdmin = "Bearer " + sesiones.iniciar(admin).acceso().getToken();
+        String autorizacionCuenta = "Bearer " + sesion.acceso().getToken();
+        String rutaAdmin = "/api/admin/configuracion-global";
+        String rutaLimite = "/api/configuracion/limite-imagen";
+        String valores = "{\"maxImagenMb\":8,\"expiracionSesionDias\":2}";
+
+        mvc.perform(get(rutaLimite)).andExpect(status().isUnauthorized());
+        mvc.perform(put(rutaAdmin).header("Authorization", autorizacionCuenta)
+                .contentType(APPLICATION_JSON).content(valores)).andExpect(status().isForbidden());
+        try {
+            mvc.perform(put(rutaAdmin).header("Authorization", autorizacionAdmin)
+                    .contentType(APPLICATION_JSON).content(valores)).andExpect(status().isOk());
+            mvc.perform(get(rutaLimite).header("Authorization", autorizacionCuenta))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Cache-Control", "no-store"))
+                    .andExpect(jsonPath("$.maxImagenMb").value(8))
+                    .andExpect(jsonPath("$.expiracionSesionDias").doesNotHaveJsonPath());
+            Instant inicio = Instant.now();
+            Instant vencimiento = sesiones.iniciar(cuenta).expiraEn();
+            assertFalse(vencimiento.isBefore(inicio.plus(2, ChronoUnit.DAYS)));
+            assertFalse(vencimiento.isAfter(Instant.now().plus(2, ChronoUnit.DAYS)));
+        } finally {
+            jdbc.update("UPDATE configuracion_global SET max_imagen_mb = 5, expiracion_sesion_dias = 30 WHERE clave = 'GLOBAL'");
+        }
     }
 
     @Test

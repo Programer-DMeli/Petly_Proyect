@@ -378,8 +378,9 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
     def validate_foto_principal(self, photo):
         if photo is None:
             return None
-        if photo.size > 5 * 1024 * 1024:
-            raise serializers.ValidationError("Máximo 5 MB.")
+        limite = obtener_limite_imagen_bytes()
+        if photo.size > limite:
+            raise serializers.ValidationError(f"Máximo {limite // (1024 * 1024)} MB.")
         from PIL import Image
         try:
             image = Image.open(photo)

@@ -202,7 +202,7 @@ export default function ReportesPostAdopcionPage() {
             <label>Observaciones<textarea maxLength={2000} value={observaciones}
               onChange={event => setObservaciones(event.target.value)}
               placeholder="Cuéntale al albergue cómo se está adaptando." /></label>
-            <label>Fotos JPEG o PNG, hasta 5 fotos de 5 MB cada una
+            <label>Fotos JPEG o PNG, hasta 5 fotos de {maxImagenMb} MB cada una
               <input type="file" accept="image/jpeg,image/png" multiple required
                 onChange={event => selectPhotos(event.currentTarget.files)} />
             </label>

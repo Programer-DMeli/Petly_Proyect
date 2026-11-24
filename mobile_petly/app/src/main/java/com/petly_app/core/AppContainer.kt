@@ -39,9 +39,10 @@ class AppContainer(context: Context) {
     private val previewDisponibilidad = PreviewDisponibilidadRepository()
     private val remoteDisponibilidad = RemoteDisponibilidadRepository(privateApi.create(DisponibilidadApi::class.java))
 
+    private val limiteImagenApi = privateApi.create(LimiteImagenApi::class.java)
     val kycRepository = KycRepository(
         ApiClient.authenticatedAdminApi(session).create(KycApi::class.java),
-        privateApi.create(KycConsultaApi::class.java), contentResolver
+        privateApi.create(KycConsultaApi::class.java), contentResolver, limiteImagenApi
     )
 
     fun perfil(preview: Boolean): PerfilRepository = if (preview) previewPerfil else remotePerfil
@@ -60,7 +61,7 @@ class AppContainer(context: Context) {
     val seguimientosApi = privateApi.create(SeguimientosApi::class.java)
     val agendaVacunasApi = ApiClient.authenticatedAdminApi(session).create(AgendaVacunasApi::class.java)
     val reportesSeguimiento = ReportesSeguimientoRepository(
-        seguimientosApi, privateApi.create(ReportesSeguimientoApi::class.java), contentResolver
+        seguimientosApi, privateApi.create(ReportesSeguimientoApi::class.java), contentResolver, limiteImagenApi
     )
     val notificacionesApi = ApiClient.authenticatedAdminApi(session).create(NotificacionesApi::class.java)
     val mensajeriaApi = ApiClient.authenticatedAdminApi(session).create(MensajeriaApi::class.java)
