@@ -3,8 +3,12 @@ package com.petly.auditoria;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.DateTimeException;
+import java.util.HashMap;
+import java.util.Objects;
 
 import com.petly.common.exception.ApiException;
+import com.petly.usuarios.Usuario;
+import com.petly.usuarios.UsuarioRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -17,9 +21,11 @@ public class AuditoriaConsultaService {
     private static final int TAMANO_MAXIMO_PAGINA = 100;
 
     private final EventoAuditoriaRepository eventos;
+    private final UsuarioRepository usuarios;
 
-    public AuditoriaConsultaService(EventoAuditoriaRepository eventos) {
+    public AuditoriaConsultaService(EventoAuditoriaRepository eventos, UsuarioRepository usuarios) {
         this.eventos = eventos;
+        this.usuarios = usuarios;
     }
 
     @Transactional(readOnly = true)
@@ -53,8 +59,20 @@ public class AuditoriaConsultaService {
                 tamano,
                 Sort.by(Sort.Order.desc("ocurridoEn"), Sort.Order.desc("id")));
 
-        return eventos.buscar(actorId, accionNormalizada, inicio, finExclusivo, solicitudPagina)
-                .map(EventoAuditoriaResponse::desde);
+        var resultado = eventos.buscar(actorId, accionNormalizada, inicio, finExclusivo, solicitudPagina);
+        var actores = resultado.getContent().stream().map(EventoAuditoria::getActorUsuarioId)
+                .filter(Objects::nonNull).distinct().toList();
+        var nombres = new HashMap<Long, String>();
+        if (!actores.isEmpty()) {
+            for (Usuario usuario : usuarios.findAllById(actores)) {
+                if (usuario.isCuentaEliminada()) continue;
+                String nombre = (Objects.toString(usuario.getFirstName(), "") + " "
+                        + Objects.toString(usuario.getLastName(), "")).strip();
+                nombres.put(usuario.getId(), nombre.isBlank() ? null : nombre);
+            }
+        }
+        return resultado.map(evento -> EventoAuditoriaResponse.desde(
+                evento, nombres.get(evento.getActorUsuarioId())));
     }
 
     private LocalDateTime finExclusivo(LocalDate fecha) {

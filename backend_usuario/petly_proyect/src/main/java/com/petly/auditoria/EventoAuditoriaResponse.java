@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 public record EventoAuditoriaResponse(
         String eventoId,
         Long actorUsuarioId,
+        String actorNombre,
         String actorRol,
         String accion,
         String origen,
@@ -13,10 +14,11 @@ public record EventoAuditoriaResponse(
         String recursoId,
         LocalDateTime ocurridoEn) {
 
-    public static EventoAuditoriaResponse desde(EventoAuditoria evento) {
+    public static EventoAuditoriaResponse desde(EventoAuditoria evento, String actorNombre) {
         return new EventoAuditoriaResponse(
                 evento.getEventoId(),
                 evento.getActorUsuarioId(),
+                actorNombre,
                 evento.getActorRol(),
                 evento.getAccion(),
                 evento.getOrigen(),
