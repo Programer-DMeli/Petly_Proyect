@@ -175,6 +175,45 @@ class SesionRenovableTest {
     }
 
     @Test
+    void soloElAdminSuspendeRevocaLaSesionYConsultaLaAuditoria() throws Exception {
+        Usuario cuenta = usuario();
+        var sesionCuenta = sesiones.iniciar(cuenta);
+        String autorizacionCuenta = "Bearer " + sesionCuenta.acceso().getToken();
+        String alias = UUID.randomUUID().toString();
+        Usuario admin = new Usuario(alias, alias + "@petly.test", passwords.encode(PASSWORD), Usuario.Rol.ADMIN);
+        admin.setFirstName("Ana");
+        admin.setLastName("Prueba");
+        usuarios.saveAndFlush(admin);
+        String autorizacionAdmin = "Bearer " + sesiones.iniciar(admin).acceso().getToken();
+        String ruta = "/api/admin/usuarios/" + cuenta.getId() + "/suspension";
+        String motivo = "{\"motivo\":\"Incumplimiento de prueba\"}";
+
+        mvc.perform(patch(ruta).header("Authorization", autorizacionCuenta)
+                .contentType(APPLICATION_JSON).content(motivo)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/admin/auditoria").header("Authorization", autorizacionCuenta))
+                .andExpect(status().isForbidden());
+        mvc.perform(patch(ruta).header("Authorization", autorizacionAdmin)
+                .contentType(APPLICATION_JSON).content(motivo)).andExpect(status().isOk());
+        assertTrue(usuarios.findById(cuenta.getId()).orElseThrow().isCuentaSuspendida());
+        assertEquals("Incumplimiento de prueba",
+                usuarios.findById(cuenta.getId()).orElseThrow().getMotivoSuspension());
+        mvc.perform(get("/api/auth/me").header("Authorization", autorizacionCuenta))
+                .andExpect(status().isUnauthorized());
+        refresh(sesionCuenta.renovacion(), UUID.randomUUID().toString(), 401);
+        mvc.perform(post("/api/auth/login").contentType(APPLICATION_JSON)
+                .content(json.writeValueAsBytes(java.util.Map.of("correo", cuenta.getCorreo(), "password", PASSWORD))))
+                .andExpect(status().isLocked());
+        mvc.perform(get("/api/admin/auditoria").header("Authorization", autorizacionAdmin)
+                .param("actorId", admin.getId().toString()).param("accion", "USUARIO_SUSPENSION_APLICADA"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].actorNombre").value("Ana Prueba"))
+                .andExpect(jsonPath("$.content[0].actorRol").value("ADMIN"))
+                .andExpect(jsonPath("$.content[0].recursoId").value(cuenta.getId().toString()))
+                .andExpect(jsonPath("$.content[0].ocurridoEn").exists());
+    }
+
+    @Test
     void confirmarRestablecimientoRevocaRenovacionYAcceso() throws Exception {
         Usuario usuario = usuario();
         var login = sesiones.iniciar(usuario);
