@@ -12,6 +12,8 @@ PyMySQL==1.2.3
 Pillow==12.3.0
 # Generación de certificados PDF para expedientes de seguimiento cerrados (US-38).
 reportlab==5.1.0
+# Inspección del formato PDF de los certificados veterinarios (US-59).
+pypdf==6.19.0
 # Carga variables de entorno desde .env (que nunca se sube a Git).
 python-dotenv==1.2.4
 # JWT para autenticación stateless (US-21, Android/Spring Boot integration).
