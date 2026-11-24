@@ -408,7 +408,6 @@ def _procesar_baja(usuario, operacion_id):
             ReporteConversacion.objects.filter(reportante=usuario).update(detalle="")
             # Quita cualquier referencia de usuario que no tenga valor histórico propio.
             SolicitudEvento.objects.filter(actor=usuario).update(actor=None)
-            from apps.acceso.models import VerificacionKyc
             VerificacionKyc.objects.filter(revisado_por=usuario).update(revisado_por=None)
             Postulante.objects.filter(creado_por=usuario).update(creado_por=None)
             ExpedientePostAdopcion.objects.filter(cerrado_por=usuario).update(cerrado_por=None)
