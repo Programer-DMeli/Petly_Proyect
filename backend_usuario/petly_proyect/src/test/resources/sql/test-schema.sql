@@ -77,3 +77,7 @@ CREATE TABLE IF NOT EXISTS asistente_metricas_diarias (
     consultas BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (fecha, tema)
 );
+
+-- Flyway V21 seeds this row in production. H2 creates the table through Hibernate.
+MERGE INTO configuracion_global (clave, max_imagen_mb, expiracion_sesion_dias, actualizado_en)
+KEY(clave) VALUES ('GLOBAL', 5, 30, CURRENT_TIMESTAMP);

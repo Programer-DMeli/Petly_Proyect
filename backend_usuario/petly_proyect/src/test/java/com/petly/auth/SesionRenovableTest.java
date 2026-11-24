@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.petly.usuarios.SincronizarRolDjango;
 import com.petly.usuarios.Usuario;
 import com.petly.usuarios.UsuarioRepository;
 import io.jsonwebtoken.Jwts;
@@ -21,10 +22,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.verify;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -43,6 +47,7 @@ class SesionRenovableTest {
     @Autowired JwtService jwt;
     @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired RecuperacionTokenRepository recuperaciones;
+    @MockitoBean SincronizarRolDjango sincronizadorRol;
     @Autowired SesionRenovableService sesiones;
     @Value("${spring.jwt.secret}") String key;
 
@@ -136,6 +141,37 @@ class SesionRenovableTest {
         jdbc.update("UPDATE sesiones_renovables SET expira_en = ? WHERE id = ?",
                 LocalDateTime.now().minusDays(1), login.renovacion().substring(0, 36));
         refresh(login.renovacion(), UUID.randomUUID().toString(), 401);
+    }
+
+    @Test
+    void losPermisosAdministrativosSiguenElRolAsignado() throws Exception {
+        Usuario cuenta = usuario();
+        var sesionAnterior = sesiones.iniciar(cuenta);
+        String autorizacionAnterior = "Bearer " + sesionAnterior.acceso().getToken();
+        String alias = UUID.randomUUID().toString();
+        Usuario admin = usuarios.saveAndFlush(
+                new Usuario(alias, alias + "@petly.test", passwords.encode(PASSWORD), Usuario.Rol.ADMIN));
+        String autorizacionAdmin = "Bearer " + sesiones.iniciar(admin).acceso().getToken();
+        String ruta = "/api/admin/usuarios/" + cuenta.getId() + "/rol";
+        String nuevoRol = "{\"rol\":\"ADMIN\"}";
+
+        mvc.perform(get("/api/admin/usuarios").header("Authorization", autorizacionAnterior))
+                .andExpect(status().isForbidden());
+        mvc.perform(patch(ruta).header("Authorization", autorizacionAnterior)
+                .contentType(APPLICATION_JSON).content(nuevoRol)).andExpect(status().isForbidden());
+        mvc.perform(patch(ruta).header("Authorization", autorizacionAdmin)
+                .contentType(APPLICATION_JSON).content(nuevoRol))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.rol").value("ADMIN"));
+        verify(sincronizadorRol).sincronizar(argThat(usuario -> cuenta.getId().equals(usuario.getId())
+                && usuario.getRol() == Usuario.Rol.ADMIN));
+
+        mvc.perform(get("/api/admin/usuarios").header("Authorization", autorizacionAnterior))
+                .andExpect(status().isUnauthorized());
+        refresh(sesionAnterior.renovacion(), UUID.randomUUID().toString(), 401);
+        Usuario actualizado = usuarios.findById(cuenta.getId()).orElseThrow();
+        String autorizacionNueva = "Bearer " + sesiones.iniciar(actualizado).acceso().getToken();
+        mvc.perform(get("/api/admin/usuarios").header("Authorization", autorizacionNueva))
+                .andExpect(status().isOk());
     }
 
     @Test
