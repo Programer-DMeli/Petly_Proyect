@@ -76,12 +76,13 @@ class MascotaViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="certificados-veterinarios")
     def certificados_veterinarios(self, request, pk=None):
-        from .certificados_veterinarios import PERFIL_PENDIENTE
+        from .certificados_veterinarios import AVISO_DEMO, PERFIL_PENDIENTE, certificado_de_confianza
 
         mascota = self._mascota_para_certificados()
+        habilitada = certificado_de_confianza() is not None
         return Response({
-            "carga_habilitada": False,
-            "mensaje": PERFIL_PENDIENTE,
+            "carga_habilitada": habilitada,
+            "mensaje": AVISO_DEMO if habilitada else PERFIL_PENDIENTE,
             "certificados": list(mascota.certificados_veterinarios.values("tipo", "validacion")),
         }, headers={"Cache-Control": "private, no-store"})
 
@@ -90,12 +91,21 @@ class MascotaViewSet(viewsets.ModelViewSet):
     def certificado_veterinario(self, request, pk=None, tipo=None):
         from .certificados_veterinarios import (
             CertificadoNoDisponible, PerfilFirmaNoDefinido, abrir_pdf_integro, comprobar_formato_pdf,
+            certificado_de_confianza, guardar_certificado_verificado, verificar_firma_pdf,
         )
 
         mascota = self._mascota_para_certificados()
         if request.method == "PUT":
-            comprobar_formato_pdf(request.FILES.get("archivo"))
-            raise PerfilFirmaNoDefinido()
+            contenido = comprobar_formato_pdf(request.FILES.get("archivo"))
+            confiable = certificado_de_confianza()
+            if confiable is None:
+                raise PerfilFirmaNoDefinido()
+            verificar_firma_pdf(contenido, confiable)
+            certificado = guardar_certificado_verificado(mascota, tipo, contenido)
+            return Response(
+                {"tipo": certificado.tipo, "validacion": certificado.validacion, "codigo": "VALID"},
+                headers={"Cache-Control": "private, no-store"},
+            )
 
         certificado = get_object_or_404(mascota.certificados_veterinarios, tipo=tipo)
         if certificado.validacion != CertificadoVeterinario.Validacion.VERIFICADO:

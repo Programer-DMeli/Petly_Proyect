@@ -4,6 +4,7 @@
 !.env.example
 *.pem
 *.key
+/output/pdf/us59-demo/
 
 # --- Python / Django ---
 __pycache__/

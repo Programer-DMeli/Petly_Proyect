@@ -7,15 +7,21 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import DatabaseError
 from django.test import override_settings
 from django.urls import reverse
-from pypdf import PdfWriter
+from pyhanko.pdf_utils.generic import NameObject as NombrePdf
+from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
+from pyhanko.sign.signers import SimpleSigner
+from pyhanko.sign.validation.dss import DocumentSecurityStore
+from pypdf import PdfReader, PdfWriter
 from pypdf.generic import ArrayObject, ByteStringObject, DictionaryObject, NameObject, TextStringObject
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.albergues.models import Albergue
-from apps.mascotas.certificados_veterinarios import CertificadoNoDisponible, abrir_pdf_integro
+from apps.mascotas.certificados_demo import firmar_pdf_demo, generar_identidad_demo, pdf_veterinario_demo
+from apps.mascotas.certificados_veterinarios import PERFIL_DEMO, CertificadoNoDisponible, abrir_pdf_integro
 from apps.mascotas.models import CertificadoVeterinario, Mascota
 from apps.mascotas.storage import CertificadoVeterinarioStorage
 
@@ -156,3 +162,127 @@ class CertificadosVeterinariosTest(APITestCase):
                 self.assertEqual(self.client.get(self.lista).status_code, codigo)
                 self.assertEqual(self.client.get(self.ruta(tipo)).status_code, codigo)
                 self.assertEqual(self.intentar_carga(tipo, b"datos irrelevantes").status_code, codigo)
+
+    def test_un_reemplazo_bloqueado_conserva_la_descarga_del_certificado_vigente(self):
+        tipo = CertificadoVeterinario.Tipo.ESTERILIZACION
+        original = pdf_de_prueba()
+        certificado = self.preparar_pendiente(self.mascota, tipo, original)
+        # Simula un registro previamente verificado para probar la ruta de descarga.
+        certificado.validacion = CertificadoVeterinario.Validacion.VERIFICADO
+        certificado.save(update_fields=["validacion"])
+        ruta_original = Path(certificado.archivo.path)
+
+        reemplazo = self.intentar_carga(tipo, pdf_de_prueba(con_marcador_falso=True))
+        self.assertEqual(reemplazo.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(CertificadoVeterinario.objects.filter(mascota=self.mascota, tipo=tipo).count(), 1)
+        certificado.refresh_from_db()
+        self.assertEqual(certificado.validacion, CertificadoVeterinario.Validacion.VERIFICADO)
+        self.assertEqual(Path(certificado.archivo.path), ruta_original)
+        self.assertEqual(list(ruta_original.parent.iterdir()), [ruta_original])
+
+        descarga = self.client.get(self.ruta(tipo))
+        self.addCleanup(descarga.close)
+        self.assertEqual(descarga.status_code, status.HTTP_200_OK)
+        self.assertEqual(descarga["Content-Type"], "application/pdf")
+        self.assertEqual(descarga["Cache-Control"], "private, no-store")
+        self.assertEqual(b"".join(descarga.streaming_content), original)
+
+        self.client.force_authenticate(self.otro_albergue)
+        self.assertEqual(self.client.get(self.ruta(tipo)).status_code, status.HTTP_404_NOT_FOUND)
+        self.client.force_authenticate(self.propietario)
+        ruta_original.write_bytes(original + b"alterado")
+        self.assertEqual(self.client.get(self.ruta(tipo)).status_code, status.HTTP_409_CONFLICT)
+
+    def firmante_demo(self, nombre):
+        desde = self.privado.parent
+        clave_bytes, cert_bytes = generar_identidad_demo(b"clave-efimera-de-prueba")
+        self.assertIn(b"BEGIN ENCRYPTED PRIVATE KEY", clave_bytes)
+        clave, publico = desde / f"{nombre}-clave.pem", desde / f"{nombre}-publico.pem"
+        clave.write_bytes(clave_bytes)
+        publico.write_bytes(cert_bytes)
+        firmante = SimpleSigner.load(str(clave), str(publico), key_passphrase=b"clave-efimera-de-prueba")
+        self.assertIsNotNone(firmante)
+        return firmante, publico
+
+    def test_perfil_demo_acepta_ambos_tipos_y_reemplaza_solo_al_guardar(self):
+        firmante, publico = self.firmante_demo("petly")
+        with self.settings(PETLY_CERTIFICADOS_PERFIL=PERFIL_DEMO, PETLY_CERTIFICADOS_CERT_PUBLICO=publico):
+            self.assertTrue(self.client.get(self.lista).data["carga_habilitada"])
+            for tipo in CertificadoVeterinario.Tipo.values:
+                original = pdf_veterinario_demo(tipo)
+                self.assertIn("Muestra de prueba · sin validez veterinaria",
+                              PdfReader(BytesIO(original)).pages[0].extract_text())
+                firmado = firmar_pdf_demo(original, firmante)
+                respuesta = self.intentar_carga(tipo, firmado)
+                self.assertEqual(respuesta.status_code, 200, respuesta.data)
+                self.assertEqual(respuesta.data, {"tipo": tipo, "validacion": "VERIFICADO", "codigo": "VALID"})
+                descarga = self.client.get(self.ruta(tipo))
+                self.addCleanup(descarga.close)
+                self.assertEqual(b"".join(descarga.streaming_content), firmado)
+
+            tipo = CertificadoVeterinario.Tipo.VACUNACION
+            registro = self.mascota.certificados_veterinarios.get(tipo=tipo)
+            ruta_anterior = Path(registro.archivo.path)
+            reemplazo = firmar_pdf_demo(pdf_veterinario_demo(tipo), firmante)
+            with self.captureOnCommitCallbacks(execute=True):
+                self.assertEqual(self.intentar_carga(tipo, reemplazo).status_code, 200)
+            registro.refresh_from_db()
+            self.assertFalse(ruta_anterior.exists())
+            self.assertEqual(Path(registro.archivo.path).read_bytes(), reemplazo)
+            self.assertEqual(self.mascota.certificados_veterinarios.count(), 2)
+
+            with patch.object(CertificadoVeterinario, "save", side_effect=DatabaseError("fallo simulado")):
+                respuesta = self.intentar_carga(tipo, firmado)
+                self.assertEqual(respuesta.status_code, 503, respuesta.data)
+
+            def guardar_parcial(nombre, contenido, *, max_length):
+                Path(self.storage.path(nombre)).write_bytes(b"archivo parcial")
+                raise OSError("fallo simulado de escritura")
+
+            with patch.object(self.storage, "save", side_effect=guardar_parcial):
+                respuesta = self.intentar_carga(tipo, firmado)
+                self.assertEqual(respuesta.status_code, 503, respuesta.data)
+            registro.refresh_from_db()
+            self.assertEqual(list(ruta_anterior.parent.iterdir()), [Path(registro.archivo.path)])
+            self.assertEqual(Path(registro.archivo.path).read_bytes(), reemplazo)
+
+    def test_perfil_demo_distingue_rechazos_y_protege_el_archivo_vigente(self):
+        firmante, publico = self.firmante_demo("petly")
+        ajeno, _ = self.firmante_demo("ajeno")
+        tipo = CertificadoVeterinario.Tipo.VACUNACION
+        original = pdf_veterinario_demo(tipo)
+        firmado = firmar_pdf_demo(original, firmante)
+        alterado = firmado.replace(b"/Reason (Muestra de prueba)", b"/Reason (Muestra de fraude)")
+        self.assertNotEqual(alterado, firmado)
+        editor = IncrementalPdfFileWriter(BytesIO(firmado))
+        editor.root[NombrePdf("/PageMode")] = NombrePdf("/UseThumbs")
+        editor.update_root()
+        revision = BytesIO()
+        editor.write(revision)
+        with self.settings(PETLY_CERTIFICADOS_PERFIL=PERFIL_DEMO, PETLY_CERTIFICADOS_CERT_PUBLICO=publico):
+            self.assertEqual(self.intentar_carga(tipo, firmado).status_code, 200)
+            for contenido, codigo in [
+                (original, "UNSIGNED"), (alterado, "INVALID"), (revision.getvalue(), "INVALID"),
+                (firmar_pdf_demo(original, ajeno), "UNTRUSTED"), (b"%PDF-danado", "INVALID"),
+            ]:
+                with self.subTest(codigo=codigo):
+                    respuesta = self.intentar_carga(tipo, contenido)
+                    self.assertEqual(respuesta.status_code, 400, respuesta.data)
+                    self.assertEqual(respuesta.data["codigo"], codigo)
+            guardado = self.mascota.certificados_veterinarios.get(tipo=tipo)
+            self.assertEqual(Path(guardado.archivo.path).read_bytes(), firmado)
+            self.assertEqual(list(Path(guardado.archivo.path).parent.iterdir()), [Path(guardado.archivo.path)])
+            self.client.force_authenticate(self.otro_albergue)
+            self.assertEqual(self.intentar_carga(tipo, firmado).status_code, 404)
+
+    def test_actualizacion_incremental_de_datos_de_validacion_es_admisible(self):
+        firmante, publico = self.firmante_demo("petly")
+        tipo = CertificadoVeterinario.Tipo.ESTERILIZACION
+        firmado = firmar_pdf_demo(pdf_veterinario_demo(tipo), firmante)
+        editor = IncrementalPdfFileWriter(BytesIO(firmado))
+        DocumentSecurityStore.supply_dss_in_writer(editor, None, certs=[firmante.signing_cert])
+        revision = BytesIO()
+        editor.write(revision)
+        with self.settings(PETLY_CERTIFICADOS_PERFIL=PERFIL_DEMO, PETLY_CERTIFICADOS_CERT_PUBLICO=publico):
+            resultado = self.intentar_carga(tipo, revision.getvalue())
+            self.assertEqual(resultado.status_code, 200, resultado.data)

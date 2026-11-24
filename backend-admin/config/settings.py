@@ -207,6 +207,8 @@ ADOPTION_CONTRACT_TERMS_APPROVED = os.getenv("ADOPTION_CONTRACT_TERMS_APPROVED",
 }
 PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", "http://localhost:8000")
 PRIVATE_FILES_ROOT = Path(os.getenv("PRIVATE_FILES_ROOT", str(BASE_DIR / "private-media")))
+PETLY_CERTIFICADOS_PERFIL = os.getenv("PETLY_CERTIFICADOS_PERFIL", "")
+PETLY_CERTIFICADOS_CERT_PUBLICO = os.getenv("PETLY_CERTIFICADOS_CERT_PUBLICO", "")
 
 # US-29: el servicio devuelve un borrador editable; nunca publica por sí solo.
 PET_DESCRIPTION_API_URL = os.getenv("PET_DESCRIPTION_API_URL", "")

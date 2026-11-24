@@ -86,7 +86,7 @@ function CertificadoPorTipo({ tipo, base, habilitado, inicial }: {
     <div className="actions">
       <button type="button" className="secondary" disabled={!habilitado || !archivo || guardando}
         onClick={() => void guardar()}>
-        {guardando ? 'Guardando…' : certificado ? 'Reemplazar certificado' : 'Adjuntar certificado'}
+        {guardando ? 'Verificando firma…' : certificado ? 'Reemplazar certificado' : 'Adjuntar certificado'}
       </button>
       {certificado?.validacion === 'VERIFICADO' && (
         <button type="button" className="secondary" onClick={() => setVisor(actual => !actual)}>
@@ -100,12 +100,19 @@ function CertificadoPorTipo({ tipo, base, habilitado, inicial }: {
 }
 
 export default function CertificadosVeterinarios({ mascotaId }: { mascotaId: number | null }) {
+  if (!mascotaId) return <section aria-label="Certificados veterinarios">
+    <h5>Certificados veterinarios</h5>
+    <p>Guarda la mascota para consultar sus certificados.</p>
+  </section>;
+  return <CertificadosDeMascota key={mascotaId} mascotaId={mascotaId} />;
+}
+
+function CertificadosDeMascota({ mascotaId }: { mascotaId: number }) {
   const [datos, setDatos] = useState<DatosCertificados | null>(null);
   const [error, setError] = useState('');
   const base = `/api/mascotas/${mascotaId}/certificados-veterinarios/`;
 
   useEffect(() => {
-    if (!mascotaId) return;
     const controller = new AbortController();
     void django<DatosCertificados>(base, { signal: controller.signal, cache: 'no-store' })
       .then(respuesta => {
@@ -115,12 +122,11 @@ export default function CertificadosVeterinarios({ mascotaId }: { mascotaId: num
       })
       .catch(reason => { if (!controller.signal.aborted) setError(errorMessage(reason)); });
     return () => controller.abort();
-  }, [base, mascotaId]);
+  }, [base]);
 
   return <section aria-label="Certificados veterinarios">
     <h5>Certificados veterinarios</h5>
-    {!mascotaId && <p className="muted">Guarda la mascota para consultar sus certificados.</p>}
-    {mascotaId && !error && !datos && <p role="status">Consultando certificados…</p>}
+    {!error && !datos && <p role="status">Consultando certificados…</p>}
     <Feedback error={error} />
     {datos && <>
       {datos.mensaje && <p className="muted">{datos.mensaje}</p>}

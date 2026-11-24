@@ -14,6 +14,7 @@ Pillow==12.3.0
 reportlab==5.1.0
 # Inspección del formato PDF de los certificados veterinarios (US-59).
 pypdf==6.19.0
+pyHanko==0.38.1
 # Escritura de reportes XLSX para administración (US-68).
 openpyxl==3.1.5
 # Carga variables de entorno desde .env (que nunca se sube a Git).
