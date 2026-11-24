@@ -42,7 +42,8 @@ fun DetalleMascotaScreen(
     onBack: () -> Unit,
     onConsejos: () -> Unit = {},
     onAuthorizeShelter: (suspend (Long) -> Unit)? = null,
-    onSolicitudEnviada: () -> Unit = {}
+    onSolicitudEnviada: () -> Unit = {},
+    onContactShelter: ((Long) -> Unit)? = null
 ) {
     val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
     val favoritoError by FavoritosManager.error.collectAsStateWithLifecycle()
@@ -195,7 +196,12 @@ fun DetalleMascotaScreen(
                     FichaTecnicaSection(mascota = mascota)
 
                     // 4. ALBERGUE RESPONSABLE
-                    AlbergueResponsableCard(mascota = mascota)
+                    AlbergueResponsableCard(
+                        mascota = mascota,
+                        onContact = mascota.albergueId?.takeIf { it > 0 }?.let { id ->
+                            onContactShelter?.let { contact -> { contact(id) } }
+                        }
+                    )
 
                     // 5. BANNER PROCESO SEGURO
                     ProcesoSeguroBanner(ubicacion = mascota.ubicacion)
@@ -483,7 +489,7 @@ private fun FichaCard(
 }
 
 @Composable
-private fun AlbergueResponsableCard(mascota: Mascota) {
+private fun AlbergueResponsableCard(mascota: Mascota, onContact: (() -> Unit)?) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = "ALBERGUE RESPONSABLE",
@@ -551,9 +557,10 @@ private fun AlbergueResponsableCard(mascota: Mascota) {
                 }
 
                 Surface(
+                    onClick = { onContact?.invoke() },
+                    enabled = onContact != null,
                     shape = CircleShape,
-                    color = DetailMintPill,
-                    modifier = Modifier.clickable { }
+                    color = DetailMintPill
                 ) {
                     Text(
                         text = "Contactar",

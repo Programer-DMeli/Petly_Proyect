@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -31,11 +32,17 @@ fun MensajesScreen(
     api: MensajeriaApi,
     resolver: ContentResolver,
     solicitudes: List<Triple<Long, Long, String>>,
-    onMessagesRead: () -> Unit
+    onMessagesRead: () -> Unit,
+    initialShelterId: Long? = null,
+    onBack: (() -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var conversations by remember { mutableStateOf<List<ConversacionDto>>(emptyList()) }
-    var selected by remember { mutableStateOf<Long?>(null) }
+    var selected by rememberSaveable(initialShelterId) { mutableStateOf<Long?>(null) }
+    var shelterOpened by rememberSaveable(initialShelterId) { mutableStateOf(false) }
+    var openAttempt by remember(initialShelterId) { mutableIntStateOf(0) }
+    var openError by remember(initialShelterId) { mutableStateOf(false) }
+    val openingShelter = initialShelterId != null && !shelterOpened
     var messages by remember { mutableStateOf<List<MensajeDto>>(emptyList()) }
     var lastReadId by remember(selected) { mutableLongStateOf(0L) }
     var refreshRevision by remember { mutableIntStateOf(0) }
@@ -57,6 +64,20 @@ fun MensajesScreen(
     val notifyMessagesRead by rememberUpdatedState(onMessagesRead)
     val conversationId = selected
 
+    LaunchedEffect(api, initialShelterId, openAttempt) {
+        if (initialShelterId == null || shelterOpened) return@LaunchedEffect
+        openError = false
+        try {
+            val conversation = api.crear(mapOf("albergue_id" to initialShelterId))
+            conversations = listOf(conversation)
+            selected = conversation.id
+            shelterOpened = true
+        } catch (exception: Exception) {
+            if (exception is CancellationException) throw exception
+            openError = true
+        }
+    }
+
     fun cambiarBloqueo(id: Long, bloquear: Boolean) {
         if (moderationBusy) return
         moderationBusy = true
@@ -73,7 +94,8 @@ fun MensajesScreen(
             }
         }
     }
-    LaunchedEffect(api, lifecycle, conversationId, refreshRevision) {
+    LaunchedEffect(api, lifecycle, conversationId, refreshRevision, openingShelter) {
+        if (openingShelter) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var loadDetail = true
             var lastReceivedId = 0L
@@ -122,7 +144,17 @@ fun MensajesScreen(
         }
     }
     Column(Modifier.fillMaxSize().padding(16.dp)) {
+        if (onBack != null) TextButton(onClick = onBack) { Text("← Volver a la mascota") }
         Text("Mensajes con albergues", style = MaterialTheme.typography.headlineSmall)
+        if (openingShelter) {
+            if (openError) {
+                Text("No se pudo abrir el chat del albergue.", color = MaterialTheme.colorScheme.error)
+                OutlinedButton(onClick = { openAttempt++ }) { Text("Reintentar") }
+            } else {
+                Text("Abriendo conversación…")
+            }
+            return@Column
+        }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (selected == null) {
             if (solicitudes.isNotEmpty()) {
@@ -160,6 +192,9 @@ fun MensajesScreen(
             }
         } else {
             val activeConversation = conversations.firstOrNull { it.id == selected }
+            if (initialShelterId != null && activeConversation != null) {
+                Text(activeConversation.nombreContacto, style = MaterialTheme.typography.titleMedium)
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 TextButton(onClick = { selected = null; messages = emptyList() }) { Text("← Conversaciones") }
                 activeConversation?.let { conversation ->

@@ -2,11 +2,13 @@ package com.petly_app.core.navigation
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -32,6 +34,7 @@ import com.petly_app.ui.asistente.ChatViewModel
 import com.petly_app.ui.auth.*
 import com.petly_app.ui.catalogo.*
 import com.petly_app.ui.mensajes.ContadorMensajesNoLeidos
+import com.petly_app.ui.mensajes.MensajesScreen
 import com.petly_app.ui.perfil.*
 import com.petly_app.ui.screen.MainAppScreen
 import com.petly_app.ui.screen.PetlyTab
@@ -49,6 +52,7 @@ private object Routes {
     const val CATALOG = "catalogo"
     const val PROFILE = "perfil"
     const val DETAIL = "mascota/{id}"
+    const val SHELTER_CHAT = "mensajes/albergue/{albergueId}"
     const val NOTIFICATIONS = "notificaciones"
 }
 
@@ -348,6 +352,24 @@ fun PetlyNavHost(
                         onBack = { nav.popBackStack() }
                     )
                 }
+                if (authenticated && !isPreview) composable(
+                    Routes.SHELTER_CHAT,
+                    arguments = listOf(navArgument("albergueId") { type = NavType.LongType })
+                ) { entry ->
+                    val shelterId = requireNotNull(entry.arguments).getLong("albergueId")
+                    Scaffold { padding ->
+                        Box(Modifier.padding(padding)) {
+                            MensajesScreen(
+                                api = container.mensajeriaApi,
+                                resolver = container.resolver,
+                                solicitudes = emptyList(),
+                                onMessagesRead = contadorMensajes::actualizar,
+                                initialShelterId = shelterId,
+                                onBack = { nav.popBackStack() }
+                            )
+                        }
+                    }
+                }
                 composable(Routes.DETAIL, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
                     val id = requireNotNull(entry.arguments).getLong("id")
                     val factory = remember(container, isPreview, id) {
@@ -359,6 +381,9 @@ fun PetlyNavHost(
                         state, isPreview, vm::load,
                         onBack = { nav.popBackStack() },
                         onConsejos = vm::consejos,
+                        onContactShelter = if (isPreview) null else { shelterId ->
+                            nav.navigate("mensajes/albergue/$shelterId") { launchSingleTop = true }
+                        },
                         onAuthorizeShelter = if (isPreview) null else container.autorizaciones::allow,
                         onSolicitudEnviada = {
                             selectedTab = PetlyTab.PERFIL
