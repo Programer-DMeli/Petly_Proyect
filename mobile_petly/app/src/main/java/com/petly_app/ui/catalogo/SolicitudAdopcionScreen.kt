@@ -347,7 +347,7 @@ fun SolicitudAdopcionScreen(
         }
 
         FormSectionCard(title = "Fotos privadas del hogar") {
-            Text("Hasta tres imágenes JPEG/PNG de 5 MB. Solo tú y el albergue autorizado pueden consultarlas.")
+            Text("Hasta tres imágenes JPEG/PNG. Solo tú y el albergue autorizado pueden consultarlas.")
             Text("${fotos.size} fotografías seleccionadas")
             OutlinedButton(onClick = { picker.launch(arrayOf("image/jpeg", "image/png")) }, enabled = !isSending) { Text("Seleccionar fotos del hogar") }
             fotosGuardadas.forEach { bytes -> coil.compose.AsyncImage(model = bytes, contentDescription = "Foto privada guardada", modifier = Modifier.height(100.dp)) }

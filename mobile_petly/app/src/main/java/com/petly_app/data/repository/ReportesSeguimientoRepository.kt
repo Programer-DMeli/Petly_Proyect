@@ -3,6 +3,7 @@ package com.petly_app.data.repository
 import android.content.ContentResolver
 import android.net.Uri
 import com.petly_app.data.remote.RecordatorioReporteDto
+import com.petly_app.data.remote.LimiteImagenApi
 import com.petly_app.data.remote.ReportesSeguimientoApi
 import com.petly_app.data.remote.SeguimientoDto
 import com.petly_app.data.remote.SeguimientosApi
@@ -12,7 +13,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.ByteArrayOutputStream
 
 data class PlazoReporte(
     val seguimiento: SeguimientoDto,
@@ -23,7 +23,8 @@ data class PlazoReporte(
 class ReportesSeguimientoRepository(
     private val seguimientos: SeguimientosApi,
     private val reportes: ReportesSeguimientoApi,
-    private val resolver: ContentResolver
+    private val resolver: ContentResolver,
+    private val configuracion: LimiteImagenApi
 ) {
     suspend fun pendientes(): List<PlazoReporte> {
         val cronograma = seguimientos.listarTodos()
@@ -43,24 +44,13 @@ class ReportesSeguimientoRepository(
 
     suspend fun enviar(id: Long, estado: String, observaciones: String, fotos: List<Uri>) {
         require(fotos.size in 1..5) { "Selecciona entre 1 y 5 fotos." }
+        val limiteMb = configuracion.obtenerLimiteImagenMb()
         val partes = withContext(Dispatchers.IO) {
-            var restantes = 20 * MIB
+            var restantes = 20 * BYTES_POR_MIB
             fotos.mapIndexed { index, uri ->
-                val limite = minOf(5 * MIB, restantes)
-                val datos = resolver.openInputStream(uri)?.use { input ->
-                    val buffer = ByteArray(8192)
-                    val output = ByteArrayOutputStream()
-                    while (true) {
-                        val count = input.read(buffer)
-                        if (count == -1) break
-                        require(output.size() + count <= limite) {
-                            "Cada foto admite hasta 5 MB y el conjunto hasta 20 MB."
-                        }
-                        output.write(buffer, 0, count)
-                    }
-                    output.toByteArray()
-                } ?: throw IllegalArgumentException("No se pudo abrir una de las fotos seleccionadas.")
-                require(datos.isNotEmpty()) { "Una de las fotos seleccionadas está vacía." }
+                val limite = minOf(limiteMb * BYTES_POR_MIB, restantes)
+                val datos = resolver.leerImagen(uri, limite,
+                    "Cada foto admite hasta $limiteMb MB y el conjunto hasta 20 MB.")
                 restantes -= datos.size
                 val png = resolver.getType(uri) == "image/png"
                 val mime = if (png) "image/png" else "image/jpeg"
@@ -74,9 +64,6 @@ class ReportesSeguimientoRepository(
             observaciones.trim().toRequestBody(texto), partes)
     }
 
-    private companion object {
-        const val MIB = 1024 * 1024
-    }
 }
 
 internal fun cruzarPlazos(avisos: List<RecordatorioReporteDto>, seguimientos: List<SeguimientoDto>): List<PlazoReporte> {

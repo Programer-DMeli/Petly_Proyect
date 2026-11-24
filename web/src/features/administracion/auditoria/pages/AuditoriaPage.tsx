@@ -5,6 +5,7 @@ import { errorMessage, spring } from '../../../../services/http';
 type EventoAuditoria = {
   eventoId: string;
   actorUsuarioId: number | null;
+  actorNombre: string | null;
   actorRol: string;
   accion: string;
   origen: string;
@@ -188,7 +189,12 @@ export default function AuditoriaPage() {
                 <tbody>{resultado.content.map(evento => <tr key={evento.eventoId}>
                   <td><time dateTime={evento.ocurridoEn}>{fechaHora(evento.ocurridoEn)}</time></td>
                   <td>
-                    <strong>{evento.actorUsuarioId == null ? 'Sistema' : `Usuario #${evento.actorUsuarioId}`}</strong>
+                    <strong>
+                      {evento.actorNombre || (evento.actorUsuarioId == null
+                        ? 'Sistema'
+                        : `Usuario #${evento.actorUsuarioId}`)}
+                    </strong>
+                    {evento.actorNombre && evento.actorUsuarioId != null && <small>Usuario #{evento.actorUsuarioId}</small>}
                     <small>{evento.actorRol}</small>
                   </td>
                   <td><code>{evento.accion}</code></td>

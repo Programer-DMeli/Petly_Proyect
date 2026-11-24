@@ -1,5 +1,7 @@
 import io
+import json
 import tempfile
+from urllib.error import URLError
 from unittest.mock import patch
 from PIL import Image
 from django.test import TestCase
@@ -63,6 +65,28 @@ class FotosHogarTest(TestCase):
         response = self.client.get(archivo)
         self.assertIn(response.status_code,[401,403])
         response.close()
+
+    def test_limite_vigente_de_spring_aplica_a_la_carga(self):
+        foto = self.imagen().read() + b"\0" * (1024 * 1024)
+
+        def archivo():
+            return SimpleUploadedFile("hogar.png", foto, content_type="image/png")
+
+        with self.settings(PETLY_TEST_MAX_IMAGE_BYTES=None), patch(
+            "config.parametros_sistema.urllib.request.urlopen",
+            side_effect=[
+                io.BytesIO(json.dumps({"maxImagenMb": 1}).encode()),
+                io.BytesIO(json.dumps({"maxImagenMb": 2}).encode()),
+                URLError("sin conexión"),
+            ],
+        ):
+            rechazo = self.client.post(self.url, {"archivo": archivo()})
+            self.assertEqual(rechazo.status_code, 400)
+            self.assertIn("1 MB", rechazo.data["archivo"])
+            self.assertFalse(FotoHogar.objects.exists())
+            self.assertEqual(self.client.post(self.url, {"archivo": archivo()}).status_code, 201)
+            self.assertEqual(self.client.post(self.url, {"archivo": self.imagen()}).status_code, 503)
+            self.assertEqual(FotoHogar.objects.count(), 1)
 
     def test_no_subir_despues_de_decision(self):
         self.solicitud.estado='APROBADA';self.solicitud.save()

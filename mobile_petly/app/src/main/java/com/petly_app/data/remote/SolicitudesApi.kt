@@ -19,11 +19,18 @@ data class HistorialSolicitud(
     val cerradoEn: String? = null,
 )
 data class EventoSolicitud(val id: Long, val tipo_display: String, val descripcion: String?)
-interface SolicitudesApi {
+interface SolicitudesApi : LimiteImagenApi {
     @POST("api/solicitudes") suspend fun crear(@Body datos: CrearSolicitud): SolicitudPersistida
     @GET("api/solicitudes") suspend fun listar(@Query("page") page: Int = 1): com.google.gson.JsonElement
     @GET("api/solicitudes/{id}/seguimiento") suspend fun seguimiento(@Path("id") id: Long): HistorialSolicitud
 }
+
+interface LimiteImagenApi {
+    @GET("api/configuracion/limite-imagen")
+    suspend fun limiteImagen(): LimiteImagenDto
+}
+
+data class LimiteImagenDto(val maxImagenMb: Int)
 
 interface FotosHogarApi {
     @Multipart @POST("api/acceso/solicitudes/{id}/fotos-hogar/")

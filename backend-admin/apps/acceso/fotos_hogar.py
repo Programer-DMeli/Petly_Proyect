@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
+from config.parametros_sistema import obtener_limite_imagen_bytes
 from .models import SolicitudAdopcion, FotoHogar
 from .eligibilidad import comprobar_elegibilidad
 
@@ -40,8 +41,11 @@ class FotosHogarView(APIView):
     def post(self, request, pk):
         solicitud_autorizada(request.user, pk, escritura=True)
         archivo = request.FILES.get("archivo")
-        if not archivo or archivo.size > 5 * 1024 * 1024:
-            raise ValidationError({"archivo": "Selecciona un JPEG/PNG de hasta 5 MB."})
+        if not archivo:
+            raise ValidationError({"archivo": "Selecciona una foto JPEG o PNG."})
+        limite = obtener_limite_imagen_bytes()
+        if archivo.size > limite:
+            raise ValidationError({"archivo": f"Selecciona un JPEG/PNG de hasta {limite // (1024 * 1024)} MB."})
         contenido = archivo.read()
         try:
             with Image.open(io.BytesIO(contenido)) as imagen:

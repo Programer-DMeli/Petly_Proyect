@@ -17,11 +17,14 @@ class SesionSpringTest(TestCase):
     def setUpTestData(cls):
         cls.sid = str(uuid.uuid4())
         with connection.cursor() as cursor:
-            cursor.execute("CREATE TABLE usuarios (id BIGINT PRIMARY KEY, token_version INT)")
+            cursor.execute("""CREATE TABLE usuarios (
+                id BIGINT PRIMARY KEY, token_version INT,
+                cuenta_suspendida BOOLEAN DEFAULT FALSE, suspension_hasta DATETIME
+            )""")
             cursor.execute("""CREATE TABLE sesiones_renovables (
                 id VARCHAR(36), usuario_id BIGINT, token_version INT, revocada_en DATETIME
             )""")
-            cursor.execute("INSERT INTO usuarios VALUES (321, 4)")
+            cursor.execute("INSERT INTO usuarios (id, token_version) VALUES (321, 4)")
             cursor.execute("INSERT INTO sesiones_renovables VALUES (%s, 321, 4, NULL)", [cls.sid])
 
     def validar(self, **claims):
@@ -48,6 +51,13 @@ class SesionSpringTest(TestCase):
         with patch("apps.acceso.authentication.connection.cursor", side_effect=DatabaseError):
             with self.assertRaises(ComprobacionSesionNoDisponible):
                 self.validar()
+
+    def test_rechaza_cuenta_suspendida_aunque_el_token_este_vigente(self):
+        self.assertEqual(self.validar()["sub"], "321")
+        with connection.cursor() as cursor:
+            cursor.execute("UPDATE usuarios SET cuenta_suspendida = TRUE WHERE id = 321")
+        with self.assertRaises(InvalidToken):
+            self.validar()
 
     def test_stream_abierto_deja_de_emitir_despues_de_revocar(self):
         token = self.validar()

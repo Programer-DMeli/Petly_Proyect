@@ -3,12 +3,14 @@ package com.petly.auth;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.petly.usuarios.SincronizarRolDjango;
 import com.petly.usuarios.Usuario;
 import com.petly.usuarios.UsuarioRepository;
 import io.jsonwebtoken.Jwts;
@@ -21,10 +23,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.verify;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -43,6 +48,7 @@ class SesionRenovableTest {
     @Autowired JwtService jwt;
     @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired RecuperacionTokenRepository recuperaciones;
+    @MockitoBean SincronizarRolDjango sincronizadorRol;
     @Autowired SesionRenovableService sesiones;
     @Value("${spring.jwt.secret}") String key;
 
@@ -136,6 +142,109 @@ class SesionRenovableTest {
         jdbc.update("UPDATE sesiones_renovables SET expira_en = ? WHERE id = ?",
                 LocalDateTime.now().minusDays(1), login.renovacion().substring(0, 36));
         refresh(login.renovacion(), UUID.randomUUID().toString(), 401);
+    }
+
+    @Test
+    void losPermisosAdministrativosSiguenElRolAsignado() throws Exception {
+        Usuario cuenta = usuario();
+        var sesionAnterior = sesiones.iniciar(cuenta);
+        String autorizacionAnterior = "Bearer " + sesionAnterior.acceso().getToken();
+        String alias = UUID.randomUUID().toString();
+        Usuario admin = usuarios.saveAndFlush(
+                new Usuario(alias, alias + "@petly.test", passwords.encode(PASSWORD), Usuario.Rol.ADMIN));
+        String autorizacionAdmin = "Bearer " + sesiones.iniciar(admin).acceso().getToken();
+        String ruta = "/api/admin/usuarios/" + cuenta.getId() + "/rol";
+        String nuevoRol = "{\"rol\":\"ADMIN\"}";
+
+        mvc.perform(get("/api/admin/usuarios").header("Authorization", autorizacionAnterior))
+                .andExpect(status().isForbidden());
+        mvc.perform(patch(ruta).header("Authorization", autorizacionAnterior)
+                .contentType(APPLICATION_JSON).content(nuevoRol)).andExpect(status().isForbidden());
+        mvc.perform(patch(ruta).header("Authorization", autorizacionAdmin)
+                .contentType(APPLICATION_JSON).content(nuevoRol))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.rol").value("ADMIN"));
+        verify(sincronizadorRol).sincronizar(argThat(usuario -> cuenta.getId().equals(usuario.getId())
+                && usuario.getRol() == Usuario.Rol.ADMIN));
+
+        mvc.perform(get("/api/admin/usuarios").header("Authorization", autorizacionAnterior))
+                .andExpect(status().isUnauthorized());
+        refresh(sesionAnterior.renovacion(), UUID.randomUUID().toString(), 401);
+        Usuario actualizado = usuarios.findById(cuenta.getId()).orElseThrow();
+        String autorizacionNueva = "Bearer " + sesiones.iniciar(actualizado).acceso().getToken();
+        mvc.perform(get("/api/admin/usuarios").header("Authorization", autorizacionNueva))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void soloElAdminSuspendeRevocaLaSesionYConsultaLaAuditoria() throws Exception {
+        Usuario cuenta = usuario();
+        var sesionCuenta = sesiones.iniciar(cuenta);
+        String autorizacionCuenta = "Bearer " + sesionCuenta.acceso().getToken();
+        String alias = UUID.randomUUID().toString();
+        Usuario admin = new Usuario(alias, alias + "@petly.test", passwords.encode(PASSWORD), Usuario.Rol.ADMIN);
+        admin.setFirstName("Ana");
+        admin.setLastName("Prueba");
+        usuarios.saveAndFlush(admin);
+        String autorizacionAdmin = "Bearer " + sesiones.iniciar(admin).acceso().getToken();
+        String ruta = "/api/admin/usuarios/" + cuenta.getId() + "/suspension";
+        String motivo = "{\"motivo\":\"Incumplimiento de prueba\"}";
+
+        mvc.perform(patch(ruta).header("Authorization", autorizacionCuenta)
+                .contentType(APPLICATION_JSON).content(motivo)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/admin/auditoria").header("Authorization", autorizacionCuenta))
+                .andExpect(status().isForbidden());
+        mvc.perform(patch(ruta).header("Authorization", autorizacionAdmin)
+                .contentType(APPLICATION_JSON).content(motivo)).andExpect(status().isOk());
+        assertTrue(usuarios.findById(cuenta.getId()).orElseThrow().isCuentaSuspendida());
+        assertEquals("Incumplimiento de prueba",
+                usuarios.findById(cuenta.getId()).orElseThrow().getMotivoSuspension());
+        mvc.perform(get("/api/auth/me").header("Authorization", autorizacionCuenta))
+                .andExpect(status().isUnauthorized());
+        refresh(sesionCuenta.renovacion(), UUID.randomUUID().toString(), 401);
+        mvc.perform(post("/api/auth/login").contentType(APPLICATION_JSON)
+                .content(json.writeValueAsBytes(java.util.Map.of("correo", cuenta.getCorreo(), "password", PASSWORD))))
+                .andExpect(status().isLocked());
+        mvc.perform(get("/api/admin/auditoria").header("Authorization", autorizacionAdmin)
+                .param("actorId", admin.getId().toString()).param("accion", "USUARIO_SUSPENSION_APLICADA"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].actorNombre").value("Ana Prueba"))
+                .andExpect(jsonPath("$.content[0].actorRol").value("ADMIN"))
+                .andExpect(jsonPath("$.content[0].recursoId").value(cuenta.getId().toString()))
+                .andExpect(jsonPath("$.content[0].ocurridoEn").exists());
+    }
+
+    @Test
+    void configuracionAdminSeReflejaEnLaConsultaDeImagenYEnSesionesNuevas() throws Exception {
+        String alias = UUID.randomUUID().toString();
+        Usuario admin = usuarios.saveAndFlush(
+                new Usuario(alias, alias + "@petly.test", passwords.encode(PASSWORD), Usuario.Rol.ADMIN));
+        Usuario cuenta = usuario();
+        var sesion = sesiones.iniciar(cuenta);
+        String autorizacionAdmin = "Bearer " + sesiones.iniciar(admin).acceso().getToken();
+        String autorizacionCuenta = "Bearer " + sesion.acceso().getToken();
+        String rutaAdmin = "/api/admin/configuracion-global";
+        String rutaLimite = "/api/configuracion/limite-imagen";
+        String valores = "{\"maxImagenMb\":8,\"expiracionSesionDias\":2}";
+
+        mvc.perform(get(rutaLimite)).andExpect(status().isUnauthorized());
+        mvc.perform(put(rutaAdmin).header("Authorization", autorizacionCuenta)
+                .contentType(APPLICATION_JSON).content(valores)).andExpect(status().isForbidden());
+        try {
+            mvc.perform(put(rutaAdmin).header("Authorization", autorizacionAdmin)
+                    .contentType(APPLICATION_JSON).content(valores)).andExpect(status().isOk());
+            mvc.perform(get(rutaLimite).header("Authorization", autorizacionCuenta))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Cache-Control", "no-store"))
+                    .andExpect(jsonPath("$.maxImagenMb").value(8))
+                    .andExpect(jsonPath("$.expiracionSesionDias").doesNotHaveJsonPath());
+            Instant inicio = Instant.now();
+            Instant vencimiento = sesiones.iniciar(cuenta).expiraEn();
+            assertFalse(vencimiento.isBefore(inicio.plus(2, ChronoUnit.DAYS)));
+            assertFalse(vencimiento.isAfter(Instant.now().plus(2, ChronoUnit.DAYS)));
+        } finally {
+            jdbc.update("UPDATE configuracion_global SET max_imagen_mb = 5, expiracion_sesion_dias = 30 WHERE clave = 'GLOBAL'");
+        }
     }
 
     @Test
