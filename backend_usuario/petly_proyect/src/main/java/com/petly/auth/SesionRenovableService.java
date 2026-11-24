@@ -14,6 +14,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import com.petly.auth.dto.AuthResponse;
 import com.petly.auth.dto.LoginResponse;
+import com.petly.config.ConfiguracionGlobalService;
 import com.petly.common.exception.ApiException;
 import com.petly.usuarios.Usuario;
 import com.petly.usuarios.UsuarioRepository;
@@ -32,17 +33,16 @@ public class SesionRenovableService {
     private final SesionRenovableRepository sesiones;
     private final UsuarioRepository usuarios;
     private final JwtService jwt;
-    private final Duration duracion;
+    private final ConfiguracionGlobalService configuracion;
     private final SecretKeySpec claveRotacion;
 
     public SesionRenovableService(SesionRenovableRepository sesiones, UsuarioRepository usuarios, JwtService jwt,
-            @Value("${petly.session.refresh-days:30}") int dias,
+            ConfiguracionGlobalService configuracion,
             @Value("${spring.jwt.secret}") String clave) {
-        if (dias < 1 || dias > 365) throw new IllegalArgumentException("Duración de sesión inválida");
         this.sesiones = sesiones;
         this.usuarios = usuarios;
         this.jwt = jwt;
-        this.duracion = Duration.ofDays(dias);
+        this.configuracion = configuracion;
         this.claveRotacion = new SecretKeySpec(clave.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
     }
 
@@ -52,6 +52,7 @@ public class SesionRenovableService {
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);
         String token = id + "." + BASE64.encodeToString(bytes);
+        Duration duracion = Duration.ofDays(configuracion.obtener().getExpiracionSesionDias());
         Instant expira = Instant.now().plus(duracion);
         sesiones.save(new SesionRenovable(id, usuario.getId(), usuario.getTokenVersion(), AuthService.hash(token), expira));
         return emitir(usuario, id, token, expira);
@@ -67,7 +68,8 @@ public class SesionRenovableService {
         Usuario usuario = usuarios.bloquearPorId(usuarioId).orElseThrow(SesionRenovableService::invalida);
         SesionRenovable sesion = sesiones.bloquear(id).orElseThrow(SesionRenovableService::invalida);
         if (sesion.revocadaEn != null || !sesion.expiraEn.isAfter(Instant.now())
-                || sesion.tokenVersion != usuario.getTokenVersion()) throw invalida();
+                || sesion.tokenVersion != usuario.getTokenVersion() || !usuario.isEnabled()
+                || usuario.tieneSuspensionVigente(java.time.LocalDateTime.now())) throw invalida();
 
         String hash = AuthService.hash(token);
         String operacionHash = AuthService.hash(operacion);
@@ -100,6 +102,11 @@ public class SesionRenovableService {
 
     public void revocarTodas(Long usuarioId) {
         sesiones.revocarTodas(usuarioId, Instant.now());
+    }
+
+    @Transactional
+    public void eliminarTodas(Long usuarioId) {
+        sesiones.deleteByUsuarioId(usuarioId);
     }
 
     private Emision emitir(Usuario usuario, String id, String renovacion, Instant expira) {

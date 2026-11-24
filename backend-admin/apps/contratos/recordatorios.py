@@ -63,18 +63,18 @@ class FeedRecordatoriosSeguimientoView(APIView):
                 and not seguimiento.reporte_enviado
                 and not seguimiento.expediente_cerrado
             )
-            if registrar_avisos and activo:
+            horas_restantes = seguimiento.programado_para - ahora
+            tipo = None
+            if timedelta(hours=48) < horas_restantes <= timedelta(hours=72):
+                tipo = SolicitudEvento.Tipo.RECORDATORIO_REPORTE
+            elif timedelta(0) < horas_restantes <= timedelta(hours=24):
+                tipo = SolicitudEvento.Tipo.REPORTE_1_DIA
+            if registrar_avisos and activo and tipo is not None:
                 SolicitudEvento.objects.get_or_create(
                     seguimiento=seguimiento,
-                    tipo=SolicitudEvento.Tipo.RECORDATORIO_REPORTE,
+                    tipo=tipo,
                     defaults={"solicitud_id": seguimiento.solicitud_id},
                 )
-                if seguimiento.programado_para <= ahora + timedelta(hours=24):
-                    SolicitudEvento.objects.get_or_create(
-                        seguimiento=seguimiento,
-                        tipo=SolicitudEvento.Tipo.REPORTE_1_DIA,
-                        defaults={"solicitud_id": seguimiento.solicitud_id},
-                    )
             filas.append({
                 "id": seguimiento.pk,
                 "adoptante_spring_id": seguimiento.solicitud.adoptante.usuario_spring_id,

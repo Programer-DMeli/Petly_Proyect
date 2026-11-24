@@ -76,6 +76,11 @@ const groups: Record<string, Group[]> = {
           to: '/adoptante/preferencias-notificacion',
           description: 'Configura avisos de nuevas mascotas y canales de alerta.',
         },
+        {
+          label: 'Privacidad y datos',
+          to: '/adoptante/privacidad',
+          description: 'Descarga tus datos o solicita la baja de tu cuenta.',
+        },
       ],
     },
   ],
@@ -165,6 +170,11 @@ const groups: Record<string, Group[]> = {
           label: 'Roles y cuentas',
           to: '/administracion/usuarios',
           description: 'Administra las cuentas y sus permisos en Petly.',
+        },
+        {
+          label: 'Registro de actividad',
+          to: '/administracion/auditoria',
+          description: 'Consulta acciones sensibles y su trazabilidad.',
         },
         {
           label: 'Analítica de adopciones',

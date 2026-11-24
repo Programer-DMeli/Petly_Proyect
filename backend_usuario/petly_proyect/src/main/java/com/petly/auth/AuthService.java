@@ -115,7 +115,13 @@ public class AuthService {
         String correo = request.getCorreo().trim().toLowerCase(java.util.Locale.ROOT);
         Usuario usuario = usuarios.bloquearPorCorreo(correo)
                 .orElseThrow(() -> new CredencialesInvalidasException("Credenciales inválidas."));
+        if (!usuario.isEnabled()) {
+            throw new CredencialesInvalidasException("Credenciales inválidas.");
+        }
         LocalDateTime now = LocalDateTime.now();
+        if (usuario.tieneSuspensionVigente(now)) {
+            throw new ApiException(423, "La cuenta está suspendida.");
+        }
         if (usuario.getBloqueadoHasta() != null && usuario.getBloqueadoHasta().isAfter(now)) {
             long remaining = Math.max(1, (java.time.Duration.between(now, usuario.getBloqueadoHasta()).toMillis() + 999) / 1000);
             throw new AuthCuentaBloqueadaException("Cuenta bloqueada temporalmente.", remaining);

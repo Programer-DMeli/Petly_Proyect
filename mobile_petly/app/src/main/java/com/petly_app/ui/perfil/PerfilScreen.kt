@@ -44,6 +44,7 @@ fun PerfilScreen(
     onDetailPet: (Long) -> Unit = {},
     onExit: () -> Unit = {},
     onOpenSeguimientos: () -> Unit = {},
+    onOpenAgendaVacunas: ((Long) -> Unit)? = null,
     reportReminders: @Composable () -> Unit = {}
 ) {
     val favorites by FavoritosManager.favorites.collectAsStateWithLifecycle()
@@ -73,7 +74,7 @@ fun PerfilScreen(
             Text(it, color = MaterialTheme.colorScheme.error)
         }
 
-        if (!preview) MisSolicitudesAdopcion()
+        if (!preview) MisSolicitudesAdopcion(onOpenAgendaVacunas)
 
         OutlinedButton(
             onClick = onOpenKyc,

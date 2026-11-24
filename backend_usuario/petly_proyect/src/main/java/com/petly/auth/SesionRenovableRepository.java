@@ -19,6 +19,8 @@ public interface SesionRenovableRepository extends JpaRepository<SesionRenovable
 
     boolean existsByIdAndUsuarioIdAndRevocadaEnIsNull(String id, Long usuarioId);
 
+    void deleteByUsuarioId(Long usuarioId);
+
     @Modifying
     @Query("update SesionRenovable s set s.revocadaEn = :ahora where s.usuarioId = :usuarioId and s.revocadaEn is null")
     void revocarTodas(Long usuarioId, Instant ahora);

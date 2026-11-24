@@ -4,9 +4,10 @@ import json
 import secrets
 
 from django.conf import settings
+from django.http import FileResponse
 from django.utils.http import http_date
 from rest_framework import viewsets, permissions, status, filters
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -18,7 +19,7 @@ from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.albergues.models import Albergue
-from .models import Mascota
+from .models import CertificadoVeterinario, Mascota
 from .estados import cambiar_estado_mascota
 from .serializers import (
     MascotaSerializer,
@@ -67,6 +68,46 @@ class MascotaViewSet(viewsets.ModelViewSet):
         if self.action == "cambiar_estado":
             return MascotaEstadoSerializer
         return MascotaSerializer
+
+    def _mascota_para_certificados(self):
+        if self.request.user.rol != "ALBERGUE":
+            raise PermissionDenied("Solo el albergue propietario puede gestionar los certificados veterinarios.")
+        return self.get_object()
+
+    @action(detail=True, methods=["get"], url_path="certificados-veterinarios")
+    def certificados_veterinarios(self, request, pk=None):
+        from .certificados_veterinarios import PERFIL_PENDIENTE
+
+        mascota = self._mascota_para_certificados()
+        return Response({
+            "carga_habilitada": False,
+            "mensaje": PERFIL_PENDIENTE,
+            "certificados": list(mascota.certificados_veterinarios.values("tipo", "validacion")),
+        }, headers={"Cache-Control": "private, no-store"})
+
+    @action(detail=True, methods=["get", "put"], parser_classes=[MultiPartParser],
+            url_path=r"certificados-veterinarios/(?P<tipo>VACUNACION|ESTERILIZACION)")
+    def certificado_veterinario(self, request, pk=None, tipo=None):
+        from .certificados_veterinarios import (
+            CertificadoNoDisponible, PerfilFirmaNoDefinido, abrir_pdf_integro, comprobar_formato_pdf,
+        )
+
+        mascota = self._mascota_para_certificados()
+        if request.method == "PUT":
+            comprobar_formato_pdf(request.FILES.get("archivo"))
+            raise PerfilFirmaNoDefinido()
+
+        certificado = get_object_or_404(mascota.certificados_veterinarios, tipo=tipo)
+        if certificado.validacion != CertificadoVeterinario.Validacion.VERIFICADO:
+            raise CertificadoNoDisponible()
+
+        response = FileResponse(
+            abrir_pdf_integro(certificado), filename=f"certificado_{tipo.lower()}_{mascota.pk}.pdf",
+            content_type="application/pdf",
+        )
+        response["Cache-Control"] = "private, no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
 
     @action(detail=True, methods=["post"], url_path="generar-descripcion")
     def generar_descripcion(self, request, pk=None):

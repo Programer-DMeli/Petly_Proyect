@@ -87,8 +87,36 @@ public class Usuario implements UserDetails {
 
     @Column(name = "token_version", nullable = false)
     private int tokenVersion = 0;
+    @Column(name = "cuenta_eliminada", nullable = false)
+    private boolean cuentaEliminada = false;
+    @Column(name = "cuenta_suspendida", nullable = false)
+    private boolean cuentaSuspendida = false;
+    @Column(name = "motivo_suspension", nullable = false, length = 500)
+    private String motivoSuspension = "";
+    @Column(name = "suspendida_en")
+    private LocalDateTime suspendidaEn;
+    @Column(name = "suspension_hasta")
+    private LocalDateTime suspensionHasta;
+    @Column(name = "suspendida_por_id")
+    private Long suspendidaPorId;
+
     public int getTokenVersion() { return tokenVersion; }
     public void setTokenVersion(int value) { tokenVersion = value; }
+    public boolean isCuentaEliminada() { return cuentaEliminada; }
+    public void setCuentaEliminada(boolean value) { cuentaEliminada = value; }
+    public boolean isCuentaSuspendida() { return cuentaSuspendida; }
+    public void setCuentaSuspendida(boolean value) { cuentaSuspendida = value; }
+    public boolean tieneSuspensionVigente(LocalDateTime ahora) {
+        return cuentaSuspendida && (suspensionHasta == null || suspensionHasta.isAfter(ahora));
+    }
+    public String getMotivoSuspension() { return motivoSuspension; }
+    public void setMotivoSuspension(String value) { motivoSuspension = value; }
+    public LocalDateTime getSuspendidaEn() { return suspendidaEn; }
+    public void setSuspendidaEn(LocalDateTime value) { suspendidaEn = value; }
+    public LocalDateTime getSuspensionHasta() { return suspensionHasta; }
+    public void setSuspensionHasta(LocalDateTime value) { suspensionHasta = value; }
+    public Long getSuspendidaPorId() { return suspendidaPorId; }
+    public void setSuspendidaPorId(Long value) { suspendidaPorId = value; }
 
     // Constructors
     protected Usuario() {}
@@ -170,7 +198,9 @@ public class Usuario implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return bloqueadoHasta == null || bloqueadoHasta.isBefore(LocalDateTime.now());
+        LocalDateTime ahora = LocalDateTime.now();
+        boolean sinBloqueoPorIntentos = bloqueadoHasta == null || !bloqueadoHasta.isAfter(ahora);
+        return sinBloqueoPorIntentos && !tieneSuspensionVigente(ahora);
     }
 
     @Override
@@ -180,6 +210,6 @@ public class Usuario implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return !cuentaEliminada;
     }
 }

@@ -4,14 +4,17 @@ from datetime import date
 from django.utils import timezone
 from rest_framework import serializers
 from django_filters.rest_framework import DjangoFilterBackend
+from config.parametros_sistema import obtener_limite_imagen_bytes
 from .models import Mascota, RegistroClinico
 
 
 def validate_image_file(value):
-    """Valida que el archivo sea JPEG/PNG y no supere 5 MB."""
-    max_size = 5 * 1024 * 1024  # 5 MB
+    """Valida que el archivo sea JPEG/PNG y respete el límite global vigente."""
+    max_size = obtener_limite_imagen_bytes()
     if value.size > max_size:
-        raise serializers.ValidationError("La imagen no debe superar 5 MB.")
+        raise serializers.ValidationError(
+            f"La imagen no debe superar {max_size // (1024 * 1024)} MB, según la configuración global."
+        )
     
     content_type = getattr(value, 'content_type', '')
     if content_type not in ['image/jpeg', 'image/png']:

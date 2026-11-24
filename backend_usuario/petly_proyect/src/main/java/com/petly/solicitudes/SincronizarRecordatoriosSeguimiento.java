@@ -50,6 +50,10 @@ public class SincronizarRecordatoriosSeguimiento {
 
     @Scheduled(fixedDelayString = "${petly.recordatorios.intervalo-ms:60000}")
     public void sincronizar() {
+        sincronizar(LocalDateTime.now(ZONA_PETLY));
+    }
+
+    void sincronizar(LocalDateTime ahora) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setAccept(List.of(MediaType.APPLICATION_JSON));
@@ -67,9 +71,8 @@ public class SincronizarRecordatoriosSeguimiento {
             for (SeguimientoFeed fila : filas) {
                 for (int anticipacionDias : List.of(3, 1)) {
                     try {
-                        sincronizar(fila, anticipacionDias);
-                        if (Boolean.TRUE.equals(fila.recordatorioActivo())) {
-                            remitente.enviarPendiente(fila.id(), anticipacionDias, fila.mascotaNombre());
+                        if (sincronizar(fila, anticipacionDias, ahora)) {
+                            remitente.enviarPendiente(fila.id(), anticipacionDias, fila.mascotaNombre(), ahora);
                         }
                     } catch (RuntimeException ex) {
                         log.error("No se pudo sincronizar el aviso de {} día(s) del seguimiento {}.",
@@ -86,10 +89,10 @@ public class SincronizarRecordatoriosSeguimiento {
         }
     }
 
-    private void sincronizar(SeguimientoFeed fila, int anticipacionDias) {
+    private boolean sincronizar(SeguimientoFeed fila, int anticipacionDias, LocalDateTime ahora) {
         if (fila.id() == null || fila.adoptanteSpringId() == null || fila.programadoPara() == null) {
             log.warn("Se omitió un seguimiento incompleto en el feed interno de recordatorios.");
-            return;
+            return false;
         }
 
         var existente = recordatorios.findBySeguimientoIdAndAnticipacionDias(fila.id(), anticipacionDias);
@@ -100,7 +103,7 @@ public class SincronizarRecordatoriosSeguimiento {
                     recordatorios.save(recordatorio);
                 }
             });
-            return;
+            return false;
         }
 
         if ("CANCELADO".equals(fila.estado()) || Boolean.TRUE.equals(fila.expedienteCerrado())) {
@@ -110,17 +113,20 @@ public class SincronizarRecordatoriosSeguimiento {
                     recordatorios.save(recordatorio);
                 }
             });
-            return;
+            return false;
         }
 
         if (!"PROGRAMADO".equals(fila.estado()) && !"REALIZADO".equals(fila.estado())) {
-            return;
+            return false;
         }
 
         LocalDateTime fechaLimite = fila.programadoPara()
                 .atZoneSameInstant(ZONA_PETLY)
                 .toLocalDateTime();
-        LocalDateTime ahora = LocalDateTime.now(ZONA_PETLY);
+        LocalDateTime inicioAviso = fechaLimite.minusDays(anticipacionDias);
+        LocalDateTime finAviso = inicioAviso.plusDays(1);
+        boolean enVentana = Boolean.TRUE.equals(fila.recordatorioActivo())
+                && !ahora.isBefore(inicioAviso) && ahora.isBefore(finAviso);
         if (existente.isPresent()) {
             RecordatorioSeguimiento recordatorio = existente.get();
             if (recordatorio.getEstado() == RecordatorioSeguimiento.Estado.PENDIENTE
@@ -131,21 +137,20 @@ public class SincronizarRecordatoriosSeguimiento {
                     recordatorios.save(recordatorio);
                 }
             }
-            LocalDateTime limiteAviso = fechaLimite.minusDays(anticipacionDias - 1L);
-            if (!Boolean.TRUE.equals(fila.recordatorioActivo())
-                    && recordatorio.getEstado() == RecordatorioSeguimiento.Estado.PENDIENTE
-                    && !ahora.isBefore(limiteAviso)) {
+            if (recordatorio.getEstado() == RecordatorioSeguimiento.Estado.PENDIENTE
+                    && !ahora.isBefore(finAviso)) {
                 recordatorio.cancelar();
                 recordatorios.save(recordatorio);
             }
-            return;
+            return enVentana && recordatorio.getEstado() == RecordatorioSeguimiento.Estado.PENDIENTE;
         }
 
-        if (!Boolean.TRUE.equals(fila.recordatorioActivo())) {
-            return;
+        if (!enVentana) {
+            return false;
         }
         recordatorios.save(new RecordatorioSeguimiento(
                 fila.id(), fila.adoptanteSpringId(), fechaLimite, anticipacionDias));
+        return true;
     }
 
     private record SeguimientoFeed(

@@ -73,6 +73,7 @@ fun MainAppScreen(
     onMessagesRead: () -> Unit = {},
     contentResolver: android.content.ContentResolver? = null,
     solicitudesChat: List<Triple<Long, Long, String>> = emptyList(),
+    onOpenAgendaVacunas: ((Long) -> Unit)? = null,
     reportReminders: @Composable () -> Unit = {}
 ) {
     ChatPanel(chatState, onOpenChat, onEditChat, onSendChat, onRetryChat, onEditFailedChat, onClearChat)
@@ -142,6 +143,7 @@ fun MainAppScreen(
                         onOpenKyc = onOpenKyc,
                         onOpenNotifications = onOpenNotifications,
                         onOpenSeguimientos = onOpenSeguimientos,
+                        onOpenAgendaVacunas = onOpenAgendaVacunas,
                         reportReminders = reportReminders,
                         onDetailPet = onDetailPet,
                         onAddFranja = onAddFranja,

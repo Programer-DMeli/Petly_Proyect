@@ -1,4 +1,6 @@
 """Modelos de acceso y postulantes (US-18, US-21)."""
+import uuid
+
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
@@ -530,6 +532,15 @@ class SolicitudAdopcion(models.Model):
         return transiciones.get(self.estado, [])
 
 
+class VacunaProgramada(models.Model):
+    solicitud = models.ForeignKey(SolicitudAdopcion, on_delete=models.CASCADE, related_name="vacunas_programadas")
+    nombre = models.CharField(max_length=120)
+    fecha_programada = models.DateField()
+
+    class Meta:
+        ordering = ["fecha_programada", "pk"]
+
+
 class SolicitudEvento(models.Model):
     """Evento de solicitud o aviso de una nueva mascota coincidente."""
 
@@ -671,3 +682,55 @@ class EntregaExterna(models.Model):
             models.UniqueConstraint(fields=["aviso", "canal", "destino"], name="entrega_externa_unica")
         ]
         indexes = [models.Index(fields=["estado", "proximo_intento"])]
+
+
+class EventoAuditoria(models.Model):
+    """Registro inmutable de acciones sensibles originadas en Django."""
+
+    class Origen(models.TextChoices):
+        DJANGO = "DJANGO", "Django"
+
+    evento_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    # ID de usuario Petly (Spring), guardado como instantánea y sin FK.
+    actor_usuario_id = models.PositiveBigIntegerField(null=True, blank=True)
+    actor_rol = models.CharField(max_length=20)
+    accion = models.CharField(max_length=80)
+    origen = models.CharField(max_length=10, choices=Origen.choices, default=Origen.DJANGO, editable=False)
+    recurso_tipo = models.CharField(max_length=80, blank=True)
+    recurso_id = models.CharField(max_length=100, blank=True)
+    ocurrido_en = models.DateTimeField(default=timezone.now, editable=False)
+    sincronizado_spring_en = models.DateTimeField(null=True, blank=True, editable=False)
+
+    class Meta:
+        db_table = "acceso_eventoauditoria"
+        verbose_name = "Evento de auditoría"
+        verbose_name_plural = "Eventos de auditoría"
+        ordering = ["-ocurrido_en", "-id"]
+        indexes = [
+            models.Index(fields=["actor_usuario_id", "ocurrido_en"], name="acceso_audit_actor_dt"),
+            models.Index(fields=["accion", "ocurrido_en"], name="acceso_audit_accion_dt"),
+            models.Index(fields=["ocurrido_en"], name="acceso_audit_fecha"),
+            models.Index(fields=["sincronizado_spring_en", "ocurrido_en"], name="acceso_audit_sync_dt"),
+        ]
+
+
+class SolicitudPrivacidadDjango(models.Model):
+    """Seguimiento idempotente de la parte Django de una baja de cuenta."""
+
+    class Estado(models.TextChoices):
+        ARCHIVOS_PENDIENTES = "ARCHIVOS_PENDIENTES", "Pendiente de eliminar archivos privados"
+        COMPLETADA = "COMPLETADA", "Completada"
+
+    operacion_id = models.UUIDField(unique=True)
+    # Huella HMAC para evitar guardar el identificador personal en el registro operativo.
+    usuario_hash = models.CharField(max_length=64, unique=True)
+    estado = models.CharField(max_length=24, choices=Estado.choices, default=Estado.ARCHIVOS_PENDIENTES)
+    archivos_pendientes = models.JSONField(default=list, blank=True)
+    retenciones = models.JSONField(default=list, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    completado_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Operación de privacidad Django"
+        verbose_name_plural = "Operaciones de privacidad Django"
+        ordering = ["-creado_en"]

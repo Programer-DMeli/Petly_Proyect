@@ -5,6 +5,7 @@ import { django, json, errorMessage, ApiError } from '../../../../services/http'
 import type { Shelter, Profile } from '../../../../services/types';
 import MascotasPanel from './MascotasPanel';
 import InfraestructuraPanel from './InfraestructuraPanel';
+import PermanenciaMetricCard from './PermanenciaMetricCard';
 type ShelterDraft = Pick<
   Shelter,
   | 'nombre'
@@ -102,6 +103,7 @@ export default function PanelAlberguePage() {
           ))}
         </nav>
       )}
+      {shelter && <PermanenciaMetricCard />}
       {step === 0 && (
         <>
           <h2>Mi albergue</h2>

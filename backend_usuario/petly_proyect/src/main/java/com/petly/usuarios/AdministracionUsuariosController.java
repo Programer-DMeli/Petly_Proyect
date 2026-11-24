@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.petly.usuarios.dto.ActualizarRolRequest;
+import com.petly.usuarios.dto.AplicarSuspensionRequest;
 import com.petly.usuarios.dto.UsuarioAdministracionResponse;
 
 import io.jsonwebtoken.Claims;
@@ -39,5 +40,15 @@ public class AdministracionUsuariosController {
         Claims claims = (Claims) authentication.getPrincipal();
         long actorId = Long.parseLong(claims.getSubject());
         return administracion.actualizarRol(actorId, usuarioId, request);
+    }
+
+    @PatchMapping("/{usuarioId}/suspension")
+    public UsuarioAdministracionResponse suspenderCuenta(
+            @PathVariable long usuarioId,
+            @Valid @RequestBody AplicarSuspensionRequest request,
+            Authentication authentication) {
+        Claims claims = (Claims) authentication.getPrincipal();
+        long actorId = Long.parseLong(claims.getSubject());
+        return administracion.suspenderCuenta(actorId, usuarioId, request);
     }
 }

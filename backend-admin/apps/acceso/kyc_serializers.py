@@ -1,11 +1,11 @@
 from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from config.parametros_sistema import obtener_limite_imagen_bytes
 
 from .models import VerificacionKyc
 
 
-MAX_DOCUMENT_BYTES = 5 * 1024 * 1024
 ESTADOS_KYC_TERMINALES = {
     VerificacionKyc.Estado.VERIFICADO,
     VerificacionKyc.Estado.APROBADO_MANUAL,
@@ -41,10 +41,13 @@ class VerificacionKycSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        limite_imagen = obtener_limite_imagen_bytes()
         for field in ("documento_anverso", "documento_reverso"):
             document = attrs.get(field)
-            if document and document.size > MAX_DOCUMENT_BYTES:
-                raise ValidationError({field: "Cada imagen debe pesar como máximo 5 MB."})
+            if document and document.size > limite_imagen:
+                raise ValidationError({
+                    field: f"La imagen no debe superar {limite_imagen // (1024 * 1024)} MB, según la configuración global."
+                })
         attrs["nombres"] = attrs["nombres"].strip()
         attrs["apellidos"] = attrs["apellidos"].strip()
         if not attrs["nombres"] or not attrs["apellidos"]:

@@ -4,16 +4,17 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Hito, Reporte } from '../../../seguimiento/Cronograma';
 import { fecha, type Bienestar, type Seguimiento } from '../../../seguimiento/cronogramaDatos';
 import { django, errorMessage, json } from '../../../../services/http';
+import { useMaxImagenMb } from '../../../../services/useMaxImagenMb';
 
 type Asesoria = Seguimiento['asesorias_veterinarias'][number];
 type Pagina = { results: Seguimiento[]; next: string | null };
 
 const TAMANO_PAGINA = 6;
 const MAX_PHOTOS = 5;
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 
 export default function ReportesPostAdopcionPage() {
+  const maxImagenMb = useMaxImagenMb();
   const [params, setParams] = useSearchParams();
   const solicitud = params.get('solicitud');
   const [pagina, setPagina] = useState(0);
@@ -64,8 +65,8 @@ export default function ReportesPostAdopcionPage() {
     const selected = Array.from(list ?? []);
     const total = selected.reduce((sum, file) => sum + file.size, 0);
     if (selected.length > MAX_PHOTOS) { setError('Puedes adjuntar hasta 5 fotos por reporte.'); setFotos([]); return; }
-    if (selected.some(file => !['image/jpeg', 'image/png'].includes(file.type) || file.size === 0 || file.size > MAX_PHOTO_BYTES)) {
-      setError('Cada foto debe ser JPEG o PNG y pesar hasta 5 MB.'); setFotos([]); return;
+    if (selected.some(file => !['image/jpeg', 'image/png'].includes(file.type) || file.size === 0 || file.size > maxImagenMb * 1024 * 1024)) {
+      setError(`Cada foto debe ser JPEG o PNG y pesar hasta ${maxImagenMb} MB.`); setFotos([]); return;
     }
     if (total > MAX_TOTAL_BYTES) { setError('Las fotos juntas no pueden superar 20 MB.'); setFotos([]); return; }
     setError(''); setFotos(selected);

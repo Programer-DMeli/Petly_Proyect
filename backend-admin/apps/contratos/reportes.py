@@ -10,11 +10,11 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
 from apps.acceso.models import SolicitudAdopcion, User
+from config.parametros_sistema import obtener_limite_imagen_bytes
 from .models import AlertaIncumplimientoSeguimiento, FotoReporteBienestar, ReporteBienestarPostAdopcion, SeguimientoPostAdopcion
 
 
 MAX_REPORT_PHOTOS = 5
-MAX_PHOTO_BYTES = 5 * 1024 * 1024
 MAX_REPORT_PHOTOS_BYTES = 20 * 1024 * 1024
 MAX_IMAGE_PIXELS = 20_000_000
 
@@ -71,10 +71,13 @@ class CrearReporteBienestarSerializer(serializers.Serializer):
         return seguimiento
 
     def validate_fotos(self, files):
+        limite_imagen = obtener_limite_imagen_bytes()
         total = 0
         for upload in files:
-            if upload.size <= 0 or upload.size > MAX_PHOTO_BYTES:
-                raise serializers.ValidationError("Cada foto debe pesar más de 0 y hasta 5 MB.")
+            if upload.size <= 0 or upload.size > limite_imagen:
+                raise serializers.ValidationError(
+                    f"Cada foto debe pesar más de 0 y hasta {limite_imagen // (1024 * 1024)} MB, según la configuración global."
+                )
             total += upload.size
             if total > MAX_REPORT_PHOTOS_BYTES:
                 raise serializers.ValidationError("El conjunto de fotos no puede superar 20 MB.")

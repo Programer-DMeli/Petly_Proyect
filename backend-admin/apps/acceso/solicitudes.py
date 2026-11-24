@@ -5,6 +5,7 @@ from rest_framework.exceptions import ValidationError
 
 from apps.mascotas.models import Mascota
 from .models import AdoptanteProfile, Autorizacion, SolicitudAdopcion, SolicitudEvento, AvisoExterno
+from .auditoria import registrar_evento_auditoria
 
 TRANSICIONES = {
     SolicitudAdopcion.Estado.PENDIENTE: [
@@ -155,4 +156,11 @@ def cambiar_estado_solicitud(solicitud_id, nuevo_estado, usuario, observaciones=
     )
     if solicitud.adoptante_id:
         AvisoExterno.objects.create(evento=evento)
+    registrar_evento_auditoria(
+        usuario,
+        accion=f"SOLICITUD_{nuevo_estado}",
+        recurso_tipo="SOLICITUD_ADOPCION",
+        recurso_id=solicitud.pk,
+        ocurrido_en=ahora,
+    )
     return solicitud

@@ -37,6 +37,10 @@ import ResenasPage from '../features/albergue/perfil/pages/ResenasPage';
 import PerfilPublicoAlberguePage from '../features/shared/PerfilPublicoAlberguePage';
 import AnaliticaAdopcionesPage from '../features/administracion/analitica/pages/AnaliticaAdopcionesPage';
 import RolesUsuariosPage from '../features/administracion/usuarios/pages/RolesUsuariosPage';
+import AuditoriaPage from '../features/administracion/auditoria/pages/AuditoriaPage';
+import ConfiguracionGlobalPage from '../features/administracion/configuracion/pages/ConfiguracionGlobalPage';
+import PrivacidadPage from '../features/adoptante/perfil/pages/PrivacidadPage';
+import CuentaEliminadaPage from '../features/adoptante/perfil/pages/CuentaEliminadaPage';
 
 /**
  * Rutas de Petly web. Estructura prevista según PLANNING v2 §9.2:
@@ -57,6 +61,7 @@ export const router = createBrowserRouter([
       { path: 'acceso', element: <AccesoPage /> },
       { path: 'registro', element: <AccesoPage register /> },
       { path: 'recuperacion', element: <RecuperacionPage /> },
+      { path: 'cuenta-eliminada', element: <CuentaEliminadaPage /> },
       {
         path: 'adoptante',
         element: (
@@ -77,6 +82,7 @@ export const router = createBrowserRouter([
           { path: 'cuestionario', element: <CuestionarioPage /> },
           { path: 'verificacion-identidad', element: <VerificacionKycPage /> },
           { path: 'preferencias-notificacion', element: <PreferenciasNotificacionPage /> },
+          { path: 'privacidad', element: <PrivacidadPage /> },
           { path: 'solicitudes', element: <SolicitudesAdoptantePage /> },
           { path: 'solicitudes/:solicitudId', element: <SeguimientoSolicitudPage /> },
           { path: 'seguimientos-postadopcion', element: <ReportesPostAdopcionPage /> },
@@ -122,8 +128,10 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         children: [
+          { path: 'configuracion-global', element: <ConfiguracionGlobalPage /> },
           { path: 'analitica/adopciones', element: <AnaliticaAdopcionesPage /> },
           { path: 'usuarios', element: <RolesUsuariosPage /> },
+          { path: 'auditoria', element: <AuditoriaPage /> },
           { path: 'albergues', element: <AlberguesAdminPage /> },
           { path: 'compatibilidad', element: <PesosCompatibilidad /> },
           { path: 'verificaciones-kyc', element: <VerificacionesKycAdminPage /> },

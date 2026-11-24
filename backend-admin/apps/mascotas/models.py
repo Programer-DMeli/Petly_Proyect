@@ -2,6 +2,7 @@
 from django.db import models
 from django.conf import settings
 from apps.albergues.models import Albergue
+from .storage import CertificadoVeterinarioStorage, ruta_certificado_veterinario
 
 
 class Mascota(models.Model):
@@ -159,6 +160,29 @@ class RegistroClinico(models.Model):
 
     class Meta:
         ordering = ["-fecha", "-pk"]
+
+
+class CertificadoVeterinario(models.Model):
+    class Tipo(models.TextChoices):
+        VACUNACION = "VACUNACION", "Vacunación"
+        ESTERILIZACION = "ESTERILIZACION", "Esterilización"
+
+    class Validacion(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Firma pendiente de verificación"
+        VERIFICADO = "VERIFICADO", "Firma verificada"
+
+    mascota = models.ForeignKey(Mascota, on_delete=models.CASCADE, related_name="certificados_veterinarios")
+    tipo = models.CharField(max_length=14, choices=Tipo.choices)
+    archivo = models.FileField(storage=CertificadoVeterinarioStorage(), upload_to=ruta_certificado_veterinario)
+    sha256 = models.CharField(max_length=64, editable=False)
+    validacion = models.CharField(max_length=10, choices=Validacion.choices, default=Validacion.PENDIENTE)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["mascota", "tipo"], name="uniq_certificado_mascota_tipo"),
+            models.CheckConstraint(check=models.Q(tipo__in=("VACUNACION", "ESTERILIZACION")),
+                                   name="certificado_tipo_veterinario"),
+        ]
 
 
 class PedidoAfiche(models.Model):

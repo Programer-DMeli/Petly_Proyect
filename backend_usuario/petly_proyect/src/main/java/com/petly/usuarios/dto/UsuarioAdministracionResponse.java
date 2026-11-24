@@ -11,7 +11,12 @@ public record UsuarioAdministracionResponse(
         String nombres,
         String apellidos,
         Usuario.Rol rol,
-        LocalDateTime creadoEn) {
+        LocalDateTime creadoEn,
+        boolean cuentaSuspendida,
+        String motivoSuspension,
+        LocalDateTime suspendidaEn,
+        LocalDateTime suspensionHasta,
+        Long suspendidaPorId) {
 
     public static UsuarioAdministracionResponse desde(Usuario usuario) {
         return new UsuarioAdministracionResponse(
@@ -21,6 +26,11 @@ public record UsuarioAdministracionResponse(
                 usuario.getFirstName(),
                 usuario.getLastName(),
                 usuario.getRol(),
-                usuario.getCreatedAt());
+                usuario.getCreatedAt(),
+                usuario.tieneSuspensionVigente(LocalDateTime.now()),
+                usuario.getMotivoSuspension(),
+                usuario.getSuspendidaEn(),
+                usuario.getSuspensionHasta(),
+                usuario.getSuspendidaPorId());
     }
 }

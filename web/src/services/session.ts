@@ -202,6 +202,10 @@ function forgetSession() {
   channel?.postMessage({ type: 'logout' });
 }
 
+export function clearSessionLocally() {
+  forgetSession();
+}
+
 export function roleHome(role: Role) {
   return role === 'ADMIN'
     ? '/administracion/albergues'

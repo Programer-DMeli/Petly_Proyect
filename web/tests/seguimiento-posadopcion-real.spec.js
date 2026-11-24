@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 
 const accountsPath = process.env.PETLY_UI_ACCOUNTS;
@@ -88,6 +89,11 @@ test('albergue programa, adoptante entrega una foto y albergue evalúa y cierra'
     await detalle.click();
     await expect(albergue.getByRole('heading', { name: 'Expediente cerrado' })).toBeVisible();
     await expect(albergue.getByText('4/5', { exact: true })).toBeVisible();
+    const evento = albergue.waitForEvent('download');
+    await albergue.getByRole('button', { name: 'Descargar certificado PDF' }).click();
+    const descarga = await evento;
+    expect(descarga.suggestedFilename()).toBe(`certificado-seguimiento-${expediente}.pdf`);
+    expect((await readFile(await descarga.path())).subarray(0, 5).toString()).toBe('%PDF-');
   } finally {
     await albergue.close();
     await adoptante.close();

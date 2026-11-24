@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import Feedback from '../../../../components/Feedback';
 import { django, errorMessage, spring } from '../../../../services/http';
+import { useMaxImagenMb } from '../../../../services/useMaxImagenMb';
 
 interface VerificacionKyc {
   id: number;
@@ -27,6 +28,7 @@ function firstRecord(payload: VerificacionKyc[] | Page<VerificacionKyc>) {
 }
 
 export default function VerificacionKycPage() {
+  const maxImagenMb = useMaxImagenMb();
   const [record, setRecord] = useState<VerificacionKyc | null>(null);
   const [dni, setDni] = useState('');
   const [nombres, setNombres] = useState('');
@@ -116,7 +118,7 @@ export default function VerificacionKycPage() {
     finally { setBusy(false); }
   }
 
-  const fieldErrors = [front, back].some(file => file && (file.size > 5 * 1024 * 1024 || !['image/jpeg', 'image/png'].includes(file.type)));
+  const fieldErrors = [front, back].some(file => file && (file.size > maxImagenMb * 1024 * 1024 || !['image/jpeg', 'image/png'].includes(file.type)));
   const pendingReview = record?.estado === 'PENDIENTE_REVISION';
   const unsavedIdentity = !!record && (dni.trim() !== record.dni || nombres.trim() !== record.nombres || apellidos.trim() !== record.apellidos || !!front || !!back);
   const final = ['VERIFICADO', 'APROBADO_MANUAL', 'RECHAZADO_MANUAL'].includes(record?.estado ?? '');
@@ -143,9 +145,9 @@ export default function VerificacionKycPage() {
         <button type="button" className="secondary" disabled={busy || !/^[0-9]{8}$/.test(dni)} onClick={() => { lastLookupDni.current = ''; setNombres(''); setApellidos(''); setLookupAttempt(value => value + 1); }}>Consultar nombres por DNI</button>
         <label>Nombres como aparecen en el DNI<input required maxLength={100} value={nombres} onChange={e => setNombres(e.target.value)} /></label>
         <label>Apellidos como aparecen en el DNI<input required maxLength={100} value={apellidos} onChange={e => setApellidos(e.target.value)} /></label>
-        <label>Foto del anverso (JPG o PNG, máximo 5 MB)<input required type="file" accept="image/jpeg,image/png" onChange={e => setFront(e.target.files?.[0] ?? null)} /></label>
-        <label>Foto del reverso (JPG o PNG, máximo 5 MB)<input required type="file" accept="image/jpeg,image/png" onChange={e => setBack(e.target.files?.[0] ?? null)} /></label>
-        {fieldErrors && <p role="alert">Cada imagen debe ser JPG o PNG y pesar como máximo 5 MB.</p>}
+        <label>Foto del anverso (JPG o PNG, máximo {maxImagenMb} MB)<input required type="file" accept="image/jpeg,image/png" onChange={e => setFront(e.target.files?.[0] ?? null)} /></label>
+        <label>Foto del reverso (JPG o PNG, máximo {maxImagenMb} MB)<input required type="file" accept="image/jpeg,image/png" onChange={e => setBack(e.target.files?.[0] ?? null)} /></label>
+        {fieldErrors && <p role="alert">Cada imagen debe ser JPG o PNG y pesar como máximo {maxImagenMb} MB.</p>}
         <div className="actions"><button disabled={busy || fieldErrors}>{record ? 'Actualizar datos y documentos' : 'Guardar documentos privados'}</button>
           {record && <button type="button" className="secondary" onClick={() => void consult()} disabled={busy || pendingReview || unsavedIdentity}>Comprobar nombres y DNI</button>}</div>
       </fieldset>

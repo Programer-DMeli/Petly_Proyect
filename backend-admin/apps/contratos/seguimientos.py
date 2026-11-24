@@ -8,6 +8,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from apps.acceso.models import SolicitudAdopcion, SolicitudEvento, User
+from apps.acceso.auditoria import registrar_evento_auditoria
 from .models import (
     AlertaIncumplimientoSeguimiento,
     ExpedientePostAdopcion,
@@ -374,6 +375,13 @@ class SeguimientoPostAdopcionViewSet(viewsets.ModelViewSet):
             AlertaIncumplimientoSeguimiento.objects.filter(
                 seguimiento__solicitud=solicitud, estado=AlertaIncumplimientoSeguimiento.Estado.PENDIENTE,
             ).update(estado=AlertaIncumplimientoSeguimiento.Estado.RESUELTA, resuelta_en=expediente.cerrado_en)
+            registrar_evento_auditoria(
+                request.user,
+                accion="EXPEDIENTE_POSTADOPCION_CERRADO",
+                recurso_tipo="SOLICITUD_ADOPCION",
+                recurso_id=solicitud.pk,
+                ocurrido_en=expediente.cerrado_en,
+            )
         return Response({
             "detail": "Expediente de adopción cerrado.",
             "expediente_cierre": ExpedientePostAdopcionSerializer(expediente).data,

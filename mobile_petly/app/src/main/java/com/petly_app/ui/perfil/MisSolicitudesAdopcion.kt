@@ -39,7 +39,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-internal fun MisSolicitudesAdopcion() {
+internal fun MisSolicitudesAdopcion(
+    onOpenAgendaVacunas: ((Long) -> Unit)? = null,
+    listarSolicitudes: suspend () -> List<SolicitudPersistida> = SolicitudAdopcionManager::listarSolicitudes,
+) {
     var solicitudes by remember { mutableStateOf<List<SolicitudPersistida>?>(null) }
     var seleccion by remember { mutableStateOf<SolicitudPersistida?>(null) }
     var albergueAResenar by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -88,7 +91,7 @@ internal fun MisSolicitudesAdopcion() {
     LaunchedEffect(intento) {
         error = false
         try {
-            solicitudes = SolicitudAdopcionManager.listarSolicitudes()
+            solicitudes = listarSolicitudes()
         } catch (exception: Exception) {
             if (exception is CancellationException) throw exception
             error = true
@@ -123,6 +126,9 @@ internal fun MisSolicitudesAdopcion() {
                         Text(nombreEstado(solicitud.estado), style = MaterialTheme.typography.bodyMedium)
                         TextButton(onClick = { seleccion = solicitud }) { Text("Ver seguimiento") }
                         if (solicitud.estado.equals("ENTREGADA", ignoreCase = true)) {
+                            if (onOpenAgendaVacunas != null) {
+                                TextButton(onClick = { onOpenAgendaVacunas(solicitud.id) }) { Text("Agenda de vacunas") }
+                            }
                             TextButton(
                                 enabled = !descargando && fichaPendiente == null,
                                 onClick = {

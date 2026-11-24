@@ -1,9 +1,11 @@
-from datetime import timedelta
+from contextlib import closing
+from datetime import datetime, timedelta, timezone as utc_timezone
 from io import BytesIO
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from PIL import Image
+from pypdf import PdfReader
 
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -151,30 +153,97 @@ class AlertasIncumplimientoTest(APITestCase):
         self.assertIsNotNone(expediente["evaluacion"]["cerrado_en"])
         self.assertEqual(expediente["cronograma"][0]["estado_entrega"], "FUERA_DE_PLAZO")
 
-    @override_settings(INTERNAL_API_SECRET="solo-pruebas", RECORDATORIOS_ANTICIPACION_HORAS=24)
-    def test_recordatorios_solo_dentro_de_ventana_y_para_el_titular(self):
+    def test_descarga_certificado_solo_del_expediente_cerrado_y_cierre_unico(self):
+        actividad = f"{self.seguimientos_url}{self.seguimiento.pk}/"
+        expediente = f"/api/contratos/expedientes/{self.solicitud.pk}/"
+        certificado = expediente + "certificado/"
+        evaluar = {"calificacion_adaptacion": 4, "observaciones_cierre": "Bien adaptada"}
+        ReporteBienestarPostAdopcion.objects.create(seguimiento=self.seguimiento, estado_bienestar="BUENO")
+
+        self.client.force_authenticate(self.albergue_user)
+        evaluacion = self.client.post(actividad + "evaluar-expediente/", evaluar)
+        self.assertEqual(evaluacion.status_code, 200)
+        self.assertEqual(self.client.get(certificado).status_code, 409)
+
+        self.client.force_authenticate(self.otro_albergue_user)
+        self.assertEqual(self.client.get(expediente).status_code, 404)
+        self.assertEqual(self.client.post(actividad + "evaluar-expediente/", {"calificacion_adaptacion": 1}).status_code, 404)
+        self.assertEqual(self.client.post(actividad + "cerrar-expediente/", {"confirmar": True}).status_code, 404)
+
+        self.client.force_authenticate(self.albergue_user)
+        primer_cierre = self.client.post(actividad + "cerrar-expediente/", {"confirmar": True})
+        self.assertEqual(primer_cierre.status_code, 201)
+        cerrado = primer_cierre.data["expediente_cierre"]
+        self.assertEqual(cerrado["id"], evaluacion.data["id"])
+        self.assertEqual(cerrado["calificacion_adaptacion"], 4)
+        self.assertEqual(self.client.post(actividad + "evaluar-expediente/", evaluar).status_code, 409)
+        self.assertEqual(self.client.post(actividad + "cerrar-expediente/", {"confirmar": True}).data, primer_cierre.data)
+        self.assertEqual(self.client.get(expediente).data["evaluacion"], cerrado)
+
+        for _ in range(2):
+            with closing(self.client.get(certificado)) as descarga:
+                self.assertEqual(descarga.status_code, 200)
+                self.assertEqual(descarga["Content-Type"], "application/pdf")
+                self.assertIn(f"certificado-seguimiento-{self.solicitud.pk}.pdf", descarga["Content-Disposition"])
+                texto = "\n".join(p.extract_text() for p in PdfReader(BytesIO(b"".join(descarga.streaming_content))).pages)
+                for dato in ("Luna", "Huellitas", "adoptante", f"#{self.solicitud.pk}", "4/5", "Bien adaptada"):
+                    self.assertIn(dato, texto)
+
+        for usuario in (self.adoptante, self.otro_albergue_user):
+            self.client.force_authenticate(usuario)
+            self.assertEqual(self.client.get(certificado).status_code, 404)
+        self.assertEqual(ExpedientePostAdopcion.objects.filter(solicitud=self.solicitud).count(), 1)
+        self.assertEqual(ExpedientePostAdopcion.objects.get(solicitud=self.solicitud).cerrado_por, self.albergue_user)
+
+    @override_settings(INTERNAL_API_SECRET="solo-pruebas", RECORDATORIOS_ANTICIPACION_HORAS=72)
+    def test_recordatorios_a_tres_y_un_dia_sin_duplicar_y_para_el_titular(self):
         self.adoptante.usuario_spring_id = 123
         self.adoptante.save(update_fields=["usuario_spring_id"])
-        proxima = self.crear_seguimiento(self.solicitud, fecha=timezone.now() + timedelta(hours=3))
-        self.crear_seguimiento(self.solicitud, fecha=timezone.now() + timedelta(days=2))
-        visita = self.crear_seguimiento(self.solicitud, fecha=timezone.now() + timedelta(hours=3))
+        limite = datetime(2026, 12, 10, 17, tzinfo=utc_timezone.utc)
+        proxima = self.crear_seguimiento(self.solicitud, fecha=limite)
+        otra = self.crear_seguimiento(self.solicitud, fecha=limite)
+        cancelada = self.crear_seguimiento(self.solicitud, fecha=limite)
+        visita = self.crear_seguimiento(self.solicitud, fecha=limite)
         visita.requiere_reporte = False
         visita.save(update_fields=["requiere_reporte"])
 
         feed = "/api/contratos/reportes/feed-recordatorios/"
         self.assertEqual(self.client.post(feed).status_code, 401)
-        for _ in range(2):
-            self.assertEqual(self.client.post(feed, HTTP_X_INTERNAL_SECRET="solo-pruebas").status_code, 200)
-        self.assertEqual(SolicitudEvento.objects.get(tipo="RECORDATORIO_REPORTE").seguimiento_id, proxima.pk)
-
         self.client.force_authenticate(self.adoptante)
         bandeja = "/api/acceso/notificaciones/"
-        aviso = self.client.get(bandeja).data["results"][0]
-        self.assertEqual(aviso["seguimiento_id"], proxima.pk)
-        self.assertEqual(aviso["mascota_nombre"], "Luna")
-        self.assertIsNotNone(aviso["fecha_limite"])
+
+        def sincronizar(ahora):
+            with patch("django.utils.timezone.now", return_value=ahora):
+                for _ in range(2):
+                    respuesta = self.client.post(feed, HTTP_X_INTERNAL_SECRET="solo-pruebas")
+                    self.assertEqual(respuesta.status_code, 200)
+                return self.client.get(bandeja).data["results"]
+
+        self.assertEqual(sincronizar(limite - timedelta(days=3, seconds=1)), [])
+        avisos = sincronizar(limite - timedelta(days=3))
+        self.assertCountEqual([(a["seguimiento_id"], a["tipo"]) for a in avisos], [
+            (proxima.pk, "RECORDATORIO_REPORTE"), (otra.pk, "RECORDATORIO_REPORTE"),
+            (cancelada.pk, "RECORDATORIO_REPORTE"),
+        ])
+        self.assertTrue(all(a["mascota_nombre"] == "Luna" and a["fecha_limite"] for a in avisos))
+
         ReporteBienestarPostAdopcion.objects.create(seguimiento=proxima, estado_bienestar="BUENO")
-        self.assertEqual(self.client.get(bandeja).data["results"], [])
+        cancelada.estado = SeguimientoPostAdopcion.Estado.CANCELADO
+        cancelada.save(update_fields=["estado"])
+        tardia = self.crear_seguimiento(self.solicitud, fecha=limite)
+        avisos = sincronizar(limite - timedelta(days=1))
+        self.assertCountEqual([(a["seguimiento_id"], a["tipo"]) for a in avisos], [
+            (otra.pk, "REPORTE_1_DIA"), (tardia.pk, "REPORTE_1_DIA"),
+        ])
+        self.assertFalse(SolicitudEvento.objects.filter(seguimiento=visita).exists())
+        self.assertEqual(SolicitudEvento.objects.get(seguimiento=cancelada).tipo, "RECORDATORIO_REPORTE")
+        self.assertEqual(SolicitudEvento.objects.filter(seguimiento=proxima).count(), 1)
+        self.assertEqual(SolicitudEvento.objects.filter(seguimiento=otra).count(), 2)
+        self.assertEqual(SolicitudEvento.objects.filter(seguimiento=tardia).count(), 1)
+        self.assertEqual(sincronizar(limite), [])
+
+        self.client.force_authenticate(User.objects.create_user(username="otro-titular"))
+        self.assertEqual(sincronizar(limite - timedelta(days=1)), [])
 
     def test_emision_idempotente_y_reporte_tardio_con_foto_privada(self):
         url = f"{self.seguimientos_url}{self.seguimiento.pk}/"
