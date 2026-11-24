@@ -532,6 +532,15 @@ class SolicitudAdopcion(models.Model):
         return transiciones.get(self.estado, [])
 
 
+class VacunaProgramada(models.Model):
+    solicitud = models.ForeignKey(SolicitudAdopcion, on_delete=models.CASCADE, related_name="vacunas_programadas")
+    nombre = models.CharField(max_length=120)
+    fecha_programada = models.DateField()
+
+    class Meta:
+        ordering = ["fecha_programada", "pk"]
+
+
 class SolicitudEvento(models.Model):
     """Evento de solicitud o aviso de una nueva mascota coincidente."""
 

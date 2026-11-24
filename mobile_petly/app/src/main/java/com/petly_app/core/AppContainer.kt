@@ -55,6 +55,7 @@ class AppContainer(context: Context) {
     val solicitudesApi = privateApi.create(SolicitudesApi::class.java)
     val resenasApi = privateApi.create(ResenasApi::class.java)
     val seguimientosApi = privateApi.create(SeguimientosApi::class.java)
+    val agendaVacunasApi = ApiClient.authenticatedAdminApi(session).create(AgendaVacunasApi::class.java)
     val reportesSeguimiento = ReportesSeguimientoRepository(
         seguimientosApi, privateApi.create(ReportesSeguimientoApi::class.java), contentResolver
     )

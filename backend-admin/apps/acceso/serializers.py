@@ -6,12 +6,23 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.db import models, transaction
 from django.utils import timezone
-from .models import Postulante, SolicitudAdopcion, SolicitudEvento, User, AdoptanteProfile, Autorizacion
+from .models import Postulante, SolicitudAdopcion, SolicitudEvento, User, AdoptanteProfile, Autorizacion, VacunaProgramada
 from apps.mascotas.serializers import MascotaListSerializer
 from apps.mascotas.models import Mascota
 from .authentication import comprobar_suspension_spring
 
 User = get_user_model()
+
+
+class VacunaProgramadaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VacunaProgramada
+        fields = ["id", "nombre", "fecha_programada"]
+
+    def validate_fecha_programada(self, fecha):
+        if fecha < timezone.localdate() and (self.instance is None or fecha != self.instance.fecha_programada):
+            raise serializers.ValidationError("Elige una fecha de hoy o posterior.")
+        return fecha
 
 
 class PostulanteSerializer(serializers.ModelSerializer):

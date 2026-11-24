@@ -136,29 +136,6 @@ class SpringBootJWTAuthentication(JWTAuthentication):
         if not activa:
             raise InvalidToken("Sesión revocada")
 
-
-def comprobar_suspension_spring(usuario_id):
-    """Niega identidades locales vinculadas a una cuenta Spring suspendida."""
-    from django.db import DatabaseError
-
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT cuenta_suspendida, suspension_hasta FROM usuarios WHERE id = %s",
-                [usuario_id],
-            )
-            cuenta = cursor.fetchone()
-    except DatabaseError as error:
-        raise ComprobacionSesionNoDisponible() from error
-
-    if not cuenta:
-        raise InvalidToken("Usuario Spring no encontrado")
-    suspendida, hasta = cuenta
-    if hasta is not None and timezone.is_naive(hasta):
-        hasta = timezone.make_aware(hasta, timezone.get_current_timezone())
-    if suspendida and (hasta is None or hasta > timezone.now()):
-        raise InvalidToken("Cuenta suspendida")
-
     def get_user(self, validated_token):
         """Obtener/crear usuario local desde claims de Spring Boot."""
         try:
@@ -196,6 +173,29 @@ def comprobar_suspension_spring(usuario_id):
             raise InvalidToken("Usuario no encontrado")
         except Exception as e:
             raise InvalidToken(f"Error validando token: {str(e)}")
+
+
+def comprobar_suspension_spring(usuario_id):
+    """Niega identidades locales vinculadas a una cuenta Spring suspendida."""
+    from django.db import DatabaseError
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT cuenta_suspendida, suspension_hasta FROM usuarios WHERE id = %s",
+                [usuario_id],
+            )
+            cuenta = cursor.fetchone()
+    except DatabaseError as error:
+        raise ComprobacionSesionNoDisponible() from error
+
+    if not cuenta:
+        raise InvalidToken("Usuario Spring no encontrado")
+    suspendida, hasta = cuenta
+    if hasta is not None and timezone.is_naive(hasta):
+        hasta = timezone.make_aware(hasta, timezone.get_current_timezone())
+    if suspendida and (hasta is None or hasta > timezone.now()):
+        raise InvalidToken("Cuenta suspendida")
 
 
 class DjangoJWTAuthentication(JWTAuthentication):

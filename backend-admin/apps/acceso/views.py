@@ -31,6 +31,7 @@ from .serializers import (
     SolicitudAdopcionResumenSerializer,
     SolicitudEstadoSerializer,
     SolicitudEventoSerializer,
+    VacunaProgramadaSerializer,
     SolicitudCreateSerializer,
     RevisionVeterinariaSolicitudSerializer,
     ProgramarRecojoSerializer,
@@ -216,6 +217,8 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             return ProgramarRecojoSerializer
         if self.action == "confirmar_entrega":
             return ConfirmarEntregaSerializer
+        if self.action in {"vacunas_programadas", "vacuna_programada"}:
+            return VacunaProgramadaSerializer
         if self.action == "create":
             return SolicitudCreateSerializer
         return SolicitudAdopcionSerializer
@@ -266,6 +269,38 @@ class SolicitudAdopcionViewSet(viewsets.ModelViewSet):
             {"alerta_clinica": solicitud.mascota.alerta_clinica},
             headers={"Cache-Control": "private, no-store"},
         )
+
+    @action(detail=True, methods=["get", "post"], url_path="vacunas-programadas", permission_classes=[IsAdoptante])
+    def vacunas_programadas(self, request, pk=None):
+        solicitud = self._solicitud_entregada_del_titular(pk)
+        if request.method == "POST":
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(solicitud=solicitud)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        vacunas = self.get_serializer(solicitud.vacunas_programadas.all(), many=True)
+        return Response(
+            {"mascota_nombre": solicitud.mascota.nombre, "vacunas": vacunas.data},
+            headers={"Cache-Control": "private, no-store"},
+        )
+
+    @action(
+        detail=True, methods=["patch", "delete"], http_method_names=["patch", "delete", "options"],
+        url_path=r"vacunas-programadas/(?P<vacuna_id>[0-9]+)", permission_classes=[IsAdoptante],
+    )
+    @transaction.atomic
+    def vacuna_programada(self, request, pk=None, vacuna_id=None):
+        solicitud = self._solicitud_entregada_del_titular(pk)
+        vacuna = generics.get_object_or_404(solicitud.vacunas_programadas.select_for_update(), pk=vacuna_id)
+        if request.method == "DELETE":
+            vacuna.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        serializer = self.get_serializer(vacuna, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         # Recheck under a row lock so concurrent submissions cannot both pass validation.

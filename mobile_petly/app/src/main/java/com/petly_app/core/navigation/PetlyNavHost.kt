@@ -35,6 +35,8 @@ import com.petly_app.ui.mensajes.ContadorMensajesNoLeidos
 import com.petly_app.ui.perfil.*
 import com.petly_app.ui.screen.MainAppScreen
 import com.petly_app.ui.screen.PetlyTab
+import com.petly_app.ui.seguimiento.AgendaVacunasScreen
+import com.petly_app.ui.seguimiento.AgendaVacunasViewModel
 import com.petly_app.ui.seguimiento.SeguimientosScreen
 import com.petly_app.ui.seguimiento.SeguimientosViewModel
 import kotlinx.coroutines.flow.Flow
@@ -211,6 +213,7 @@ fun PetlyNavHost(
                         unreadMessages = mensajesNoLeidos,
                         onMessagesRead = contadorMensajes::actualizar,
                         onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
+                        onOpenAgendaVacunas = { solicitud -> nav.navigate("agenda-vacunas/$solicitud") { launchSingleTop = true } },
                         reportReminders = { RecordatoriosReporte(container.reportesSeguimiento) },
                         mensajeriaApi = if (isPreview) null else container.mensajeriaApi,
                         contentResolver = container.resolver,
@@ -270,7 +273,19 @@ fun PetlyNavHost(
                     val vm: PerfilViewModel = viewModel(factory = factory)
                     val state by vm.state.collectAsStateWithLifecycle()
                     CuestionarioScreen(state, onRefreshProfile = vm::refreshSummary, preview = isPreview, onEdit = vm::edit, onSave = vm::save, onRetry = vm::load, onBack = { nav.popBackStack() }, onShare = if(isPreview) null else ({ nav.navigate("autorizaciones") }), onOpenNotifications = { nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true } }, onOpenSeguimientos = { nav.navigate("seguimientos") { launchSingleTop = true } },
+                        onOpenAgendaVacunas = { solicitud -> nav.navigate("agenda-vacunas/$solicitud") { launchSingleTop = true } },
                         reportReminders = { RecordatoriosReporte(container.reportesSeguimiento) })
+                }
+                if (!isPreview) composable(
+                    "agenda-vacunas/{solicitud}",
+                    arguments = listOf(navArgument("solicitud") { type = NavType.LongType }),
+                ) { entry ->
+                    val solicitud = requireNotNull(entry.arguments).getLong("solicitud")
+                    val factory = remember(container, solicitud) {
+                        viewModelFactory { initializer { AgendaVacunasViewModel(container.agendaVacunasApi, solicitud) } }
+                    }
+                    val vm: AgendaVacunasViewModel = viewModel(factory = factory)
+                    AgendaVacunasScreen(vm, onBack = { nav.popBackStack() })
                 }
                 composable(
                     "seguimientos?actividad={actividad}",
