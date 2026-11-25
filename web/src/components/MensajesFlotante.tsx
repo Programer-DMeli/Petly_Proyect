@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import iconoMensajes from '../assets/mensajes.png';
 import { django } from '../services/http';
 
 export default function MensajesFlotante({ espacio }: { espacio: 'adoptante' | 'albergue' }) {
@@ -35,7 +34,9 @@ export default function MensajesFlotante({ espacio }: { espacio: 'adoptante' | '
   return (
     <Link className="mensajes-flotante" to={`/${espacio}/mensajes`}
       aria-label={total ? `Mensajes, ${total} sin leer` : 'Mensajes, sin mensajes pendientes'}>
-      <span className="mensajes-flotante__icono"><img src={iconoMensajes} alt="" /></span>
+      <span className="mensajes-flotante__icono">
+        <img src="/images/mensajes-gatito.gif" alt="" />
+      </span>
       {total > 0 && <span className="mensajes-flotante__contador" aria-hidden="true">{total > 99 ? '99+' : total}</span>}
     </Link>
   );
