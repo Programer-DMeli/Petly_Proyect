@@ -269,6 +269,18 @@ function Conversation({ shelter }: { shelter: boolean }) {
                   value={draft}
                   readOnly={sending || !!error}
                   onChange={event => setDraft(event.target.value)}
+                  onKeyDown={event => {
+                    if (
+                      event.key !== 'Enter' ||
+                      event.shiftKey ||
+                      event.ctrlKey ||
+                      event.metaKey ||
+                      event.altKey ||
+                      event.nativeEvent.isComposing
+                    ) return;
+                    event.preventDefault();
+                    if (!sending && !error && draft.trim()) void send(draft.trim());
+                  }}
                 />
                 <button
                   type="submit"

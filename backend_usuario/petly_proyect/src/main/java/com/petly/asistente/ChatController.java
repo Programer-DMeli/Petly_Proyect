@@ -3,6 +3,7 @@ package com.petly.asistente;
 import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,11 @@ import io.jsonwebtoken.Claims;
 
 @RestController
 public class ChatController {
+    private static final Pattern SALUDO_INICIAL = Pattern.compile(
+            "(?iu)^\\s*(?:(?:¡\\s*)?hola(?:\\s+de\\s+nuevo)?[!,.…:;\\s]*"
+                    + "|buenos\\s+(?:d[ií]as|tardes|noches)[!,.…:;\\s]*"
+                    + "|qué\\s+gusto\\s+(?:saludarte|verte)[!,.…:;\\s]*)+");
+
     private final ChatGeminiService gemini;
     private final ChatRateLimiter limiter;
     private final ChatMetrics metrics;
@@ -41,6 +47,12 @@ public class ChatController {
                 ? respuestasAutomaticas.buscar(request.messages().get(request.messages().size() - 1).text(), authorization)
                 : Optional.empty();
         String answer = automated.orElseGet(() -> gemini.reply(request, role));
+        boolean conversationAlreadyStarted = request.messages().stream()
+                .anyMatch(message -> "model".equals(message.role()));
+        if (conversationAlreadyStarted) {
+            answer = SALUDO_INICIAL.matcher(answer).replaceFirst("").stripLeading();
+            if (answer.isBlank()) answer = "¿Qué te gustaría consultar?";
+        }
         metrics.record(request.messages().get(request.messages().size() - 1).text());
         return Map.of("reply", answer);
     }

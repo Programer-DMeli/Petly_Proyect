@@ -252,10 +252,13 @@
 }
 .petly-chat-composer {
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
+  align-items: center;
+  gap: 0;
+  height: 68px;
+  box-sizing: border-box;
+  flex: none;
   padding: 4px;
-  border: 1px solid #9fbbab;
+  border: 1px solid var(--chat-accent);
   border-radius: 16px;
   background: #fbfdfb;
 }
@@ -266,28 +269,40 @@
 .petly-chat-composer textarea {
   flex: 1;
   min-width: 0;
-  min-height: 44px;
-  max-height: 6rem;
-  field-sizing: content;
+  width: auto;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  box-sizing: border-box;
   margin: 0;
   padding: 10px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 12px 0 0 12px;
   background: transparent;
   resize: none;
+  overflow-x: hidden;
+  overflow-y: auto;
   line-height: 1.5;
 }
 .petly-chat-composer textarea:focus-visible {
   outline: none;
+  box-shadow: none;
 }
 .petly-chat-composer textarea::placeholder {
   color: var(--chat-muted);
 }
 .petly-chat-send {
+  width: 52px;
+  height: 100%;
   color: #fff;
   background: var(--chat-accent);
-  border-color: var(--chat-accent);
-  border-radius: 12px;
+  border: 0;
+  border-radius: 0 12px 12px 0;
+}
+.petly-chat .petly-chat-send:focus,
+.petly-chat .petly-chat-send:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 .petly-chat-send:enabled:hover {
   background: var(--chat-ink);
@@ -295,7 +310,7 @@
 .petly-chat-send:disabled {
   color: #4e695c;
   background: #e8f1eb;
-  border-color: #e8f1eb;
+  border: 0;
   opacity: 1;
 }
 .petly-chat-footer small {
