@@ -92,12 +92,12 @@ export default function AdoptionCarousel({ role }: { role: 'adoptante' | 'alberg
         {slide.to.startsWith('#') ? (
           <a className="button carousel-cta" href={slide.to}>
             {slide.label}
-            <span aria-hidden="true">↗</span>
+            <span aria-hidden="true">›</span>
           </a>
         ) : (
           <Link className="button carousel-cta" to={slide.to}>
             {slide.label}
-            <span aria-hidden="true">↗</span>
+            <span aria-hidden="true">›</span>
           </Link>
         )}
       </div>
