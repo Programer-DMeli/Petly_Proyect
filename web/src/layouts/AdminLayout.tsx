@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import AdminWelcome from '../components/AdminWelcome';
 export default function AdminLayout() {
   const { pathname } = useLocation();
@@ -6,8 +6,15 @@ export default function AdminLayout() {
     <div className="workspace workspace--admin">
       {pathname === '/administracion/albergues' && <AdminWelcome />}
       <div id="herramientas-admin">
-        <Link to="/administracion/compatibilidad">Configurar pesos de compatibilidad</Link>
-        <Link to="/administracion/configuracion-global">Configuración global</Link>
+        <details key={pathname} className="admin-settings-actions">
+          <summary className="button">
+            Configuración <span className="nav-chevron" aria-hidden="true" />
+          </summary>
+          <nav aria-label="Configuración de administración">
+            <NavLink to="/administracion/compatibilidad">Configurar pesos de compatibilidad</NavLink>
+            <NavLink to="/administracion/configuracion-global">Configuración global</NavLink>
+          </nav>
+        </details>
         <Outlet />
       </div>
     </div>

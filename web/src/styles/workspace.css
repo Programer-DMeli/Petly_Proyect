@@ -1614,16 +1614,19 @@
   padding: 3.5rem;
   border: 1px solid var(--petly-border);
   border-radius: 26px;
-  background: linear-gradient(120deg, #fffefa 55%, #edf5eb);
+  background:
+    radial-gradient(ellipse at 24% 48%, rgb(249 252 239 / 95%), rgb(249 252 239 / 16%) 81%),
+    url('/images/admin-paw-pattern.svg') left top / 224px 168px repeat,
+    linear-gradient(125deg, #d5eac1, #aed28f);
   box-shadow: var(--workspace-shadow);
 }
 .admin-welcome h2 {
   font-size: clamp(2.15rem, 3.4vw, 3.7rem);
-  line-height: 1.1;
-  letter-spacing: -0.04em;
+  line-height: 1.03;
+  letter-spacing: -0.02em;
   color: var(--petly-primary-dark);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-weight: 500;
+  font-family: 'Baloo 2', var(--font-family);
+  font-weight: 800;
   margin: 1rem 0;
 }
 .admin-welcome h2 em {
@@ -1680,7 +1683,15 @@
   height: 48px;
   border-radius: 12px;
   background: #eef5e8;
-  font-size: 1.5rem;
+}
+.admin-tool-icon svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .admin-welcome__tools > a > span:nth-child(2) {
   flex: 1;
@@ -1703,6 +1714,51 @@
 }
 #herramientas-admin {
   scroll-margin-top: 120px;
+}
+.admin-settings-actions {
+  margin-bottom: 1rem;
+}
+.admin-settings-actions > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  list-style: none;
+  background: var(--petly-accent);
+  border-color: #b57b2d;
+  color: var(--petly-text);
+  font-weight: var(--font-weight-bold);
+  box-shadow: 0 3px 8px rgb(102 62 15 / 14%);
+}
+.admin-settings-actions > summary::-webkit-details-marker {
+  display: none;
+}
+.admin-settings-actions > summary:hover {
+  background: #efab4b;
+}
+.admin-settings-actions[open] .nav-chevron {
+  transform: translateY(0.1rem) rotate(225deg);
+}
+.admin-settings-actions > nav {
+  display: grid;
+  width: fit-content;
+  max-width: 100%;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0.35rem;
+  border: 1px solid var(--petly-border);
+  border-radius: 12px;
+  background: var(--petly-surface);
+}
+.admin-settings-actions > nav a {
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  color: var(--petly-primary-dark);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+}
+.admin-settings-actions > nav a:hover,
+.admin-settings-actions > nav a[aria-current='page'] {
+  background: var(--petly-secondary);
 }
 .workspace--admin .shelter-statistics {
   grid-template-columns: repeat(2, minmax(0, 1fr));
