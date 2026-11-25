@@ -1698,6 +1698,11 @@
   display: grid;
   gap: 0.35rem;
 }
+.admin-tool-chevron {
+  font-size: 1.25rem;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
 .admin-welcome__tools strong {
   font-size: 0.92rem;
 }

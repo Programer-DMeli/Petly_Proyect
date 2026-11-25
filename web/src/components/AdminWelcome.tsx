@@ -12,7 +12,10 @@ export default function AdminWelcome() {
           buenas manos.
         </p>
         <a className="button" href="#herramientas-admin">
-          Ir a las herramientas <span aria-hidden="true">↗</span>
+          Ir a las herramientas{' '}
+          <span className="admin-tool-chevron" aria-hidden="true">
+            ›
+          </span>
         </a>
       </div>
       <div className="admin-welcome__tools">
@@ -30,7 +33,7 @@ export default function AdminWelcome() {
             <strong>Albergues y responsables</strong>
             <small>Organiza la red que hace posible cada encuentro.</small>
           </span>
-          <span aria-hidden="true">↗</span>
+          <span className="admin-tool-chevron" aria-hidden="true">›</span>
         </Link>
         <Link to="/administracion/usuarios">
           <span className="admin-tool-icon" aria-hidden="true">
@@ -43,7 +46,7 @@ export default function AdminWelcome() {
             <strong>Roles y cuentas</strong>
             <small>Administra los accesos de la comunidad Petly.</small>
           </span>
-          <span aria-hidden="true">↗</span>
+          <span className="admin-tool-chevron" aria-hidden="true">›</span>
         </Link>
         <Link to="/administracion/verificaciones-kyc">
           <span className="admin-tool-icon" aria-hidden="true">
@@ -56,7 +59,7 @@ export default function AdminWelcome() {
             <strong>Revisión de identidad</strong>
             <small>Consulta los casos y sus documentos privados.</small>
           </span>
-          <span aria-hidden="true">↗</span>
+          <span className="admin-tool-chevron" aria-hidden="true">›</span>
         </Link>
         <p>La confianza también se construye con una buena gestión.</p>
       </div>
