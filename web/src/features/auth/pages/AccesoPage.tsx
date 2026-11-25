@@ -17,6 +17,7 @@ export default function AccesoPage({ register = false }: { register?: boolean })
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [confirm, setConfirm] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -97,15 +98,35 @@ export default function AccesoPage({ register = false }: { register?: boolean })
   }
   return (
     <section
-      className={register ? 'card auth' : 'card auth auth--embedded'}
+      className={register ? 'card auth auth--register' : 'card auth auth--embedded'}
       id={register ? undefined : 'iniciar-sesion'}
       aria-labelledby={`${formId}-heading`}
     >
+      {register && (
+        <aside className="auth-register__aside" aria-label="Qué puedes hacer en Petly">
+          <img
+            className="auth-register__image"
+            src="/images/mascotas-portada.webp"
+            alt="Un perro y un gato que esperan encontrar un hogar"
+          />
+          <p className="auth-register__eyebrow">Adopción responsable</p>
+          <h2>Una nueva historia puede empezar contigo</h2>
+          <p className="auth-register__description">
+            Crea tu cuenta y encuentra un compañero que encaje con tu estilo de vida.
+          </p>
+          <ul className="auth-register__benefits">
+            <li><AuthIcon name="arrow" /><span>Explora mascotas de distintos albergues</span></li>
+            <li><AuthIcon name="heart" /><span>Guarda tus mascotas favoritas</span></li>
+            <li><AuthIcon name="check" /><span>Consulta el avance de tus solicitudes</span></li>
+          </ul>
+        </aside>
+      )}
+      <div className={register ? 'auth-register__content' : undefined}>
       {register ? (
         <>
           <h1 id={`${formId}-heading`}>Crear cuenta de adoptante</h1>
           <p className="muted">
-            Regístrate con tu correo y una contraseña de al menos 8 caracteres.
+            Regístrate con tu correo y crea una contraseña segura.
           </p>
         </>
       ) : (
@@ -143,7 +164,7 @@ export default function AccesoPage({ register = false }: { register?: boolean })
             />
           </div>
           <label htmlFor={`${formId}-password`}>Contraseña</label>
-          <div className={register ? undefined : 'auth__input auth__input--icon'}>
+          <div className={register ? 'auth__input auth__input--register' : 'auth__input auth__input--icon'}>
             {!register && <AuthIcon name="lock" />}
             <input
               id={`${formId}-password`}
@@ -153,30 +174,44 @@ export default function AccesoPage({ register = false }: { register?: boolean })
               minLength={register ? 8 : undefined}
               value={password}
               onChange={e => setPassword(e.target.value)}
+              aria-describedby={register ? `${formId}-password-hint` : undefined}
             />
-            {!register && (
-              <button
-                className="auth__visibility"
-                type="button"
-                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                aria-controls={`${formId}-password`}
-                onClick={() => setShowPassword(visible => !visible)}
-              >
-                <AuthIcon name={showPassword ? 'eye-off' : 'eye'} />
-              </button>
-            )}
+            <button
+              className="auth__visibility"
+              type="button"
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              aria-controls={`${formId}-password`}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword(visible => !visible)}
+            >
+              <AuthIcon name={showPassword ? 'eye-off' : 'eye'} />
+            </button>
           </div>
+          {register && <small className="auth-register__hint" id={`${formId}-password-hint`}>Mínimo 8 caracteres</small>}
           {register && (
-            <label>
-              Confirmar contraseña
-              <input
-                type="password"
-                autoComplete="new-password"
-                required
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-              />
-            </label>
+            <>
+              <label htmlFor={`${formId}-confirm`}>Confirmar contraseña</label>
+              <div className="auth__input auth__input--register">
+                <input
+                  id={`${formId}-confirm`}
+                  type={showConfirm ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                />
+                <button
+                  className="auth__visibility"
+                  type="button"
+                  aria-label={showConfirm ? 'Ocultar confirmación' : 'Mostrar confirmación'}
+                  aria-controls={`${formId}-confirm`}
+                  aria-pressed={showConfirm}
+                  onClick={() => setShowConfirm(visible => !visible)}
+                >
+                  <AuthIcon name={showConfirm ? 'eye-off' : 'eye'} />
+                </button>
+              </div>
+            </>
           )}
           <button className="auth__submit" type="submit" disabled={remaining > 0}>
             {busy ? 'Procesando…' : register ? 'Crear cuenta' : 'Entrar'}
@@ -184,17 +219,26 @@ export default function AccesoPage({ register = false }: { register?: boolean })
           </button>
         </fieldset>
       </form>
-      <div className="actions">
-        <Link to="/recuperacion">Recuperar contraseña</Link>
-        <Link to={register ? '/acceso' : '/registro'}>
-          {register ? 'Iniciar sesión' : 'Crear cuenta'}
-        </Link>
+      {register ? (
+        <div className="auth-register__actions">
+          <p>¿Ya tienes una cuenta?</p>
+          <Link className="auth-register__login" to="/acceso">Iniciar sesión</Link>
+          <Link className="auth-register__recovery" to="/recuperacion">
+            <AuthIcon name="lock" /> ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
+      ) : (
+        <div className="actions">
+          <Link to="/recuperacion">Recuperar contraseña</Link>
+          <Link to="/registro">Crear cuenta</Link>
+        </div>
+      )}
       </div>
     </section>
   );
 }
 
-function AuthIcon({ name }: { name: 'mail' | 'lock' | 'eye' | 'eye-off' | 'arrow' }) {
+function AuthIcon({ name }: { name: 'mail' | 'lock' | 'eye' | 'eye-off' | 'arrow' | 'heart' | 'check' }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -217,6 +261,8 @@ function AuthIcon({ name }: { name: 'mail' | 'lock' | 'eye' | 'eye-off' | 'arrow
         </>
       )}
       {name === 'arrow' && <path d="M3 12h17m-7-7 7 7-7 7" />}
+      {name === 'heart' && <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />}
+      {name === 'check' && <path d="m5 12 4 4L19 6" />}
     </svg>
   );
 }
