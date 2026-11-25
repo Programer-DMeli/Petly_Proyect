@@ -2,7 +2,20 @@ import { Link } from 'react-router-dom';
 import { FavoriteHeart } from './FavoritesProvider';
 import { mediaUrl } from '../services/http';
 import type { Pet } from '../services/types';
+
+function formatAge(months: number | null) {
+  if (months === null) return 'Edad por evaluar';
+  const years = Math.floor(months / 12);
+  const remainingMonths = months % 12;
+  if (years === 0) return `${months} ${months === 1 ? 'mes' : 'meses'}`;
+  const yearLabel = `${years} ${years === 1 ? 'año' : 'años'}`;
+  if (remainingMonths === 0) return yearLabel;
+  return `${yearLabel} y ${remainingMonths} ${remainingMonths === 1 ? 'mes' : 'meses'}`;
+}
+
 export default function PetCard({ pet }: { pet: Pet }) {
+  const compatibility = pet.compatibilidad;
+  const needsProfile = compatibility?.mensaje.trim().startsWith('Completa tu perfil');
   return (
     <article className="pet-card pet">
       <div className="pet-card__media">
@@ -26,21 +39,28 @@ export default function PetCard({ pet }: { pet: Pet }) {
         </div>
         <p className="pet-card__facts">
           {pet.tamano} <span aria-hidden="true">·</span>{' '}
-          {pet.edadMeses === null ? 'Edad por evaluar' : `${pet.edadMeses} meses`}
+          {formatAge(pet.edadMeses)}
         </p>
         <p className="pet-card__shelter">
           <span aria-hidden="true">⌂</span> {pet.albergue}
         </p>
         <p className="pet-card__temperament">{pet.temperamento}</p>
-        {pet.compatibilidad && (
-          <p
-            className={`pet-card__compatibility${pet.compatibilidad.porcentaje === null ? ' is-unknown' : pet.compatibilidad.porcentaje >= 80 ? ' is-high' : pet.compatibilidad.porcentaje >= 60 ? ' is-medium' : ' is-low'}`}
-            aria-label="Compatibilidad"
+        {compatibility && (
+          <div
+            className={`pet-card__compatibility${compatibility.porcentaje === null ? ' is-unknown' : compatibility.porcentaje >= 80 ? ' is-high' : compatibility.porcentaje >= 60 ? ' is-medium' : ' is-low'}`}
           >
-            {pet.compatibilidad.porcentaje === null
-              ? 'Información insuficiente'
-              : `${pet.compatibilidad.porcentaje}% compatible`}
-          </p>
+            {compatibility.porcentaje === null ? (
+              <>
+                <strong>{needsProfile ? 'Completa tu perfil' : 'Aún no disponible'}</strong>
+                <span>{compatibility.mensaje}</span>
+                {needsProfile && (
+                  <Link to="/adoptante/cuestionario">Completar perfil <span aria-hidden="true">↗</span></Link>
+                )}
+              </>
+            ) : (
+              `${compatibility.porcentaje}% compatible`
+            )}
+          </div>
         )}
         <Link
           className="button pet-card__link"

@@ -23,6 +23,13 @@ const empty: Filters = {
   edadMinimaMeses: '',
   edadMaximaMeses: '',
 };
+const filterLabels: Record<Exclude<keyof Filters, 'search'>, string> = {
+  especie: 'Especie',
+  tamano: 'Tamaño',
+  temperamento: 'Temperamento',
+  edadMinimaMeses: 'Edad mínima',
+  edadMaximaMeses: 'Edad máxima',
+};
 export default function CatalogoPage() {
   const pageSize = 12;
   const [filtersOpen, setFiltersOpen] = useState(
@@ -47,6 +54,27 @@ export default function CatalogoPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [refresh, setRefresh] = useState(0);
+  const activeFilters = (Object.keys(filters) as (keyof Filters)[])
+    .filter(key => Boolean(filters[key]))
+    .map(key => ({
+      key,
+      label: key === 'search'
+        ? `Búsqueda: ${filters[key]}`
+        : `${filterLabels[key]}: ${filters[key]}${key === 'edadMinimaMeses' || key === 'edadMaximaMeses' ? ' meses' : ''}`,
+    }));
+
+  function removeFilter(key: keyof Filters) {
+    const nextFilters = { ...filters, [key]: '' };
+    setFilters(nextFilters);
+    setDraft(nextFilters);
+    setPage(1);
+  }
+
+  function clearFilters() {
+    setDraft({ ...empty });
+    setFilters({ ...empty });
+    setPage(1);
+  }
   useEffect(() => {
     const controller = new AbortController();
     setBusy(true);
@@ -173,11 +201,7 @@ export default function CatalogoPage() {
                   <button
                     type="button"
                     className="secondary"
-                    onClick={() => {
-                      setDraft(empty);
-                      setFilters({ ...empty });
-                      setPage(1);
-                    }}
+                    onClick={clearFilters}
                   >
                     Limpiar filtros
                   </button>
@@ -196,6 +220,25 @@ export default function CatalogoPage() {
             <p role="status">{busy ? 'Buscando compañeros…' : `${total} mascotas encontradas`}</p>
             <span>Compatibilidad y disponibilidad según tu perfil</span>
           </div>
+          {activeFilters.length > 0 && (
+            <div className="catalog-active-filters" role="group" aria-label="Filtros aplicados">
+              <span className="catalog-active-filters__label">Filtros activos</span>
+              {activeFilters.map(filter => (
+                <button
+                  className="catalog-active-filters__chip"
+                  type="button"
+                  key={filter.key}
+                  aria-label={`Quitar filtro: ${filter.label}`}
+                  onClick={() => removeFilter(filter.key)}
+                >
+                  {filter.label}<span aria-hidden="true">×</span>
+                </button>
+              ))}
+              <button className="catalog-active-filters__clear" type="button" onClick={clearFilters}>
+                Limpiar todos
+              </button>
+            </div>
+          )}
           <Feedback error={error} />
           {busy ? (
             <div className="catalog-loading" role="status">

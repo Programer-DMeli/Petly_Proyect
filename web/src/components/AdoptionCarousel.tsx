@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+
+type SlideDirection = 'next' | 'previous';
 const messages = {
   adoptante: [
     {
@@ -68,10 +70,15 @@ const messages = {
 };
 export default function AdoptionCarousel({ role }: { role: 'adoptante' | 'albergue' }) {
   const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState<SlideDirection>('next');
   const slides = messages[role];
   const slide = slides[index];
-  function move(next: number) {
-    setIndex((next + slides.length) % slides.length);
+  function move(next: number, requestedDirection?: SlideDirection) {
+    const nextIndex = (next + slides.length) % slides.length;
+    if (nextIndex === index) return;
+    const forwardDistance = (nextIndex - index + slides.length) % slides.length;
+    setDirection(requestedDirection ?? (forwardDistance <= slides.length / 2 ? 'next' : 'previous'));
+    setIndex(nextIndex);
   }
   return (
     <section
@@ -80,7 +87,12 @@ export default function AdoptionCarousel({ role }: { role: 'adoptante' | 'alberg
       aria-roledescription="carrusel"
       aria-label="Mensajes de adopción responsable"
     >
-      <div className="adoption-carousel__content" aria-live="polite" aria-atomic="true">
+      <div
+        key={`content-${index}`}
+        className={`adoption-carousel__content is-entering-${direction}`}
+        aria-live="polite"
+        aria-atomic="true"
+      >
         <span className="workspace-eyebrow">
           <span aria-hidden="true">✦</span> {slide.tag}
         </span>
@@ -103,6 +115,8 @@ export default function AdoptionCarousel({ role }: { role: 'adoptante' | 'alberg
       </div>
       <div className="adoption-carousel__visual">
         <img
+          key={`image-${index}`}
+          className={`is-entering-${direction}`}
           src={`/images/carruseles/${slide.image}`}
           alt={slide.imageAlt}
           fetchPriority="high"
@@ -130,10 +144,10 @@ export default function AdoptionCarousel({ role }: { role: 'adoptante' | 'alberg
           ))}
         </div>
         <div className="carousel-arrows">
-          <button type="button" aria-label="Mensaje anterior" onClick={() => move(index - 1)}>
+          <button type="button" aria-label="Mensaje anterior" onClick={() => move(index - 1, 'previous')}>
             ←
           </button>
-          <button type="button" aria-label="Mensaje siguiente" onClick={() => move(index + 1)}>
+          <button type="button" aria-label="Mensaje siguiente" onClick={() => move(index + 1, 'next')}>
             →
           </button>
         </div>
