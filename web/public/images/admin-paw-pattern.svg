@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 168">
+  <defs>
+    <g id="paw">
+      <ellipse cx="5" cy="10" rx="2.8" ry="3.7" transform="rotate(-27 5 10)"/>
+      <ellipse cx="10.4" cy="5.5" rx="2.9" ry="3.9" transform="rotate(-10 10.4 5.5)"/>
+      <ellipse cx="17.2" cy="5.5" rx="2.9" ry="3.9" transform="rotate(10 17.2 5.5)"/>
+      <ellipse cx="22.6" cy="10" rx="2.8" ry="3.7" transform="rotate(27 22.6 10)"/>
+      <path d="M13.8 11.7c-3.2 0-4.6 2.4-6.4 4.1-1.3 1.2-2.2 2.5-2.2 4.3 0 2.6 2 4.1 4.3 4.1 1.8 0 2.7-1 4.3-1s2.5 1 4.3 1c2.3 0 4.3-1.5 4.3-4.1 0-1.8-.9-3.1-2.2-4.3-1.8-1.7-3.2-4.1-6.4-4.1z"/>
+    </g>
+    <path id="heart" d="M4 7C2 5.5 0 4 0 2.4 0 .2 2.8-.6 4 1.5 5.2-.6 8 .2 8 2.4 8 4 6 5.5 4 7z"/>
+  </defs>
+  <g fill="#599334" opacity=".34">
+    <use href="#paw" transform="translate(16 15) rotate(-24)"/>
+    <use href="#paw" transform="translate(142 16) rotate(19) scale(.98)"/>
+    <use href="#paw" transform="translate(90 55) rotate(-30) scale(1.17)"/>
+    <use href="#paw" transform="translate(192 84) rotate(26) scale(.83)"/>
+    <use href="#paw" transform="translate(34 116) rotate(23) scale(1.12)"/>
+    <use href="#paw" transform="translate(139 134) rotate(-18) scale(.85)"/>
+    <use href="#heart" transform="translate(60 44) rotate(12)"/>
+    <use href="#heart" transform="translate(171 111) rotate(-20)"/>
+  </g>
+  <g fill="#fff" opacity=".88">
+    <use href="#paw" transform="translate(69 9) rotate(20) scale(.78)"/>
+    <use href="#paw" transform="translate(191 31) rotate(-23) scale(.84)"/>
+    <use href="#paw" transform="translate(22 68) rotate(14) scale(.88)"/>
+    <use href="#paw" transform="translate(143 72) rotate(23) scale(1.07)"/>
+    <use href="#paw" transform="translate(86 117) rotate(-15) scale(.94)"/>
+    <use href="#paw" transform="translate(199 140) rotate(-20) scale(.72)"/>
+    <use href="#heart" transform="translate(122 29) rotate(-12)"/>
+    <use href="#heart" transform="translate(69 93) rotate(20)"/>
+    <use href="#heart" transform="translate(13 145) rotate(-14)"/>
+  </g>
+</svg>

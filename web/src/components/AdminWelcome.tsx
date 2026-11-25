@@ -21,7 +21,10 @@ export default function AdminWelcome() {
         </span>
         <Link to="/administracion/albergues">
           <span className="admin-tool-icon" aria-hidden="true">
-            ⌂
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="m3 10 9-7 9 7M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9" />
+              <path d="M9 21v-5a3 3 0 0 1 6 0v5" />
+            </svg>
           </span>
           <span>
             <strong>Albergues y responsables</strong>
@@ -31,7 +34,10 @@ export default function AdminWelcome() {
         </Link>
         <Link to="/administracion/usuarios">
           <span className="admin-tool-icon" aria-hidden="true">
-            ◉
+            <svg viewBox="0 0 24 24" focusable="false">
+              <circle cx="9" cy="8" r="3" />
+              <path d="M3 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 5.2a3 3 0 0 1 0 5.6M21 20v-2a4 4 0 0 0-3-3.9" />
+            </svg>
           </span>
           <span>
             <strong>Roles y cuentas</strong>
@@ -41,7 +47,10 @@ export default function AdminWelcome() {
         </Link>
         <Link to="/administracion/verificaciones-kyc">
           <span className="admin-tool-icon" aria-hidden="true">
-            ✓
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M12 22s7-3.5 7-10V6l-7-3-7 3v6c0 6.5 7 10 7 10Z" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
           </span>
           <span>
             <strong>Revisión de identidad</strong>
