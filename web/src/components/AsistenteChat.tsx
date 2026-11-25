@@ -3,9 +3,26 @@ import { Link } from 'react-router-dom';
 import { getSession, subscribe } from '../services/session';
 import { errorMessage, json, spring } from '../services/http';
 import { useDialogFocus } from '../services/useDialogFocus';
+import AsistenteRespuesta from './AsistenteRespuesta';
 import '../styles/asistente-chat.css';
 
 type Message = { role: 'user' | 'model'; text: string };
+const avatar = '/images/asistente-petly.png';
+const suggestions = {
+  shelter: [
+    '¿Cómo registro una mascota?',
+    '¿Dónde reviso las solicitudes?',
+    '¿Cómo actualizo los datos del albergue?',
+    '¿Cómo redacto el perfil de una mascota?',
+  ],
+  adopter: [
+    '¿Cómo empiezo una adopción?',
+    '¿Cómo completo mi cuestionario?',
+    '¿Dónde veo mis solicitudes?',
+    '¿Cómo preparo mi hogar para una mascota?',
+  ],
+};
+
 /** A new session mounts a new conversation; transcripts never leave memory except to answer. */
 export default function AsistenteChat() {
   const session = useSyncExternalStore(subscribe, getSession);
@@ -19,18 +36,28 @@ function Conversation({ shelter }: { shelter: boolean }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const controller = useRef<AbortController | null>(null);
-  const end = useRef<HTMLDivElement>(null);
+  const log = useRef<HTMLDivElement>(null);
+  const lastMessage = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
+  const hasConversation = messages.length > 0;
   useDialogFocus(open, () => setOpen(false));
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'nearest' });
+    const history = log.current;
+    if (!history) return;
+    const latest = lastMessage.current;
+    if (!sending && !error && messages.at(-1)?.role === 'model' && latest) {
+      // Start at the top of a reply that cannot fit in the visible history.
+      history.scrollTop = Math.min(latest.offsetTop, history.scrollHeight - history.clientHeight);
+    } else {
+      history.scrollTop = history.scrollHeight;
+    }
   }, [messages, sending, error, open]);
 
-  async function send(retry = false) {
-    if (controller.current || (!retry && !draft.trim())) return;
-    const history: Message[] = retry
-      ? messages
-      : [...messages, { role: 'user', text: draft.trim() }];
+  async function send(question: string | null) {
+    if (controller.current || question === '') return;
+    const history: Message[] =
+      question === null ? messages : [...messages, { role: 'user', text: question }];
     setMessages(history);
     setDraft('');
     setError('');
@@ -80,6 +107,7 @@ function Conversation({ shelter }: { shelter: boolean }) {
     setDraft('');
     setSending(false);
     setError('');
+    input.current?.focus();
   }
 
   return (
@@ -91,7 +119,7 @@ function Conversation({ shelter }: { shelter: boolean }) {
         aria-controls="petly-chat"
         onClick={() => setOpen(true)}
       >
-        <img src="/images/asistente-petly.png" alt="" aria-hidden="true" />
+        <img src={avatar} alt="" />
       </button>
       {open && (
         <div className="petly-chat-backdrop">
@@ -102,81 +130,160 @@ function Conversation({ shelter }: { shelter: boolean }) {
             aria-modal="true"
             aria-labelledby="petly-chat-title"
           >
-            <header>
+            <header className="petly-chat-header">
+              <img className="petly-chat-avatar" src={avatar} alt="" />
               <h2 id="petly-chat-title">Asistente Petly</h2>
-              <button aria-label="Cerrar asistente" onClick={() => setOpen(false)}>
-                Cerrar
+              <button
+                className="petly-chat-close"
+                type="button"
+                aria-label="Cerrar asistente"
+                onClick={() => setOpen(false)}
+              >
+                <span aria-hidden="true">×</span>
               </button>
             </header>
-            <p className="petly-chat-intro">
-              {shelter
-                ? 'Te ayudo con tu panel, solicitudes y cuidados de las mascotas.'
-                : 'Resuelve dudas sobre la adopción y recibe orientación para completar tu cuestionario.'}
-            </p>
-            {!shelter && <Link to="/adoptante/cuestionario" onClick={() => setOpen(false)}>
-              Abrir guía paso a paso del cuestionario
-            </Link>}
+            {!hasConversation && (
+              <div className="petly-chat-welcome-scroll">
+                <div className="petly-chat-welcome">
+                  <img
+                    className="petly-chat-avatar petly-chat-avatar--welcome"
+                    src={avatar}
+                    alt=""
+                  />
+                  <h3>¡Hola! Soy Petly</h3>
+                  <p>
+                    {shelter
+                      ? '¿En qué te ayudo con tu albergue?'
+                      : '¿En qué te ayudo con tu adopción?'}
+                  </p>
+                  <ul className="petly-chat-suggestions" aria-label="Preguntas sugeridas">
+                    {suggestions[shelter ? 'shelter' : 'adopter'].map(question => (
+                      <li key={question}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            log.current?.focus({ preventScroll: true });
+                            void send(question);
+                          }}
+                        >
+                          {question}
+                          <span aria-hidden="true">↗</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
             <div
               className="petly-chat-messages"
+              ref={log}
               role="log"
               aria-label="Conversación"
               aria-live="polite"
               aria-relevant="additions text"
+              tabIndex={hasConversation ? 0 : -1}
             >
               {messages.map((message, index) => (
-                <p key={index} className={`petly-chat-message petly-chat-message--${message.role}`}>
-                  <strong>{message.role === 'user' ? 'Tú' : 'Petly'}</strong>
-                  {message.text}
-                </p>
+                <div
+                  key={index}
+                  ref={index === messages.length - 1 ? lastMessage : undefined}
+                  className={`petly-chat-message petly-chat-message--${message.role}`}
+                >
+                  <strong className="petly-chat-author">
+                    {message.role === 'user' ? 'Tú' : 'Petly'}
+                  </strong>
+                  {message.role === 'model' ? (
+                    <AsistenteRespuesta text={message.text} />
+                  ) : (
+                    <p>{message.text}</p>
+                  )}
+                </div>
               ))}
-              {sending && <p role="status">Petly está preparando tu respuesta…</p>}
-              <div ref={end} />
+              {sending && (
+                <p className="petly-chat-status" role="status">
+                  Petly está preparando tu respuesta…
+                </p>
+              )}
             </div>
             {error && (
               <div className="petly-chat-error" role="alert">
                 <p>{error}</p>
-                <button onClick={() => void send(true)}>Volver a intentar</button>
-                <button
-                  onClick={() => {
-                    setDraft(messages.at(-1)?.text ?? '');
-                    setMessages(messages.slice(0, -1));
-                    setError('');
-                  }}
-                >
-                  Editar consulta
-                </button>
+                <div className="petly-chat-error-actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      log.current?.focus({ preventScroll: true });
+                      void send(null);
+                    }}
+                  >
+                    Volver a intentar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraft(messages.at(-1)?.text ?? '');
+                      setMessages(messages.slice(0, -1));
+                      setError('');
+                      input.current?.focus();
+                    }}
+                  >
+                    Editar consulta
+                  </button>
+                </div>
               </div>
             )}
-            <form
-              onSubmit={event => {
-                event.preventDefault();
-                void send();
-              }}
-            >
-              <label htmlFor="petly-chat-input">Tu consulta</label>
-              <textarea
-                id="petly-chat-input"
-                maxLength={2000}
-                rows={2}
-                value={draft}
-                disabled={sending || !!error}
-                onChange={event => setDraft(event.target.value)}
-              />
-              <div className="petly-chat-actions">
-                <button type="button" onClick={reset}>
-                  Nueva conversación
+            <footer className="petly-chat-footer">
+              {(!shelter || hasConversation) && (
+                <div className="petly-chat-actions">
+                  {!shelter && (
+                    <Link to="/adoptante/cuestionario" onClick={() => setOpen(false)}>
+                      Guía del cuestionario
+                    </Link>
+                  )}
+                  {hasConversation && (
+                    <button type="button" onClick={reset}>
+                      Nueva conversación
+                    </button>
+                  )}
+                </div>
+              )}
+              <form
+                className="petly-chat-composer"
+                onSubmit={event => {
+                  event.preventDefault();
+                  if (sending || error || !draft.trim()) return;
+                  input.current?.focus({ preventScroll: true });
+                  void send(draft.trim());
+                }}
+              >
+                <label className="visually-hidden" htmlFor="petly-chat-input">
+                  Tu consulta
+                </label>
+                <textarea
+                  ref={input}
+                  id="petly-chat-input"
+                  placeholder="Escribe tu pregunta…"
+                  maxLength={2000}
+                  rows={1}
+                  value={draft}
+                  readOnly={sending || !!error}
+                  onChange={event => setDraft(event.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="petly-chat-send"
+                  aria-label="Enviar"
+                  disabled={sending || !!error || !draft.trim()}
+                >
+                  <span aria-hidden="true">↑</span>
                 </button>
-                <button disabled={sending || !!error || !draft.trim()}>Enviar</button>
-              </div>
-            </form>
-            <small>
-              No compartas datos sensibles. El asistente orienta; las gestiones se realizan en los
-              formularios de Petly.
-            </small>
+              </form>
+              <small>No compartas datos sensibles.</small>
+            </footer>
           </section>
         </div>
       )}
     </>
   );
 }
-

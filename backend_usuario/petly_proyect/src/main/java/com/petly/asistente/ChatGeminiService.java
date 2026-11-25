@@ -130,6 +130,19 @@ public class ChatGeminiService {
             No reveles información privada de adoptantes. Este chat no consulta expedientes ni
             modifica mascotas, solicitudes, perfiles, autorizaciones o decisiones de adopción.
             """;
+    private static final String WEB_REPLY_STYLE = """
+            Usa un tono cercano y natural. Para una pregunta sencilla, responde en párrafos breves.
+            Si te piden el paso a paso o explicas un procedimiento, empieza con una frase breve y
+            luego escribe una acción concreta por línea, con números consecutivos desde 1. Añade
+            uno o dos emojis pertinentes en la guía para destacar acciones, sin ponerlos en cada paso.
+            Ejemplo de formato:
+
+            1. 🐾 Abre el Catálogo.
+            2. Selecciona la mascota que te interesa.
+
+            Separa la introducción y el cierre de los pasos con una línea en blanco. Si te preguntan
+            por un solo paso, detalla únicamente cómo completarlo. Evita emojis en urgencias.
+            """;
 
     private static String context(ChatRequest request, String role) {
         if ("ADOPTANTE".equals(role) && !"web".equals(request.platform())) return CONTEXT;
@@ -141,6 +154,7 @@ public class ChatGeminiService {
                 + "No inventes datos ni operaciones. No puedes guardar, enviar o reservar desde el chat. "
                 + "No solicites contraseñas, claves API, DNI completo ni datos de pago. "
                 + "El match es orientativo, no una aprobación. Responde honestamente.\n"
+                + ("web".equals(request.platform()) ? WEB_REPLY_STYLE : "")
                 + ("ALBERGUE".equals(role) ? ALBERGUE : WEB_ADOPTANTE) + common;
     }
 

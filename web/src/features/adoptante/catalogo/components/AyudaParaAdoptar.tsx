@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import AsistenteRespuesta from '../../../../components/AsistenteRespuesta';
 import Feedback from '../../../../components/Feedback';
 import { errorMessage, json, spring } from '../../../../services/http';
 import type { Pet } from '../../../../services/types';
@@ -92,7 +93,7 @@ function RespuestaPregunta({ item }: { item: Pregunta }) {
     <summary>{item.pregunta}</summary>
     <div className="ayuda-adopcion__respuesta" aria-live="polite">
       {cargando ? <p role="status">El asistente está preparando la respuesta…</p> : respuesta && <>
-        <p>{respuesta}</p>
+        <AsistenteRespuesta text={respuesta} />
         {respaldo && <>
           <p className="muted">Respuesta guardada. El asistente no está disponible en este momento.</p>
           <button type="button" className="secondary" onClick={() => void consultar()}>Reintentar con el asistente</button>

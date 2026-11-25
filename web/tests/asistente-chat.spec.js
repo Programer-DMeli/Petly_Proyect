@@ -42,9 +42,14 @@ for (const role of ['ADOPTANTE', 'ALBERGUE']) {
     });
     await login(page, role);
     await page.getByRole('button', { name: 'Abrir asistente Petly' }).click();
-    await page.getByLabel('Tu consulta', { exact: true }).fill('Hola, necesito orientación');
-    await page.getByRole('button', { name: 'Enviar', exact: true }).click();
+    const quickQuestion = role === 'ALBERGUE' ? '¿Cómo registro una mascota?' : '¿Cómo empiezo una adopción?';
+    const suggestions = page.getByRole('list', { name: 'Preguntas sugeridas' });
+    await expect(page.getByRole('heading', { name: '¡Hola! Soy Petly' })).toBeVisible();
+    await expect(suggestions.getByRole('button')).toHaveCount(4);
+    await expect(page.getByRole('button', { name: 'Enviar', exact: true })).toBeDisabled();
+    await suggestions.getByRole('button', { name: quickQuestion, exact: true }).click();
     await expect(page.getByRole('log')).toContainText('¿Qué necesitas saber?');
+    await expect(suggestions).toHaveCount(0);
     await page.getByRole('button', { name: 'Cerrar asistente' }).click();
     await navegar(page, role === 'ALBERGUE' ? '/albergue/solicitudes' : '/adoptante/disponibilidad');
     await page.getByRole('button', { name: 'Abrir asistente Petly' }).click();
@@ -53,7 +58,7 @@ for (const role of ['ADOPTANTE', 'ALBERGUE']) {
     await page.getByRole('button', { name: 'Enviar', exact: true }).click();
     await expect(page.getByRole('log')).toContainText('Continuemos con tu consulta.');
     expect(bodies[1]).toEqual({ platform: 'web', messages: [
-      { role: 'user', text: 'Hola, necesito orientación' },
+      { role: 'user', text: quickQuestion },
       { role: 'model', text: '¿Qué necesitas saber?' },
       { role: 'user', text: '¿Y el siguiente paso?' },
     ] });
@@ -63,7 +68,8 @@ for (const role of ['ADOPTANTE', 'ALBERGUE']) {
     await expect(page.getByRole('dialog', { name: 'Asistente Petly' })).toHaveCount(0);
     await login(page, role);
     await page.getByRole('button', { name: 'Abrir asistente Petly' }).click();
-    await expect(page.getByRole('log')).not.toContainText('Hola, necesito orientación');
+    await expect(page.getByRole('log')).toBeEmpty();
+    await expect(suggestions.getByRole('button', { name: quickQuestion, exact: true })).toBeVisible();
   });
 }
 
@@ -86,8 +92,38 @@ test('failed requests can be retried without duplicating the question; new conve
   await expect(page.getByRole('log').getByText('¿Cómo lleno mi formulario?', { exact: false })).toHaveCount(1);
   await page.getByRole('button', { name: 'Nueva conversación' }).click();
   await expect(page.getByRole('log')).toBeEmpty();
+  await expect(page.getByRole('heading', { name: '¡Hola! Soy Petly' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Tu consulta' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Abrir asistente Petly' })).toBeFocused();
+});
+
+test('muestra una guía larga desde el primer paso y mantiene visible el formulario', async ({ page }) => {
+  const steps = Array.from({ length: 12 }, (_, index) =>
+    `${index + 1}. ${index === 0 ? '🐾 ' : ''}Revisa la información de la mascota y confirma los detalles con el albergue antes de continuar.`
+  );
+  await page.route('**/api/asistente/chat', route => route.fulfill({
+    json: { reply: ['¡Vamos paso a paso!', ...steps, 'Puedes revisar la guía cuando quieras.'].join('\n\n') },
+  }));
+  await login(page, 'ALBERGUE');
+  await page.getByRole('button', { name: 'Abrir asistente Petly' }).click();
+  const panel = page.getByRole('dialog', { name: 'Asistente Petly' });
+  expect((await panel.boundingBox()).width).toBe(500);
+
+  await page.setViewportSize({ width: 506, height: 828 });
+  expect((await panel.boundingBox()).width).toBe(490);
+  await panel.getByLabel('Tu consulta').fill('¿Me explicas el proceso paso a paso?');
+  await panel.getByRole('button', { name: 'Enviar', exact: true }).click();
+  const log = panel.getByRole('log');
+  const items = log.getByRole('list').getByRole('listitem');
+  await expect(items).toHaveCount(12);
+  await expect(items.first()).toContainText('🐾');
+  await expect(log.getByText('¡Vamos paso a paso!')).toBeInViewport();
+  await expect(items.first()).toBeInViewport();
+  await expect(panel.getByLabel('Tu consulta')).toBeInViewport();
+  await log.evaluate(element => { element.scrollTop = element.scrollHeight; });
+  await expect(items.last()).toBeInViewport();
+  await expect(log.getByText('Puedes revisar la guía cuando quieras.')).toBeInViewport();
 });
 
 test('el catálogo reúne preguntas y cuidados de la ficha y el asistente enlaza la guía', async ({ page }) => {
@@ -133,6 +169,6 @@ test('el catálogo reúne preguntas y cuidados de la ficha y el asistente enlaza
   const panel = page.getByRole('dialog', { name: 'Asistente Petly' });
   await expect(panel.getByText('Preguntas frecuentes', { exact: true })).toHaveCount(0);
   await expect(panel.getByText('Cuidados por mascota', { exact: true })).toHaveCount(0);
-  await panel.getByRole('link', { name: 'Abrir guía paso a paso del cuestionario' }).click();
+  await panel.getByRole('link', { name: 'Guía del cuestionario' }).click();
   await expect(page).toHaveURL(/\/adoptante\/cuestionario$/);
 });

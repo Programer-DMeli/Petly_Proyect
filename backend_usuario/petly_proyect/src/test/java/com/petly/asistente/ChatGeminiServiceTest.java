@@ -56,6 +56,8 @@ class ChatGeminiServiceTest {
                 assertTrue(guide.contains("ADOPTANTE".equals(role)
                         ? "Edad mínima/máxima" : "PERFIL AUTENTICADO: ALBERGUE"));
                 assertTrue(guide.contains("No tienes acceso al catálogo"));
+                assertTrue(guide.contains("números consecutivos desde 1"));
+                assertTrue(guide.contains("uno o dos emojis pertinentes"));
             }).andRespond(withSuccess(response("Te ayudo desde tu panel."), MediaType.APPLICATION_JSON));
             service.reply(new ChatRequest(conversation().messages(), "web"), role);
             server.verify();
