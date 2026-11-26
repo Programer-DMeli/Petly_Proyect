@@ -9,7 +9,7 @@ async function abrirPanel(page, usuario, ruta, manejar) {
     return manejar(route, path);
   });
   await page.goto('/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill(usuario.correo);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(usuario.correo);
   await page.getByLabel('Contraseña', { exact: true }).fill('clave-de-prueba');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page).toHaveURL(usuario.rol === 'ALBERGUE' ? /\/albergue$/ : /\/adoptante\/catalogo$/);

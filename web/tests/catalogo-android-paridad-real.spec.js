@@ -8,7 +8,7 @@ test.skip(!fixture, 'Requiere la evidencia privada generada por CatalogoRealJour
 
 test('React muestra la misma foto y porcentajes que el recorrido Android real', async ({ page }) => {
   await page.goto('/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill(fixture.correo);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(fixture.correo);
   await page.getByLabel('Contraseña', { exact: true }).fill(fixture.password);
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page).toHaveURL(/adoptante/);

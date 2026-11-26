@@ -8,7 +8,7 @@ const accounts = accountsPath ? JSON.parse(readFileSync(accountsPath, 'utf8')) :
 test.skip(!accounts, 'Se requieren cuentas de albergue y adoptante en una base de prueba.');
 
 async function iniciarSesion(page, role) {
-  await page.getByLabel('Correo', { exact: true }).fill(accounts[role].correo);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(accounts[role].correo);
   await page.getByLabel('Contraseña', { exact: true }).fill(accounts[role].password);
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await page.waitForURL(url => url.pathname !== '/acceso');

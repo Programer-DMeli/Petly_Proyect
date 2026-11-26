@@ -10,7 +10,7 @@ async function ingresar(page, rol, responder) {
     return responder(route, path);
   });
   await page.goto('/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill(usuario.correo);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(usuario.correo);
   await page.getByLabel('Contraseña', { exact: true }).fill('clave-de-prueba');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page).toHaveURL(rol === 'ADOPTANTE' ? /\/adoptante\/catalogo$/ : /\/albergue$/);

@@ -10,7 +10,7 @@ test('ADMIN registra, consulta, edita, desactiva y elimina albergue conservando 
   page,
 }) => {
   await page.goto('/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill(demo.ADMIN.correo);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(demo.ADMIN.correo);
   await page.getByLabel('Contraseña', { exact: true }).fill(demo.ADMIN.password);
   let response = page.waitForResponse(r => r.url().includes('/api/auth/login'));
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();

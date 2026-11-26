@@ -17,7 +17,7 @@ async function login(page, role) {
     json: { id: '42', correo: 'chat@example.test', rol: role },
   }));
   await page.goto('/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill('chat@example.test');
+  await page.getByLabel('Correo electrónico', { exact: true }).fill('chat@example.test');
   await page.getByLabel('Contraseña', { exact: true }).fill('clave-de-prueba');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page).toHaveURL(role === 'ALBERGUE' ? /\/albergue$/ : /\/adoptante\/catalogo$/, { timeout: 15000 });

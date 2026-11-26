@@ -25,7 +25,7 @@ test('React descarga el certificado del expediente cerrado con la sesión del al
   });
 
   await page.goto('/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill(usuario.correo);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(usuario.correo);
   await page.getByLabel('Contraseña', { exact: true }).fill('clave-de-prueba');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page).toHaveURL(/\/albergue$/);

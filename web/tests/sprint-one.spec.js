@@ -10,7 +10,7 @@ const photo = Buffer.from(
 );
 async function login(page, role) {
   await page.goto('/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill(accounts[role].correo);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(accounts[role].correo);
   await page.getByLabel('Contraseña', { exact: true }).fill(accounts[role].password);
   for (let attempt = 0; attempt < 3; attempt++) {
     const response = page.waitForResponse(r => r.url().includes('/api/auth/login'));
@@ -207,7 +207,7 @@ test('Registro público, duplicado, rutas privadas y presentación responsive', 
   await expect(page.getByRole('alert')).toContainText('registrado');
   await page.goto('/acceso');
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole('heading', { name: 'Bienvenido a Petly' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inicia sesión', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true
   );

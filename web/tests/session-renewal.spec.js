@@ -42,7 +42,10 @@ async function backend(context) {
       calls.actions.push({ method: req.method(), authorization: await req.headerValue('authorization') });
       return route.fulfill({ status: actionStatus, headers, json: {} });
     }
-    return route.fulfill({ status: 200, headers, json: [] });
+    if (path === '/api/albergues/') {
+      return route.fulfill({ headers, json: { results: [], count: 0, next: null, previous: null } });
+    }
+    return route.fulfill({ headers, json: [] });
   });
   return {
     calls,
@@ -80,15 +83,18 @@ test('restaura al recargar y comparte una renovación entre peticiones y pestañ
 
   const second = await context.newPage();
   await second.clock.setFixedTime(initialTime);
-  await second.goto('/acceso');
+  await second.goto('/conoce-petly');
+  await expect(second.getByRole('heading', { name: 'Conoce Petly', level: 1 })).toBeVisible();
+  await second.getByRole('link', { name: 'Adopta', exact: true }).click();
   await ready(second);
+  await expect(second).toHaveURL('/administracion/albergues');
   expect(calls.refresh).toHaveLength(2);
   const nearExpiry = new Date(initialTime.getTime() + 3_550_000);
   await Promise.all([page.clock.setFixedTime(nearExpiry), second.clock.setFixedTime(nearExpiry)]);
   expect(await Promise.all([perform(page), perform(page), perform(second)])).toEqual([true, true, true]);
   expect(calls.refresh).toHaveLength(3);
   expect(calls.actions.map(action => action.authorization)).toEqual(Array(3).fill('Bearer access-3'));
-  await expect(page).toHaveURL(/\/acceso$/);
+  await expect(page).toHaveURL('/administracion/albergues');
   expect(await page.evaluate(() => Object.values(localStorage).some(value => value.includes('access-')))).toBe(false);
   expect((await context.cookies()).find(cookie => cookie.name === 'petly_refresh')?.httpOnly).toBe(true);
 });

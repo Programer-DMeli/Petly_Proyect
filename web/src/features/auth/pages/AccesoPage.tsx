@@ -2,15 +2,15 @@ import { useEffect, useId, useState, useSyncExternalStore } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Feedback from '../../../components/Feedback';
 import { spring, json, errorMessage, ApiError } from '../../../services/http';
-import { loginSession, roleHome, sessionHeaders, subscribe, getSessionNotice } from '../../../services/session';
+import {
+  loginSession,
+  sessionHeaders,
+  subscribe,
+  getSessionNotice,
+} from '../../../services/session';
 import type { SessionReply } from '../../../services/session';
-export default function AccesoPage({
-  register = false,
-  embedded = false,
-}: {
-  register?: boolean;
-  embedded?: boolean;
-}) {
+import { accessDestination } from '../accessDestination';
+export default function AccesoPage({ register = false }: { register?: boolean }) {
   const formId = useId();
   const notice = useSyncExternalStore(subscribe, getSessionNotice);
   const [correo, setCorreo] = useState('');
@@ -21,8 +21,7 @@ export default function AccesoPage({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
-  const estadoNavegacion = useLocation().state as { solicitud?: unknown; destinoSeguimiento?: unknown; destinoAfiche?: unknown } | null;
-  const { solicitud, destinoSeguimiento, destinoAfiche } = estadoNavegacion ?? {};
+  const location = useLocation();
   const [locks, setLocks] = useState<Record<string, number>>({});
   const [rateUntil, setRateUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
@@ -69,27 +68,24 @@ export default function AccesoPage({
         setPassword('');
         setConfirm('');
       } else {
-        const { identity } = await loginSession(() => spring<SessionReply>(
-          '/api/auth/login',
-          { method: 'POST', credentials: 'include', headers: sessionHeaders,
-            body: json({ correo: normalizedEmail, password }) },
-          false
-        ));
-        const destino = identity.rol === 'ADOPTANTE' && typeof solicitud === 'string' && /^\d+$/.test(solicitud)
-          ? `/adoptante/solicitudes/${solicitud}`
-          : roleHome(identity.rol);
-        const contexto = identity.rol === 'ADOPTANTE' ? '/adoptante/seguimientos-postadopcion'
-          : identity.rol === 'ALBERGUE' ? '/albergue/seguimientos' : '';
-        const puedeRetomar = contexto && typeof destinoSeguimiento === 'string'
-          && destinoSeguimiento.split(/[?#]/, 1)[0] === contexto;
-        const afiche = identity.rol === 'ALBERGUE' && typeof destinoAfiche === 'string'
-          && /^\/albergue\?/.test(destinoAfiche) ? destinoAfiche : null;
-        await navigate(afiche ?? (puedeRetomar ? destinoSeguimiento : destino), { replace: true });
+        const { identity } = await loginSession(() =>
+          spring<SessionReply>(
+            '/api/auth/login',
+            {
+              method: 'POST',
+              credentials: 'include',
+              headers: sessionHeaders,
+              body: json({ correo: normalizedEmail, password }),
+            },
+            false
+          )
+        );
+        await navigate(accessDestination(identity.rol, location.state), { replace: true });
       }
     } catch (e) {
       setError(errorMessage(e));
       if (e instanceof ApiError && [423, 429].includes(e.status)) {
-        const deadline = Date.now() + (e.retryAfterSeconds || (60)) * 1000;
+        const deadline = Date.now() + (e.retryAfterSeconds || 60) * 1000;
         setNow(Date.now());
         setErrorStatus(e.status);
         if (e.status === 423) setLocks(previous => ({ ...previous, [normalizedEmail]: deadline }));
@@ -101,29 +97,21 @@ export default function AccesoPage({
   }
   return (
     <section
-      className={embedded ? 'card auth auth--embedded' : 'card auth'}
-      id={embedded ? 'iniciar-sesion' : undefined}
+      className={register ? 'card auth' : 'card auth auth--embedded'}
+      id={register ? undefined : 'iniciar-sesion'}
       aria-labelledby={`${formId}-heading`}
     >
-      {embedded ? (
-        <h2 id={`${formId}-heading`}>Inicia sesión</h2>
-      ) : (
+      {register ? (
         <>
-          <h1 id={`${formId}-heading`}>{register ? 'Crear cuenta de adoptante' : 'Bienvenido a Petly'}</h1>
+          <h1 id={`${formId}-heading`}>Crear cuenta de adoptante</h1>
           <p className="muted">
-            {register
-              ? 'Regístrate con tu correo y una contraseña de al menos 8 caracteres.'
-              : 'Accede a tu espacio con tu cuenta Petly.'}
+            Regístrate con tu correo y una contraseña de al menos 8 caracteres.
           </p>
         </>
+      ) : (
+        <h2 id={`${formId}-heading`}>Inicia sesión</h2>
       )}
       <Feedback error={error || (register ? '' : notice)} success={success} />
-      {!register && !embedded && (
-        <p className="muted">
-          Dos contraseñas incorrectas consecutivas bloquean una cuenta registrada durante 1 minuto.
-          Los errores de formato no cuentan como intentos de acceso.
-        </p>
-      )}
       {remaining > 0 && (
         <p role="status" className="feedback error">
           {rateRemaining > 0 ? 'Límite de peticiones alcanzado' : 'Cuenta bloqueada temporalmente'}.
@@ -138,14 +126,14 @@ export default function AccesoPage({
         }}
       >
         <fieldset disabled={busy}>
-          <label htmlFor={`${formId}-email`}>{embedded ? 'Correo electrónico' : 'Correo'}</label>
-          <div className={embedded ? 'auth__input auth__input--icon' : undefined}>
-            {embedded && <AuthIcon name="mail" />}
+          <label htmlFor={`${formId}-email`}>{register ? 'Correo' : 'Correo electrónico'}</label>
+          <div className={register ? undefined : 'auth__input auth__input--icon'}>
+            {!register && <AuthIcon name="mail" />}
             <input
               id={`${formId}-email`}
               type="email"
               autoComplete="email"
-              placeholder={embedded ? 'Ej. tucorreo@correo.com' : undefined}
+              placeholder={register ? undefined : 'Ej. tucorreo@correo.com'}
               required
               value={correo}
               onChange={e => {
@@ -155,8 +143,8 @@ export default function AccesoPage({
             />
           </div>
           <label htmlFor={`${formId}-password`}>Contraseña</label>
-          <div className={embedded ? 'auth__input auth__input--icon' : 'auth__input'}>
-            {embedded && <AuthIcon name="lock" />}
+          <div className={register ? undefined : 'auth__input auth__input--icon'}>
+            {!register && <AuthIcon name="lock" />}
             <input
               id={`${formId}-password`}
               type={showPassword ? 'text' : 'password'}
@@ -192,7 +180,7 @@ export default function AccesoPage({
           )}
           <button className="auth__submit" type="submit" disabled={remaining > 0}>
             {busy ? 'Procesando…' : register ? 'Crear cuenta' : 'Entrar'}
-            {embedded && !busy && <AuthIcon name="arrow" />}
+            {!register && !busy && <AuthIcon name="arrow" />}
           </button>
         </fieldset>
       </form>

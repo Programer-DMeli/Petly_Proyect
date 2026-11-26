@@ -72,7 +72,7 @@ test('el catálogo React conserva el orden recibido y marca compatibilidad incom
   );
 
   await page.goto('/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill('angie@example.com');
+  await page.getByLabel('Correo electrónico', { exact: true }).fill('angie@example.com');
   await page.getByLabel('Contraseña', { exact: true }).fill('password-de-prueba');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
 

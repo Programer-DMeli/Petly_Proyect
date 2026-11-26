@@ -9,15 +9,17 @@ import './styles/workspace.css';
 export default function App() {
   const session = useSyncExternalStore(subscribe, getSession);
   const location = useLocation();
-  const isLanding = location.pathname === '/' && !session;
-  const isAbout = location.pathname === '/sobre-petly';
-  const isWorkspace = session && !isAbout;
+  const pathname = location.pathname.replace(/\/+$/, '').toLowerCase() || '/';
+  const isLanding = (pathname === '/' || pathname === '/acceso') && !session;
+  const isAbout = pathname === '/sobre-petly';
+  const isGuide = pathname === '/conoce-petly';
+  const isWorkspace = session && !isAbout && !isGuide;
   const restoreStatus = useSyncExternalStore(subscribe, getRestoreStatus);
   const adoptante = session?.identity.rol === 'ADOPTANTE' ? session.identity.id : null;
   useEffect(() => { void restoreSession(); }, []);
   useEffect(() => { if (adoptante) return conectarAvisos(); }, [adoptante]);
   return (
-    <div className={`app${isLanding ? ' app--welcome' : ''}${isAbout ? ' app--landing' : ''}${isWorkspace ? ' app--workspace' : ''}`}>
+    <div className={`app${isLanding ? ' app--welcome' : ''}${isAbout ? ' app--landing' : ''}${isGuide ? ' app--guide' : ''}${isWorkspace ? ' app--workspace' : ''}`}>
       <a className="skip-link" href="#contenido-principal">
         Saltar al contenido principal
       </a>

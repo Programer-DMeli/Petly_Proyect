@@ -5,7 +5,7 @@ const fixtures=source && fs.existsSync(source)?JSON.parse(fs.readFileSync(source
 test.skip(!fixtures,'Ejecutar primero scripts/verificar-sprint02-integracion.py y definir PETLY_SPRINT2_FIXTURES.');
 async function login(page,role) {
  await page.goto('/acceso');
- await page.getByLabel('Correo',{exact:true}).fill(fixtures[role].correo);
+ await page.getByLabel('Correo electrónico',{exact:true}).fill(fixtures[role].correo);
  await page.getByLabel('Contraseña',{exact:true}).fill(fixtures[role].password);
  const response=page.waitForResponse(r=>r.url().includes('/api/auth/login'));
  await page.getByRole('button',{name:'Entrar',exact:true}).click();

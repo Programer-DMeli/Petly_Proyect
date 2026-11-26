@@ -10,6 +10,7 @@ import AlbergueLayout from '../layouts/AlbergueLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import ProtectedRoute from './ProtectedRoute';
 import HomePage from '../features/auth/pages/HomePage';
+import ConocePetlyPage from '../features/auth/pages/ConocePetlyPage';
 import SobrePetlyPage from '../features/auth/pages/SobrePetlyPage';
 import AccesoPage from '../features/auth/pages/AccesoPage';
 import RecuperacionPage from '../features/auth/pages/RecuperacionPage';
@@ -58,9 +59,10 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: 'sobre-petly', element: <SobrePetlyPage /> },
+      { path: 'conoce-petly', element: <ConocePetlyPage /> },
       { path: 'historias-exito', element: <HistoriasExitoPublicasPage /> },
       { path: 'albergues/:albergueId', element: <PerfilPublicoAlberguePage /> },
-      { path: 'acceso', element: <AccesoPage /> },
+      { path: 'acceso', element: <HomePage /> },
       { path: 'registro', element: <AccesoPage register /> },
       { path: 'recuperacion', element: <RecuperacionPage /> },
       { path: 'cuenta-eliminada', element: <CuentaEliminadaPage /> },

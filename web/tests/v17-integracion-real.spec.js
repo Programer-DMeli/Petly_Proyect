@@ -11,7 +11,7 @@ test.skip(!fixture, 'Requiere la base local sintética de V17 y PETLY_V17_FIXTUR
 
 async function login(page, account, destination) {
   await page.goto(web + '/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill(account.correo);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(account.correo);
   await page.getByLabel('Contraseña', { exact: true }).fill(account.password);
   const response = page.waitForResponse(r => r.url() === spring + '/api/auth/login' && r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();

@@ -19,7 +19,7 @@ const fecha = '2026-11-15T15:00:00Z';
 async function entrar(page, role, path) {
   const correo = `${role.toLowerCase()}@example.test`;
   await page.goto('/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill(correo);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(correo);
   await page.getByLabel('Contraseña', { exact: true }).fill('clave-de-prueba');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page).not.toHaveURL(/\/acceso$/);

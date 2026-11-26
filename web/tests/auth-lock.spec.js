@@ -15,12 +15,12 @@ test('Correo inválido no se envía; dos claves incorrectas bloquean y persiste 
   page.on('request', r => {
     if (r.url().endsWith('/api/auth/login') && r.method() === 'POST') attempts++;
   });
-  await page.getByLabel('Correo', { exact: true }).fill('nombre@gmail');
+  await page.getByLabel('Correo electrónico', { exact: true }).fill('nombre@gmail');
   await page.getByLabel('Contraseña', { exact: true }).fill('x');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('correo válido');
   expect(attempts).toBe(0);
-  await page.getByLabel('Correo', { exact: true }).fill(email);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(email);
   const first = page.waitForResponse(r => r.url().endsWith('/api/auth/login'));
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   expect((await first).status()).toBe(401);
@@ -39,7 +39,7 @@ test('Correo inválido no se envía; dos claves incorrectas bloquean y persiste 
   await expect(page.getByRole('button', { name: 'Entrar', exact: true })).toBeDisabled();
   // Se elimina el estado local; Spring conserva y devuelve el bloqueo con su tiempo restante.
   await page.reload();
-  await page.getByLabel('Correo', { exact: true }).fill(email);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(email);
   await page.getByLabel('Contraseña', { exact: true }).fill(password);
   const again = page.waitForResponse(r => r.url().endsWith('/api/auth/login'));
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
@@ -70,7 +70,7 @@ test('Cuota real 429 muestra espera y evita nuevas peticiones desde React', asyn
   }
   expect(limited).toBe(true);
   await page.goto('/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill(email);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(email);
   await page.getByLabel('Contraseña', { exact: true }).fill('x');
   const attempt = page.waitForResponse(r => r.url().endsWith('/api/auth/login'));
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();

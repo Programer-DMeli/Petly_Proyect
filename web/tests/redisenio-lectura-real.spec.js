@@ -17,7 +17,7 @@ test('paneles con APIs reales: solo lectura en tres tamaños', async ({ browser 
         if (['GET', 'OPTIONS'].includes(r.method()) || (r.method() === 'POST' && sessionEndpoint)) return route.continue();
         blocked.push(`${r.method()} ${new URL(r.url()).pathname}`); return route.abort();
       });
-      await page.goto('/acceso'); await page.getByLabel('Correo', { exact: true }).fill(accounts[role].correo); await page.getByLabel('Contraseña', { exact: true }).fill(accounts[role].password);
+      await page.goto('/acceso'); await page.getByLabel('Correo electrónico', { exact: true }).fill(accounts[role].correo); await page.getByLabel('Contraseña', { exact: true }).fill(accounts[role].password);
       await page.getByRole('button', { name: 'Entrar', exact: true }).click();
       await page.waitForURL(url => !url.pathname.includes('/acceso'));
       await page.locator('h1').first().waitFor();

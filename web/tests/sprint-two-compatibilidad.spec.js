@@ -18,7 +18,7 @@ async function login(page,role,handle) {
   return send({results:[],count:0,next:null});
  });
  await page.goto('/acceso');
- await page.getByLabel('Correo',{exact:true}).fill('sprint@example.test');
+ await page.getByLabel('Correo electrónico',{exact:true}).fill('sprint@example.test');
  await page.getByLabel('Contraseña',{exact:true}).fill('password-prueba');
  await page.getByRole('button',{name:'Entrar',exact:true}).click();
  await expect(page).not.toHaveURL(/acceso/);

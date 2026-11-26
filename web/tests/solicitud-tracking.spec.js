@@ -23,7 +23,7 @@ async function loginAsAdopter(page, path = '/acceso') {
 
   await page.goto(path);
   await expect(page).toHaveURL(/\/acceso$/);
-  await page.getByLabel('Correo', { exact: true }).fill('adoptante@example.com');
+  await page.getByLabel('Correo electrónico', { exact: true }).fill('adoptante@example.com');
   await page.getByLabel('Contraseña', { exact: true }).fill('clave-de-prueba');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   if (path !== '/acceso') {

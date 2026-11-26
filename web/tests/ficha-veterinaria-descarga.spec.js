@@ -26,7 +26,7 @@ test('el adoptante solo puede descargar fichas de adopciones entregadas y puede 
   });
 
   await page.goto('/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill(usuario.correo);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(usuario.correo);
   await page.getByLabel('Contraseña', { exact: true }).fill('clave-local');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page).toHaveURL(/\/adoptante\/catalogo$/);

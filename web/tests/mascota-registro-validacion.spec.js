@@ -21,7 +21,7 @@ test('muestra el error de Django, conserva la mascota y permite corregir la foto
     return route.fulfill({ json: { results: [], count: 0, next: null } });
   });
   await page.goto('/acceso');
-  await page.getByLabel('Correo', { exact: true }).fill('albergue@example.test');
+  await page.getByLabel('Correo electrónico', { exact: true }).fill('albergue@example.test');
   await page.getByLabel('Contraseña', { exact: true }).fill('prueba-local');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page).toHaveURL(/\/albergue$/);

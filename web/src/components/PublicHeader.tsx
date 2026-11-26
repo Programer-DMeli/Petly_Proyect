@@ -15,8 +15,8 @@ export default function PublicHeader() {
           <span>Petly</span>
         </Link>
         <nav className="public-header__nav" aria-label="Navegación principal">
-          <Link to="/adoptante/catalogo">Adopta</Link>
-          <Link to="/sobre-petly#como-funciona">Cómo funciona</Link>
+          <Link to="/">Adopta</Link>
+          <NavLink to="/conoce-petly">Conoce Petly</NavLink>
           <NavLink to="/sobre-petly">Sobre Petly</NavLink>
         </nav>
         <Link className="public-header__cta" to="/#iniciar-sesion">

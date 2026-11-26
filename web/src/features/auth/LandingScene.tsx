@@ -1,26 +1,12 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect } from 'react';
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
+import { useReducedMotionPreference } from './useReducedMotionPreference';
 
 export const landingArt = '/images/acceso';
 const cycle = 14;
 const rightWalkEnds = 5.8;
 const leftWalkStarts = 7.2;
 const leftWalkEnds = 13;
-const motionQuery = '(prefers-reduced-motion: reduce)';
-
-function subscribeToMotionPreference(onChange: () => void) {
-  const preference = window.matchMedia(motionQuery);
-  preference.addEventListener('change', onChange);
-  return () => preference.removeEventListener('change', onChange);
-}
-
-function useReducedSceneMotion() {
-  return useSyncExternalStore(
-    subscribeToMotionPreference,
-    () => window.matchMedia(motionQuery).matches,
-    () => true
-  );
-}
 
 function kittenFrame(time: number) {
   if (time < rightWalkEnds) return Math.floor(time * 8) % 4;
@@ -32,7 +18,7 @@ function kittenFrame(time: number) {
 }
 
 export function WalkingKitten() {
-  const reduced = useReducedSceneMotion();
+  const reduced = useReducedMotionPreference();
   const time = useMotionValue(0);
   const x = useTransform(
     time,
@@ -68,7 +54,7 @@ export function WalkingKitten() {
 }
 
 export function LandingPlant({ side }: { side: 'left' | 'right' }) {
-  const reduced = useReducedSceneMotion();
+  const reduced = useReducedMotionPreference();
   const right = side === 'right';
   return (
     <div className={`landing__plant landing__plant--${side}`} aria-hidden="true">

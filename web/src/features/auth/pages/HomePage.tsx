@@ -1,11 +1,14 @@
-import { Navigate } from 'react-router-dom';
-import { getSession, roleHome } from '../../../services/session';
+import { Navigate, useLocation } from 'react-router-dom';
+import { getSession } from '../../../services/session';
 import { LandingPlant, WalkingKitten, landingArt } from '../LandingScene';
 import AccesoPage from './AccesoPage';
+import { accessDestination } from '../accessDestination';
 
 export default function HomePage() {
   const session = getSession();
-  if (session) return <Navigate to={roleHome(session.identity.rol)} replace />;
+  const location = useLocation();
+  if (session)
+    return <Navigate to={accessDestination(session.identity.rol, location.state)} replace />;
 
   return (
     <section className="landing" aria-labelledby="bienvenida-petly">
@@ -34,7 +37,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="landing__access">
-          <AccesoPage embedded />
+          <AccesoPage />
           <WalkingKitten />
         </div>
       </div>

@@ -74,7 +74,7 @@ async function mockApis(page, role) {
   return { unknown, writes };
 }
 async function login(page, role) {
-  await page.goto('/acceso'); await page.getByLabel('Correo', { exact: true }).fill(`${role.toLowerCase()}@example.test`); await page.getByLabel('Contraseña', { exact: true }).fill('password-ui-test'); await page.getByRole('button', { name: 'Entrar', exact: true }).click(); await expect(page).toHaveURL(roleHome[role]);
+  await page.goto('/acceso'); await page.getByLabel('Correo electrónico', { exact: true }).fill(`${role.toLowerCase()}@example.test`); await page.getByLabel('Contraseña', { exact: true }).fill('password-ui-test'); await page.getByRole('button', { name: 'Entrar', exact: true }).click(); await expect(page).toHaveURL(roleHome[role]);
 }
 async function menu(page, group) {
   if (await page.getByRole('button', { name: 'Abrir menú de navegación', exact: true }).isVisible()) await page.getByRole('button', { name: 'Abrir menú de navegación', exact: true }).click();
