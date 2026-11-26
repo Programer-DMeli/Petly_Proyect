@@ -3358,3 +3358,196 @@
     grid-row: 1 / span 2;
   }
 }
+.availability-page__header {
+  margin-bottom: 1.5rem;
+}
+.availability-page__header h1 {
+  margin: 0.15rem 0 0.6rem;
+  color: #164f3f;
+}
+.availability-page__header > p:not(.workspace-eyebrow) {
+  margin: 0.35rem 0;
+}
+.availability-page__note {
+  color: #61776b;
+  font-size: 0.92rem;
+}
+.availability-page__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid #e3ece5;
+}
+.availability-page__toolbar h2,
+.availability-form__heading h2 {
+  margin: 0;
+  color: #164f3f;
+  font-size: 1.2rem;
+}
+.availability-page__toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.availability-empty {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem;
+  border: 1px dashed #b8d5c4;
+  border-radius: 0.9rem;
+  background: #f5faf6;
+}
+.availability-empty__icon {
+  display: grid;
+  width: 2.8rem;
+  height: 2.8rem;
+  flex: 0 0 2.8rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #e3f1e7;
+  color: #17614f;
+  font-size: 1.55rem;
+}
+.availability-empty h3 {
+  margin: 0;
+  color: #164f3f;
+  font-size: 1rem;
+}
+.availability-empty p {
+  margin: 0.3rem 0 0;
+  color: #61776b;
+  line-height: 1.5;
+}
+.availability-empty button {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+.availability-list {
+  display: grid;
+  gap: 0.65rem;
+}
+.availability-slot {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.25fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #d5e6db;
+  border-radius: 0.85rem;
+  background: #fff;
+}
+.availability-slot__day {
+  color: #17614f;
+  font-weight: 750;
+}
+.availability-slot__details {
+  display: grid;
+  gap: 0.2rem;
+}
+.availability-slot__details strong {
+  color: #24493f;
+  font-variant-numeric: tabular-nums;
+}
+.availability-slot__details span {
+  color: #61776b;
+  font-size: 0.88rem;
+}
+.availability-slot__actions,
+.availability-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+.availability-slot__actions button {
+  min-height: 2.45rem;
+  padding: 0.4rem 0.75rem;
+}
+.availability-form__heading {
+  margin: 1.6rem 0 0.8rem;
+  padding-top: 1.3rem;
+  border-top: 1px solid #e3ece5;
+}
+.availability-form__heading p {
+  margin: 0.35rem 0 0;
+  color: #61776b;
+}
+.availability-form fieldset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+}
+.availability-form fieldset > label {
+  display: grid;
+  gap: 0.4rem;
+  color: #24493f;
+  font-weight: 650;
+}
+.availability-form fieldset > label:nth-of-type(4),
+.availability-form__actions,
+.availability-form__error {
+  grid-column: 1 / -1;
+}
+.availability-form__error {
+  margin: -0.15rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #efc5bc;
+  border-radius: 0.7rem;
+  background: #fff3f0;
+  color: #963b35;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.availability-form__actions {
+  display: flex;
+  align-items: center;
+}
+@media (max-width: 720px) {
+  .availability-empty {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .availability-empty > div {
+    flex: 1 1 calc(100% - 4rem);
+  }
+  .availability-empty button {
+    width: 100%;
+    margin-left: 0;
+  }
+  .availability-slot {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.45rem 0.8rem;
+  }
+  .availability-slot__day,
+  .availability-slot__details {
+    grid-column: 1;
+  }
+  .availability-slot__actions {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    justify-content: flex-end;
+  }
+}
+@media (max-width: 560px) {
+  .availability-page__toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .availability-page__toolbar-actions {
+    width: 100%;
+  }
+  .availability-page__toolbar-actions button {
+    flex: 1;
+  }
+  .availability-form fieldset {
+    grid-template-columns: 1fr;
+  }
+  .availability-form fieldset > label:nth-of-type(4),
+  .availability-form__actions,
+  .availability-form__error {
+    grid-column: auto;
+  }
+}
