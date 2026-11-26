@@ -89,9 +89,18 @@ for (const size of sizes) for (const role of ['ADOPTANTE', 'ALBERGUE', 'ADMIN'])
   test(`${role} · ${size.name}: navegación, funciones y teclado`, async ({ page }) => {
     await page.setViewportSize(size); const state = await mockApis(page, role); const errors = [];
     page.on('pageerror', e => errors.push(e.message)); await login(page, role); await fits(page);
-    if (role !== 'ADMIN') {
+    if (role === 'ADOPTANTE') {
+      const hero = page.getByRole('region', { name: 'Un hogar cambia su mundo. Y también el tuyo.' });
+      await expect(hero).toBeVisible();
+      await expect(hero.getByRole('link', { name: 'Explorar mascotas', exact: true })).toHaveAttribute('href', '#catalogo');
+      for (const image of await hero.locator('img').all()) {
+        await expect.poll(() => image.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
+      }
+      await expect(page.locator('.adoption-carousel')).toHaveCount(0);
+    }
+    if (role === 'ALBERGUE') {
       const image = page.locator('.adoption-carousel__visual img');
-      const images = role === 'ADOPTANTE' ? [1, 2, 3] : [6, 5, 4];
+      const images = [6, 5, 4];
       for (const number of images) {
         await expect(image).toHaveAttribute('src', `/images/carruseles/imagen_${number}.png`);
         await expect.poll(() => image.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);

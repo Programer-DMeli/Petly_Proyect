@@ -1,7 +1,7 @@
 import MensajesFlotante from '../components/MensajesFlotante';
 import AsistenteChat from '../components/AsistenteChat';
 import { Outlet, useLocation, useOutletContext } from 'react-router-dom';
-import AdoptionCarousel from '../components/AdoptionCarousel';
+import AdoptanteHero from '../features/adoptante/inicio/AdoptanteHero';
 import { FavoritesProvider } from '../components/FavoritesProvider';
 export default function AdoptanteLayout() {
   const { pathname } = useLocation();
@@ -10,7 +10,7 @@ export default function AdoptanteLayout() {
   return (
     <FavoritesProvider>
       <div className="workspace workspace--adoptante">
-        {overview && <AdoptionCarousel role="adoptante" />}
+        {overview && <AdoptanteHero />}
         <Outlet context={footerContent} />
         <MensajesFlotante espacio="adoptante" />
         <AsistenteChat />
