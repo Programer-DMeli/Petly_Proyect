@@ -214,7 +214,8 @@ test('Registro público, duplicado, rutas privadas y presentación responsive', 
   await page.screenshot({ path: '../docs/evidencias/react-acceso-mobile.png', fullPage: true });
   await page.setViewportSize({ width: 1365, height: 900 });
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Un hogar cambia una vida' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Un abrazo que cambia vidas' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inicia sesión', exact: true })).toBeVisible();
   await page.screenshot({ path: '../docs/evidencias/react-inicio.png', fullPage: true });
 });
 

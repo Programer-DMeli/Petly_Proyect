@@ -1,13 +1,21 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useState, useSyncExternalStore } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Feedback from '../../../components/Feedback';
 import { spring, json, errorMessage, ApiError } from '../../../services/http';
 import { loginSession, roleHome, sessionHeaders, subscribe, getSessionNotice } from '../../../services/session';
 import type { SessionReply } from '../../../services/session';
-export default function AccesoPage({ register = false }: { register?: boolean }) {
+export default function AccesoPage({
+  register = false,
+  embedded = false,
+}: {
+  register?: boolean;
+  embedded?: boolean;
+}) {
+  const formId = useId();
   const notice = useSyncExternalStore(subscribe, getSessionNotice);
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -92,15 +100,25 @@ export default function AccesoPage({ register = false }: { register?: boolean })
     }
   }
   return (
-    <section className="card auth">
-      <h1>{register ? 'Crear cuenta de adoptante' : 'Bienvenido a Petly'}</h1>
-      <p className="muted">
-        {register
-          ? 'Regístrate con tu correo y una contraseña de al menos 8 caracteres.'
-          : 'Accede a tu espacio con tu cuenta Petly.'}
-      </p>
+    <section
+      className={embedded ? 'card auth auth--embedded' : 'card auth'}
+      id={embedded ? 'iniciar-sesion' : undefined}
+      aria-labelledby={`${formId}-heading`}
+    >
+      {embedded ? (
+        <h2 id={`${formId}-heading`}>Inicia sesión</h2>
+      ) : (
+        <>
+          <h1 id={`${formId}-heading`}>{register ? 'Crear cuenta de adoptante' : 'Bienvenido a Petly'}</h1>
+          <p className="muted">
+            {register
+              ? 'Regístrate con tu correo y una contraseña de al menos 8 caracteres.'
+              : 'Accede a tu espacio con tu cuenta Petly.'}
+          </p>
+        </>
+      )}
       <Feedback error={error || (register ? '' : notice)} success={success} />
-      {!register && (
+      {!register && !embedded && (
         <p className="muted">
           Dos contraseñas incorrectas consecutivas bloquean una cuenta registrada durante 1 minuto.
           Los errores de formato no cuentan como intentos de acceso.
@@ -120,11 +138,14 @@ export default function AccesoPage({ register = false }: { register?: boolean })
         }}
       >
         <fieldset disabled={busy}>
-          <label>
-            Correo
+          <label htmlFor={`${formId}-email`}>{embedded ? 'Correo electrónico' : 'Correo'}</label>
+          <div className={embedded ? 'auth__input auth__input--icon' : undefined}>
+            {embedded && <AuthIcon name="mail" />}
             <input
+              id={`${formId}-email`}
               type="email"
               autoComplete="email"
+              placeholder={embedded ? 'Ej. tucorreo@correo.com' : undefined}
               required
               value={correo}
               onChange={e => {
@@ -132,18 +153,31 @@ export default function AccesoPage({ register = false }: { register?: boolean })
                 setNow(Date.now());
               }}
             />
-          </label>
-          <label>
-            Contraseña
+          </div>
+          <label htmlFor={`${formId}-password`}>Contraseña</label>
+          <div className={embedded ? 'auth__input auth__input--icon' : 'auth__input'}>
+            {embedded && <AuthIcon name="lock" />}
             <input
-              type="password"
+              id={`${formId}-password`}
+              type={showPassword ? 'text' : 'password'}
               autoComplete={register ? 'new-password' : 'current-password'}
               required
               minLength={register ? 8 : undefined}
               value={password}
               onChange={e => setPassword(e.target.value)}
             />
-          </label>
+            {!register && (
+              <button
+                className="auth__visibility"
+                type="button"
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                aria-controls={`${formId}-password`}
+                onClick={() => setShowPassword(visible => !visible)}
+              >
+                <AuthIcon name={showPassword ? 'eye-off' : 'eye'} />
+              </button>
+            )}
+          </div>
           {register && (
             <label>
               Confirmar contraseña
@@ -156,8 +190,9 @@ export default function AccesoPage({ register = false }: { register?: boolean })
               />
             </label>
           )}
-          <button disabled={remaining > 0}>
+          <button className="auth__submit" type="submit" disabled={remaining > 0}>
             {busy ? 'Procesando…' : register ? 'Crear cuenta' : 'Entrar'}
+            {embedded && !busy && <AuthIcon name="arrow" />}
           </button>
         </fieldset>
       </form>
@@ -168,5 +203,32 @@ export default function AccesoPage({ register = false }: { register?: boolean })
         </Link>
       </div>
     </section>
+  );
+}
+
+function AuthIcon({ name }: { name: 'mail' | 'lock' | 'eye' | 'eye-off' | 'arrow' }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {name === 'mail' && <path d="M3 5h18v14H3zM3 6l9 7 9-7" />}
+      {name === 'lock' && <path d="M5 10h14v11H5zM8 10V7a4 4 0 0 1 8 0v3m-4 4v3" />}
+      {(name === 'eye' || name === 'eye-off') && (
+        <>
+          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+          <circle cx="12" cy="12" r="2.5" />
+          {name === 'eye-off' && <path d="m3 3 18 18" />}
+        </>
+      )}
+      {name === 'arrow' && <path d="M3 12h17m-7-7 7 7-7 7" />}
+    </svg>
   );
 }

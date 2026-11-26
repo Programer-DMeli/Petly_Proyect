@@ -10,6 +10,7 @@ import AlbergueLayout from '../layouts/AlbergueLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import ProtectedRoute from './ProtectedRoute';
 import HomePage from '../features/auth/pages/HomePage';
+import SobrePetlyPage from '../features/auth/pages/SobrePetlyPage';
 import AccesoPage from '../features/auth/pages/AccesoPage';
 import RecuperacionPage from '../features/auth/pages/RecuperacionPage';
 import AutorizacionesPage from '../features/adoptante/perfil/pages/AutorizacionesPage';
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: 'sobre-petly', element: <SobrePetlyPage /> },
       { path: 'historias-exito', element: <HistoriasExitoPublicasPage /> },
       { path: 'albergues/:albergueId', element: <PerfilPublicoAlberguePage /> },
       { path: 'acceso', element: <AccesoPage /> },

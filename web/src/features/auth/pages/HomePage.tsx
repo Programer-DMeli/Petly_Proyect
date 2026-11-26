@@ -1,31 +1,43 @@
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { getSession, roleHome } from '../../../services/session';
+import { LandingPlant, WalkingKitten, landingArt } from '../LandingScene';
+import AccesoPage from './AccesoPage';
+
 export default function HomePage() {
   const session = getSession();
   if (session) return <Navigate to={roleHome(session.identity.rol)} replace />;
+
   return (
-    <section className="hero">
-      <div className="hero__content">
-        <span className="hero__eyebrow">Adopta con el corazón</span>
-        <h1>
-          Un hogar cambia
-          <br />
-          una vida <span aria-hidden="true">♡</span>
-        </h1>
-        <p>Conoce mascotas de albergues y prepara tu perfil para una adopción responsable.</p>
-        <div className="actions">
-          <Link className="button" to="/acceso">
-            Iniciar sesión
-          </Link>
-          <Link className="button secondary" to="/registro">
-            Crear cuenta de adoptante
-          </Link>
-          <Link className="button secondary" to="/historias-exito">
-            Historias de adopción
-          </Link>
+    <section className="landing" aria-labelledby="bienvenida-petly">
+      <LandingPlant side="left" />
+      <LandingPlant side="right" />
+      <div className="landing__grid">
+        <div className="landing__welcome">
+          <div className="landing__headline">
+            <h1 id="bienvenida-petly">
+              Un abrazo que
+              <br />
+              cambia vidas
+            </h1>
+            <p>Bienvenido a Petly</p>
+          </div>
+          <div
+            className="landing__pets"
+            role="img"
+            aria-label="Un perro golden retriever y un gato atigrado"
+          >
+            <div className="landing__rug" aria-hidden="true" />
+            <img className="landing__dog" src={`${landingArt}/perro.webp`} alt="" />
+            <img className="landing__cat" src={`${landingArt}/gato.webp`} alt="" />
+            <img className="landing__bowl" src={`${landingArt}/plato.webp`} alt="" />
+            <img className="landing__ball" src={`${landingArt}/pelota.webp`} alt="" />
+          </div>
+        </div>
+        <div className="landing__access">
+          <AccesoPage embedded />
+          <WalkingKitten />
         </div>
       </div>
-      <img className="hero__pets" src="/images/mascotas-portada.webp" alt="Un perro y un gato buscando un hogar" />
     </section>
   );
 }
