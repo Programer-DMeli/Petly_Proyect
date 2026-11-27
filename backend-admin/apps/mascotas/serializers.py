@@ -1,6 +1,7 @@
 """Serializadores de mascotas (US-11, US-12, US-13)."""
 from datetime import date
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from rest_framework import serializers
 from django_filters.rest_framework import DjangoFilterBackend
@@ -244,14 +245,26 @@ class MascotaCompatibilidadSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class FotoPrincipalField(serializers.ImageField):
+    def to_internal_value(self, data):
+        # Comprueba el tamaño antes de que Pillow inspeccione los bytes.
+        if getattr(data, "size", None) is not None:
+            limite = obtener_limite_imagen_bytes()
+            if data.size > limite:
+                raise serializers.ValidationError(f"Máximo {limite // (1024 * 1024)} MB.")
+        try:
+            foto = super().to_internal_value(data)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages) from exc
+        if foto.image.format not in {"JPEG", "PNG"}:
+            raise serializers.ValidationError("Usa una fotografía JPEG o PNG válida.")
+        return foto
+
+
 class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializador para crear/actualizar mascota."""
 
-    foto_principal = serializers.ImageField(
-        required=True,
-        allow_null=False,
-        validators=[validate_image_file]
-    )
+    foto_principal = FotoPrincipalField()
     foto_mejorada_confirmada = serializers.BooleanField(write_only=True, required=False, default=False)
     evidencia_vacunacion = serializers.ImageField(required=False, allow_null=True, validators=[validate_evidence_image])
     evidencia_esterilizacion = serializers.ImageField(required=False, allow_null=True, validators=[validate_evidence_image])
@@ -374,24 +387,6 @@ class MascotaCreateUpdateSerializer(serializers.ModelSerializer):
             instance.foto_mejorada_ia = None
             instance.save(update_fields=["foto_original_ia", "foto_mejorada_ia"])
         return instance
-
-    def validate_foto_principal(self, photo):
-        if photo is None:
-            return None
-        limite = obtener_limite_imagen_bytes()
-        if photo.size > limite:
-            raise serializers.ValidationError(f"Máximo {limite // (1024 * 1024)} MB.")
-        from PIL import Image
-        try:
-            image = Image.open(photo)
-            if image.format not in {"JPEG", "PNG"}:
-                raise ValueError()
-            image.verify()
-            photo.seek(0)
-        except Exception:
-            raise serializers.ValidationError("Usa una fotografía JPEG o PNG válida.")
-        return photo
-
 
 class MascotaDescripcionBorradorSerializer(serializers.Serializer):
     """Rasgos del formulario usados para generar una descripción antes de guardar."""

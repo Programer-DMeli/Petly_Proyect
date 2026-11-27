@@ -62,6 +62,12 @@
 
 {% block extra_js %}
 <script>
+    document.body.addEventListener('htmx:beforeSwap', function(evt) {
+        if (evt.detail.xhr.getResponseHeader('HX-Retarget') === '#mascota-foto-error') {
+            evt.detail.shouldSwap = true;
+        }
+    });
+
     // Auto-abrir modal cuando se carga el formulario
     document.body.addEventListener('htmx:afterSwap', function(evt) {
         if (evt.target.id === 'mascota-form') {

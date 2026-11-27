@@ -12,7 +12,7 @@ class CompatibilidadServicePaginationTest {
     @Test
     void ordenaAntesDePaginarYConservaLosFiltrosDelCatalogo() {
         List<Object[]> filtrosRecibidos = new ArrayList<>();
-        CatalogoService catalogo = new CatalogoService(null, "") {
+        CatalogoService catalogo = new CatalogoService(null, "", "") {
             @Override
             public Map<String, Object> search(String search, String especie, String tamano, String temperamento,
                     Integer min, Integer max, int page, int size) {

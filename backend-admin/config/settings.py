@@ -9,6 +9,7 @@ import ssl
 from pathlib import Path
 
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -206,7 +207,7 @@ ADOPTION_CONTRACT_TERMS_APPROVED = os.getenv("ADOPTION_CONTRACT_TERMS_APPROVED",
     "1", "true", "yes", "si", "sí",
 }
 PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", "http://localhost:8000")
-PRIVATE_FILES_ROOT = Path(os.getenv("PRIVATE_FILES_ROOT", str(BASE_DIR / "private-media")))
+PRIVATE_FILES_ROOT = BASE_DIR / (os.getenv("PRIVATE_FILES_ROOT") or "private-media")
 PETLY_CERTIFICADOS_PERFIL = os.getenv("PETLY_CERTIFICADOS_PERFIL", "")
 PETLY_CERTIFICADOS_CERT_PUBLICO = os.getenv("PETLY_CERTIFICADOS_CERT_PUBLICO", "")
 
@@ -215,7 +216,12 @@ PET_DESCRIPTION_API_URL = os.getenv("PET_DESCRIPTION_API_URL", "")
 PET_DESCRIPTION_API_TOKEN = os.getenv("PET_DESCRIPTION_API_TOKEN", "")
 PET_DESCRIPTION_TIMEOUT_SECONDS = int(os.getenv("PET_DESCRIPTION_TIMEOUT_SECONDS", "20"))
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = BASE_DIR / (os.getenv("MEDIA_ROOT") or "media")
+if PRIVATE_FILES_ROOT.resolve().is_relative_to(MEDIA_ROOT.resolve()):
+    raise ImproperlyConfigured("PRIVATE_FILES_ROOT debe quedar fuera de MEDIA_ROOT.")
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY", "").strip()
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

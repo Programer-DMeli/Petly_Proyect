@@ -6,14 +6,17 @@ from django.http import HttpResponse
 from django.urls import reverse
 from django.db.models import Q, Count
 from django.utils import timezone
+from django.utils.html import format_html
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 from apps.albergues.models import Albergue, Infraestructura
 from apps.mascotas.models import Mascota
 from apps.mascotas.estados import cambiar_estado_mascota
+from apps.mascotas.fotos_catalogo import guardar_foto_catalogo
+from apps.mascotas.serializers import FotoPrincipalField
 from apps.acceso.models import Postulante, SolicitudAdopcion
 from apps.acceso.solicitudes import cambiar_estado_solicitud
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import APIException, ValidationError
 
 
 @login_required
@@ -176,7 +179,7 @@ def mascota_crear(request):
     
     if request.method == 'POST':
         # Crear mascota
-        mascota = Mascota.objects.create(
+        mascota = Mascota(
             albergue=albergue,
             nombre=request.POST.get('nombre'),
             codigo=request.POST.get('codigo'),
@@ -194,10 +197,14 @@ def mascota_crear(request):
             creado_por=request.user,
         )
         
-        # Manejar foto principal
-        if 'foto_principal' in request.FILES:
-            mascota.foto_principal = request.FILES['foto_principal']
-            mascota.save()
+        try:
+            with guardar_foto_catalogo() as preparar:
+                foto = request.FILES.get("foto_principal")
+                if foto is not None:
+                    mascota.foto_principal = preparar(FotoPrincipalField().run_validation(foto))
+                mascota.save()
+        except APIException as error:
+            return _error_foto_formulario(error)
         
         messages.success(request, f'Mascota "{mascota.nombre}" creada correctamente')
         
@@ -219,33 +226,38 @@ def mascota_crear(request):
 def mascota_editar(request, mascota_id):
     """Editar mascota existente (HTMX formulario)."""
     albergue = get_object_or_404(Albergue, usuario=request.user)
-    mascota = get_object_or_404(Mascota, pk=mascota_id, albergue=albergue)
     
     if request.method == 'POST':
-        mascota.nombre = request.POST.get('nombre', mascota.nombre)
-        mascota.codigo = request.POST.get('codigo', mascota.codigo)
-        mascota.especie = request.POST.get('especie', mascota.especie)
-        mascota.raza = request.POST.get('raza', mascota.raza)
-        mascota.sexo = request.POST.get('sexo', mascota.sexo)
-        mascota.tamanio = request.POST.get('tamanio', mascota.tamanio)
-        mascota.edad_anos = request.POST.get('edad_anos') or None
-        mascota.edad_meses = request.POST.get('edad_meses') or None
-        mascota.descripcion = request.POST.get('descripcion', mascota.descripcion)
-        mascota.esterilizado = 'esterilizado' in request.POST
-        mascota.vacunas_al_dia = 'vacunas_al_dia' in request.POST
-        mascota.desparasitado = 'desparasitado' in request.POST
-        mascota.necesidades_especiales = request.POST.get('necesidades_especiales', mascota.necesidades_especiales)
-        
-        if 'foto_principal' in request.FILES:
-            mascota.foto_principal = request.FILES['foto_principal']
-        
-        mascota.save()
+        try:
+            with guardar_foto_catalogo() as preparar:
+                mascota = get_object_or_404(Mascota.objects.select_for_update(), pk=mascota_id, albergue=albergue)
+                mascota.nombre = request.POST.get('nombre', mascota.nombre)
+                mascota.codigo = request.POST.get('codigo', mascota.codigo)
+                mascota.especie = request.POST.get('especie', mascota.especie)
+                mascota.raza = request.POST.get('raza', mascota.raza)
+                mascota.sexo = request.POST.get('sexo', mascota.sexo)
+                mascota.tamanio = request.POST.get('tamanio', mascota.tamanio)
+                mascota.edad_anos = request.POST.get('edad_anos') or None
+                mascota.edad_meses = request.POST.get('edad_meses') or None
+                mascota.descripcion = request.POST.get('descripcion', mascota.descripcion)
+                mascota.esterilizado = 'esterilizado' in request.POST
+                mascota.vacunas_al_dia = 'vacunas_al_dia' in request.POST
+                mascota.desparasitado = 'desparasitado' in request.POST
+                mascota.necesidades_especiales = request.POST.get('necesidades_especiales', mascota.necesidades_especiales)
+                foto = request.FILES.get("foto_principal")
+                if foto is not None:
+                    mascota.foto_principal = preparar(FotoPrincipalField().run_validation(foto), mascota)
+                    mascota.foto_original_ia = mascota.foto_mejorada_ia = None
+                mascota.save()
+        except APIException as error:
+            return _error_foto_formulario(error)
         messages.success(request, f'Mascota "{mascota.nombre}" actualizada')
         
         if request.headers.get('HX-Request'):
             return render(request, 'mascotas/partials/mascota_fila.html', {'mascota': mascota})
         return redirect('mascota_lista')
     
+    mascota = get_object_or_404(Mascota, pk=mascota_id, albergue=albergue)
     context = {
         'mascota': mascota,
         'albergue': albergue,
@@ -255,6 +267,15 @@ def mascota_editar(request, mascota_id):
         'estados': Mascota.Estado.choices,
     }
     return render(request, 'mascotas/partials/mascota_form.html', context)
+
+
+def _error_foto_formulario(error):
+    detalle = error.detail[0] if isinstance(error.detail, list) else error.detail
+    return HttpResponse(
+        format_html('<div class="alert alert-danger" role="alert">{}</div>', detalle),
+        status=error.status_code,
+        headers={"HX-Retarget": "#mascota-foto-error", "HX-Reswap": "innerHTML"},
+    )
 
 
 @login_required

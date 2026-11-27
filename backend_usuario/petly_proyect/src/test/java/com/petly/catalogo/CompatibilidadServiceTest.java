@@ -11,7 +11,7 @@ import com.petly.perfiles.PerfilService;
 class CompatibilidadServiceTest {
     @Test
     void explicacionUsaSoloRespuestasDelUsuarioAutenticado() {
-        var catalogo = new CatalogoService(null, "") {
+        var catalogo = new CatalogoService(null, "", "") {
             @Override public Map<String, Object> detail(long id) {
                 return petWithId(id, "Grande", "Alta", "Sociable", "Perro");
             }
@@ -156,7 +156,7 @@ class CompatibilidadServiceTest {
         return pet;
     }
     private CompatibilidadService serviceWith(Map<String, Object>... pets) {
-        CatalogoService catalogo = new CatalogoService(null, "") {
+        CatalogoService catalogo = new CatalogoService(null, "", "") {
             @Override
             public Map<String, Object> search(String search, String especie, String tamano, String temperamento,
                     Integer min, Integer max, int page, int size) {

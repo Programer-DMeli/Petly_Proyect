@@ -1,13 +1,24 @@
 package com.petly.catalogo;
 import java.util.*;
+import java.util.regex.Pattern;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import com.petly.common.exception.ApiException;
 @Service
 public class CatalogoService {
- private final JdbcTemplate db;private final String media;
- public CatalogoService(JdbcTemplate db,@Value("${petly.media-base-url}") String media) {this.db=db;this.media=media;}
+ private static final Pattern FOTO_SUPABASE = Pattern.compile("mascotas/supabase/[0-9a-f]{32}\\.(?:jpg|png)");
+ private final JdbcTemplate db;
+ private final String media;
+ private final String catalogoPublico;
+
+ public CatalogoService(JdbcTemplate db, @Value("${petly.media-base-url}") String media,
+                        @Value("${petly.supabase-url:}") String supabaseUrl) {
+  this.db = db;
+  this.media = media.replaceAll("/+$", "");
+  String proyecto = supabaseUrl.strip().replaceAll("/+$", "");
+  this.catalogoPublico = proyecto.isEmpty() ? "" : proyecto + "/storage/v1/object/public/petly-catalogo";
+ }
  public static final Map<String,String> ESPECIES=new LinkedHashMap<>();
  public static final Map<String,String> TAMANOS=new LinkedHashMap<>();
  public static final Map<String,String> TEMPERAMENTOS=new LinkedHashMap<>();
@@ -50,7 +61,16 @@ public class CatalogoService {
   v.put("energia",Map.of("BAJA","Baja","MEDIA","Media","ALTA","Alta").getOrDefault(String.valueOf(row.get("energia")),"Por evaluar"));
   v.put("descripcion",row.get("descripcion"));v.put("albergue",row.get("albergue_nombre"));v.put("albergueId",row.get("albergue_id"));v.put("ubicacion",row.get("ubicacion"));
   v.put("estado",Map.of("DISPONIBLE","Disponible","EN_PROCESO","En Proceso","ADOPTADO","Adoptado").get(row.get("estado")));
-  String photo=(String)row.get("foto_principal");v.put("fotografiaUrl",photo==null||photo.isBlank()?null:media.replaceAll("/$","")+"/"+photo);return v;
+  v.put("fotografiaUrl", fotografiaUrl((String) row.get("foto_principal")));
+  return v;
+ }
+
+ private String fotografiaUrl(String ruta) {
+  if (ruta == null || ruta.isBlank()) return null;
+  if (!catalogoPublico.isEmpty() && FOTO_SUPABASE.matcher(ruta).matches()) {
+   return catalogoPublico + "/" + ruta;
+  }
+  return media + "/" + ruta;
  }
  public List<Map<String,Object>> shelters() {return db.queryForList("SELECT id,nombre,direccion FROM albergues WHERE activo=TRUE ORDER BY nombre,id");}
 }

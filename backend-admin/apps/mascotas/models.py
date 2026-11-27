@@ -2,6 +2,7 @@
 from django.db import models
 from django.conf import settings
 from apps.albergues.models import Albergue
+from .fotos_catalogo import almacenamiento_fotos_catalogo
 from .storage import CertificadoVeterinarioStorage, ruta_certificado_veterinario
 
 
@@ -88,10 +89,10 @@ class Mascota(models.Model):
     evidencia_vacunacion = models.ImageField("Evidencia de vacunación", upload_to="mascotas/veterinaria/vacunacion/", blank=True, null=True)
     evidencia_esterilizacion = models.ImageField("Evidencia de esterilización", upload_to="mascotas/veterinaria/esterilizacion/", blank=True, null=True)
 
-    # Imágenes (URLs o paths)
-    foto_principal = models.ImageField("Foto principal", upload_to="mascotas/", blank=True, null=True)
-    foto_original_ia = models.ImageField("Foto original previa a mejora IA", upload_to="mascotas/originales/", blank=True, null=True)
-    foto_mejorada_ia = models.ImageField("Foto mejorada con IA", upload_to="mascotas/mejoradas/", blank=True, null=True)
+    # Las tres referencias pueden apuntar a una foto local o del catálogo.
+    foto_principal = models.ImageField("Foto principal", upload_to="mascotas/", storage=almacenamiento_fotos_catalogo, blank=True, null=True)
+    foto_original_ia = models.ImageField("Foto original previa a mejora IA", upload_to="mascotas/originales/", storage=almacenamiento_fotos_catalogo, blank=True, null=True)
+    foto_mejorada_ia = models.ImageField("Foto mejorada con IA", upload_to="mascotas/mejoradas/", storage=almacenamiento_fotos_catalogo, blank=True, null=True)
     fotos_adicionales = models.JSONField("Fotos adicionales", default=list, blank=True)
 
     # Fechas relevantes

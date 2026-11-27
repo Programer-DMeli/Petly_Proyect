@@ -332,3 +332,20 @@ Aplica las migraciones `mascotas.0007` y `mascotas.0008`. Configura `AFICHE_WORK
 | Entregar resultado interno | `POST /api/mascotas/interno/afiches/{pedido_id}/entregar/` | Estado actualizado o `409` si venció/cambió la reserva. |
 
 Las operaciones del albergue usan su Bearer JWT. Django verifica foto, nombre y contacto público y guarda los datos validados con el pedido. Las operaciones internas requieren `X-Afiche-Worker-Token`. En la entrega el worker envía `reserva`, `estado` y, para un resultado exitoso, el archivo `fondo` como multipart. Si falla, incluye `error_codigo` y marca `reintentar=false` cuando agota su reintento local. Django almacena el fondo bajo `PRIVATE_FILES_ROOT`; el navegador genera el PNG final de 1080 × 1350 con Canvas. Al recargar, el flujo retoma el pedido tras iniciar sesión de nuevo.
+
+## Almacenamiento de archivos y fotos del catálogo
+
+| Variable | Servicio | Valor local y montaje sugerido |
+| --- | --- | --- |
+| `MEDIA_ROOT` | Django | `backend-admin/media/`. En producción, monta el volumen público en `/var/lib/petly/media`. |
+| `PRIVATE_FILES_ROOT` | Django | `backend-admin/private-media/`. En producción, monta el volumen privado en `/var/lib/petly/private-media`. |
+| `SUPABASE_URL` | Django y Spring | URL HTTPS del mismo proyecto, por ejemplo `https://proyecto.supabase.co`. |
+| `SUPABASE_SECRET_KEY` | Django | Clave `sb_secret_…` inyectada desde el gestor de secretos del servidor. |
+
+Las rutas relativas de los dos directorios se resuelven desde `backend-admin/`. En desarrollo, con ambas variables de Supabase vacías, los formularios guardan las fotos en el directorio local.
+
+1. Respalda la base de datos y los dos árboles de archivos. En el primer despliegue, copia los archivos existentes a su volumen correspondiente conservando las rutas relativas, los permisos y la propiedad. Monta ambos volúmenes en cada instancia de Django. Configura el proxy para servir únicamente el volumen público bajo `/media/` y permite el acceso a los documentos privados por sus vistas autenticadas de Django. Configura `MEDIA_BASE_URL` de Spring con la URL pública de `/media/`.
+2. Crea el bucket público `petly-catalogo` en Supabase. Habilita JPEG y PNG y ajusta el límite del bucket, del proyecto y del proxy para admitir el máximo de imagen configurado en Petly y el margen del formulario multipart. Mantén las escrituras y eliminaciones reservadas a la clave de servidor de Django. [Configuración de buckets de Supabase](https://supabase.com/docs/guides/storage/buckets/fundamentals).
+3. Configura primero `SUPABASE_URL` en Spring y luego la URL y la clave en Django. Ejecuta `python manage.py migrate`. La migración actualiza el almacenamiento de los campos de imagen y conserva los nombres ya guardados. Antes de publicar, prueba en un entorno de ensayo la carga y el reemplazo, la visualización desde el catálogo y la descarga para afiches, y recrea la instancia de Django con los mismos volúmenes.
+
+Django sube cada foto nueva a `mascotas/supabase/` con un nombre único y guarda esa ruta relativa. Si la escritura de la ficha falla, intenta eliminar el objeto nuevo. Después de un reemplazo elimina los objetos remotos que ya no tienen referencias en fichas, historial de IA o afiches. Si falla la limpieza, Django registra la ruta para reintentar. Para recuperar objetos tras caídas o tiempos de espera, revisa los objetos del prefijo con un margen de antigüedad, compara con `foto_principal`, `foto_original_ia`, `foto_mejorada_ia` y `PedidoAfiche.foto_ruta`, y elimina por la API de Storage los que sigan sin referencias. [Eliminación de objetos de Supabase](https://supabase.com/docs/guides/storage/management/delete-objects).

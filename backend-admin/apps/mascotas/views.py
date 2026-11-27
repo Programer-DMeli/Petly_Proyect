@@ -14,11 +14,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
-from django.db import transaction
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.albergues.models import Albergue
+from .fotos_catalogo import guardar_foto_catalogo
 from .models import CertificadoVeterinario, Mascota
 from .estados import cambiar_estado_mascota
 from .serializers import (
@@ -233,41 +233,49 @@ class MascotaViewSet(viewsets.ModelViewSet):
         """Filtrar por albergue del usuario (excepto staff)."""
         user = self.request.user
         qs = self.queryset
+        if self.action in ("update", "partial_update"):
+            qs = qs.select_for_update()
 
-                # Usuario normal: solo sus mascotas
+        # Usuario normal: solo sus mascotas
         try:
             albergue = user.albergue
             return qs.filter(albergue=albergue)
         except Albergue.DoesNotExist:
             return qs.none()
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer, foto_principal):
         """Asignar albergue del usuario y creador."""
         serializer.save(
             albergue=self.request.user.albergue,
             creado_por=self.request.user,
             codigo=__import__("uuid").uuid4().hex[:20].upper(),
+            foto_principal=foto_principal,
         )
 
-    @transaction.atomic
     def create(self, request, *args, **kwargs):
         """Override create para retornar serializer de lectura."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        read_serializer = MascotaSerializer(serializer.instance, context={'request': request})
-        headers = self.get_success_headers(read_serializer.data)
-        return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        with guardar_foto_catalogo() as preparar:
+            foto = preparar(serializer.validated_data["foto_principal"])
+            self.perform_create(serializer, foto)
+            data = MascotaSerializer(serializer.instance, context={"request": request}).data
+        return Response(data, status=status.HTTP_201_CREATED, headers=self.get_success_headers(data))
 
-    @transaction.atomic
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        instance._prefetched_objects_cache = {}
-        return Response(MascotaSerializer(instance, context={"request": request}).data)
+        with guardar_foto_catalogo() as preparar:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            if "foto_principal" in serializer.validated_data:
+                foto = preparar(serializer.validated_data["foto_principal"], instance)
+                serializer.save(foto_principal=foto)
+            else:
+                self.perform_update(serializer)
+            instance._prefetched_objects_cache = {}
+            data = MascotaSerializer(instance, context={"request": request}).data
+        return Response(data)
 
     @action(detail=True, methods=["post"], url_path="cambiar-estado")
     def cambiar_estado(self, request, pk=None):

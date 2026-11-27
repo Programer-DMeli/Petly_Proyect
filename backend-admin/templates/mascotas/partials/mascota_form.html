@@ -6,7 +6,7 @@
     </h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
 </div>
-<form hx-post="{% if mascota %}{% url 'mascota_editar' mascota.id %}{% else %}{% url 'mascota_crear' %}{% endif %}" hx-target="#mascota-rows" hx-swap="{% if mascota %}outerHTML{% else %}beforeend{% endif %}" enctype="multipart/form-data" class="modal-body needs-validation" novalidate>
+<form hx-post="{% if mascota %}{% url 'mascota_editar' mascota.id %}{% else %}{% url 'mascota_crear' %}{% endif %}" hx-target="{% if mascota %}#mascota-{{ mascota.id }}{% else %}#mascota-rows{% endif %}" hx-swap="{% if mascota %}outerHTML{% else %}beforeend{% endif %}" hx-encoding="multipart/form-data" enctype="multipart/form-data" class="modal-body needs-validation" novalidate>
     {% csrf_token %}
     
     <div class="row g-3">
@@ -120,8 +120,9 @@
         </div>
         
         <div class="col-12">
-            <label class="form-label">Imagen (JPG/PNG, máx 5MB)</label>
+            <label class="form-label">Imagen (JPG/PNG)</label>
             <input type="file" name="foto_principal" class="form-control" accept="image/jpeg,image/png">
+            <div id="mascota-foto-error" class="mt-2"></div>
             {% if mascota and mascota.foto_principal %}
                 <div class="mt-2">
                     <img src="{{ mascota.foto_principal.url }}" alt="Actual" class="img-thumbnail" style="max-height: 100px;">
