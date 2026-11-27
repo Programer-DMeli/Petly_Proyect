@@ -1,7 +1,7 @@
 """Tests de API para Mascotas."""
 import json
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
@@ -14,9 +14,12 @@ from apps.mascotas.foto_ia import ProveedorFotoNoConfigurado
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 from io import BytesIO
+from urllib.error import HTTPError
+from urllib.parse import unquote, urlsplit
+from uuid import uuid4
 
-def foto_prueba(nombre="mascota.png"):
-    out = BytesIO(); Image.new("RGB", (10,10)).save(out, format="PNG")
+def foto_prueba(nombre="mascota.png", color="black"):
+    out = BytesIO(); Image.new("RGB", (10,10), color).save(out, format="PNG")
     return SimpleUploadedFile(nombre, out.getvalue(), content_type="image/png")
 
 User = get_user_model()
@@ -90,6 +93,74 @@ class MascotaAPITest(TestCase):
         # El serializer de lectura incluye el campo albergue
         self.assertIn('albergue', response.data)
         self.assertEqual(response.data['albergue'], self.albergue.id)
+
+    @override_settings(
+        SUPABASE_URL="https://storage.example.test",
+        SUPABASE_CATALOG_BUCKET="petly-catalogo",
+        SUPABASE_STORAGE_SECRET_KEY="sb_secret_test",
+    )
+    def test_foto_publica_se_reemplaza_solo_despues_de_subir(self):
+        objetos = {}
+        fallar_subida = False
+        endpoint = "https://storage.example.test/storage/v1/object/public/petly-catalogo/"
+
+        def responder(request, timeout):
+            ruta = unquote(urlsplit(request.full_url).path.split("/petly-catalogo/", 1)[1])
+            if request.method == "GET":
+                self.assertIsNone(request.get_header("Apikey"))
+                if ruta in objetos:
+                    return BytesIO(objetos[ruta])
+                error = BytesIO(b'{"statusCode":"404","code":"NoSuchKey"}')
+                raise HTTPError(request.full_url, 400, "Bad Request", {}, error)
+            self.assertEqual(request.method, "POST")
+            self.assertEqual(request.get_header("Apikey"), "sb_secret_test")
+            self.assertEqual(request.get_header("X-upsert"), "false")
+            self.assertEqual(request.get_header("Content-type"), "image/png")
+            if fallar_subida:
+                raise HTTPError(request.full_url, 503, "Unavailable", {}, BytesIO())
+            self.assertNotIn(ruta, objetos)
+            objetos[ruta] = request.data
+            return BytesIO()
+
+        nombre = f"foto-{uuid4().hex}.png"
+        self._auth(self.user)
+        with patch("apps.mascotas.storage.build_opener") as opener:
+            opener.return_value.open.side_effect = responder
+            creada = self.client.post("/api/mascotas/", {
+                "nombre": "Laika", "especie": "PERRO", "sexo": "HEMBRA",
+                "foto_principal": foto_prueba(nombre),
+            }, format="multipart")
+            self.assertEqual(creada.status_code, 201, creada.data)
+            mascota = Mascota.objects.get(pk=creada.data["id"])
+            anterior = f"mascotas/{nombre}"
+            self.assertEqual(mascota.foto_principal.name, anterior)
+            self.assertEqual(creada.data["foto_principal"], endpoint + anterior)
+            with mascota.foto_principal.open("rb") as foto:
+                self.assertEqual(foto.read(), objetos[anterior])
+
+            ruta_api = f"/api/mascotas/{mascota.pk}/"
+            fallar_subida = True
+            fallida = self.client.patch(ruta_api, {"foto_principal": foto_prueba(nombre, "red")}, format="multipart")
+            self.assertEqual(fallida.status_code, 503, fallida.data)
+            mascota.refresh_from_db()
+            self.assertEqual(mascota.foto_principal.name, anterior)
+            self.assertEqual(set(objetos), {anterior})
+
+            fallar_subida = False
+            reemplazada = self.client.patch(ruta_api, {
+                "foto_principal": foto_prueba(nombre, "blue"), "foto_mejorada_confirmada": "true",
+            }, format="multipart")
+            self.assertEqual(reemplazada.status_code, 200, reemplazada.data)
+            mascota.refresh_from_db()
+            nueva = mascota.foto_principal.name
+            self.assertNotEqual(nueva, anterior)
+            self.assertEqual(set(objetos), {anterior, nueva})
+            with mascota.foto_principal.open("rb") as foto:
+                self.assertEqual(Image.open(foto).getpixel((0, 0)), (0, 0, 255))
+            self.assertEqual(Image.open(BytesIO(objetos[anterior])).getpixel((0, 0)), (0, 0, 0))
+            self.assertEqual(reemplazada.data["foto_principal"], endpoint + nueva)
+            self.assertEqual(reemplazada.data["foto_original_ia"], endpoint + anterior)
+            self.assertEqual(reemplazada.data["foto_mejorada_ia"], endpoint + nueva)
 
     def test_ficha_veterinaria_se_guarda_se_consulta_y_se_edita(self):
         self._auth(self.user)

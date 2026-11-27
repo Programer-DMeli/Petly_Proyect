@@ -10,3 +10,5 @@ PETLY_TEST_MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 # Unit tests never call a real paid provider implicitly.
 GEMINI_API_KEY = ""
+SUPABASE_URL = ""
+SUPABASE_STORAGE_SECRET_KEY = ""

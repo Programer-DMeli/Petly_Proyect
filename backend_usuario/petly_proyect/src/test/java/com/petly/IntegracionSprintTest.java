@@ -22,7 +22,8 @@ import com.petly.usuarios.*;
 import com.petly.perfiles.PerfilService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.fasterxml.jackson.databind.ObjectMapper;
-@SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test")
+@SpringBootTest(properties = "petly.media-base-url=https://xxkflopxbuobpjzfxcdf.supabase.co/storage/v1/object/public/petly-catalogo/")
+@AutoConfigureMockMvc @ActiveProfiles("test")
 class IntegracionSprintTest {
  @Autowired MockMvc mvc; @Autowired JdbcTemplate db; @Autowired UsuarioRepository users;
  @Autowired PasswordEncoder encoder; @Autowired JwtService jwt; @Autowired PerfilService perfil;
@@ -65,7 +66,8 @@ class IntegracionSprintTest {
  @Test void catalogRealCombinationPaginationAndStatus() throws Exception {
   String t=token("ADOPTANTE");
   mvc.perform(get("/api/catalogo").param("especie","Perro").param("tamano","Mediano").param("temperamento","Por evaluar").param("edadMinimaMeses","24").param("edadMaximaMeses","24").param("page","2").param("pageSize","2").header("Authorization","Bearer "+t))
-   .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(4)).andExpect(jsonPath("$.items[0].id").value(3));
+   .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(4)).andExpect(jsonPath("$.items[0].id").value(3))
+   .andExpect(jsonPath("$.items[0].fotografiaUrl").value("https://xxkflopxbuobpjzfxcdf.supabase.co/storage/v1/object/public/petly-catalogo/mascotas/luna.png"));
   db.update("UPDATE mascotas_mascota SET estado='ADOPTADO' WHERE id=1");
   mvc.perform(get("/api/catalogo/1").header("Authorization","Bearer "+t)).andExpect(jsonPath("$.estado").value("Adoptado")).andExpect(jsonPath("$.edadMeses").value(24));
   mvc.perform(get("/api/catalogo").param("edadMinimaMeses","25").param("edadMaximaMeses","24").header("Authorization","Bearer "+t)).andExpect(status().isBadRequest());

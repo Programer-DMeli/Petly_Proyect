@@ -118,12 +118,29 @@ class MascotaSerializer(serializers.ModelSerializer):
     temperamento_display = serializers.CharField(source="get_temperamento_display", read_only=True)
     edad_texto = serializers.CharField(read_only=True)
     albergue_nombre = serializers.CharField(source="albergue.nombre", read_only=True)
-    foto_original_ia = serializers.ImageField(read_only=True)
-    foto_mejorada_ia = serializers.ImageField(read_only=True)
+    foto_original_ia = serializers.SerializerMethodField()
+    foto_mejorada_ia = serializers.SerializerMethodField()
     evidencia_vacunacion = serializers.ImageField(read_only=True)
     evidencia_esterilizacion = serializers.ImageField(read_only=True)
     registros_clinicos = serializers.SerializerMethodField()
     alerta_clinica = serializers.SerializerMethodField()
+
+    def _url_foto_ia(self, archivo, mascota):
+        if not archivo:
+            return None
+        almacen = mascota.foto_principal.storage
+        if almacen.activo and archivo.name.startswith("mascotas/") and archivo.name.count("/") == 1 and not archivo.storage.exists(archivo.name):
+            url = almacen.url(archivo.name)
+        else:
+            url = archivo.url
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if request else url
+
+    def get_foto_original_ia(self, mascota):
+        return self._url_foto_ia(mascota.foto_original_ia, mascota)
+
+    def get_foto_mejorada_ia(self, mascota):
+        return self._url_foto_ia(mascota.foto_mejorada_ia, mascota)
 
     def _es_albergue_propietario(self, mascota):
         request = self.context.get("request")

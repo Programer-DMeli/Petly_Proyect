@@ -1,8 +1,10 @@
 package com.petly.catalogo;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.util.UriUtils;
 import com.petly.common.exception.ApiException;
 @Service
 public class CatalogoService {
@@ -50,7 +52,10 @@ public class CatalogoService {
   v.put("energia",Map.of("BAJA","Baja","MEDIA","Media","ALTA","Alta").getOrDefault(String.valueOf(row.get("energia")),"Por evaluar"));
   v.put("descripcion",row.get("descripcion"));v.put("albergue",row.get("albergue_nombre"));v.put("albergueId",row.get("albergue_id"));v.put("ubicacion",row.get("ubicacion"));
   v.put("estado",Map.of("DISPONIBLE","Disponible","EN_PROCESO","En Proceso","ADOPTADO","Adoptado").get(row.get("estado")));
-  String photo=(String)row.get("foto_principal");v.put("fotografiaUrl",photo==null||photo.isBlank()?null:media.replaceAll("/$","")+"/"+photo);return v;
+  String photo = (String) row.get("foto_principal");
+  v.put("fotografiaUrl", photo == null || photo.isBlank() ? null
+          : media.replaceAll("/+$", "") + "/" + UriUtils.encodePath(photo, StandardCharsets.UTF_8));
+  return v;
  }
  public List<Map<String,Object>> shelters() {return db.queryForList("SELECT id,nombre,direccion FROM albergues WHERE activo=TRUE ORDER BY nombre,id");}
 }

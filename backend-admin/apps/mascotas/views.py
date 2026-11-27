@@ -21,6 +21,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from apps.albergues.models import Albergue
 from .models import CertificadoVeterinario, Mascota
 from .estados import cambiar_estado_mascota
+from .storage import ErrorFotosCatalogo
 from .serializers import (
     MascotaSerializer,
     MascotaListSerializer,
@@ -57,6 +58,11 @@ class MascotaViewSet(viewsets.ModelViewSet):
     search_fields = ["nombre", "codigo", "raza", "descripcion"]
     ordering_fields = ["creado_en", "fecha_ingreso", "nombre", "estado", "especie", "tamanio", "temperamento", "edad_meses"]
     ordering = ["-creado_en"]
+
+    def handle_exception(self, exc):
+        if isinstance(exc, ErrorFotosCatalogo):
+            return Response({"foto_principal": [str(exc)]}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return super().handle_exception(exc)
 
     def get_serializer_class(self):
         if self.action == "compatibilidad":

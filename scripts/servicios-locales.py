@@ -26,15 +26,16 @@ for port in (8080, 8000):
     with socket.socket() as sock:
         if sock.connect_ex(("127.0.0.1", port)) == 0:
             raise SystemExit(f"El puerto {port} está ocupado. No se detuvo el otro proceso.")
-env = dict(os.environ, **{k: v for k, v in {**spring, **django}.items() if v is not None})
+django_env = dict(os.environ, **{k: v for k, v in {**spring, **django}.items() if v is not None})
+env = {k: v for k, v in django_env.items() if not k.startswith("SUPABASE_")}
 logs = home / "logs"
 logs.mkdir(parents=True, exist_ok=True, mode=0o700)
 children = []
 
 
-def launch(cwd, command, name):
+def launch(cwd, command, name, process_env):
     with (logs / name).open("w") as log:
-        child = subprocess.Popen(command, cwd=cwd, env=env, stdout=log,
+        child = subprocess.Popen(command, cwd=cwd, env=process_env, stdout=log,
                                  stderr=subprocess.STDOUT, start_new_session=True)
     children.append(child)
     return child
@@ -53,7 +54,7 @@ signal.signal(signal.SIGINT, stop)
 try:
     # clean elimina recursos compilados antiguos, incluidas migraciones retiradas por main.
     backend = launch(root / "backend_usuario/petly_proyect",
-                     ["bash", "mvnw", "-q", "clean", "spring-boot:run"], "spring.log")
+                     ["bash", "mvnw", "-q", "clean", "spring-boot:run"], "spring.log", env)
     for _ in range(240):
         if backend.poll() is not None:
             raise SystemExit("Spring terminó. Revisar ~/.local/share/petly/logs/spring.log.")
@@ -67,12 +68,12 @@ try:
         raise SystemExit("Spring no respondió en el plazo esperado.")
     with (logs / "migraciones-django.log").open("w") as log:
         subprocess.run([os.sys.executable, "manage.py", "migrate", "--noinput"],
-                       cwd=root / "backend-admin", env=env, stdout=log,
+                       cwd=root / "backend-admin", env=django_env, stdout=log,
                        stderr=subprocess.STDOUT, check=True)
     launch(root / "backend-admin", [os.sys.executable, "manage.py", "runserver",
-                                   "127.0.0.1:8000", "--noreload"], "django.log")
+                                   "127.0.0.1:8000", "--noreload"], "django.log", django_env)
     if env.get("AFICHE_WORKER_TOKEN"):
-        launch(root, ["node", "trabajador.js"], "afiches.log")
+        launch(root, ["node", "trabajador.js"], "afiches.log", env)
     state = home / "servicios.json"
     state.write_text(json.dumps({"pid": os.getpid(), "database": "database_petly"}))
     state.chmod(0o600)

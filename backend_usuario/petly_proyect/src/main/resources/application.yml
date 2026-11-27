@@ -94,7 +94,7 @@ petly:
   reniec-timeout-ms: ${RENIEC_API_TIMEOUT_MS:5000}
   web-reset-link-base: ${WEB_RESET_LINK_BASE:http://localhost:5173/recuperacion}
   reset-link-base: ${RESET_LINK_BASE:petly://recuperacion}
-  media-base-url: ${MEDIA_BASE_URL:http://10.0.2.2:8000/media/}
+  media-base-url: ${MEDIA_BASE_URL:https://xxkflopxbuobpjzfxcdf.supabase.co/storage/v1/object/public/petly-catalogo/}
 
 # JWT Configuration (US-21)
 # Auth configuration (US-21)

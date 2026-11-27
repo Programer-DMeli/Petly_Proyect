@@ -5,12 +5,36 @@ Revisión: 12 de octubre de 2026. Se conservan `com.petly`, `com.petly_app` y lo
 ## Configuración compartida
 
 1. Crear la base `database_petly` en MariaDB y comprobar `SELECT VERSION();`. Usar un usuario local con permisos suficientes para las migraciones.
-2. Copiar los `.env.example` de ambos backends a archivos `.env` privados y completar DB y secretos. Django carga su `.env`; Spring **no** lo carga automáticamente.
+2. Copiar los `.env.example` de ambos backends a archivos `.env` privados y completar DB y secretos. Django lee su `.env`. Spring lo importa al arrancar desde el directorio de su proyecto.
 3. Generar claves propias, por ejemplo `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Compartir `SPRING_JWT_SECRET` e `INTERNAL_API_SECRET` entre los dos servicios y generar además `DJANGO_SECRET_KEY`. No escribirlas en commits, capturas ni ejemplos públicos.
 4. Configurar SMTP: host, puerto, usuario y contraseña si corresponde; habilitar auth y STARTTLS según ese servidor. El receptor SMTP del script de pruebas utiliza localhost:1025, sin auth/TLS y entrega solo a un archivo local de pruebas, no a Internet.
-5. Emulador: `MEDIA_BASE_URL=http://10.0.2.2:8000/media/`, Android `http://10.0.2.2:8080/`. Django llama a Spring por `SPRING_API_URL=http://127.0.0.1:8080`.
+5. Emulador: la API Spring está en `http://10.0.2.2:8080/`. Django llama a Spring por `SPRING_API_URL=http://127.0.0.1:8080`. Las fotos del catálogo se descargan desde Supabase.
 
-En Linux, cargar el `.env` de Spring en esa terminal antes de `bash mvnw spring-boot:run`: `set -a`, `source .env`, `set +a`. El archivo debe contener asignaciones shell válidas de confianza. En Windows PowerShell, asignar `$env:DB_URL`, `$env:DB_USERNAME`, `$env:DB_PASSWORD`, `$env:SPRING_JWT_SECRET`, `$env:MAIL_HOST` y demás variables antes de `.\mvnw.cmd spring-boot:run`; no se obtiene configuración solo por copiar `.env`.
+### Fotos públicas del catálogo
+
+El bucket público `petly-catalogo` admite JPEG y PNG. En `backend-admin/.env` o en el gestor de secretos del despliegue de Django, configurar:
+
+```dotenv
+SUPABASE_URL=https://xxkflopxbuobpjzfxcdf.supabase.co
+SUPABASE_CATALOG_BUCKET=petly-catalogo
+SUPABASE_STORAGE_SECRET_KEY=sb_secret_valor_de_ejemplo
+```
+
+El último valor es un marcador. Usar una clave secreta de Supabase o el JWT heredado `service_role` y guardarlo únicamente en el entorno privado de Django. Los archivos `.env` están excluidos de Git. Mantener la escritura pública del bucket deshabilitada. Django usa este bucket solo para `foto_principal`. Los certificados veterinarios, contratos y demás archivos privados conservan su almacenamiento.
+
+En el entorno de Spring, configurar:
+
+```dotenv
+MEDIA_BASE_URL=https://xxkflopxbuobpjzfxcdf.supabase.co/storage/v1/object/public/petly-catalogo/
+```
+
+Spring concatena esta base con la ruta de MariaDB, por ejemplo `mascotas/laika.jpg`. Los reemplazos conservan el objeto anterior y su referencia hasta que la nueva subida se completa. Si ya existe un objeto con el mismo nombre, Django asigna otro nombre al archivo nuevo. React y Android descargan la foto por HTTPS con la URL de `fotografiaUrl`.
+
+Para publicar fotos principales que ya están registradas, ejecutar desde `backend-admin` `python manage.py publicar_fotos_catalogo` para revisar cuáles existen o faltan. Después, con la clave de escritura instalada en Django, ejecutar `python manage.py publicar_fotos_catalogo --apply` para copiar las pendientes desde `MEDIA_ROOT` a sus rutas exactas. El comando conserva las filas de MariaDB y los objetos que ya existen. Para una prueba local sin Supabase, dejar `SUPABASE_URL` vacía y apuntar `MEDIA_BASE_URL` a la URL local de Django que pueda abrir el cliente.
+
+Para usar Layerbase, configurar `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` y TLS en Django, y `DB_URL`, `DB_USERNAME` y `DB_PASSWORD` en Spring para la misma base remota. Comprobar `http://localhost:8080/api/health` y `http://localhost:8000/api/health/`. En React, abrir el catálogo como adoptante, revisar la respuesta a `/api/catalogo` en DevTools → Red y abrir una `fotografiaUrl` en una pestaña. En Android, recargar el catálogo con la misma API Spring.
+
+Desde la carpeta de Spring, ejecutar `bash mvnw spring-boot:run` en Linux o `.\mvnw.cmd spring-boot:run` en PowerShell. También se pueden configurar las variables en el entorno del proceso.
 
 ## Migraciones sin borrar datos
 
@@ -43,7 +67,7 @@ Abrir `mobile_petly` en Android Studio; `local.properties` contiene su SDK local
 
 En `mobile_petly`: `./gradlew :app:assembleDebug :app:testDebugUnitTest` (Windows: `.\gradlew.bat`). HTTP está permitido solo en debug; release exige HTTPS y conserva la URL provisional sin servicio de producción configurado.
 
-Teléfono físico: equipo y teléfono en la misma red; arrancar los servicios con interfaces LAN accesibles, agregar esa IP a `DJANGO_ALLOWED_HOSTS` y ajustar `MEDIA_BASE_URL=http://<IP_LAN>:8000/media/`. Compilar con `-PpetlyApiBaseUrl=http://<IP_LAN>:8080/`. No utilizar 10.0.2.2 desde el teléfono. Comprobar conectividad y firewall local. La prueba desde teléfono físico sigue pendiente.
+Teléfono físico: en la misma red Wi-Fi, arrancar Spring en una interfaz accesible y compilar con `-PpetlyApiBaseUrl=http://<IP_LAN>:8080/` en debug. Fuera de la red, configurar una URL pública HTTPS de Spring. Las fotografías usan la misma URL pública de Supabase en ambos casos. Si se usan funciones de Django desde el teléfono, configurar también `-PpetlyAdminApiBaseUrl` y el host admitido por Django.
 
 Si la app del emulador tiene otra firma, conservarla: usar `-PpetlyIntegrationInstall=true` para instalar `com.petly_app.integration`, exclusivamente en debug. El ID normal y release siguen siendo `com.petly_app`. No desinstalar la app original para resolver este conflicto sin autorización.
 
@@ -103,7 +127,7 @@ Nueva migración Django mascotas/0004_alter_mascota_sexo.py agrega la opción PO
 
 Para probar el CRUD ADMIN preparar una cuenta ALBERGUE libre con python scripts/preparar-propietario-crud.py sobre la base aislada. Credenciales solo en /tmp/petly-crud-owner.json; el script no crea cuentas en la base real. El test web tests/admin-crud.spec.js utiliza ese archivo privado además de PETLY_DEMO_FILE. Crear cuentas reales siguiendo cuentas-admin.md.
 
-Publicación de imágenes de ejemplo: desde web ejecutar node scripts/publicar-mascotas.mjs con los servicios iniciados. Requiere img_mascotas (originales del usuario, no versionados), Chromium instalado y la cuenta demo ALBERGUE con institución. Reutiliza registros de demostración iguales; no reemplaza otras mascotas. Las pruebas Android de fotografías requieren primero publicar estas siete imágenes. API y medios siguen siendo Django; clientes reciben las URLs del catálogo Spring.
+Publicación de imágenes de ejemplo: desde web ejecutar node scripts/publicar-mascotas.mjs con los servicios iniciados. Requiere img_mascotas (originales del usuario, no versionados), Chromium instalado y la cuenta demo ALBERGUE con institución. Reutiliza registros de demostración iguales; no reemplaza otras mascotas. Las pruebas Android de fotografías requieren primero publicar estas siete imágenes. Django recibe las fotos y Spring devuelve las URLs del almacenamiento configurado.
 
 Ejecutar las suites de navegador y Android secuencialmente: comparten la cuota local de autenticación y usan recursos de la máquina. Si Gradle tiene problemas de memoria, usar --no-daemon --max-workers=1 -Dorg.gradle.jvmargs=-Xmx1024m. Los reportes temporales pueden contener datos privados; no se versionan ni publican.
 
