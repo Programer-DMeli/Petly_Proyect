@@ -40,7 +40,14 @@ const pets = [
     raza: 'Mestizo',
     sexo: 'Macho',
     saludConfirmada: true,
-    compatibilidad: { porcentaje: 72, puntaje: 72, cobertura: 100, datosInsuficientes: false, mensaje: '' },
+    compatibilidad: {
+      porcentaje: 72, puntaje: 72, cobertura: 100, datosInsuficientes: false, mensaje: '',
+      versionReglas: 'petly-compat-v1',
+      criterios: [{
+        id: 'vivienda', nombre: 'Vivienda', peso: 30, aporte: 30,
+        explicacion: 'Compara la vivienda con el tamaño de la mascota.',
+      }],
+    },
   },
   {
     id: 9,
@@ -142,7 +149,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await expect(catHero.getByRole('heading', { name: 'Datos incompletos' })).toBeVisible();
     await expect(hero.getByRole('heading', { name: 'Segundo puntaje' })).toBeVisible();
     await expect(catHero.getByText('Sin calcular', { exact: true })).toBeVisible();
-    await expect(hero.getByText('72%', { exact: true })).toBeVisible();
+    await expect(hero.locator('.catalog-featured__compat').getByText('72%', { exact: true })).toBeVisible();
     await expect(page.locator('article.pet')).toHaveCount(0);
     expect(requests.map(request => request.especie).sort()).toEqual(['Gato', 'Perro']);
     await dogs.click();
@@ -220,15 +227,41 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await expect(page).toHaveURL(/\/adoptante\/catalogo\?search=Hogar\+Petly&especie=Perro$/);
     await expect(hero.getByRole('heading', { name: 'Segundo puntaje' })).toBeVisible();
     await expect(hero.getByText('Sano', { exact: true })).toBeVisible();
-    await expect(hero.getByText('Macho', { exact: true })).toBeVisible();
+    await expect(hero.getByRole('list', { name: 'Características' }).getByText('Macho', { exact: true })).toBeVisible();
     await expect(hero.getByRole('link', { name: 'Solicitar adopción' })).toHaveAttribute('href', '/adoptante/catalogo/7/solicitud');
     const conocerme = hero.getByRole('button', { name: 'Conocerme', exact: true });
     const catalogUrl = page.url();
     await conocerme.press('Enter');
     const reverse = hero.getByRole('heading', { name: 'Más sobre Segundo puntaje' });
     await expect(reverse).toBeFocused();
-    await expect(hero.getByText('Mestizo', { exact: true })).toBeVisible();
-    await expect(hero.getByText('Hogar Petly', { exact: true })).toBeVisible();
+    const ficha = hero.getByRole('region', { name: 'Información de la mascota' });
+    await expect(ficha.getByText('Mestizo', { exact: true })).toBeVisible();
+    await expect(ficha.getByRole('heading', { name: 'Hogar Petly' })).toBeVisible();
+    const compatibilidad = ficha.getByRole('region', { name: '¿Cómo se calcula tu compatibilidad?' });
+    await expect(compatibilidad.getByText('72%', { exact: true })).toBeVisible();
+    await expect(compatibilidad.getByText('100%', { exact: true })).toBeVisible();
+    await expect(compatibilidad.getByRole('list', { name: 'Criterios de compatibilidad' }))
+      .toContainText('Aporta 30.00 puntos');
+    await expect(compatibilidad.getByText('Reglas: petly-compat-v1')).toBeVisible();
+    await expect(ficha.getByRole('button', { name: 'Consultar o reintentar consejos IA' })).toBeVisible();
+    const acciones = ficha.locator('.pet-full-profile__action');
+    const elegir = acciones.locator('summary');
+    await expect(elegir).toHaveText('Elegir una acción');
+    await expect(acciones.getByRole('link')).toHaveCount(0);
+    await elegir.press('Enter');
+    await expect(acciones.getByRole('link')).toHaveText([
+      'Llenar formulario de adopción', 'Escribir al albergue', 'Administrar autorizaciones de mi perfil',
+    ]);
+    await expect(acciones.getByRole('link', { name: 'Llenar formulario de adopción' }))
+      .toHaveAttribute('href', '/adoptante/catalogo/7/solicitud');
+    const conversacion = acciones.getByRole('link', { name: 'Escribir al albergue' });
+    await expect(conversacion).toHaveAttribute('href', '/adoptante/mensajes?albergue=1');
+    await conversacion.scrollIntoViewIfNeeded();
+    await expect.poll(() => ficha.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+    await expect(acciones.getByRole('link', { name: 'Administrar autorizaciones de mi perfil' }))
+      .toHaveAttribute('href', '/adoptante/autorizaciones');
+    await elegir.click();
+    await expect(acciones.getByRole('link')).toHaveCount(0);
     await expect(hero.getByRole('link', { name: 'Ver ficha completa' })).toHaveAttribute('href', '/adoptante/catalogo/7');
     await expect(page).toHaveURL(catalogUrl);
     if (viewport.width < 640) {
@@ -246,7 +279,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await results.getByRole('button', { name: 'Destacar a Mejor puntaje' }).press('Space');
     await expect(hero.getByRole('heading', { name: 'Mejor puntaje' })).toBeVisible();
     await expect(conocerme).toHaveAttribute('aria-expanded', 'false');
-    const percentage = hero.getByText('100%', { exact: true });
+    const percentage = hero.locator('.catalog-featured__compat').getByText('100%', { exact: true });
     await expect(percentage).toBeVisible();
     const fit = await percentage.evaluate(node => {
       const ring = node.getBoundingClientRect();

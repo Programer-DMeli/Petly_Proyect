@@ -1,12 +1,12 @@
 import AyudaParaAdoptar from '../components/AyudaParaAdoptar';
 import CatalogoResultados from '../components/CatalogoResultados';
-import ConsejosCompatibilidad from '../../../../components/ConsejosCompatibilidad';
+import FichaCompletaMascota from '../components/FichaCompletaMascota';
 import { FavoriteHeart } from '../../../../components/FavoritesProvider';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
-import { spring, mediaUrl, errorMessage } from '../../../../services/http';
+import { spring, errorMessage } from '../../../../services/http';
 import type { Pet } from '../../../../services/types';
 interface Filters {
   search: string;
@@ -299,8 +299,6 @@ export function DetallePage() {
     return () => controller.abort();
   }, [load]);
 
-  const disponible = pet?.estado.trim().toLowerCase() === 'disponible';
-
   return (
     <section className="card">
       <Link to="/adoptante/catalogo">Volver al catálogo</Link>
@@ -311,71 +309,7 @@ export function DetallePage() {
             <h1>{pet.nombre}</h1>
             <FavoriteHeart pet={pet} />
           </div>
-          {pet.fotografiaUrl && (
-            <img className="detail-photo" src={mediaUrl(pet.fotografiaUrl)} alt={pet.nombre} />
-          )}
-          <p>
-            <span className="badge">{pet.estado}</span>
-          </p>
-          <p>
-            {pet.especie} · {pet.tamano} ·{' '}
-            {pet.edadMeses === null ? 'Edad por evaluar' : `${pet.edadMeses} meses`}
-          </p>
-          <p>
-            Temperamento: {pet.temperamento} · Energía: {pet.energia}
-          </p>
-          <p>{pet.descripcion}</p>
-          {pet.compatibilidad && (
-            <section
-              className="card compatibility-breakdown"
-              aria-labelledby="compatibility-heading"
-            >
-              <h2 id="compatibility-heading">¿Cómo se calcula tu compatibilidad?</h2>
-              <p>{pet.compatibilidad.mensaje}</p><p>Reglas: {pet.compatibilidad.versionReglas}</p>
-              <p>
-                Puntaje:{' '}
-                <strong>
-                  {pet.compatibilidad.porcentaje === null
-                    ? 'Información insuficiente'
-                    : `${pet.compatibilidad.porcentaje}%`}
-                </strong>
-                {' · '}Cobertura de datos: {pet.compatibilidad.cobertura}%
-              </p>
-              <ul>
-                {pet.compatibilidad.criterios.map(criterion => (
-                  <li key={criterion.id}>
-                    <strong>{criterion.nombre}</strong> · peso {criterion.peso}% ·{' '}
-                    {criterion.aporte === null
-                      ? 'aporte no calculable por falta de datos'
-                      : `aporta ${criterion.aporte.toFixed(2)} puntos`}
-                    <p>{criterion.explicacion}</p>
-                  </li>
-                ))}
-              </ul>
-              <p className="muted">
-                El total ponderado se redondea al entero más cercano. Es una orientación; el
-                albergue decide cada adopción.
-              </p>
-            </section>
-          )}
-          <ConsejosCompatibilidad key={pet.id} id={pet.id} />
-          <h2>{pet.albergue}</h2>
-          <p>{pet.ubicacion}</p>
-          <div className="actions">
-            {disponible && (
-              <Link className="button" to={`/adoptante/catalogo/${pet.id}/solicitud`}>
-                Llenar formulario de adopción
-              </Link>
-            )}
-            <Link
-              className="button secondary"
-              to={`/adoptante/mensajes?albergue=${pet.albergueId}`}
-            >
-              Escribir al albergue
-            </Link>
-            <Link to="/adoptante/autorizaciones">Administrar autorizaciones de mi perfil</Link>
-          </div>
-          {!disponible && <p role="status">Esta mascota no está disponible para solicitudes.</p>}
+          <FichaCompletaMascota mascota={pet} />
         </>
       ) : (
         <button onClick={() => void load()}>Cargar detalle</button>

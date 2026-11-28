@@ -4,6 +4,7 @@ import { FavoriteHeart } from '../../../../components/FavoritesProvider';
 import { mediaUrl } from '../../../../services/http';
 import { formatAge } from '../../../../services/formatAge';
 import type { Pet } from '../../../../services/types';
+import FichaCompletaMascota from './FichaCompletaMascota';
 
 function FotoDestacada({ mascota }: { mascota: Pet }) {
   const fotos = [...new Set([mascota.fotografiaUrl, ...(mascota.fotografiasAdicionales ?? [])].filter(Boolean))];
@@ -64,6 +65,7 @@ function known(value?: string | null) {
 function FichaDestacada({ seleccionada }: { seleccionada: Pet }) {
   const [girada, setGirada] = useState(false);
   const reverso = useId();
+  const ficha = useRef<HTMLDivElement>(null);
   const conocerme = useRef<HTMLButtonElement>(null);
   const titulo = useRef<HTMLHeadingElement>(null);
   const restaurarFoco = useRef(false);
@@ -71,12 +73,6 @@ function FichaDestacada({ seleccionada }: { seleccionada: Pet }) {
   const porcentaje = compatibilidad?.porcentaje;
   const requierePerfil = compatibilidad?.mensaje?.startsWith('Completa tu perfil');
   const detalle = `/adoptante/catalogo/${seleccionada.id}`;
-  const datos = [
-    { label: 'Albergue', value: seleccionada.albergue },
-    { label: 'Ubicación', value: seleccionada.ubicacion },
-    { label: 'Raza', value: seleccionada.raza },
-    { label: 'Nivel de energía', value: known(seleccionada.energia) },
-  ].filter(dato => dato.value?.trim());
 
   function volver() {
     restaurarFoco.current = true;
@@ -85,6 +81,7 @@ function FichaDestacada({ seleccionada }: { seleccionada: Pet }) {
 
   useEffect(() => {
     if (girada) {
+      ficha.current?.scrollIntoView({ block: 'start', inline: 'nearest' });
       titulo.current?.focus({ preventScroll: true });
     } else if (restaurarFoco.current) {
       conocerme.current?.focus({ preventScroll: true });
@@ -93,7 +90,7 @@ function FichaDestacada({ seleccionada }: { seleccionada: Pet }) {
   }, [girada]);
 
   return (
-    <div className="catalog-featured__flip" data-flipped={girada}>
+    <div className="catalog-featured__flip" data-flipped={girada} ref={ficha}>
       <div className="catalog-featured__flip-inner">
         <div className="catalog-featured__sheet" inert={girada} aria-hidden={girada}>
           <header className="catalog-featured__title">
@@ -149,17 +146,11 @@ function FichaDestacada({ seleccionada }: { seleccionada: Pet }) {
           inert={!girada} aria-hidden={!girada} onKeyDown={event => { if (event.key === 'Escape') volver(); }}>
           <header className="catalog-featured__title">
             <h2 ref={titulo} tabIndex={-1}>Más sobre {seleccionada.nombre}</h2>
+            <FavoriteHeart pet={seleccionada} />
           </header>
-          {datos.length > 0 && (
-            <dl className="catalog-featured__extra">
-              {datos.map(({ label, value }) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
+          <section className="catalog-featured__reverse-content" aria-label="Información de la mascota" tabIndex={0}>
+            <FichaCompletaMascota mascota={seleccionada} mostrarFoto={false} />
+          </section>
           <div className="catalog-featured__actions">
             <button className="button secondary" type="button" onClick={volver}>Volver a la ficha</button>
             <Link className="button" to={detalle}>Ver ficha completa</Link>
