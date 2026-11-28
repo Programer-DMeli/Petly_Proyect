@@ -1745,6 +1745,19 @@
   outline-offset: 2px;
   border-radius: 1rem;
 }
+.catalog-featured__thumbnail {
+  position: relative;
+}
+.catalog-featured__track .catalog-featured__apply {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 2.75rem;
+  margin-top: 0.35rem;
+  padding-inline: 0.35rem;
+  font-size: 0.8rem;
+  text-align: center;
+}
 .catalog-featured__choice {
   position: relative;
   display: block;

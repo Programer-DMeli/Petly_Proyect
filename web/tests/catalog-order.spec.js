@@ -148,6 +148,13 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await expect(dogs).toBeVisible();
     await expect(catHero.getByRole('heading', { name: 'Datos incompletos' })).toBeVisible();
     await expect(hero.getByRole('heading', { name: 'Segundo puntaje' })).toBeVisible();
+    await expect(catResults.getByRole('list', { name: 'Mascotas de la especie seleccionada' })
+      .getByRole('link', { name: 'Solicitar adopción de Datos incompletos' }))
+      .toHaveAttribute('href', '/adoptante/catalogo/9/solicitud');
+    const dogCarousel = results.getByRole('list', { name: 'Mascotas de la especie seleccionada' });
+    await expect(dogCarousel.getByRole('button', { name: 'Solicitar adopción de Mejor puntaje (Adoptado)' })).toBeDisabled();
+    await expect(dogCarousel.getByRole('link', { name: 'Solicitar adopción de Segundo puntaje' }))
+      .toHaveAttribute('href', '/adoptante/catalogo/7/solicitud');
     await expect(catHero.getByText('Sin calcular', { exact: true })).toBeVisible();
     await expect(hero.locator('.catalog-featured__compat').getByText('72%', { exact: true })).toBeVisible();
     await expect(page.locator('article.pet')).toHaveCount(0);
@@ -234,6 +241,8 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await conocerme.press('Enter');
     const reverse = hero.getByRole('heading', { name: 'Más sobre Segundo puntaje' });
     await expect(reverse).toBeFocused();
+    await expect(hero.getByRole('link', { name: 'Solicitar adopción de Segundo puntaje' }))
+      .toHaveAttribute('href', '/adoptante/catalogo/7/solicitud');
     const ficha = hero.getByRole('region', { name: 'Información de la mascota' });
     await expect(ficha.getByText('Mestizo', { exact: true })).toBeVisible();
     await expect(ficha.getByRole('heading', { name: 'Hogar Petly' })).toBeVisible();
@@ -262,7 +271,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
       .toHaveAttribute('href', '/adoptante/autorizaciones');
     await elegir.click();
     await expect(acciones.getByRole('link')).toHaveCount(0);
-    await expect(hero.getByRole('link', { name: 'Ver ficha completa' })).toHaveAttribute('href', '/adoptante/catalogo/7');
+    await expect(hero.getByRole('link', { name: 'Ver ficha completa' })).toHaveCount(0);
     await expect(page).toHaveURL(catalogUrl);
     if (viewport.width < 640) {
       await expect(hero.locator('.catalog-featured__flip-inner')).toHaveCSS('transform', 'none');
@@ -293,6 +302,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await expect(hero.getByRole('img')).toHaveAttribute('src', /perro\.webp$/);
     await expect(hero.getByRole('button', { name: 'Foto siguiente' })).toHaveCount(0);
     await expect(hero.getByRole('link', { name: 'Solicitar adopción' })).toHaveCount(0);
+    await expect(hero.getByRole('button', { name: 'Solicitar adopción de Mejor puntaje (Adoptado)' })).toBeDisabled();
     await expect(hero.getByText('Sano', { exact: true })).toHaveCount(0);
     await expect(results.getByRole('button', { name: 'Destacar a Mejor puntaje' })).toHaveAttribute('aria-pressed', 'true');
     await page.route('**/api/perfil/favoritos/7', route => route.fulfill({ status: 204 }));
@@ -318,6 +328,10 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await results.getByRole('link', { name: 'Ver todos' }).click();
     await expect(page).toHaveURL(/[?&]vista=todos$/);
     await expect(results.locator('article.pet h2')).toHaveText(['Mejor puntaje', 'Segundo puntaje']);
+    const grid = results.locator('.pet-card-grid');
+    await expect(grid.getByRole('button', { name: 'Solicitar adopción de Mejor puntaje (Adoptado)' })).toBeDisabled();
+    await expect(grid.getByRole('link', { name: 'Solicitar adopción de Segundo puntaje' }))
+      .toHaveAttribute('href', '/adoptante/catalogo/7/solicitud');
     await expect(page.getByText('Página 1 de 2')).toBeVisible();
 
     await page.goBack();

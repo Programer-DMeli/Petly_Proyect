@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { FavoriteHeart } from '../../../../components/FavoritesProvider';
+import SolicitarAdopcion from '../../../../components/SolicitarAdopcion';
 import { mediaUrl } from '../../../../services/http';
 import { formatAge } from '../../../../services/formatAge';
 import type { Pet } from '../../../../services/types';
@@ -72,7 +73,6 @@ function FichaDestacada({ seleccionada }: { seleccionada: Pet }) {
   const compatibilidad = seleccionada.compatibilidad;
   const porcentaje = compatibilidad?.porcentaje;
   const requierePerfil = compatibilidad?.mensaje?.startsWith('Completa tu perfil');
-  const detalle = `/adoptante/catalogo/${seleccionada.id}`;
 
   function volver() {
     restaurarFoco.current = true;
@@ -129,11 +129,7 @@ function FichaDestacada({ seleccionada }: { seleccionada: Pet }) {
             </div>
           )}
           <div className="catalog-featured__actions">
-            {seleccionada.estado === 'Disponible' && (
-              <Link className="button" to={detalle + '/solicitud'}>
-                <span aria-hidden="true">♡</span> Solicitar adopción
-              </Link>
-            )}
+            <SolicitarAdopcion mascota={seleccionada} />
             <button
               className="button secondary" type="button" ref={conocerme}
               aria-controls={reverso} aria-expanded={girada} onClick={() => setGirada(true)}
@@ -152,8 +148,8 @@ function FichaDestacada({ seleccionada }: { seleccionada: Pet }) {
             <FichaCompletaMascota mascota={seleccionada} mostrarFoto={false} />
           </section>
           <div className="catalog-featured__actions">
+            <SolicitarAdopcion mascota={seleccionada} />
             <button className="button secondary" type="button" onClick={volver}>Volver a la ficha</button>
-            <Link className="button" to={detalle}>Ver ficha completa</Link>
           </div>
         </div>
       </div>
@@ -215,15 +211,18 @@ export default function CatalogoDestacado({ mascotas, seleccionada, elegir, verT
               const selected = mascota.id === seleccionada.id;
               return (
                 <li key={mascota.id} className={selected ? 'is-selected' : undefined}>
-                  <button className="catalog-featured__choice" type="button" aria-label={`Destacar a ${mascota.nombre}`}
-                    aria-pressed={selected} onClick={() => elegir(mascota.id)}>
-                    {mascota.fotografiaUrl && <img src={mediaUrl(mascota.fotografiaUrl)} alt="" loading="lazy" />}
-                    <span className="catalog-featured__choice-copy">
-                      <strong>{mascota.nombre}</strong>
-                      <span>{[formatAge(mascota.edadMeses), known(mascota.tamano)].filter(Boolean).join(' · ')}</span>
-                    </span>
-                  </button>
-                  <FavoriteHeart pet={mascota} />
+                  <div className="catalog-featured__thumbnail">
+                    <button className="catalog-featured__choice" type="button" aria-label={`Destacar a ${mascota.nombre}`}
+                      aria-pressed={selected} onClick={() => elegir(mascota.id)}>
+                      {mascota.fotografiaUrl && <img src={mediaUrl(mascota.fotografiaUrl)} alt="" loading="lazy" />}
+                      <span className="catalog-featured__choice-copy">
+                        <strong>{mascota.nombre}</strong>
+                        <span>{[formatAge(mascota.edadMeses), known(mascota.tamano)].filter(Boolean).join(' · ')}</span>
+                      </span>
+                    </button>
+                    <FavoriteHeart pet={mascota} />
+                  </div>
+                  <SolicitarAdopcion mascota={mascota} className="button catalog-featured__apply" />
                 </li>
               );
             })}

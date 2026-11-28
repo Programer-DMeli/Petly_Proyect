@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FavoriteHeart } from './FavoritesProvider';
+import SolicitarAdopcion from './SolicitarAdopcion';
 import { mediaUrl } from '../services/http';
 import { formatAge } from '../services/formatAge';
 import type { Pet } from '../services/types';
@@ -61,15 +62,7 @@ export default function PetCard({ pet }: { pet: Pet }) {
           <span>Ver detalle</span>
           <span aria-hidden="true">↗</span>
         </Link>
-        {pet.estado === 'Disponible' && (
-          <Link
-            className="button secondary pet-card__link"
-            to={`/adoptante/catalogo/${pet.id}/solicitud`}
-            aria-label={`Solicitar adopción de ${pet.nombre}`}
-          >
-            Solicitar adopción
-          </Link>
-        )}
+        <SolicitarAdopcion mascota={pet} className="button secondary pet-card__link" />
       </div>
     </article>
   );
