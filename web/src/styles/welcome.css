@@ -1,10 +1,11 @@
 .petly-welcome {
   --floor-inset: clamp(0.6rem, 2.1vw, 2.3rem);
+  --welcome-gutter: var(--public-page-gutter, 1rem);
   position: relative;
   isolation: isolate;
   display: grid;
   align-content: start;
-  min-height: calc(100svh - 4.6rem);
+  min-height: 100svh;
   overflow: hidden;
   padding: clamp(1.55rem, 4.1vw, 4.3rem) 0 clamp(1.35rem, 5vw, 5rem);
   color: #08634f;
@@ -215,12 +216,9 @@
 }
 
 .welcome-carousel__arrow {
-  position: absolute;
-  top: 50%;
-  z-index: 4;
   display: grid;
   place-items: center;
-  width: clamp(2.55rem, 3.45vw, 3.5rem);
+  width: 2.75rem;
   aspect-ratio: 1;
   padding: 0;
   border: 1px solid #ffffffed;
@@ -228,17 +226,10 @@
   background: #fbfefa;
   color: #09634d;
   box-shadow: 0 0.45rem 1.3rem #234d3830;
-  transform: translateY(-50%);
 }
 
 .welcome-carousel__arrow:hover:enabled {
   background: #e1f5e9;
-}
-.welcome-carousel__arrow--left {
-  left: clamp(0.55rem, 4vw, 4rem);
-}
-.welcome-carousel__arrow--right {
-  right: clamp(0.55rem, 4vw, 4rem);
 }
 .welcome-carousel__arrow svg {
   width: 55%;
@@ -254,6 +245,14 @@
   justify-items: center;
   gap: 0.2rem;
   margin-top: 0.8rem;
+}
+
+.welcome-carousel__pagination {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: calc(100% - 2 * var(--welcome-gutter));
 }
 
 .welcome-carousel__dots {
@@ -324,7 +323,7 @@
 
 .petly-welcome__status {
   z-index: 1;
-  width: min(30rem, calc(100% - 2rem));
+  width: min(30rem, 100% - 2 * var(--welcome-gutter));
   margin: clamp(2rem, 8vh, 6rem) auto;
   padding: 1.25rem;
   border: 1px solid #fff;
@@ -341,9 +340,6 @@
 }
 
 @media (max-width: 760px) {
-  .petly-welcome {
-    min-height: calc(100svh - 6rem);
-  }
   .petly-welcome .landing__plant,
   .petly-welcome__props {
     display: none;
@@ -352,7 +348,7 @@
     height: clamp(19rem, 88vw, 25rem);
   }
   .welcome-carousel__slide {
-    width: min(75vw, 21rem);
+    width: min(75vw, 21rem, 100% - 2 * var(--welcome-gutter));
   }
   .welcome-carousel__slide[data-position='-1'] {
     --shift: -32%;

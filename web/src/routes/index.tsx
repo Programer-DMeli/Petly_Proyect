@@ -3,7 +3,7 @@ import EventosPage from '../features/albergue/perfil/pages/EventosPage';
 import NecesidadesPage from '../features/albergue/perfil/pages/NecesidadesPage';
 import FavoritosPage from '../features/adoptante/catalogo/pages/FavoritosPage';
 import DisponibilidadPage from '../features/adoptante/perfil/pages/DisponibilidadPage';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, replace } from 'react-router-dom';
 import App from '../App';
 import AdoptanteLayout from '../layouts/AdoptanteLayout';
 import AlbergueLayout from '../layouts/AlbergueLayout';
@@ -11,8 +11,6 @@ import AdminLayout from '../layouts/AdminLayout';
 import ProtectedRoute from './ProtectedRoute';
 import HomePage from '../features/auth/pages/HomePage';
 import LoginPage from '../features/auth/pages/LoginPage';
-import ConocePetlyPage from '../features/auth/pages/ConocePetlyPage';
-import SobrePetlyPage from '../features/auth/pages/SobrePetlyPage';
 import AccesoPage from '../features/auth/pages/AccesoPage';
 import RecuperacionPage from '../features/auth/pages/RecuperacionPage';
 import AutorizacionesPage from '../features/adoptante/perfil/pages/AutorizacionesPage';
@@ -59,8 +57,8 @@ export const router = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: 'sobre-petly', element: <SobrePetlyPage /> },
-      { path: 'conoce-petly', element: <ConocePetlyPage /> },
+      { path: 'sobre-petly', loader: () => replace('/') },
+      { path: 'conoce-petly', loader: () => replace('/') },
       { path: 'historias-exito', element: <HistoriasExitoPublicasPage /> },
       { path: 'albergues/:albergueId', element: <PerfilPublicoAlberguePage /> },
       { path: 'acceso', element: <LoginPage /> },

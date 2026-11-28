@@ -131,25 +131,23 @@ function PetCarousel({ pets }: { pets: FeaturedPet[] }) {
             </article>
           );
         })}
-        {count > 1 && (
-          <>
-            <CarouselArrow previous onClick={() => step(-1)} />
-            <CarouselArrow onClick={() => step(1)} />
-          </>
-        )}
       </div>
       <div className="welcome-carousel__controls">
         {count > 1 && (
-          <div className="welcome-carousel__dots" role="group" aria-label="Elegir mascota">
-            {pets.map((pet, index) => (
-              <button
-                key={pet.id}
-                type="button"
-                aria-label={`Mostrar a ${pet.nombre} (${index + 1} de ${count})`}
-                aria-current={index === active ? 'true' : undefined}
-                onClick={() => setActive(index)}
-              />
-            ))}
+          <div className="welcome-carousel__pagination">
+            <CarouselArrow previous onClick={() => step(-1)} />
+            <div className="welcome-carousel__dots" role="group" aria-label="Elegir mascota">
+              {pets.map((pet, index) => (
+                <button
+                  key={pet.id}
+                  type="button"
+                  aria-label={`Mostrar a ${pet.nombre} (${index + 1} de ${count})`}
+                  aria-current={index === active ? 'true' : undefined}
+                  onClick={() => setActive(index)}
+                />
+              ))}
+            </div>
+            <CarouselArrow onClick={() => step(1)} />
           </div>
         )}
         <AdoptLink className="welcome-carousel__adopt" petId={pets[active].id}>
@@ -166,7 +164,7 @@ function PetCarousel({ pets }: { pets: FeaturedPet[] }) {
 function CarouselArrow({ previous = false, onClick }: { previous?: boolean; onClick: () => void }) {
   return (
     <button
-      className={`welcome-carousel__arrow welcome-carousel__arrow--${previous ? 'left' : 'right'}`}
+      className="welcome-carousel__arrow"
       aria-label={previous ? 'Mascota anterior' : 'Mascota siguiente'}
       type="button"
       onClick={onClick}

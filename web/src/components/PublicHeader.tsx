@@ -1,4 +1,4 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import AdoptLink from './AdoptLink';
 
 export default function PublicHeader() {
@@ -17,8 +17,6 @@ export default function PublicHeader() {
         </Link>
         <nav className="public-header__nav" aria-label="Navegación principal">
           <AdoptLink>Adopta</AdoptLink>
-          <NavLink to="/conoce-petly">Conoce Petly</NavLink>
-          <NavLink to="/sobre-petly">Sobre Petly</NavLink>
         </nav>
         <AdoptLink className="public-header__cta">
           <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">

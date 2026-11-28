@@ -64,7 +64,7 @@ async function noHorizontalOverflow(page) {
   );
 }
 
-test('el acceso conserva su composición y Sobre Petly conserva su navegación', async ({ page }) => {
+test('el acceso conserva su composición en escritorio y móvil', async ({ page }) => {
   await mockPublicSession(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/acceso');
@@ -84,74 +84,66 @@ test('el acceso conserva su composición y Sobre Petly conserva su navegación',
   const pets = await page.locator('.landing__pets').boundingBox();
   expect(pets.y).toBeGreaterThanOrEqual(mobileAccess.y + mobileAccess.height);
   await noHorizontalOverflow(page);
-
-  const nav = page.getByRole('navigation', { name: 'Navegación principal' });
-  await nav.getByRole('link', { name: 'Sobre Petly' }).click();
-  await expect(page).toHaveURL('/sobre-petly');
-  await expect(page.getByRole('heading', { name: 'Un hogar cambia una vida' })).toBeVisible();
-  await expect(
-    page.getByRole('img', { name: 'Un perro y un gato buscando un hogar' })
-  ).toBeVisible();
-  for (const name of ['¿Qué es Petly?', 'Beneficios', 'Misión', 'Visión']) {
-    await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
-  }
-  const panel = page.getByRole('region', { name: 'Un hogar cambia una vida' });
-  for (const name of ['Iniciar sesión', 'Crear cuenta de adoptante', 'Historias de adopción']) {
-    await expect(panel.getByRole('link', { name, exact: true })).toHaveCount(0);
-    await expect(panel.getByRole('button', { name, exact: true })).toHaveCount(0);
-  }
-  await expect(page.getByRole('contentinfo')).toContainText(
-    'Cada encuentro merece una nueva oportunidad.'
-  );
-  await noHorizontalOverflow(page);
-  await page.getByRole('link', { name: 'Encuentra a tu compañero' }).click();
-  await expect(page).toHaveURL('/acceso');
-  await expect(access.getByRole('heading')).toBeInViewport();
 });
 
-for (const width of [1440, 390]) {
-  test(`Adopta y Conoce Petly navegan desde el menú en ${width}px`, async ({ page }) => {
-    await mockPublicSession(page);
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.setViewportSize({ width, height: 900 });
-    await page.goto('/acceso');
-    const access = page.getByRole('region', { name: 'Inicia sesión' });
-    await expect(access).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Un abrazo que cambia vidas' })).toBeVisible();
-    await expect(page.getByText('Accede a tu espacio con tu cuenta Petly.')).toHaveCount(0);
-    const nav = page.getByRole('navigation', { name: 'Navegación principal' });
-    await expect(nav.getByRole('link', { name: 'Cómo funciona' })).toHaveCount(0);
-    await nav.getByRole('link', { name: 'Conoce Petly' }).click();
-    await expect(page).toHaveURL('/conoce-petly');
-    await expect(page.getByRole('heading', { name: 'Conoce Petly', level: 1 })).toBeVisible();
-    const cards = page.getByRole('listitem');
-    await expect(cards.getByRole('heading', { level: 2 })).toHaveText([
-      'Ingresa a Petly',
-      'Encuentra a tu compañero',
-      'Solicita la adopción',
-      'Continúa después de la adopción',
-    ]);
-    for (const card of await cards.all()) {
-      await expect(card).toHaveCSS('opacity', '1');
-      await expect(card).toHaveCSS('transform', 'none');
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 390, height: 844 },
+  { width: 320, height: 720 },
+]) {
+  test(`ambos laterales conectan Bienvenida y el acceso en ${viewport.width}px`, async ({ page }) => {
+    await mockPublicSession(page, undefined, () => ({ json: featured }));
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    const switcher = page.getByRole('navigation', { name: 'Cambiar pantalla' });
+    const forward = switcher.getByRole('link', { name: 'Ir a iniciar sesión' });
+    const back = switcher.getByRole('link', { name: 'Volver a Bienvenida' });
+    const header = page.getByRole('banner');
+
+    async function expectCenteredPair(links, content) {
+      await expect(links).toHaveCount(2);
+      const [left, right] = await Promise.all(
+        [links.first(), links.last()].map(async link => {
+          await expect(link).toBeInViewport();
+          const box = await link.boundingBox();
+          expect(box.y + box.height / 2).toBeCloseTo(viewport.height / 2, 0);
+          expect(box.width).toBeGreaterThanOrEqual(44);
+          expect(box.height).toBeGreaterThanOrEqual(44);
+          return box;
+        })
+      );
+      expect(left.x).toBeCloseTo(viewport.width - right.x - right.width, 0);
+      await expect(content).toBeVisible();
+      const box = await content.boundingBox();
+      expect(left.x + left.width).toBeLessThan(box.x);
+      expect(right.x).toBeGreaterThan(box.x + box.width);
+      await noHorizontalOverflow(page);
     }
-    const first = await cards.nth(0).boundingBox();
-    const second = await cards.nth(1).boundingBox();
-    if (width === 390) expect(second.y).toBeGreaterThan(first.y + first.height);
-    else expect(second.x).toBeGreaterThan(first.x + first.width);
-    await noHorizontalOverflow(page);
-    await nav.getByRole('link', { name: 'Adopta', exact: true }).click();
+
+    await expect(header).toHaveCount(0);
+    await expectCenteredPair(forward, page.getByRole('article'));
+
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('link', { name: 'Saltar al contenido principal' })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(forward.first()).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL('/acceso');
+    const access = page.getByRole('region', { name: 'Inicia sesión' });
+    await expect(header).toHaveCount(0);
+    await expectCenteredPair(back, access);
+
+    await back.last().click();
+    await expect(page).toHaveURL('/');
+    await forward.last().click();
+    await expect(page).toHaveURL('/acceso');
+    await back.first().click();
+    await expect(page).toHaveURL('/');
+    await expect(page.getByRole('heading', { name: 'Tu próximo mejor amigo te espera' })).toBeVisible();
+    await page.goBack();
     await expect(page).toHaveURL('/acceso');
     await expect(access).toBeVisible();
-    await page.goBack();
-    await expect(page).toHaveURL('/conoce-petly');
-    await expect(cards).toHaveCount(4);
-    await page.reload();
-    await expect(page.getByRole('heading', { name: 'Conoce Petly', level: 1 })).toBeVisible();
-    await expect(cards).toHaveCount(4);
-    await page.goBack();
-    await expect(page).toHaveURL('/acceso');
-    await expect(access).toBeVisible();
+
     await access.getByRole('link', { name: 'Recuperar contraseña' }).click();
     await expect(page).toHaveURL('/recuperacion');
     await page.getByRole('link', { name: 'Volver al acceso' }).click();
@@ -161,6 +153,18 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole('heading', { name: 'Crear cuenta de adoptante' })).toBeVisible();
   });
 }
+
+test('las rutas informativas retiradas redirigen a Bienvenida', async ({ page }) => {
+  await mockPublicSession(page);
+  for (const path of ['/conoce-petly', '/sobre-petly']) {
+    await page.goto(path);
+    await expect(page).toHaveURL('/');
+    await expect(page.getByRole('heading', { name: 'Tu próximo mejor amigo te espera' })).toBeVisible();
+  }
+  const artwork = await page.request.get('/images/mascotas-portada.webp');
+  expect(artwork.ok()).toBe(true);
+  expect(artwork.headers()['content-type']).toContain('image/webp');
+});
 
 test('el formulario integrado conserva validación, carga, bloqueo y navegación', async ({
   page,
@@ -357,10 +361,10 @@ test('la portada muestra cinco tarjetas y conserva la mascota elegida hasta el a
   await expect(page.getByRole('heading', { name: 'Nube', exact: true })).toBeVisible();
 });
 
-test('el acceso general de Adopta abre el catálogo tras iniciar sesión', async ({ page }) => {
+test('la flecha de Bienvenida permite abrir el catálogo tras iniciar sesión', async ({ page }) => {
   await mockPublicSession(page, adopterLogin);
   await page.goto('/');
-  await page.getByRole('link', { name: 'Adopta', exact: true }).click();
+  await page.getByRole('link', { name: 'Ir a iniciar sesión' }).last().click();
   await expect(page).toHaveURL('/acceso');
   await signIn(page);
   await expect(page).toHaveURL('/adoptante/catalogo');
@@ -368,7 +372,7 @@ test('el acceso general de Adopta abre el catálogo tras iniciar sesión', async
 
 test.describe('portada táctil', () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
-  test('deslizar cambia la mascota y mantiene el encabezado dentro de la pantalla', async ({
+  test('deslizar cambia la mascota en pantallas táctiles', async ({
     page,
   }) => {
     await mockPublicSession(page, undefined, () => ({ json: featured }));

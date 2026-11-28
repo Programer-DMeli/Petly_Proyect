@@ -77,8 +77,45 @@
 }
 
 .app--welcome > .app__main {
+  --public-page-arrow-size: 2.75rem;
+  --public-page-arrow-inset: clamp(0.375rem, 1vw, 1.5rem);
+  --public-page-gutter: calc(var(--public-page-arrow-size) + var(--public-page-arrow-inset) + 0.5rem);
+  position: relative;
   max-width: none;
   padding: 0;
+}
+
+.public-page-arrow {
+  position: absolute;
+  top: 50svh;
+  z-index: 2;
+  display: grid;
+  width: var(--public-page-arrow-size);
+  height: var(--public-page-arrow-size);
+  place-items: center;
+  border: 1px solid var(--petly-primary);
+  border-radius: 50%;
+  background: var(--petly-primary);
+  color: var(--petly-surface);
+  box-shadow: 0 0.35rem 1rem #234d3830;
+  transform: translateY(-50%);
+}
+
+.public-page-arrow:hover {
+  background: var(--petly-primary-dark);
+}
+
+.public-page-arrow:focus-visible {
+  outline: 3px solid #b84d04;
+  outline-offset: 3px;
+}
+
+.public-page-arrow--left {
+  left: var(--public-page-arrow-inset);
+}
+
+.public-page-arrow--right {
+  right: var(--public-page-arrow-inset);
 }
 
 .landing {
@@ -98,7 +135,7 @@
   align-items: stretch;
   gap: clamp(1.4rem, 4vw, 4.5rem);
   width: min(100% - clamp(7rem, 21vw, 26rem), 1210px);
-  min-height: clamp(41rem, calc(100svh - 4.6rem), 60rem);
+  min-height: clamp(41rem, 100svh, 60rem);
   padding: clamp(2.2rem, 4.2vw, 4rem) 0 var(--floor-inset);
   margin-inline: auto;
 }
@@ -952,77 +989,6 @@
   }
 }
 
-.app--landing > .app__main {
-  max-width: min(1600px, 87vw);
-}
-
-.about-petly {
-  overflow: hidden;
-  border: 1px solid #d9e6dc;
-  border-radius: 1.5rem;
-  background: #f2f8f2;
-  box-shadow: 0 1.25rem 3rem #12564329;
-}
-
-.about-petly .hero {
-  margin: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.about-petly__body {
-  display: grid;
-  gap: 1.5rem;
-  padding: clamp(1.35rem, 5vw, 4.5rem) clamp(1.25rem, 7vw, 7rem);
-}
-
-.about-petly__intro {
-  max-width: 49rem;
-}
-
-.about-petly h2,
-.about-petly h3 {
-  margin: 0 0 0.45rem;
-  color: #075c47;
-  line-height: 1.2;
-}
-
-.about-petly h2 {
-  font-size: clamp(1.65rem, 3.5vw, 2.35rem);
-}
-
-.about-petly__body p {
-  margin: 0;
-}
-
-.about-petly__values {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.95rem;
-}
-
-.about-petly__values section {
-  padding: 1.1rem 1.25rem;
-  border: 1px solid #d8e7de;
-  border-top: 3px solid #83bda6;
-  border-radius: 0.95rem;
-  background: #fff;
-}
-
-.about-petly__steps {
-  scroll-margin-top: 1.25rem;
-}
-
-.about-petly__steps ol {
-  margin: 0.6rem 0 0;
-  padding-inline-start: 1.35rem;
-}
-
-.about-petly__steps li::marker {
-  color: #09634d;
-  font-weight: 800;
-}
-
 @media (max-width: 1050px) {
   .landing__grid {
     width: calc(100% - 8rem);
@@ -1080,7 +1046,7 @@
 
   .landing__grid {
     grid-template-columns: minmax(0, 1fr);
-    width: min(100% - 2rem, 34rem);
+    width: min(100% - 2 * var(--public-page-gutter), 34rem);
     min-height: 0;
     gap: 0.9rem;
     padding: 1.85rem 0 1.3rem;
@@ -1121,158 +1087,20 @@
   .landing .landing__plant {
     display: none;
   }
-
-  .app--landing > .app__main {
-    max-width: none;
-  }
 }
 
-@media (max-width: 600px) {
-  .about-petly__values {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 480px) {
+  .auth--embedded {
+    padding-inline: 1rem;
   }
 
-  .about-petly .hero {
-    min-height: 0;
-    padding-bottom: clamp(12rem, 74vw, 25rem);
+  .auth--embedded .auth__input input {
+    padding-left: 2.55rem;
   }
 
-  .about-petly .hero__pets {
-    right: 0;
-    height: 57%;
-  }
-}
-
-.app--guide {
-  background: #f5faf6;
-}
-
-.app--guide > .app__main {
-  max-width: 1280px;
-  padding: clamp(1.1rem, 4vw, 3.8rem);
-}
-
-.petly-guide {
-  --guide-green: #095c49;
-  --guide-line: #bbd9ca;
-  padding: clamp(1rem, 4vw, 3.25rem);
-  border: 1px solid #dbe9de;
-  border-radius: clamp(1.25rem, 3vw, 2.5rem);
-  background: linear-gradient(155deg, #eaf7ee, #fbfcf5 65%);
-}
-
-.petly-guide__header {
-  margin-bottom: clamp(1.35rem, 3.7vw, 2.75rem);
-  text-align: center;
-}
-
-.petly-guide__header h1 {
-  margin: 0 0 0.45rem;
-  color: var(--guide-green);
-  font-size: clamp(2.25rem, 5.5vw, 4.1rem);
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.035em;
-}
-
-.petly-guide__header p {
-  margin: 0;
-  color: #36584b;
-  font-size: clamp(1rem, 2vw, 1.25rem);
-  text-wrap: balance;
-}
-
-.petly-guide__journey {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.petly-guide__step {
-  position: relative;
-  min-width: 0;
-  padding: 1.05rem 1.15rem 1.25rem;
-  border: 1px solid #d8e8dd;
-  border-top: 3px solid #71ac91;
-  border-radius: 1.1rem;
-  background: #fff;
-}
-
-.petly-guide__step:not(:nth-child(4n))::after {
-  position: absolute;
-  top: 2.38rem;
-  left: 100%;
-  width: calc(1rem + 2px);
-  height: 2px;
-  background: var(--guide-line);
-  content: '';
-}
-
-.petly-guide__marker {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  color: var(--guide-green);
-}
-
-.petly-guide__marker span {
-  display: grid;
-  width: 2.45rem;
-  height: 2.45rem;
-  place-items: center;
-  border-radius: 50%;
-  background: #ffecd5;
-  color: #7d421d;
-  font-weight: 800;
-}
-
-.petly-guide__step h2 {
-  margin: 0 0 0.55rem;
-  color: var(--guide-green);
-  font-size: 1.18rem;
-  font-weight: 800;
-  line-height: 1.25;
-}
-
-.petly-guide__step p {
-  margin: 0;
-  color: #36584b;
-  line-height: 1.55;
-}
-
-.petly-guide__cta {
-  display: table;
-  margin: clamp(1.25rem, 3vw, 2.25rem) auto 0;
-  border-radius: 999px;
-  background: var(--guide-green);
-}
-
-@media (max-width: 1030px) {
-  .petly-guide__journey {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .petly-guide__step:nth-child(2n)::after {
-    display: none;
-  }
-}
-
-@media (max-width: 580px) {
-  .petly-guide__journey {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .petly-guide__step:not(:last-child)::after {
-    display: block;
-    top: 100%;
-    left: 2.3rem;
-    width: 2px;
-    height: calc(1rem + 2px);
+  .auth--embedded .auth__input--icon > svg {
+    left: 0.7rem;
+    width: 1.2rem;
+    height: 1.2rem;
   }
 }

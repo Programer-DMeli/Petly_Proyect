@@ -83,9 +83,9 @@ test('restaura al recargar y comparte una renovación entre peticiones y pestañ
 
   const second = await context.newPage();
   await second.clock.setFixedTime(initialTime);
-  await second.goto('/conoce-petly');
-  await expect(second.getByRole('heading', { name: 'Conoce Petly', level: 1 })).toBeVisible();
-  await second.getByRole('link', { name: 'Adopta', exact: true }).click();
+  await second.goto('/');
+  await expect(second.getByRole('heading', { name: 'Tu próximo mejor amigo te espera', level: 1 })).toBeVisible();
+  await second.getByRole('link', { name: 'Ir a iniciar sesión' }).last().click();
   await ready(second);
   await expect(second).toHaveURL('/administracion/albergues');
   expect(calls.refresh).toHaveLength(2);
