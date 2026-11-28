@@ -8,6 +8,7 @@ export default function ProtectedRoute({ children, role }: { children: ReactNode
   const { pathname, search, hash } = useLocation();
   if (!session) {
     return <Navigate to="/acceso" state={{
+      mascotaId: pathname.match(/^\/adoptante\/catalogo\/([1-9]\d*)\/?$/)?.[1],
       solicitud: pathname.match(/^\/adoptante\/solicitudes\/(\d+)$/)?.[1],
       destinoAfiche: pathname === '/albergue' && new URLSearchParams(search).has('afiche')
         ? pathname + search : undefined,

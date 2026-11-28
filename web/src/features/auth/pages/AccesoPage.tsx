@@ -22,7 +22,7 @@ export default function AccesoPage({ register = false }: { register?: boolean })
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
-  const location = useLocation();
+  const accessState: unknown = useLocation().state;
   const [locks, setLocks] = useState<Record<string, number>>({});
   const [rateUntil, setRateUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
@@ -81,7 +81,7 @@ export default function AccesoPage({ register = false }: { register?: boolean })
             false
           )
         );
-        await navigate(accessDestination(identity.rol, location.state), { replace: true });
+        await navigate(accessDestination(identity.rol, accessState), { replace: true });
       }
     } catch (e) {
       setError(errorMessage(e));
@@ -222,15 +222,15 @@ export default function AccesoPage({ register = false }: { register?: boolean })
       {register ? (
         <div className="auth-register__actions">
           <p>¿Ya tienes una cuenta?</p>
-          <Link className="auth-register__login" to="/acceso">Iniciar sesión</Link>
-          <Link className="auth-register__recovery" to="/recuperacion">
+          <Link className="auth-register__login" to="/acceso" state={accessState}>Iniciar sesión</Link>
+          <Link className="auth-register__recovery" to="/recuperacion" state={accessState}>
             <AuthIcon name="lock" /> ¿Olvidaste tu contraseña?
           </Link>
         </div>
       ) : (
         <div className="actions">
-          <Link to="/recuperacion">Recuperar contraseña</Link>
-          <Link to="/registro">Crear cuenta</Link>
+          <Link to="/recuperacion" state={accessState}>Recuperar contraseña</Link>
+          <Link to="/registro" state={accessState}>Crear cuenta</Link>
         </div>
       )}
       </div>

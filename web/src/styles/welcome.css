@@ -1,0 +1,373 @@
+.petly-welcome {
+  --floor-inset: clamp(0.6rem, 2.1vw, 2.3rem);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: start;
+  min-height: calc(100svh - 4.6rem);
+  overflow: hidden;
+  padding: clamp(1.55rem, 4.1vw, 4.3rem) 0 clamp(1.35rem, 5vw, 5rem);
+  color: #08634f;
+  background: #e1f1e9 url('/images/acceso/fondo.webp') center bottom / cover no-repeat;
+}
+
+.petly-welcome__intro {
+  z-index: 1;
+  padding-inline: 1.25rem;
+  text-align: center;
+}
+
+.petly-welcome__intro h1 {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
+  font-size: clamp(2.15rem, 4vw, 4.05rem);
+  font-weight: 900;
+  line-height: 1.06;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.petly-welcome__intro h1::before,
+.petly-welcome__intro h1::after {
+  position: absolute;
+  top: 12%;
+  right: calc(100% + 0.75rem);
+  width: clamp(1rem, 2.35vw, 2.65rem);
+  height: 90%;
+  background:
+    linear-gradient(42deg, transparent 42%, #e77709 44% 58%, transparent 60%) top right / 62% 34%,
+    linear-gradient(8deg, transparent 40%, #e77709 42% 58%, transparent 60%) center / 90% 30%,
+    linear-gradient(-30deg, transparent 42%, #e77709 44% 58%, transparent 60%) bottom right / 72%
+      34%;
+  background-repeat: no-repeat;
+  content: '';
+}
+
+.petly-welcome__intro h1::after {
+  right: auto;
+  left: calc(100% + 0.75rem);
+  transform: scaleX(-1);
+}
+
+.petly-welcome__intro p {
+  margin: 0.55rem auto 0;
+  color: #203d34;
+  font-size: clamp(1rem, 1.65vw, 1.45rem);
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.petly-welcome .landing__plant {
+  z-index: 1;
+  width: clamp(5.5rem, 12vw, 13rem);
+}
+
+.petly-welcome__props {
+  position: absolute;
+  right: clamp(7rem, 14vw, 15.5rem);
+  bottom: var(--floor-inset);
+  z-index: 1;
+  display: flex;
+  align-items: end;
+  width: clamp(7rem, 15vw, 16rem);
+  pointer-events: none;
+}
+
+.petly-welcome__props img:first-child {
+  width: 72%;
+}
+.petly-welcome__props img:last-child {
+  width: 34%;
+  margin-left: -6%;
+}
+
+.welcome-carousel {
+  position: relative;
+  width: min(100%, 100rem);
+  margin: clamp(0.9rem, 2.1vw, 2.1rem) auto 0;
+  border-radius: 1.25rem;
+}
+
+.welcome-carousel__stage {
+  position: relative;
+  height: clamp(20rem, 31vw, 31rem);
+  perspective: 95rem;
+  touch-action: pan-y;
+}
+
+.welcome-carousel__slide {
+  --shift: 0%;
+  --rotation: 0deg;
+  --scale: 1;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 3;
+  width: clamp(15.5rem, 29vw, 30rem);
+  height: 100%;
+  overflow: hidden;
+  border: 2px solid #ffffffec;
+  border-radius: clamp(1.35rem, 2.8vw, 2.75rem);
+  background: #dbece1;
+  box-shadow: 0 1rem 2.4rem #214b3b40;
+  transform: translateX(calc(-50% + var(--shift))) rotateY(var(--rotation)) scale(var(--scale));
+  transition: transform 350ms ease;
+}
+
+.welcome-carousel__slide[data-position='-1'],
+.welcome-carousel__slide[data-position='1'] {
+  --scale: 0.89;
+  z-index: 2;
+}
+
+.welcome-carousel__slide[data-position='-2'],
+.welcome-carousel__slide[data-position='2'] {
+  --scale: 0.8;
+  z-index: 1;
+}
+
+.welcome-carousel__slide[data-position='-1'] {
+  --shift: -65%;
+  --rotation: 28deg;
+}
+.welcome-carousel__slide[data-position='1'] {
+  --shift: 65%;
+  --rotation: -28deg;
+}
+.welcome-carousel__slide[data-position='-2'] {
+  --shift: -113%;
+  --rotation: 34deg;
+}
+.welcome-carousel__slide[data-position='2'] {
+  --shift: 113%;
+  --rotation: -34deg;
+}
+
+.welcome-carousel__slide > img,
+.welcome-carousel__slide > .welcome-carousel__placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+}
+
+.welcome-carousel__slide > .welcome-carousel__placeholder {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.2rem;
+  padding-bottom: 23%;
+}
+
+.welcome-carousel__caption {
+  position: absolute;
+  inset: auto 0 0;
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  padding: 3.3rem 0.95rem clamp(0.85rem, 2vw, 1.85rem);
+  background: linear-gradient(transparent, #102819e8 51%, #10261a);
+  color: #fff;
+  text-align: center;
+}
+
+.welcome-carousel__caption h2 {
+  margin: 0;
+  color: inherit;
+  font-size: clamp(1.45rem, 2.6vw, 2.5rem);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.welcome-carousel__caption h2 span {
+  font-size: 0.77em;
+  font-weight: 650;
+}
+
+.welcome-carousel__caption p {
+  display: -webkit-box;
+  max-width: 29ch;
+  margin: 0;
+  overflow: hidden;
+  font-size: clamp(0.94rem, 1.32vw, 1.27rem);
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.welcome-carousel__heart {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #ff991f;
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.welcome-carousel__heart::before,
+.welcome-carousel__heart::after {
+  width: clamp(2.75rem, 4.5vw, 5rem);
+  height: 1px;
+  background: #fffb;
+  content: '';
+}
+
+.welcome-carousel__arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: clamp(2.55rem, 3.45vw, 3.5rem);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid #ffffffed;
+  border-radius: 50%;
+  background: #fbfefa;
+  color: #09634d;
+  box-shadow: 0 0.45rem 1.3rem #234d3830;
+  transform: translateY(-50%);
+}
+
+.welcome-carousel__arrow:hover:enabled {
+  background: #e1f5e9;
+}
+.welcome-carousel__arrow--left {
+  left: clamp(0.55rem, 4vw, 4rem);
+}
+.welcome-carousel__arrow--right {
+  right: clamp(0.55rem, 4vw, 4rem);
+}
+.welcome-carousel__arrow svg {
+  width: 55%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.welcome-carousel__controls {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  margin-top: 0.8rem;
+}
+
+.welcome-carousel__dots {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.welcome-carousel__dots button {
+  display: grid;
+  place-items: center;
+  width: clamp(1.6rem, 3vw, 2rem);
+  min-height: 1.8rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+.welcome-carousel__dots button::after {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: #719d8a;
+  content: '';
+}
+.welcome-carousel__dots button[aria-current]::after,
+.welcome-carousel__dots button:hover::after {
+  background: #09634d;
+}
+
+.welcome-carousel__adopt {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 1.85rem;
+  border-radius: 999px;
+  background: #09634d;
+  color: #fff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.welcome-carousel__adopt:hover {
+  background: #074f3d;
+}
+
+.welcome-carousel:focus-visible,
+.welcome-carousel a:focus-visible,
+.welcome-carousel button:focus-visible,
+.public-header a:focus-visible,
+.auth--embedded :is(input, button, a):focus-visible {
+  outline: 3px solid #b84d04;
+  outline-offset: 3px;
+}
+
+.public-header a:focus-visible {
+  outline-color: #ffd18c;
+}
+
+.welcome-carousel__announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.petly-welcome__status {
+  z-index: 1;
+  width: min(30rem, calc(100% - 2rem));
+  margin: clamp(2rem, 8vh, 6rem) auto;
+  padding: 1.25rem;
+  border: 1px solid #fff;
+  border-radius: 1.25rem;
+  background: #ffffffd9;
+  text-align: center;
+}
+
+@media (max-width: 1050px) {
+  .petly-welcome__intro h1::before,
+  .petly-welcome__intro h1::after {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .petly-welcome {
+    min-height: calc(100svh - 6rem);
+  }
+  .petly-welcome .landing__plant,
+  .petly-welcome__props {
+    display: none;
+  }
+  .welcome-carousel__stage {
+    height: clamp(19rem, 88vw, 25rem);
+  }
+  .welcome-carousel__slide {
+    width: min(75vw, 21rem);
+  }
+  .welcome-carousel__slide[data-position='-1'] {
+    --shift: -32%;
+  }
+  .welcome-carousel__slide[data-position='1'] {
+    --shift: 32%;
+  }
+  .welcome-carousel__slide[data-position='-2'],
+  .welcome-carousel__slide[data-position='2'] {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-carousel__slide {
+    transition: none;
+  }
+}

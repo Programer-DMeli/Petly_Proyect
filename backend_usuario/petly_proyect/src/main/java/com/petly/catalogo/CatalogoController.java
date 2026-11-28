@@ -9,6 +9,10 @@ public class CatalogoController {
  private final CatalogoService service;
  private final CompatibilidadService compatibilidad;
  public CatalogoController(CatalogoService service, CompatibilidadService compatibilidad){this.service=service;this.compatibilidad=compatibilidad;}
+ @GetMapping("/destacadas")
+ public List<CatalogoService.MascotaDestacada> destacadas() {
+  return service.destacadas();
+ }
  @GetMapping("/opciones") public Map<String,Object> options(){return service.options();}
  @GetMapping public Map<String,Object> list(@RequestParam(defaultValue="") String search,
  @RequestParam(required=false) String especie,@RequestParam(required=false) String tamano,

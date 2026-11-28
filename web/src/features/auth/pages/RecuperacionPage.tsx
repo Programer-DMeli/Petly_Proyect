@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import Feedback from '../../../components/Feedback';
 import { spring, json, errorMessage } from '../../../services/http';
 import { resetWebPassword, sessionHeaders } from '../../../services/session';
@@ -8,6 +8,7 @@ type RecoveryStep = 'request' | 'reset';
 
 export default function RecuperacionPage() {
   const formId = useId();
+  const accessState: unknown = useLocation().state;
   const [params] = useSearchParams();
   const incoming = params.get('token') ?? '';
   const [step, setStep] = useState<RecoveryStep>(() => (incoming ? 'reset' : 'request'));
@@ -208,7 +209,7 @@ export default function RecuperacionPage() {
         )}
 
         {success && isReset && (
-          <Link className="auth-recovery__login" to="/acceso">Ir a iniciar sesión</Link>
+          <Link className="auth-recovery__login" to="/acceso" state={accessState}>Ir a iniciar sesión</Link>
         )}
         <div className="auth-recovery__footer">
           {isReset ? (
@@ -220,7 +221,7 @@ export default function RecuperacionPage() {
               Ya tengo un código
             </button>
           )}
-          <Link to="/acceso">Volver al acceso</Link>
+          <Link to="/acceso" state={accessState}>Volver al acceso</Link>
         </div>
       </div>
     </section>

@@ -1,4 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
+import AdoptLink from './AdoptLink';
 
 export default function PublicHeader() {
   return (
@@ -15,16 +16,16 @@ export default function PublicHeader() {
           <span>Petly</span>
         </Link>
         <nav className="public-header__nav" aria-label="Navegación principal">
-          <Link to="/">Adopta</Link>
+          <AdoptLink>Adopta</AdoptLink>
           <NavLink to="/conoce-petly">Conoce Petly</NavLink>
           <NavLink to="/sobre-petly">Sobre Petly</NavLink>
         </nav>
-        <Link className="public-header__cta" to="/#iniciar-sesion">
+        <AdoptLink className="public-header__cta">
           <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
             <path d="M12 21 3.8 13a5.3 5.3 0 0 1 7.5-7.5l.7.7.7-.7a5.3 5.3 0 1 1 7.5 7.5Z" />
           </svg>
           Encuentra a tu compañero
-        </Link>
+        </AdoptLink>
       </div>
     </header>
   );

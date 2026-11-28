@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { FavoriteHeart } from './FavoritesProvider';
 import { mediaUrl } from '../services/http';
-import { formatAge } from '../services/petPresentation';
+import { formatAge } from '../services/formatAge';
 import type { Pet } from '../services/types';
 
 export default function PetCard({ pet }: { pet: Pet }) {

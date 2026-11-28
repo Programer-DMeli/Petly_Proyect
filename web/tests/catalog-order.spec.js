@@ -124,7 +124,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
       return route.fulfill({ json: { items, total } });
     });
 
-    await page.goto('/');
+    await page.goto('/acceso');
     await page.getByLabel('Correo electrónico', { exact: true }).fill('prueba@example.test');
     await page.getByLabel('Contraseña', { exact: true }).fill('password-de-prueba');
     await page.getByRole('button', { name: 'Entrar', exact: true }).click();

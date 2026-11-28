@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { FavoriteHeart } from '../../../../components/FavoritesProvider';
 import { mediaUrl } from '../../../../services/http';
-import { formatAge } from '../../../../services/petPresentation';
+import { formatAge } from '../../../../services/formatAge';
 import type { Pet } from '../../../../services/types';
 
 function FotoDestacada({ mascota }: { mascota: Pet }) {
