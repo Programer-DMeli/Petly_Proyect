@@ -30,6 +30,9 @@ export interface Pet {
   ubicacion: string;
   estado: string;
   fotografiaUrl: string | null;
+  fotografiasAdicionales?: string[];
+  sexo?: string | null;
+  saludConfirmada?: boolean;
   compatibilidad?: {
     porcentaje: number | null;
     puntaje: number | null;

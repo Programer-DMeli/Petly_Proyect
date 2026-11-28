@@ -32,6 +32,21 @@ class CatalogoServiceFotoTest {
         row.put("foto_principal", "mascotas/historica.jpg");
         assertEquals("https://django.example/media/mascotas/historica.jpg", servicio.detail(1).get("fotografiaUrl"));
 
+        row.put("sexo", "HEMBRA");
+        row.put("estado_salud_general", " Sana ");
+        row.put("fotos_adicionales", """
+            ["mascotas/historica.jpg", "mascotas/foto extra.png",
+             "mascotas/veterinaria/vacunacion/privada.png", "https://otro.example/foto.jpg",
+             "mascotas/foto extra.png"]
+            """);
+        var ficha = servicio.detail(1);
+        assertEquals("Hembra", ficha.get("sexo"));
+        assertEquals(true, ficha.get("saludConfirmada"));
+        assertEquals(List.of("https://django.example/media/mascotas/foto%20extra.png"),
+                     ficha.get("fotografiasAdicionales"));
+
+        row.put("estado_salud_general", "Requiere atención");
+        assertEquals(false, servicio.detail(1).get("saludConfirmada"));
         row.put("foto_principal", null);
         assertNull(servicio.detail(1).get("fotografiaUrl"));
     }

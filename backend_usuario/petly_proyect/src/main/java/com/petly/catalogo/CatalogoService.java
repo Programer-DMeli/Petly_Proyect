@@ -1,13 +1,19 @@
 package com.petly.catalogo;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.util.UriUtils;
 import com.petly.common.exception.ApiException;
 @Service
 public class CatalogoService {
  private static final Pattern FOTO_SUPABASE = Pattern.compile("mascotas/supabase/[0-9a-f]{32}\\.(?:jpg|png)");
+ private static final Pattern FOTO_LOCAL = Pattern.compile("mascotas/[\\p{L}\\p{N}_. -]+\\.(?i:jpe?g|png|webp)");
+ private static final ObjectMapper JSON = new ObjectMapper();
  private final JdbcTemplate db;
  private final String media;
  private final String catalogoPublico;
@@ -61,8 +67,32 @@ public class CatalogoService {
   v.put("energia",Map.of("BAJA","Baja","MEDIA","Media","ALTA","Alta").getOrDefault(String.valueOf(row.get("energia")),"Por evaluar"));
   v.put("descripcion",row.get("descripcion"));v.put("albergue",row.get("albergue_nombre"));v.put("albergueId",row.get("albergue_id"));v.put("ubicacion",row.get("ubicacion"));
   v.put("estado",Map.of("DISPONIBLE","Disponible","EN_PROCESO","En Proceso","ADOPTADO","Adoptado").get(row.get("estado")));
-  v.put("fotografiaUrl", fotografiaUrl((String) row.get("foto_principal")));
+  String principal = (String) row.get("foto_principal");
+  v.put("fotografiaUrl", fotografiaUrl(principal));
+  v.put("fotografiasAdicionales", fotosAdicionales(row.get("fotos_adicionales"), principal));
+  v.put("sexo", Map.of("MACHO", "Macho", "HEMBRA", "Hembra").get(String.valueOf(row.get("sexo"))));
+  String salud = Objects.toString(row.get("estado_salud_general"), "").strip().toLowerCase(Locale.ROOT);
+  v.put("saludConfirmada", Set.of("sano", "sana", "saludable").contains(salud));
   return v;
+ }
+
+ private List<String> fotosAdicionales(Object valor, String principal) {
+  if (!(valor instanceof String json) || json.isBlank()) return List.of();
+  Set<String> urls = new LinkedHashSet<>();
+  try {
+   var fotos = JSON.readTree(json);
+   if (fotos == null || !fotos.isArray()) return List.of();
+   for (var foto : fotos) {
+    if (!foto.isTextual()) continue;
+    String ruta = foto.textValue();
+    if (!ruta.equals(principal) && (FOTO_LOCAL.matcher(ruta).matches() || FOTO_SUPABASE.matcher(ruta).matches())) {
+     urls.add(fotografiaUrl(ruta));
+    }
+   }
+  } catch (JsonProcessingException ignored) {
+   return List.of();
+  }
+  return List.copyOf(urls);
  }
 
  private String fotografiaUrl(String ruta) {
@@ -70,7 +100,7 @@ public class CatalogoService {
   if (!catalogoPublico.isEmpty() && FOTO_SUPABASE.matcher(ruta).matches()) {
    return catalogoPublico + "/" + ruta;
   }
-  return media + "/" + ruta;
+  return media + "/" + UriUtils.encodePath(ruta, StandardCharsets.UTF_8);
  }
  public List<Map<String,Object>> shelters() {return db.queryForList("SELECT id,nombre,direccion FROM albergues WHERE activo=TRUE ORDER BY nombre,id");}
 }
