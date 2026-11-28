@@ -55,7 +55,6 @@ interface Props {
   mascotas: Pet[];
   seleccionada: Pet;
   elegir: (id: number) => void;
-  verTodos: string;
   browseId: string;
 }
 
@@ -157,7 +156,7 @@ function FichaDestacada({ seleccionada }: { seleccionada: Pet }) {
   );
 }
 
-export default function CatalogoDestacado({ mascotas, seleccionada, elegir, verTodos, browseId }: Props) {
+export default function CatalogoDestacado({ mascotas, seleccionada, elegir, browseId }: Props) {
   const track = useRef<HTMLUListElement>(null);
   const [limits, setLimits] = useState({ prev: false, next: false });
 
@@ -195,13 +194,8 @@ export default function CatalogoDestacado({ mascotas, seleccionada, elegir, verT
 
       <section className="catalog-featured__browse" aria-labelledby={browseId}>
         <div className="catalog-featured__browse-heading">
-          <div>
-            <h2 id={browseId}>Encuentra a tu compañero ideal</h2>
-            <p>Selecciona una mascota para ver su ficha.</p>
-          </div>
-          <Link className="catalog-featured__all" to={verTodos} state={{ focusResults: true }}>
-            Ver todos <span aria-hidden="true">→</span>
-          </Link>
+          <h2 id={browseId}>Encuentra a tu compañero ideal</h2>
+          <p>Selecciona una mascota para ver su ficha.</p>
         </div>
         <div className="catalog-featured__rail">
           <button className="catalog-featured__arrow" type="button" aria-label="Mascotas anteriores"
@@ -211,18 +205,15 @@ export default function CatalogoDestacado({ mascotas, seleccionada, elegir, verT
               const selected = mascota.id === seleccionada.id;
               return (
                 <li key={mascota.id} className={selected ? 'is-selected' : undefined}>
-                  <div className="catalog-featured__thumbnail">
-                    <button className="catalog-featured__choice" type="button" aria-label={`Destacar a ${mascota.nombre}`}
-                      aria-pressed={selected} onClick={() => elegir(mascota.id)}>
-                      {mascota.fotografiaUrl && <img src={mediaUrl(mascota.fotografiaUrl)} alt="" loading="lazy" />}
-                      <span className="catalog-featured__choice-copy">
-                        <strong>{mascota.nombre}</strong>
-                        <span>{[formatAge(mascota.edadMeses), known(mascota.tamano)].filter(Boolean).join(' · ')}</span>
-                      </span>
-                    </button>
-                    <FavoriteHeart pet={mascota} />
-                  </div>
-                  <SolicitarAdopcion mascota={mascota} className="button catalog-featured__apply" />
+                  <button className="catalog-featured__choice" type="button" aria-label={`Destacar a ${mascota.nombre}`}
+                    aria-pressed={selected} onClick={() => elegir(mascota.id)}>
+                    {mascota.fotografiaUrl && <img src={mediaUrl(mascota.fotografiaUrl)} alt="" loading="lazy" />}
+                    <span className="catalog-featured__choice-copy">
+                      <strong>{mascota.nombre}</strong>
+                      <span>{[formatAge(mascota.edadMeses), known(mascota.tamano)].filter(Boolean).join(' · ')}</span>
+                    </span>
+                  </button>
+                  <FavoriteHeart pet={mascota} />
                 </li>
               );
             })}

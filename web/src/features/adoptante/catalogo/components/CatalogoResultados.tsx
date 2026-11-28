@@ -104,7 +104,6 @@ export default function CatalogoResultados({ id, titulo, request, href, grid, pa
               mascotas={items}
               seleccionada={featured}
               elegir={setSelection}
-              verTodos={href(1, true)}
               browseId={`${id}-carrusel`}
             />
           )}

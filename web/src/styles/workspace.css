@@ -1293,8 +1293,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(0.65rem, 1.5vw, 1rem);
-  max-width: 66rem;
-  margin: 0 auto clamp(1.5rem, 4vw, 2.5rem);
+  margin-bottom: clamp(1.5rem, 4vw, 2.5rem);
 }
 .catalog-species .catalog-species__card {
   position: relative;
@@ -1446,9 +1445,6 @@
   border-radius: clamp(1.1rem, 2.5vw, 1.75rem);
   background: var(--petly-secondary);
 }
-#catalogo-gatos {
-  background: var(--petly-background);
-}
 .catalog-results--species + .catalog-results--species {
   margin-top: 1.5rem;
 }
@@ -1548,8 +1544,7 @@
     visibility: hidden;
   }
 }
-.catalog-featured__title,
-.catalog-featured__browse-heading {
+.catalog-featured__title {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1744,19 +1739,6 @@
   outline: 3px solid #178763;
   outline-offset: 2px;
   border-radius: 1rem;
-}
-.catalog-featured__thumbnail {
-  position: relative;
-}
-.catalog-featured__track .catalog-featured__apply {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  min-height: 2.75rem;
-  margin-top: 0.35rem;
-  padding-inline: 0.35rem;
-  font-size: 0.8rem;
-  text-align: center;
 }
 .catalog-featured__choice {
   position: relative;

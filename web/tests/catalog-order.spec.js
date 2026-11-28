@@ -92,15 +92,17 @@ test('el catálogo React conserva el orden recibido y marca compatibilidad incom
   const dogs = page.getByRole('region', { name: 'Resultados de perros' });
   const cats = page.getByRole('region', { name: 'Resultados de gatos' });
   const dogCards = dogs.locator('article.pet');
-  await page.getByRole('link', { name: 'Ver perros' }).click();
-  await dogs.getByRole('link', { name: 'Ver todos' }).click();
+  await expect(dogs).toBeVisible();
+  await page.route('**/api/auth/refresh', route => route.fulfill({
+    json: { token: 'token-de-prueba', expiresIn: 3600, user: { id: '7', correo: 'angie@example.com', rol: 'ADOPTANTE' } },
+  }));
+  await page.goto('/adoptante/catalogo?especie=Perro&vista=todos');
   await expect(dogCards).toHaveCount(2);
   await expect(dogCards.locator('h2')).toHaveText([
     'Mejor puntaje',
     'Segundo puntaje',
   ]);
-  await page.getByRole('link', { name: 'Ver gatos' }).click();
-  await cats.getByRole('link', { name: 'Ver todos' }).click();
+  await page.goto('/adoptante/catalogo?especie=Gato&vista=todos');
   await expect(cats.locator('article.pet h2')).toHaveText(['Datos incompletos']);
   await expect(cats.getByText('Información insuficiente', { exact: true })).toBeVisible();
 });
@@ -148,13 +150,10 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await expect(dogs).toBeVisible();
     await expect(catHero.getByRole('heading', { name: 'Datos incompletos' })).toBeVisible();
     await expect(hero.getByRole('heading', { name: 'Segundo puntaje' })).toBeVisible();
-    await expect(catResults.getByRole('list', { name: 'Mascotas de la especie seleccionada' })
-      .getByRole('link', { name: 'Solicitar adopción de Datos incompletos' }))
-      .toHaveAttribute('href', '/adoptante/catalogo/9/solicitud');
-    const dogCarousel = results.getByRole('list', { name: 'Mascotas de la especie seleccionada' });
-    await expect(dogCarousel.getByRole('button', { name: 'Solicitar adopción de Mejor puntaje (Adoptado)' })).toBeDisabled();
-    await expect(dogCarousel.getByRole('link', { name: 'Solicitar adopción de Segundo puntaje' }))
-      .toHaveAttribute('href', '/adoptante/catalogo/7/solicitud');
+    const carousels = page.getByRole('list', { name: 'Mascotas de la especie seleccionada' });
+    await expect(carousels).toHaveCount(2);
+    await expect(carousels.getByText('Solicitar adopción', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Ver todos', exact: true })).toHaveCount(0);
     await expect(catHero.getByText('Sin calcular', { exact: true })).toBeVisible();
     await expect(hero.locator('.catalog-featured__compat').getByText('72%', { exact: true })).toBeVisible();
     await expect(page.locator('article.pet')).toHaveCount(0);
@@ -166,9 +165,16 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await expect(catHero).toBeVisible();
     await expect(page.getByText('Filtros activos', { exact: true })).toHaveCount(0);
     expect(requests).toHaveLength(2);
-    const [catBox, dogBox, filterBox, resultBox] = await Promise.all([
+    const speciesCards = page.getByRole('group', { name: 'Explorar por especie' });
+    const topCarousel = page.getByRole('region', { name: 'Mensajes de adopción responsable' });
+    const [catBox, dogBox, filterBox, resultBox, cardsBox, topCarouselBox] = await Promise.all([
       cats.boundingBox(), dogs.boundingBox(), filters.boundingBox(), catResults.boundingBox(),
+      speciesCards.boundingBox(), topCarousel.boundingBox(),
     ]);
+    for (const neighbor of [topCarouselBox, filterBox]) {
+      expect(cardsBox.x).toBeCloseTo(neighbor.x);
+      expect(cardsBox.width).toBeCloseTo(neighbor.width);
+    }
     expect(catBox.y + catBox.height).toBeLessThan(resultBox.y);
     expect(dogBox.y + dogBox.height).toBeLessThan(filterBox.y);
     expect(filterBox.y + filterBox.height).toBeLessThan(resultBox.y);
@@ -198,7 +204,10 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
 
     await page.getByLabel('Buscar mascota o albergue').fill('Hogar Petly');
     await filters.getByRole('button', { name: 'Buscar', exact: true }).click();
-    await results.getByRole('link', { name: 'Ver todos' }).click();
+    await page.route('**/api/auth/refresh', route => route.fulfill({
+      json: { token: 'token-de-prueba', expiresIn: 3600, user: { id: '7', correo: 'prueba@example.test', rol: 'ADOPTANTE' } },
+    }));
+    await page.goto('/adoptante/catalogo?search=Hogar+Petly&especie=Perro&vista=todos');
     await expect(page.getByText('Página 1 de 2')).toBeVisible();
     await results.getByRole('link', { name: 'Siguiente', exact: true }).click();
     await expect(page.getByText('Página 2 de 2')).toBeVisible();
@@ -325,7 +334,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await expect(dogs).toHaveAttribute('aria-current', 'true');
     expect(requests).toHaveLength(requestsBeforeNavigation);
 
-    await results.getByRole('link', { name: 'Ver todos' }).click();
+    await page.goto('/adoptante/catalogo?search=Hogar+Petly&especie=Perro&vista=todos');
     await expect(page).toHaveURL(/[?&]vista=todos$/);
     await expect(results.locator('article.pet h2')).toHaveText(['Mejor puntaje', 'Segundo puntaje']);
     const grid = results.locator('.pet-card-grid');
@@ -341,9 +350,6 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await expect(catHero.getByRole('heading', { name: 'Datos incompletos' })).toBeVisible();
     await page.goForward();
     await expect(page).toHaveURL(/[?&]especie=Perro$/);
-    await page.route('**/api/auth/refresh', route => route.fulfill({
-      json: { token: 'token-de-prueba', expiresIn: 3600, user: { id: '7', correo: 'prueba@example.test', rol: 'ADOPTANTE' } },
-    }));
     await page.reload();
     await expect(results.getByText('24 mascotas encontradas')).toBeVisible();
     if (viewport.width <= 640 && !await filters.getByLabel('Especie', { exact: true }).isVisible()) {
