@@ -129,9 +129,12 @@ test('muestra una guía larga desde el primer paso y mantiene visible el formula
 test('el catálogo reúne preguntas y cuidados de la ficha y el asistente enlaza la guía', async ({ page }) => {
   const mascota = {
     id: 7, nombre: 'Luna', especie: 'Perro', raza: 'Labrador Retriever', albergue: 'Huellitas',
-    estado: 'Disponible', tamano: 'Grande', fotografiaUrl: null,
+    estado: 'Disponible', tamano: 'Grande', fotografiaUrl: null, edadMeses: 12,
   };
-  await page.route('**/api/catalogo?**', route => route.fulfill({ json: { items: [mascota], total: 1 } }));
+  await page.route('**/api/catalogo?**', route => {
+    const isDog = new URL(route.request().url()).searchParams.get('especie') === 'Perro';
+    return route.fulfill({ json: { items: isDog ? [mascota] : [], total: isDog ? 1 : 0 } });
+  });
   await page.route('**/api/catalogo/opciones', route => route.fulfill({ json: {} }));
   await page.route('**/api/asistente/preguntas-frecuentes', route => route.fulfill({
     json: [{ id: 'proceso', nombre: 'Proceso de adopción', preguntas: [{
@@ -153,7 +156,8 @@ test('el catálogo reúne preguntas y cuidados de la ficha y el asistente enlaza
   });
 
   await login(page, 'ADOPTANTE');
-  const ayuda = page.getByRole('region', { name: 'Ayuda para adoptar' });
+  const ayuda = page.getByRole('contentinfo').getByRole('region', { name: 'Ayuda para adoptar' });
+  await expect(page.getByRole('main').getByRole('region', { name: 'Ayuda para adoptar' })).toHaveCount(0);
   await expect(ayuda.getByRole('heading', { name: 'Proceso de adopción' })).toBeVisible();
   expect(consultas).toHaveLength(0);
   const pregunta = ayuda.getByText('¿Cómo empiezo una adopción?', { exact: true });
@@ -171,4 +175,5 @@ test('el catálogo reúne preguntas y cuidados de la ficha y el asistente enlaza
   await expect(panel.getByText('Cuidados por mascota', { exact: true })).toHaveCount(0);
   await panel.getByRole('link', { name: 'Guía del cuestionario' }).click();
   await expect(page).toHaveURL(/\/adoptante\/cuestionario$/);
+  await expect(ayuda).toHaveCount(0);
 });

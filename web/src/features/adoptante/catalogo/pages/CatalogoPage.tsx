@@ -3,7 +3,8 @@ import CatalogoResultados from '../components/CatalogoResultados';
 import ConsejosCompatibilidad from '../../../../components/ConsejosCompatibilidad';
 import { FavoriteHeart } from '../../../../components/FavoritesProvider';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { Link, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import Feedback from '../../../../components/Feedback';
 import { spring, mediaUrl, errorMessage } from '../../../../services/http';
 import type { Pet } from '../../../../services/types';
@@ -50,6 +51,7 @@ export default function CatalogoPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const footerContent = useOutletContext<HTMLDivElement | null>();
   const filters = useMemo(() => {
     const values = { ...empty };
     for (const key of filterKeys) values[key] = params.get(key) ?? '';
@@ -270,7 +272,7 @@ export default function CatalogoPage() {
           <p>Conoce su historia, conversa con el albergue y elige con responsabilidad.</p>
         </aside>
       </div>
-      <AyudaParaAdoptar mascotas={helpItems} />
+      {footerContent && createPortal(<AyudaParaAdoptar mascotas={helpItems} />, footerContent)}
     </section>
   );
 }

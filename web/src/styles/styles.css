@@ -122,6 +122,16 @@ body {
   font-size: 0.875rem;
 }
 
+.app__footer-content {
+  width: min(100%, 78rem);
+  margin: 0 auto 1rem;
+  text-align: start;
+}
+
+.app__footer-content:empty {
+  display: none;
+}
+
 .card {
   background: var(--petly-surface);
   border: 1px solid var(--petly-border);

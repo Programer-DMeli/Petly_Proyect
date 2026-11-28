@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
 import { getSession, subscribe, getRestoreStatus, restoreSession } from './services/session';
 import { conectarAvisos } from './services/avisosEnVivo';
@@ -8,6 +8,7 @@ import './styles/workspace.css';
 
 export default function App() {
   const session = useSyncExternalStore(subscribe, getSession);
+  const [footerContent, setFooterContent] = useState<HTMLDivElement | null>(null);
   const location = useLocation();
   const pathname = location.pathname.replace(/\/+$/, '').toLowerCase() || '/';
   const isLanding = (pathname === '/' || pathname === '/acceso') && !session;
@@ -31,9 +32,10 @@ export default function App() {
               <p role="alert">No se pudo comprobar tu sesión. Comprueba tu conexión e intenta nuevamente.</p>
               <button onClick={() => void restoreSession()}>Reintentar</button>
             </section>
-          ) : <Outlet />}
+          ) : <Outlet context={footerContent} />}
       </main>
       <footer className="app__footer">
+        <div className="app__footer-content" ref={setFooterContent} />
         <strong>Petly</strong> · Adopción responsable <span aria-hidden="true"> · </span>
         <span>Cada encuentro merece una nueva oportunidad.</span>
       </footer>
