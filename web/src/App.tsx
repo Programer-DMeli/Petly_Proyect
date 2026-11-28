@@ -10,10 +10,11 @@ export default function App() {
   const session = useSyncExternalStore(subscribe, getSession);
   const location = useLocation();
   const pathname = location.pathname.replace(/\/+$/, '').toLowerCase() || '/';
-  const isLanding = (pathname === '/' || pathname === '/acceso') && !session;
+  const isHome = pathname === '/';
+  const isLanding = isHome || pathname === '/acceso';
   const isAbout = pathname === '/sobre-petly';
   const isGuide = pathname === '/conoce-petly';
-  const isWorkspace = session && !isAbout && !isGuide;
+  const isWorkspace = session && !isLanding && !isAbout && !isGuide;
   const restoreStatus = useSyncExternalStore(subscribe, getRestoreStatus);
   const adoptante = session?.identity.rol === 'ADOPTANTE' ? session.identity.id : null;
   useEffect(() => { void restoreSession(); }, []);
@@ -25,8 +26,8 @@ export default function App() {
       </a>
       {isWorkspace ? <WorkspaceHeader session={session} /> : <PublicHeader />}
       <main id="contenido-principal" tabIndex={-1} className="app__main">
-        {restoreStatus === 'loading' ? <p role="status">Recuperando sesión…</p>
-          : restoreStatus === 'retry' ? (
+        {!isHome && restoreStatus === 'loading' ? <p role="status">Recuperando sesión…</p>
+          : !isHome && restoreStatus === 'retry' ? (
             <section className="card">
               <p role="alert">No se pudo comprobar tu sesión. Comprueba tu conexión e intenta nuevamente.</p>
               <button onClick={() => void restoreSession()}>Reintentar</button>

@@ -1086,6 +1086,14 @@
     padding: 1.85rem 0 1.3rem;
   }
 
+  .landing__welcome {
+    display: contents;
+  }
+
+  .landing__access {
+    grid-row: 2;
+  }
+
   .landing__headline h1 {
     font-size: clamp(2.45rem, 8vw, 3.6rem);
   }
@@ -1096,10 +1104,11 @@
   }
 
   .landing__pets {
-    width: 89%;
+    grid-row: 3;
+    width: min(75%, 17rem);
     min-height: 0;
     aspect-ratio: 1.42;
-    margin: 1.2rem auto 0.5rem;
+    margin: 0.2rem auto 0.5rem;
   }
 
   .landing__rug {
@@ -1108,23 +1117,9 @@
     bottom: -0.55rem;
   }
 
-  .landing__plant {
-    bottom: 0.7rem;
-    width: 6.25rem;
-  }
-
-  .landing__plant--left {
-    left: -2.85rem;
-  }
-
-  .landing__plant--right {
-    right: -2.85rem;
-  }
-
-  .landing__kitten-lane {
-    width: calc(100% - 2.5rem);
-    margin-inline: auto;
-    margin-top: 0.35rem;
+  .landing__kitten-lane,
+  .landing .landing__plant {
+    display: none;
   }
 
   .app--landing > .app__main {

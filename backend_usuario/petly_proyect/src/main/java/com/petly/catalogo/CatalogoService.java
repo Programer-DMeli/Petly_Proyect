@@ -31,6 +31,21 @@ public class CatalogoService {
  public Map<String,Object> options() {return Map.of("especies",ESPECIES.values(),"tamanos",TAMANOS.values(),"temperamentos",TEMPERAMENTOS.values());}
  private static final String FROM=" FROM mascotas_mascota m JOIN albergues a ON a.id=m.albergue_id ";
  private static final String AGE="(CASE WHEN m.edad_anos IS NULL AND m.edad_meses IS NULL THEN NULL ELSE COALESCE(m.edad_anos,0)*12+COALESCE(m.edad_meses,0) END)";
+ public record MascotaDestacada(long id, String nombre, Integer edadMeses, String descripcion, String fotografiaUrl) {}
+
+ public List<MascotaDestacada> destacadas() {
+  return db.query("""
+      SELECT m.id, m.nombre, %s AS edad_total, LEFT(m.descripcion, 240) AS descripcion, m.foto_principal
+      %s
+      WHERE a.activo = TRUE AND m.estado = 'DISPONIBLE'
+      ORDER BY (NULLIF(m.foto_principal, '') IS NULL), m.id
+      LIMIT 10
+      """.formatted(AGE, FROM),
+      (row, index) -> new MascotaDestacada(row.getLong("id"), row.getString("nombre"),
+          row.getObject("edad_total", Integer.class), row.getString("descripcion"),
+          fotografiaUrl(row.getString("foto_principal"))));
+ }
+
  public Map<String,Object> search(String search,String especie,String tamano,String temperamento,Integer min,Integer max,int page,int size) {
   if(page<1 || page>1000000 || size<1 || size>100 || search.length()>120 || (min!=null&&(min<0||min>600)) || (max!=null&&(max<0||max>600)) || (min!=null&&max!=null&&min>max)) throw new ApiException(400,"filtros inválidos");
   StringBuilder where=new StringBuilder(" WHERE a.activo=TRUE");List<Object> args=new ArrayList<>();

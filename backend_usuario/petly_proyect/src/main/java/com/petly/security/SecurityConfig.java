@@ -69,6 +69,7 @@ public class SecurityConfig {
                         // ya no asocia la barra final automaticamente)
                         .requestMatchers("/api/health", "/api/health/", "/api/health/**")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/catalogo/destacadas").permitAll()
                         // La lectura de reseñas y promedio institucional es pública.
                         .requestMatchers(HttpMethod.GET, "/api/albergues/*/resenas", "/api/albergues/*/resenas/")
                         .permitAll()

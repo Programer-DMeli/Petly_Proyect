@@ -71,6 +71,23 @@ class IntegracionSprintTest {
   mvc.perform(get("/api/catalogo").param("edadMinimaMeses","25").param("edadMaximaMeses","24").header("Authorization","Bearer "+t)).andExpect(status().isBadRequest());
   mvc.perform(get("/api/catalogo").param("search","%'").header("Authorization","Bearer "+t)).andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
  }
+ @Test void portadaPublicaSoloExponeTarjetasDisponiblesDeAlberguesActivos() throws Exception {
+  db.update("UPDATE mascotas_mascota SET estado='EN_PROCESO' WHERE id=2");
+  db.update("UPDATE mascotas_mascota SET estado='ADOPTADO' WHERE id=3");
+  db.update("INSERT INTO albergues VALUES (101,'Refugio inactivo','Lima',100,FALSE)");
+  db.update("UPDATE mascotas_mascota SET albergue_id=101 WHERE id=4");
+  mvc.perform(get("/api/catalogo/destacadas"))
+   .andExpect(status().isOk())
+   .andExpect(jsonPath("$.length()").value(1))
+   .andExpect(jsonPath("$[0].length()").value(5))
+   .andExpect(jsonPath("$[0].id").value(1))
+   .andExpect(jsonPath("$[0].nombre").value("Luna 1"))
+   .andExpect(jsonPath("$[0].edadMeses").value(24))
+   .andExpect(jsonPath("$[0].descripcion").value("Descripción"))
+   .andExpect(jsonPath("$[0].fotografiaUrl").value(org.hamcrest.Matchers.endsWith("/mascotas/luna.png")));
+  mvc.perform(get("/api/catalogo")).andExpect(status().isUnauthorized());
+  mvc.perform(get("/api/catalogo/1")).andExpect(status().isUnauthorized());
+ }
  @Test void compatibilityIsRecalculatedAfterProfileUpdate() throws Exception {
   String t=token("ADOPTANTE"); long id=uid(t);
   db.update("UPDATE mascotas_mascota SET especie='PERRO',tamanio='GRANDE',energia='BAJA',temperamento='SOCIABLE' WHERE id=1");
