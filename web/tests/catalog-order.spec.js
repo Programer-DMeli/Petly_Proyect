@@ -81,18 +81,20 @@ test('el catálogo React conserva el orden recibido y marca compatibilidad incom
   await page.getByLabel('Contraseña', { exact: true }).fill('password-de-prueba');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
 
-  const cards = page.locator('article.pet');
+  const dogs = page.getByRole('region', { name: 'Resultados de perros' });
+  const cats = page.getByRole('region', { name: 'Resultados de gatos' });
+  const dogCards = dogs.locator('article.pet');
   await page.getByRole('link', { name: 'Ver perros' }).click();
-  await page.getByRole('link', { name: 'Ver todos' }).click();
-  await expect(cards).toHaveCount(2);
-  await expect(cards.locator('h2')).toHaveText([
+  await dogs.getByRole('link', { name: 'Ver todos' }).click();
+  await expect(dogCards).toHaveCount(2);
+  await expect(dogCards.locator('h2')).toHaveText([
     'Mejor puntaje',
     'Segundo puntaje',
   ]);
   await page.getByRole('link', { name: 'Ver gatos' }).click();
-  await page.getByRole('link', { name: 'Ver todos' }).click();
-  await expect(cards.locator('h2')).toHaveText(['Datos incompletos']);
-  await expect(cards.first().getByText('Información insuficiente', { exact: true })).toBeVisible();
+  await cats.getByRole('link', { name: 'Ver todos' }).click();
+  await expect(cats.locator('article.pet h2')).toHaveText(['Datos incompletos']);
+  await expect(cats.getByText('Información insuficiente', { exact: true })).toBeVisible();
 });
 
 for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
@@ -129,17 +131,27 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
 
     const cats = page.getByRole('link', { name: 'Ver gatos' });
     const dogs = page.getByRole('link', { name: 'Ver perros' });
-    const results = page.getByRole('region', { name: 'Resultados del catálogo' });
+    const results = page.getByRole('region', { name: 'Resultados de perros' });
+    const catResults = page.getByRole('region', { name: 'Resultados de gatos' });
+    const catHero = catResults.getByRole('region', { name: 'Mascota destacada' });
+    const hero = results.getByRole('region', { name: 'Mascota destacada' });
     const filters = page.locator('.catalog-filters');
     await expect(dogs).toBeVisible();
-    await expect(results).toHaveCount(0);
+    await expect(catHero.getByRole('heading', { name: 'Datos incompletos' })).toBeVisible();
+    await expect(hero.getByRole('heading', { name: 'Segundo puntaje' })).toBeVisible();
+    await expect(catHero.getByText('Sin calcular', { exact: true })).toBeVisible();
+    await expect(hero.getByText('72%', { exact: true })).toBeVisible();
     await expect(page.locator('article.pet')).toHaveCount(0);
-    expect(requests).toHaveLength(0);
+    expect(requests.map(request => request.especie).sort()).toEqual(['Gato', 'Perro']);
     await dogs.click();
     await expect(page).toHaveURL(/\/adoptante\/catalogo\?especie=Perro$/);
     await expect(results.getByText('2 mascotas encontradas')).toBeVisible();
+    await expect(results).toBeFocused();
+    await expect(catHero).toBeVisible();
+    await expect(page.getByText('Filtros activos', { exact: true })).toHaveCount(0);
+    expect(requests).toHaveLength(2);
     const [catBox, dogBox, filterBox, resultBox] = await Promise.all([
-      cats.boundingBox(), dogs.boundingBox(), filters.boundingBox(), results.boundingBox(),
+      cats.boundingBox(), dogs.boundingBox(), filters.boundingBox(), catResults.boundingBox(),
     ]);
     expect(catBox.y + catBox.height).toBeLessThan(resultBox.y);
     expect(dogBox.y + dogBox.height).toBeLessThan(filterBox.y);
@@ -172,8 +184,9 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await filters.getByRole('button', { name: 'Buscar', exact: true }).click();
     await results.getByRole('link', { name: 'Ver todos' }).click();
     await expect(page.getByText('Página 1 de 2')).toBeVisible();
-    await results.getByRole('button', { name: 'Siguiente', exact: true }).click();
+    await results.getByRole('link', { name: 'Siguiente', exact: true }).click();
     await expect(page.getByText('Página 2 de 2')).toBeVisible();
+    const requestsBeforeNavigation = requests.length;
 
     if (viewport.width > 640) {
       await cats.click({ position: { x: 24, y: 24 } });
@@ -181,14 +194,15 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
       await cats.focus();
       await page.keyboard.press('Enter');
     }
-    await expect(results).toBeFocused();
-    await expect(results.getByText('1 mascota encontrada')).toBeVisible();
+    await expect(catResults).toBeFocused();
+    await expect(catResults.getByText('1 mascota encontrada')).toBeVisible();
+    await expect(catResults).toBeInViewport();
     await expect(page).toHaveURL(/\/adoptante\/catalogo\?search=Hogar\+Petly&especie=Gato$/);
-    const hero = results.getByRole('region', { name: 'Mascota destacada' });
-    await expect(hero.getByRole('heading', { name: 'Datos incompletos' })).toBeVisible();
+    await expect(catHero.getByRole('heading', { name: 'Datos incompletos' })).toBeVisible();
     await expect(page.getByLabel('Especie', { exact: true })).toHaveValue('Gato');
     await expect(cats).toHaveAttribute('aria-current', 'true');
-    expect(requests.at(-1)).toMatchObject({ especie: 'Gato', page: '1', search: 'Hogar Petly' });
+    expect(requests).toHaveLength(requestsBeforeNavigation);
+    expect(requests).toContainEqual(expect.objectContaining({ especie: 'Gato', page: '1', search: 'Hogar Petly' }));
 
     if (viewport.width > 640) {
       await cats.focus();
@@ -200,6 +214,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     }
     await expect(results).toBeFocused();
     await expect(results.getByText('24 mascotas encontradas')).toBeVisible();
+    await expect(results).toBeInViewport();
     await expect(page).toHaveURL(/\/adoptante\/catalogo\?search=Hogar\+Petly&especie=Perro$/);
     await expect(hero.getByRole('heading', { name: 'Segundo puntaje' })).toBeVisible();
     await expect(hero.getByText('Sano', { exact: true })).toBeVisible();
@@ -210,6 +225,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await expect(hero.getByRole('img')).toHaveAttribute('src', /mascotas-portada/);
     await results.getByRole('button', { name: 'Destacar a Mejor puntaje' }).press('Space');
     await expect(hero.getByRole('heading', { name: 'Mejor puntaje' })).toBeVisible();
+    await expect(hero.getByText('100%', { exact: true })).toBeVisible();
     await expect(hero.getByRole('img')).toHaveAttribute('src', /perro\.webp$/);
     await expect(hero.getByRole('button', { name: 'Foto siguiente' })).toHaveCount(0);
     await expect(hero.getByRole('link', { name: 'Solicitar adopción' })).toHaveCount(0);
@@ -233,7 +249,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     }
     await expect(page.getByLabel('Especie', { exact: true })).toHaveValue('Perro');
     await expect(dogs).toHaveAttribute('aria-current', 'true');
-    expect(requests.at(-1)).toMatchObject({ especie: 'Perro', page: '1', search: 'Hogar Petly' });
+    expect(requests).toHaveLength(requestsBeforeNavigation);
 
     await results.getByRole('link', { name: 'Ver todos' }).click();
     await expect(page).toHaveURL(/[?&]vista=todos$/);
@@ -243,7 +259,8 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await page.goBack();
     await expect(hero).toBeVisible();
     await page.goBack();
-    await expect(hero.getByRole('heading', { name: 'Datos incompletos' })).toBeVisible();
+    await expect(page).toHaveURL(/[?&]especie=Gato$/);
+    await expect(catHero.getByRole('heading', { name: 'Datos incompletos' })).toBeVisible();
     await page.goForward();
     await expect(page).toHaveURL(/[?&]especie=Perro$/);
     await page.route('**/api/auth/refresh', route => route.fulfill({

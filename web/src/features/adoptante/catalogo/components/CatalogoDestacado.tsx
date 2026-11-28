@@ -24,14 +24,23 @@ function FotoDestacada({ mascota }: { mascota: Pet }) {
           <span>Fotografía por añadir</span>
         </div>
       )}
-      <span className="catalog-featured__state">{mascota.estado}</span>
+      <span className="catalog-featured__state">
+        {mascota.estado === 'Disponible' ? 'En adopción' : mascota.estado}
+      </span>
       {fotos.length > 1 && (
         <>
           <button className="catalog-featured__arrow catalog-featured__arrow--prev" type="button"
             aria-label="Foto anterior" onClick={() => mover(-1)}>‹</button>
           <button className="catalog-featured__arrow catalog-featured__arrow--next" type="button"
             aria-label="Foto siguiente" onClick={() => mover(1)}>›</button>
-          <span className="catalog-featured__photo-count" role="status">
+          <div className="catalog-featured__photo-dots" role="group" aria-label="Elegir foto">
+            {fotos.map((foto, index) => (
+              <button key={foto} type="button" aria-label={`Mostrar foto ${index + 1}`}
+                aria-current={actual === index ? 'true' : undefined}
+                onClick={() => setIndice(index)} />
+            ))}
+          </div>
+          <span className="visually-hidden" role="status">
             Foto {actual + 1} de {fotos.length}
           </span>
         </>
@@ -45,16 +54,19 @@ interface Props {
   seleccionada: Pet;
   elegir: (id: number) => void;
   verTodos: string;
+  browseId: string;
 }
 
 function known(value?: string | null) {
   return value && value !== 'Por evaluar' ? value : null;
 }
 
-export default function CatalogoDestacado({ mascotas, seleccionada, elegir, verTodos }: Props) {
+export default function CatalogoDestacado({ mascotas, seleccionada, elegir, verTodos, browseId }: Props) {
   const track = useRef<HTMLUListElement>(null);
   const [limits, setLimits] = useState({ prev: false, next: false });
-  const compat = seleccionada.compatibilidad?.porcentaje;
+  const compatibilidad = seleccionada.compatibilidad;
+  const porcentaje = compatibilidad?.porcentaje;
+  const requierePerfil = compatibilidad?.mensaje?.startsWith('Completa tu perfil');
   const detalle = `/adoptante/catalogo/${seleccionada.id}`;
 
   useEffect(() => {
@@ -88,13 +100,19 @@ export default function CatalogoDestacado({ mascotas, seleccionada, elegir, verT
         <FotoDestacada key={seleccionada.id} mascota={seleccionada} />
         <div className="catalog-featured__sheet">
           <header className="catalog-featured__title">
-            <h2 aria-live="polite">{seleccionada.nombre}</h2>
-            {compat != null && (
-              <div className="catalog-featured__compat">
-                <strong style={{ '--compat': `${compat}%` } as CSSProperties}>{compat}%</strong>
-                <span>Compatibilidad</span>
-              </div>
-            )}
+            <div>
+              <p className="catalog-featured__eyebrow"><span aria-hidden="true">♡</span> Tu nuevo mejor amigo</p>
+              <h2 aria-live="polite">{seleccionada.nombre}</h2>
+            </div>
+            <div className={`catalog-featured__compat${porcentaje == null ? ' is-pending' : ''}`}>
+              <strong style={{ '--compat': `${porcentaje ?? 0}%` } as CSSProperties}>
+                {porcentaje == null ? <span aria-hidden="true">—</span> : `${porcentaje}%`}
+              </strong>
+              <span>Compatibilidad</span>
+              {porcentaje == null && (requierePerfil
+                ? <Link to="/adoptante/cuestionario">Completar perfil</Link>
+                : <span className="catalog-featured__compat-note" title={compatibilidad?.mensaje}>Sin calcular</span>)}
+            </div>
           </header>
           <ul className="catalog-featured__facts" aria-label="Características">
             {seleccionada.edadMeses != null && <li>{formatAge(seleccionada.edadMeses)}</li>}
@@ -111,21 +129,28 @@ export default function CatalogoDestacado({ mascotas, seleccionada, elegir, verT
           {known(seleccionada.temperamento) && (
             <div>
               <h3>Temperamento</h3>
-              <p>{seleccionada.temperamento}</p>
+              <ul className="catalog-featured__facts catalog-featured__temperament">
+                <li>{seleccionada.temperamento}</li>
+              </ul>
             </div>
           )}
           <div className="catalog-featured__actions">
             {seleccionada.estado === 'Disponible' && (
-              <Link className="button" to={detalle + '/solicitud'}>Solicitar adopción</Link>
+              <Link className="button" to={detalle + '/solicitud'}>
+                <span aria-hidden="true">♡</span> Solicitar adopción
+              </Link>
             )}
             <Link className="button secondary" to={detalle}>Conocerme</Link>
           </div>
         </div>
       </section>
 
-      <section className="catalog-featured__browse" aria-labelledby="catalog-featured-browse">
+      <section className="catalog-featured__browse" aria-labelledby={browseId}>
         <div className="catalog-featured__browse-heading">
-          <h2 id="catalog-featured-browse">Encuentra a tu compañero ideal</h2>
+          <div>
+            <h2 id={browseId}>Encuentra a tu compañero ideal</h2>
+            <p>Selecciona una mascota para ver su ficha.</p>
+          </div>
           <Link className="catalog-featured__all" to={verTodos} state={{ focusResults: true }}>
             Ver todos <span aria-hidden="true">→</span>
           </Link>
