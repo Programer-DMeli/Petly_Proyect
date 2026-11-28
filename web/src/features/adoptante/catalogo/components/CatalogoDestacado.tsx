@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { FavoriteHeart } from '../../../../components/FavoritesProvider';
 import { mediaUrl } from '../../../../services/http';
@@ -61,44 +61,41 @@ function known(value?: string | null) {
   return value && value !== 'Por evaluar' ? value : null;
 }
 
-export default function CatalogoDestacado({ mascotas, seleccionada, elegir, verTodos, browseId }: Props) {
-  const track = useRef<HTMLUListElement>(null);
-  const [limits, setLimits] = useState({ prev: false, next: false });
+function FichaDestacada({ seleccionada }: { seleccionada: Pet }) {
+  const [girada, setGirada] = useState(false);
+  const reverso = useId();
+  const conocerme = useRef<HTMLButtonElement>(null);
+  const titulo = useRef<HTMLHeadingElement>(null);
+  const restaurarFoco = useRef(false);
   const compatibilidad = seleccionada.compatibilidad;
   const porcentaje = compatibilidad?.porcentaje;
   const requierePerfil = compatibilidad?.mensaje?.startsWith('Completa tu perfil');
   const detalle = `/adoptante/catalogo/${seleccionada.id}`;
+  const datos = [
+    { label: 'Albergue', value: seleccionada.albergue },
+    { label: 'Ubicación', value: seleccionada.ubicacion },
+    { label: 'Raza', value: seleccionada.raza },
+    { label: 'Nivel de energía', value: known(seleccionada.energia) },
+  ].filter(dato => dato.value?.trim());
 
-  useEffect(() => {
-    const list = track.current;
-    if (!list) return;
-    const update = () => setLimits({
-      prev: list.scrollLeft > 1,
-      next: list.scrollLeft + list.clientWidth < list.scrollWidth - 1,
-    });
-    const observer = new ResizeObserver(update);
-    observer.observe(list);
-    if (list.firstElementChild) observer.observe(list.firstElementChild);
-    list.addEventListener('scroll', update, { passive: true });
-    update();
-    return () => {
-      observer.disconnect();
-      list.removeEventListener('scroll', update);
-    };
-  }, [mascotas]);
-
-  function desplazar(direccion: number) {
-    const list = track.current;
-    if (!list) return;
-    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    list.scrollBy({ left: direccion * list.clientWidth * 0.85, behavior: smooth ? 'smooth' : 'instant' });
+  function volver() {
+    restaurarFoco.current = true;
+    setGirada(false);
   }
 
+  useEffect(() => {
+    if (girada) {
+      titulo.current?.focus({ preventScroll: true });
+    } else if (restaurarFoco.current) {
+      conocerme.current?.focus({ preventScroll: true });
+      restaurarFoco.current = false;
+    }
+  }, [girada]);
+
   return (
-    <div className="catalog-featured">
-      <section className="catalog-featured__hero" aria-label="Mascota destacada">
-        <FotoDestacada key={seleccionada.id} mascota={seleccionada} />
-        <div className="catalog-featured__sheet">
+    <div className="catalog-featured__flip" data-flipped={girada}>
+      <div className="catalog-featured__flip-inner">
+        <div className="catalog-featured__sheet" inert={girada} aria-hidden={girada}>
           <header className="catalog-featured__title">
             <div>
               <p className="catalog-featured__eyebrow"><span aria-hidden="true">♡</span> Tu nuevo mejor amigo</p>
@@ -140,9 +137,73 @@ export default function CatalogoDestacado({ mascotas, seleccionada, elegir, verT
                 <span aria-hidden="true">♡</span> Solicitar adopción
               </Link>
             )}
-            <Link className="button secondary" to={detalle}>Conocerme</Link>
+            <button
+              className="button secondary" type="button" ref={conocerme}
+              aria-controls={reverso} aria-expanded={girada} onClick={() => setGirada(true)}
+            >
+              Conocerme
+            </button>
           </div>
         </div>
+        <div className="catalog-featured__sheet catalog-featured__sheet--reverse" id={reverso}
+          inert={!girada} aria-hidden={!girada} onKeyDown={event => { if (event.key === 'Escape') volver(); }}>
+          <header className="catalog-featured__title">
+            <h2 ref={titulo} tabIndex={-1}>Más sobre {seleccionada.nombre}</h2>
+          </header>
+          {datos.length > 0 && (
+            <dl className="catalog-featured__extra">
+              {datos.map(({ label, value }) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          <div className="catalog-featured__actions">
+            <button className="button secondary" type="button" onClick={volver}>Volver a la ficha</button>
+            <Link className="button" to={detalle}>Ver ficha completa</Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function CatalogoDestacado({ mascotas, seleccionada, elegir, verTodos, browseId }: Props) {
+  const track = useRef<HTMLUListElement>(null);
+  const [limits, setLimits] = useState({ prev: false, next: false });
+
+  useEffect(() => {
+    const list = track.current;
+    if (!list) return;
+    const update = () => setLimits({
+      prev: list.scrollLeft > 1,
+      next: list.scrollLeft + list.clientWidth < list.scrollWidth - 1,
+    });
+    const observer = new ResizeObserver(update);
+    observer.observe(list);
+    if (list.firstElementChild) observer.observe(list.firstElementChild);
+    list.addEventListener('scroll', update, { passive: true });
+    update();
+    return () => {
+      observer.disconnect();
+      list.removeEventListener('scroll', update);
+    };
+  }, [mascotas]);
+
+  function desplazar(direccion: number) {
+    const list = track.current;
+    if (!list) return;
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    list.scrollBy({ left: direccion * list.clientWidth * 0.85, behavior: smooth ? 'smooth' : 'instant' });
+  }
+
+  return (
+    <div className="catalog-featured">
+      <section className="catalog-featured__hero" aria-label="Mascota destacada">
+        <FotoDestacada key={seleccionada.id} mascota={seleccionada} />
+        <FichaDestacada key={`ficha-${seleccionada.id}`} seleccionada={seleccionada} />
       </section>
 
       <section className="catalog-featured__browse" aria-labelledby={browseId}>

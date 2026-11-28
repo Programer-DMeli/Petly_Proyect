@@ -1485,7 +1485,22 @@
   font-weight: 750;
   box-shadow: 0 2px 12px #143e3226;
 }
+.catalog-featured__flip {
+  display: grid;
+  min-width: 0;
+  perspective: 1100px;
+}
+.catalog-featured__flip-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  transform-style: preserve-3d;
+  transition: transform 420ms ease-in-out;
+}
+.catalog-featured__flip[data-flipped='true'] .catalog-featured__flip-inner {
+  transform: rotateY(180deg);
+}
 .catalog-featured__sheet {
+  grid-area: 1 / 1;
   display: flex;
   flex-direction: column;
   gap: 0.95rem;
@@ -1495,6 +1510,43 @@
   border-radius: 1.5rem;
   background: linear-gradient(135deg, #eaf8f0, #ddf1e6);
   overflow-wrap: anywhere;
+  backface-visibility: hidden;
+}
+.catalog-featured__sheet--reverse {
+  transform: rotateY(180deg);
+}
+.catalog-featured__sheet[inert] {
+  pointer-events: none;
+}
+.catalog-featured__extra {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 0.55rem;
+  margin: 0;
+}
+.catalog-featured__extra > div {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.8rem;
+  background: #f7fff9;
+}
+.catalog-featured__extra dt {
+  color: #215e4d;
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+.catalog-featured__extra dd {
+  margin: 0.15rem 0 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .catalog-featured__flip .catalog-featured__flip-inner,
+  .catalog-featured__flip[data-flipped='true'] .catalog-featured__flip-inner,
+  .catalog-featured__sheet--reverse {
+    transform: none;
+    transition: none;
+  }
+  .catalog-featured__sheet[inert] {
+    visibility: hidden;
+  }
 }
 .catalog-featured__title,
 .catalog-featured__browse-heading {
@@ -1532,14 +1584,17 @@
   font-weight: 750;
 }
 .catalog-featured__compat strong {
+  --compat-size: clamp(3.35rem, 6vw, 5rem);
   display: grid;
   place-items: center;
-  width: clamp(3.35rem, 6vw, 5rem);
+  width: var(--compat-size);
   aspect-ratio: 1;
   border-radius: 50%;
   background: radial-gradient(closest-side, #f7fff9 81%, transparent 83%),
     conic-gradient(#248669 var(--compat), #b6deca 0);
-  font-size: clamp(1.05rem, 2.4vw, 1.8rem);
+  font-size: calc(var(--compat-size) * 0.26);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 .catalog-featured__compat.is-pending strong {
   color: #427165;

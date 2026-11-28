@@ -37,6 +37,7 @@ const pets = [
     estado: 'Disponible',
     fotografiaUrl: 'http://localhost:5173/images/acceso/perro.webp',
     fotografiasAdicionales: ['http://localhost:5173/images/mascotas-portada.webp'],
+    raza: 'Mestizo',
     sexo: 'Macho',
     saludConfirmada: true,
     compatibilidad: { porcentaje: 72, puntaje: 72, cobertura: 100, datosInsuficientes: false, mensaje: '' },
@@ -100,6 +101,7 @@ test('el catálogo React conserva el orden recibido y marca compatibilidad incom
 for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
   test(`las tarjetas de especie filtran y mantienen el diseño a ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
+    if (viewport.width < 640) await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.route('**/api/perfil/favoritos', route => route.fulfill({ json: [] }));
     await page.route('**/api/auth/login', route => route.fulfill({
       json: { token: 'token-de-prueba', expiresIn: 3600, user: { id: '7', correo: 'prueba@example.test', rol: 'ADOPTANTE' } },
@@ -220,12 +222,41 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await expect(hero.getByText('Sano', { exact: true })).toBeVisible();
     await expect(hero.getByText('Macho', { exact: true })).toBeVisible();
     await expect(hero.getByRole('link', { name: 'Solicitar adopción' })).toHaveAttribute('href', '/adoptante/catalogo/7/solicitud');
-    await expect(hero.getByRole('link', { name: 'Conocerme' })).toHaveAttribute('href', '/adoptante/catalogo/7');
+    const conocerme = hero.getByRole('button', { name: 'Conocerme', exact: true });
+    const catalogUrl = page.url();
+    await conocerme.press('Enter');
+    const reverse = hero.getByRole('heading', { name: 'Más sobre Segundo puntaje' });
+    await expect(reverse).toBeFocused();
+    await expect(hero.getByText('Mestizo', { exact: true })).toBeVisible();
+    await expect(hero.getByText('Hogar Petly', { exact: true })).toBeVisible();
+    await expect(hero.getByRole('link', { name: 'Ver ficha completa' })).toHaveAttribute('href', '/adoptante/catalogo/7');
+    await expect(page).toHaveURL(catalogUrl);
+    if (viewport.width < 640) {
+      await expect(hero.locator('.catalog-featured__flip-inner')).toHaveCSS('transform', 'none');
+    }
+    await reverse.press('Escape');
+    await expect(conocerme).toBeFocused();
+    await conocerme.click();
+    await hero.getByRole('button', { name: 'Volver a la ficha' }).click();
+    await expect(conocerme).toBeFocused();
     await hero.getByRole('button', { name: 'Foto siguiente' }).click();
     await expect(hero.getByRole('img')).toHaveAttribute('src', /mascotas-portada/);
+    await conocerme.click();
+    await expect(reverse).toBeFocused();
     await results.getByRole('button', { name: 'Destacar a Mejor puntaje' }).press('Space');
     await expect(hero.getByRole('heading', { name: 'Mejor puntaje' })).toBeVisible();
-    await expect(hero.getByText('100%', { exact: true })).toBeVisible();
+    await expect(conocerme).toHaveAttribute('aria-expanded', 'false');
+    const percentage = hero.getByText('100%', { exact: true });
+    await expect(percentage).toBeVisible();
+    const fit = await percentage.evaluate(node => {
+      const ring = node.getBoundingClientRect();
+      const contents = document.createRange();
+      contents.selectNodeContents(node);
+      const text = contents.getBoundingClientRect();
+      return { widthRatio: text.width / ring.width, offset: text.x + text.width / 2 - ring.x - ring.width / 2 };
+    });
+    expect(fit.widthRatio).toBeLessThan(0.75);
+    expect(Math.abs(fit.offset)).toBeLessThan(1);
     await expect(hero.getByRole('img')).toHaveAttribute('src', /perro\.webp$/);
     await expect(hero.getByRole('button', { name: 'Foto siguiente' })).toHaveCount(0);
     await expect(hero.getByRole('link', { name: 'Solicitar adopción' })).toHaveCount(0);
@@ -238,7 +269,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
 
     const [media, sheet] = await Promise.all([
       hero.locator('.catalog-featured__media').boundingBox(),
-      hero.locator('.catalog-featured__sheet').boundingBox(),
+      hero.locator('.catalog-featured__flip').boundingBox(),
     ]);
     if (viewport.width > 640) {
       expect(media.x + media.width).toBeLessThan(sheet.x);
